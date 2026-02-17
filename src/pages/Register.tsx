@@ -23,31 +23,31 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-muted honeycomb-pattern py-8 px-4" dir="rtl">
-      <div className="w-full max-w-lg mx-auto bg-card rounded-3xl shadow-honey p-8 border border-border">
+    <div className="min-h-screen py-8 px-4 relative overflow-hidden" dir="rtl">
+      <div className="absolute inset-0 bg-muted" />
+      <div className="absolute top-10 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
+      <div className="absolute bottom-10 left-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
+
+      <div className="relative z-10 w-full max-w-lg mx-auto glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in">
         <div className="flex flex-col items-center mb-6">
           <Link to="/">
-            <img src={bzbLogo} alt="BZB" className="w-16 h-16 mb-3" />
+            <img src={bzbLogo} alt="BZB" className="w-16 h-16 mb-3 hover:animate-buzz" />
           </Link>
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+          <h1 className="text-2xl font-extrabold text-foreground">{title}</h1>
         </div>
 
         {/* Social Login */}
         <div className="flex flex-col gap-2 mb-6">
-          <Button variant="outline" className="w-full py-5 rounded-xl border-border text-foreground font-medium">
-            הרשם עם Google
-          </Button>
-          <Button variant="outline" className="w-full py-5 rounded-xl border-border text-foreground font-medium">
-            הרשם עם Facebook
-          </Button>
-          <Button variant="outline" className="w-full py-5 rounded-xl border-border text-foreground font-medium">
-            הרשם עם Instagram
-          </Button>
+          {["Google", "Facebook", "Instagram"].map((provider) => (
+            <Button key={provider} variant="outline" className="w-full py-5 rounded-2xl border-border text-foreground font-semibold hover:scale-[1.02] transition-transform duration-300">
+              הרשם עם {provider}
+            </Button>
+          ))}
         </div>
 
         <div className="flex items-center gap-3 mb-6">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-muted-foreground text-sm">או</span>
+          <span className="text-muted-foreground text-sm font-medium">או</span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
@@ -55,36 +55,36 @@ const Register = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="firstName">שם פרטי</Label>
-              <Input id="firstName" placeholder="שם פרטי" className="mt-1 rounded-xl" required />
+              <Input id="firstName" placeholder="שם פרטי" className="mt-1 rounded-2xl h-12" required />
             </div>
             <div>
               <Label htmlFor="lastName">שם משפחה</Label>
-              <Input id="lastName" placeholder="שם משפחה" className="mt-1 rounded-xl" required />
+              <Input id="lastName" placeholder="שם משפחה" className="mt-1 rounded-2xl h-12" required />
             </div>
           </div>
           <div>
             <Label htmlFor="age">גיל</Label>
-            <Input id="age" type="number" placeholder="גיל" className="mt-1 rounded-xl" required min={isWorker ? 13 : 18} />
+            <Input id="age" type="number" placeholder="גיל" className="mt-1 rounded-2xl h-12" required min={isWorker ? 13 : 18} />
           </div>
           <div>
             <Label htmlFor="address">כתובת</Label>
-            <Input id="address" placeholder="כתובת מלאה" className="mt-1 rounded-xl" required />
+            <Input id="address" placeholder="כתובת מלאה" className="mt-1 rounded-2xl h-12" required />
           </div>
           <div>
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" placeholder="email@example.com" className="mt-1 rounded-xl" dir="ltr" required />
+            <Input id="email" type="email" placeholder="email@example.com" className="mt-1 rounded-2xl h-12" dir="ltr" required />
           </div>
           <div>
             <Label htmlFor="phone">טלפון</Label>
-            <Input id="phone" type="tel" placeholder="050-0000000" className="mt-1 rounded-xl" dir="ltr" required />
+            <Input id="phone" type="tel" placeholder="050-0000000" className="mt-1 rounded-2xl h-12" dir="ltr" required />
           </div>
           <div>
             <Label htmlFor="username">שם משתמש</Label>
-            <Input id="username" placeholder="שם משתמש" className="mt-1 rounded-xl" required />
+            <Input id="username" placeholder="שם משתמש" className="mt-1 rounded-2xl h-12" required />
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <Input id="password" type="password" placeholder="סיסמה" className="mt-1 rounded-xl" required />
+            <Input id="password" type="password" placeholder="סיסמה" className="mt-1 rounded-2xl h-12" required />
           </div>
 
           <div className="flex items-center gap-2 mt-2">
@@ -95,17 +95,17 @@ const Register = () => {
             />
             <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
               אני מאשר/ת את{" "}
-              <span className="text-primary underline">תנאי השימוש</span>
+              <span className="text-primary font-bold underline">תנאי השימוש</span>
             </Label>
           </div>
 
-          <Button type="submit" className="w-full py-6 text-lg font-bold gradient-honey text-primary-foreground rounded-xl border-none hover:opacity-90 transition-opacity mt-2">
+          <Button type="submit" className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
             הרשם 🐝
           </Button>
 
           <p className="text-center text-sm text-muted-foreground mt-2">
             כבר רשום?{" "}
-            <Link to="/login" className="text-primary font-medium underline">
+            <Link to="/login" className="text-primary font-bold underline">
               התחבר
             </Link>
           </p>

@@ -5,87 +5,110 @@ import { Button } from "@/components/ui/button";
 
 const Landing = () => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-hidden">
       {/* Hero Section */}
       <div
-        className="relative flex-1 flex flex-col items-center justify-center text-center px-4 py-20"
+        className="relative flex-1 flex flex-col items-center justify-center text-center px-4 py-24 min-h-[90vh]"
         style={{
           backgroundImage: `url(${heroBg})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-foreground/20 to-foreground/40" />
-        <div className="relative z-10 flex flex-col items-center gap-6 max-w-2xl">
+        {/* Animated gradient overlay */}
+        <div className="absolute inset-0 gradient-hero opacity-80" />
+        
+        {/* Floating blobs for energy */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-accent/20 rounded-full blur-3xl animate-blob" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/15 rounded-full blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-secondary/20 rounded-full blur-3xl animate-blob animation-delay-4000" />
+
+        <div className="relative z-10 flex flex-col items-center gap-5 max-w-2xl">
           <img
             src={bzbLogo}
             alt="BZB Logo"
-            className="w-40 h-40 animate-float drop-shadow-2xl"
+            className="w-36 h-36 animate-float drop-shadow-2xl"
           />
-          <h1 className="text-6xl md:text-7xl font-black text-primary-foreground tracking-tight">
+          <h1 className="text-7xl md:text-8xl font-black text-primary-foreground tracking-tighter animate-slide-up">
             BZB
           </h1>
-          <p className="text-xl md:text-2xl font-medium text-primary-foreground/90">
+          <p className="text-2xl md:text-3xl font-bold text-primary-foreground/95 animate-slide-up" style={{ animationDelay: "0.1s" }}>
             Busy Bee
           </p>
-          <p className="text-lg md:text-xl text-primary-foreground/80 italic">
+          <p className="text-lg md:text-xl text-primary-foreground/85 font-medium animate-slide-up" style={{ animationDelay: "0.2s" }}>
             🐝 Your chores are their honey 🍯
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 mt-6">
+          <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
             <Link to="/auth">
-              <Button size="lg" className="text-lg px-8 py-6 gradient-honey text-primary-foreground shadow-honey font-bold rounded-full border-none hover:opacity-90 transition-opacity">
-                בואו נתחיל!
+              <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
+                בואו נתחיל! 🚀
               </Button>
             </Link>
             <Link to="/tasks">
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 py-6 bg-card/90 text-foreground font-bold rounded-full border-2 border-primary-foreground/30 hover:bg-card transition-colors"
+                className="text-lg px-10 py-7 glass text-foreground font-bold rounded-full border-2 border-primary-foreground/30 hover:scale-105 transition-transform duration-300"
               >
-                סיור כאורח
+                סיור כאורח 👀
               </Button>
             </Link>
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 animate-bounce-subtle">
+          <div className="w-6 h-10 rounded-full border-2 border-primary-foreground/40 flex items-start justify-center p-1.5">
+            <div className="w-1.5 h-3 bg-primary-foreground/60 rounded-full" />
           </div>
         </div>
       </div>
 
       {/* Features Section */}
-      <section className="py-16 px-4 bg-card honeycomb-pattern">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
-            איך זה עובד? 🐝
+      <section className="py-20 px-4 bg-card relative overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
+        
+        <div className="max-w-5xl mx-auto relative">
+          <h2 className="text-4xl font-extrabold text-center mb-4 text-foreground">
+            איך זה עובד?
           </h2>
-          <div className="grid md:grid-cols-3 gap-8" dir="rtl">
+          <p className="text-center text-muted-foreground text-lg mb-14">פשוט, מהיר, ומשתלם 🐝</p>
+          <div className="grid md:grid-cols-3 gap-6" dir="rtl">
             <FeatureCard
               emoji="📋"
               title="פרסם מטלה"
               description="פרסם מטלה, קבע תשלום והמתן להצעות מבני נוער חרוצים"
+              delay={0}
             />
             <FeatureCard
               emoji="🔍"
               title="חפש עבודה"
               description="עיין במטלות זמינות באזורך, בחר מה שמתאים לך והרוויח דמי כיס"
+              delay={1}
             />
             <FeatureCard
               emoji="🤝"
               title="התאמה מושלמת"
               description="מערכת דירוגים ומשובים מבטיחה חוויה בטוחה ואמינה לכולם"
+              delay={2}
             />
           </div>
         </div>
       </section>
 
       {/* Categories */}
-      <section className="py-16 px-4 bg-muted">
+      <section className="py-20 px-4 bg-muted">
         <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-8 text-foreground">קטגוריות 🏠</h2>
+          <h2 className="text-4xl font-extrabold mb-4 text-foreground">קטגוריות</h2>
+          <p className="text-muted-foreground text-lg mb-10">מה צריכים? יש לנו! 🏠</p>
           <div className="flex flex-wrap justify-center gap-3" dir="rtl">
             {["🏠 עבודות בית", "🌿 גינון", "👶 בייביסיטר", "🐾 חיות מחמד", "🔧 הנדימן", "🚚 משלוחים", "📚 מטלות בית ספר", "👨‍🏫 שיעורים פרטיים"].map(
-              (cat) => (
+              (cat, i) => (
                 <span
                   key={cat}
-                  className="px-5 py-2.5 rounded-full bg-card shadow-sm text-foreground font-medium border border-border hover:shadow-honey hover:border-primary transition-all cursor-default"
+                  className="px-6 py-3 rounded-2xl bg-card shadow-sm text-foreground font-semibold border border-border card-hover cursor-default text-base"
+                  style={{ animationDelay: `${i * 0.05}s` }}
                 >
                   {cat}
                 </span>
@@ -96,28 +119,29 @@ const Landing = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-4 gradient-honey text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-primary-foreground mb-4">
+      <section className="py-20 px-4 gradient-honey text-center relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-primary-foreground/5 honeycomb-pattern" />
+        <div className="max-w-2xl mx-auto relative">
+          <h2 className="text-4xl font-extrabold text-primary-foreground mb-4">
             מוכנים להתחיל? 🚀
           </h2>
-          <p className="text-primary-foreground/80 mb-8 text-lg">
+          <p className="text-primary-foreground/80 mb-10 text-lg">
             הצטרפו לקהילת Busy Bee עוד היום
           </p>
           <Link to="/auth">
             <Button
               size="lg"
-              className="text-lg px-8 py-6 bg-card text-foreground font-bold rounded-full hover:bg-card/90 transition-colors"
+              className="text-lg px-10 py-7 bg-card text-foreground font-extrabold rounded-full hover:scale-105 transition-transform duration-300 shadow-glow"
             >
-              הירשמו עכשיו
+              הירשמו עכשיו 🐝
             </Button>
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-6 px-4 bg-foreground text-center">
-        <p className="text-background/70 text-sm">
+      <footer className="py-8 px-4 bg-foreground text-center">
+        <p className="text-background/60 text-sm font-medium">
           © 2026 Busy Bee (BZB). כל הזכויות שמורות. 🐝
         </p>
       </footer>
@@ -129,15 +153,20 @@ const FeatureCard = ({
   emoji,
   title,
   description,
+  delay,
 }: {
   emoji: string;
   title: string;
   description: string;
+  delay: number;
 }) => (
-  <div className="bg-card rounded-2xl p-8 text-center shadow-sm hover:shadow-honey transition-shadow border border-border">
-    <div className="text-5xl mb-4">{emoji}</div>
-    <h3 className="text-xl font-bold mb-2 text-foreground">{title}</h3>
-    <p className="text-muted-foreground">{description}</p>
+  <div
+    className="bg-card rounded-3xl p-8 text-center card-hover border border-border relative overflow-hidden group"
+  >
+    <div className="absolute inset-0 gradient-honey opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+    <div className="text-5xl mb-5 group-hover:animate-buzz">{emoji}</div>
+    <h3 className="text-xl font-extrabold mb-3 text-foreground">{title}</h3>
+    <p className="text-muted-foreground leading-relaxed">{description}</p>
   </div>
 );
 

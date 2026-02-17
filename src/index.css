@@ -6,80 +6,80 @@
 
 @layer base {
   :root {
-    --background: 40 100% 97%;
-    --foreground: 30 10% 15%;
+    --background: 45 100% 98%;
+    --foreground: 25 20% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 30 10% 15%;
+    --card-foreground: 25 20% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 30 10% 15%;
+    --popover-foreground: 25 20% 12%;
 
-    --primary: 30 100% 50%;
+    --primary: 25 100% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 45 100% 55%;
-    --secondary-foreground: 30 10% 15%;
+    --secondary: 45 100% 60%;
+    --secondary-foreground: 25 20% 12%;
 
-    --muted: 40 30% 92%;
-    --muted-foreground: 30 10% 45%;
+    --muted: 40 40% 94%;
+    --muted-foreground: 25 15% 45%;
 
-    --accent: 45 100% 65%;
-    --accent-foreground: 30 10% 15%;
+    --accent: 45 100% 68%;
+    --accent-foreground: 25 20% 12%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 35 30% 85%;
-    --input: 35 30% 85%;
-    --ring: 30 100% 50%;
+    --border: 40 25% 88%;
+    --input: 40 25% 88%;
+    --ring: 25 100% 55%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     --honey: 40 100% 50%;
-    --honey-light: 45 100% 70%;
-    --honey-dark: 25 100% 40%;
-    --amber: 35 100% 55%;
-    --warm-white: 40 100% 97%;
+    --honey-light: 45 100% 72%;
+    --honey-dark: 20 100% 42%;
+    --amber: 35 100% 58%;
+    --warm-white: 45 100% 98%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 30 100% 50%;
+    --sidebar-primary: 25 100% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 30% 92%;
-    --sidebar-accent-foreground: 30 10% 15%;
-    --sidebar-border: 35 30% 85%;
-    --sidebar-ring: 30 100% 50%;
+    --sidebar-accent: 40 40% 94%;
+    --sidebar-accent-foreground: 25 20% 12%;
+    --sidebar-border: 40 25% 88%;
+    --sidebar-ring: 25 100% 55%;
   }
 
   .dark {
-    --background: 30 15% 8%;
-    --foreground: 40 20% 95%;
-    --card: 30 15% 12%;
-    --card-foreground: 40 20% 95%;
-    --popover: 30 15% 12%;
-    --popover-foreground: 40 20% 95%;
-    --primary: 30 100% 50%;
+    --background: 25 20% 6%;
+    --foreground: 45 30% 95%;
+    --card: 25 20% 10%;
+    --card-foreground: 45 30% 95%;
+    --popover: 25 20% 10%;
+    --popover-foreground: 45 30% 95%;
+    --primary: 25 100% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 45 80% 40%;
-    --secondary-foreground: 40 20% 95%;
-    --muted: 30 15% 18%;
-    --muted-foreground: 40 15% 60%;
-    --accent: 45 80% 40%;
-    --accent-foreground: 40 20% 95%;
+    --secondary: 45 80% 42%;
+    --secondary-foreground: 45 30% 95%;
+    --muted: 25 20% 16%;
+    --muted-foreground: 40 20% 58%;
+    --accent: 45 80% 42%;
+    --accent-foreground: 45 30% 95%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
-    --border: 30 15% 22%;
-    --input: 30 15% 22%;
-    --ring: 30 100% 50%;
-    --sidebar-background: 30 15% 10%;
-    --sidebar-foreground: 40 20% 90%;
-    --sidebar-primary: 30 100% 50%;
+    --border: 25 20% 20%;
+    --input: 25 20% 20%;
+    --ring: 25 100% 55%;
+    --sidebar-background: 25 20% 8%;
+    --sidebar-foreground: 45 30% 90%;
+    --sidebar-primary: 25 100% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 15% 18%;
-    --sidebar-accent-foreground: 40 20% 90%;
-    --sidebar-border: 30 15% 22%;
-    --sidebar-ring: 30 100% 50%;
+    --sidebar-accent: 25 20% 16%;
+    --sidebar-accent-foreground: 45 30% 90%;
+    --sidebar-border: 25 20% 20%;
+    --sidebar-ring: 25 100% 55%;
   }
 }
 
@@ -95,21 +95,87 @@
 
 @layer utilities {
   .gradient-honey {
-    background: linear-gradient(135deg, hsl(30 100% 50%), hsl(45 100% 55%));
+    background: linear-gradient(135deg, hsl(25 100% 55%), hsl(45 100% 55%), hsl(35 100% 50%));
+    background-size: 200% 200%;
+    animation: gradient-shift 4s ease infinite;
   }
+
   .gradient-hero {
-    background: linear-gradient(180deg, hsl(30 100% 50% / 0.9), hsl(45 100% 55% / 0.85));
+    background: linear-gradient(135deg, hsl(25 100% 55% / 0.95), hsl(45 100% 60% / 0.9), hsl(15 100% 50% / 0.85));
+    background-size: 300% 300%;
+    animation: gradient-shift 6s ease infinite;
   }
+
   .text-gradient-honey {
-    background: linear-gradient(135deg, hsl(30 100% 50%), hsl(45 100% 55%));
+    background: linear-gradient(135deg, hsl(25 100% 55%), hsl(45 100% 55%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
   .honeycomb-pattern {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%23f59e0b' stroke-width='0.5' opacity='0.15'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%23f59e0b' stroke-width='0.5' opacity='0.1'/%3E%3C/svg%3E");
   }
+
   .shadow-honey {
-    box-shadow: 0 10px 30px -10px hsl(30 100% 50% / 0.3);
+    box-shadow: 0 8px 32px -8px hsl(25 100% 55% / 0.25), 0 4px 16px -4px hsl(45 100% 55% / 0.15);
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 40px hsl(25 100% 55% / 0.2), 0 8px 32px -8px hsl(25 100% 55% / 0.3);
+  }
+
+  .glass {
+    background: hsl(0 0% 100% / 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .glass-dark {
+    background: hsl(25 20% 10% / 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 12px 40px -10px hsl(25 100% 55% / 0.3), 0 6px 20px -6px hsl(45 100% 55% / 0.2);
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  @keyframes blob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(30px, -50px) scale(1.1); }
+    50% { transform: translate(-20px, 20px) scale(0.9); }
+    75% { transform: translate(20px, 40px) scale(1.05); }
+  }
+
+  @keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .animate-blob {
+    animation: blob 8s ease-in-out infinite;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounce-subtle 2s ease-in-out infinite;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
   }
 }
