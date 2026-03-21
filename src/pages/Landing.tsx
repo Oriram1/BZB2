@@ -27,7 +27,7 @@ const Landing = () => {
           <img
 
             alt="BZB Logo"
-            className="w-36 h-36 animate-float drop-shadow-2xl" src="/lovable-uploads/fda6b89c-0941-4063-be76-2c8add950695.jpg" />
+            className="w-36 h-36 animate-float drop-shadow-2xl" src="/lovable-uploads/2dbef5fd-0953-4d8c-acee-47c58e45b35a.jpg" />
           
           
 
