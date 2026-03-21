@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { toast } from "sonner";
+import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
 
 const categories = [
   { value: "housework", label: "🏠 עבודות בית" },
@@ -26,12 +27,38 @@ const categories = [
   { value: "other", label: "📦 אחר" },
 ];
 
-const CreateTask = () => {
-  const [paymentType, setPaymentType] = useState("task");
+const steps = [
+  { id: 1, label: "קטגוריה", icon: Tag },
+  { id: 2, label: "פרטים", icon: FileText },
+  { id: 3, label: "תשלום", icon: DollarSign },
+  { id: 4, label: "מיקום וזמן", icon: MapPin },
+  { id: 5, label: "תוספות", icon: Image },
+  { id: 6, label: "סיכום", icon: Check },
+];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("המטלה פורסמה בהצלחה! 🎉");
+const CreateTask = () => {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    category: "", taskName: "", shortDesc: "", fullDesc: "",
+    payment: "", paymentType: "task", workers: "1",
+    location: "", date: "", time: "", duration: "", expiry: "24",
+    notes: "",
+  });
+
+  const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const canProceed = () => {
+    switch (step) {
+      case 1: return !!form.category;
+      case 2: return !!form.taskName && !!form.shortDesc;
+      case 3: return !!form.payment;
+      case 4: return !!form.location && !!form.date && !!form.time;
+      default: return true;
+    }
+  };
+
+  const handleSubmit = () => {
+    toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
   };
 
   return (
@@ -49,106 +76,220 @@ const CreateTask = () => {
           <div className="w-12" />
         </div>
 
-        <form onSubmit={handleSubmit} className="glass rounded-3xl shadow-glow p-8 border border-border flex flex-col gap-5 animate-pop-in">
-          <div>
-            <Label>קטגוריה</Label>
-            <Select required>
-              <SelectTrigger className="mt-1 rounded-2xl h-12">
-                <SelectValue placeholder="בחר קטגוריה" />
-              </SelectTrigger>
-              <SelectContent>
+        {/* Progress Steps */}
+        <div className="flex items-center justify-between mb-8 px-2">
+          {steps.map((s, i) => {
+            const Icon = s.icon;
+            const isActive = step === s.id;
+            const isDone = step > s.id;
+            return (
+              <div key={s.id} className="flex items-center flex-1 last:flex-initial">
+                <div className="flex flex-col items-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    isDone ? "gradient-honey text-primary-foreground shadow-honey" :
+                    isActive ? "bg-primary text-primary-foreground shadow-glow scale-110" :
+                    "bg-card border-2 border-border text-muted-foreground"
+                  }`}>
+                    {isDone ? <Check size={18} /> : <Icon size={18} />}
+                  </div>
+                  <span className={`text-[10px] mt-1.5 font-bold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                    {s.label}
+                  </span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-2 mt-[-12px] rounded-full transition-colors duration-300 ${
+                    isDone ? "bg-primary" : "bg-border"
+                  }`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Step Content */}
+        <div className="glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in" key={step}>
+          {step === 1 && (
+            <div className="flex flex-col gap-4">
+              <h2 className="text-xl font-extrabold text-foreground mb-2">בחר קטגוריה</h2>
+              <div className="grid grid-cols-3 gap-3">
                 {categories.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
+                  <button
+                    key={c.value}
+                    onClick={() => updateForm("category", c.value)}
+                    className={`p-4 rounded-2xl text-center font-bold transition-all duration-300 border ${
+                      form.category === c.value
+                        ? "gradient-honey text-primary-foreground border-transparent shadow-honey scale-105"
+                        : "bg-card text-foreground border-border hover:border-primary hover:scale-105"
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{c.label.split(" ")[0]}</div>
+                    <div className="text-xs">{c.label.split(" ").slice(1).join(" ")}</div>
+                  </button>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="taskName">שם המשימה</Label>
-            <Input id="taskName" placeholder="שם המשימה" className="mt-1 rounded-2xl h-12" required />
-          </div>
-
-          <div>
-            <Label htmlFor="shortDesc">תיאור קצר (עד 40 תווים)</Label>
-            <Input id="shortDesc" placeholder="תיאור קצר" className="mt-1 rounded-2xl h-12" maxLength={40} required />
-          </div>
-
-          <div>
-            <Label htmlFor="fullDesc">תיאור מפורט</Label>
-            <Textarea id="fullDesc" placeholder="תאר את המשימה בפירוט..." className="mt-1 rounded-2xl min-h-[100px]" required />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="payment">תשלום מוצע (₪)</Label>
-              <Input id="payment" type="number" placeholder="0" className="mt-1 rounded-2xl h-12" min={0} required />
+              </div>
             </div>
-            <div>
-              <Label>סוג תשלום</Label>
-              <Select value={paymentType} onValueChange={setPaymentType}>
-                <SelectTrigger className="mt-1 rounded-2xl h-12">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="task">למשימה</SelectItem>
-                  <SelectItem value="hour">לשעה</SelectItem>
-                </SelectContent>
-              </Select>
+          )}
+
+          {step === 2 && (
+            <div className="flex flex-col gap-5">
+              <h2 className="text-xl font-extrabold text-foreground mb-2">פרטי המטלה</h2>
+              <div>
+                <Label htmlFor="taskName">שם המשימה</Label>
+                <Input id="taskName" value={form.taskName} onChange={(e) => updateForm("taskName", e.target.value)} placeholder="שם המשימה" className="mt-1 rounded-2xl h-12" />
+              </div>
+              <div>
+                <Label htmlFor="shortDesc">תיאור קצר (עד 40 תווים)</Label>
+                <Input id="shortDesc" value={form.shortDesc} onChange={(e) => updateForm("shortDesc", e.target.value)} placeholder="תיאור קצר" className="mt-1 rounded-2xl h-12" maxLength={40} />
+                <p className="text-xs text-muted-foreground mt-1">{form.shortDesc.length}/40</p>
+              </div>
+              <div>
+                <Label htmlFor="fullDesc">תיאור מפורט</Label>
+                <Textarea id="fullDesc" value={form.fullDesc} onChange={(e) => updateForm("fullDesc", e.target.value)} placeholder="תאר את המשימה בפירוט..." className="mt-1 rounded-2xl min-h-[120px]" />
+              </div>
             </div>
-          </div>
+          )}
 
-          <div>
-            <Label htmlFor="workers">מספר עובדים נדרש</Label>
-            <Input id="workers" type="number" placeholder="1" className="mt-1 rounded-2xl h-12" min={1} defaultValue={1} required />
-          </div>
-
-          <div>
-            <Label htmlFor="location">מיקום המטלה</Label>
-            <Input id="location" placeholder="כתובת מלאה" className="mt-1 rounded-2xl h-12" required />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="date">תאריך</Label>
-              <Input id="date" type="date" className="mt-1 rounded-2xl h-12" required />
+          {step === 3 && (
+            <div className="flex flex-col gap-5">
+              <h2 className="text-xl font-extrabold text-foreground mb-2">תשלום ועובדים</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="payment">תשלום מוצע (₪)</Label>
+                  <Input id="payment" type="number" value={form.payment} onChange={(e) => updateForm("payment", e.target.value)} placeholder="0" className="mt-1 rounded-2xl h-12" min={0} />
+                </div>
+                <div>
+                  <Label>סוג תשלום</Label>
+                  <Select value={form.paymentType} onValueChange={(v) => updateForm("paymentType", v)}>
+                    <SelectTrigger className="mt-1 rounded-2xl h-12"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="task">למשימה</SelectItem>
+                      <SelectItem value="hour">לשעה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="workers">מספר עובדים נדרש</Label>
+                <Input id="workers" type="number" value={form.workers} onChange={(e) => updateForm("workers", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="time">שעה</Label>
-              <Input id="time" type="time" className="mt-1 rounded-2xl h-12" required />
+          )}
+
+          {step === 4 && (
+            <div className="flex flex-col gap-5">
+              <h2 className="text-xl font-extrabold text-foreground mb-2">מיקום וזמן</h2>
+              <div>
+                <Label htmlFor="location">מיקום המטלה</Label>
+                <Input id="location" value={form.location} onChange={(e) => updateForm("location", e.target.value)} placeholder="כתובת מלאה" className="mt-1 rounded-2xl h-12" />
+                {/* Map placeholder */}
+                <div className="mt-3 h-40 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 border border-border flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <MapPin size={32} className="mx-auto mb-2 text-primary" />
+                    <p className="text-sm font-semibold">בחירת מיקום על המפה</p>
+                    <p className="text-xs">(Google Maps placeholder)</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="date">תאריך</Label>
+                  <Input id="date" type="date" value={form.date} onChange={(e) => updateForm("date", e.target.value)} className="mt-1 rounded-2xl h-12" />
+                </div>
+                <div>
+                  <Label htmlFor="time">שעה</Label>
+                  <Input id="time" type="time" value={form.time} onChange={(e) => updateForm("time", e.target.value)} className="mt-1 rounded-2xl h-12" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="duration">אורך (שעות)</Label>
+                  <Input id="duration" type="number" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="mt-1 rounded-2xl h-12" min={0.5} step={0.5} />
+                </div>
+                <div>
+                  <Label htmlFor="expiry">תוקף (שעות)</Label>
+                  <Input id="expiry" type="number" value={form.expiry} onChange={(e) => updateForm("expiry", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="duration">אורך המטלה (שעות)</Label>
-              <Input id="duration" type="number" placeholder="1" className="mt-1 rounded-2xl h-12" min={0.5} step={0.5} required />
+          {step === 5 && (
+            <div className="flex flex-col gap-5">
+              <h2 className="text-xl font-extrabold text-foreground mb-2">תמונה והערות</h2>
+              <div>
+                <Label htmlFor="image">הוסף תמונה</Label>
+                <div className="mt-2 border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary transition-colors">
+                  <Image size={40} className="mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-muted-foreground">לחץ להעלאת תמונה</p>
+                  <input type="file" accept="image/*" className="hidden" id="image" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="notes">הערות נוספות</Label>
+                <Textarea id="notes" value={form.notes} onChange={(e) => updateForm("notes", e.target.value)} placeholder="הערות נוספות..." className="mt-1 rounded-2xl min-h-[100px]" />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="expiry">תוקף (שעות)</Label>
-              <Input id="expiry" type="number" placeholder="24" defaultValue={24} className="mt-1 rounded-2xl h-12" min={1} />
+          )}
+
+          {step === 6 && (
+            <div className="flex flex-col gap-4">
+              <h2 className="text-xl font-extrabold text-foreground mb-2">סיכום המטלה ✅</h2>
+              <div className="bg-muted rounded-2xl p-5 space-y-3 text-sm">
+                <SummaryRow label="קטגוריה" value={categories.find(c => c.value === form.category)?.label || ""} />
+                <SummaryRow label="שם" value={form.taskName} />
+                <SummaryRow label="תיאור" value={form.shortDesc} />
+                <SummaryRow label="תשלום" value={`₪${form.payment} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} />
+                <SummaryRow label="עובדים" value={form.workers} />
+                <SummaryRow label="מיקום" value={form.location} />
+                <SummaryRow label="תאריך" value={`${form.date} ${form.time}`} />
+                <SummaryRow label="אורך" value={`${form.duration} שעות`} />
+                <SummaryRow label="תוקף" value={`${form.expiry} שעות`} />
+                {form.notes && <SummaryRow label="הערות" value={form.notes} />}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div>
-            <Label htmlFor="image">הוסף תמונה</Label>
-            <Input id="image" type="file" accept="image/*" className="mt-1 rounded-2xl" />
-          </div>
+          {/* Navigation */}
+          <div className="flex items-center justify-between mt-8">
+            <Button
+              variant="outline"
+              onClick={() => setStep((s) => s - 1)}
+              disabled={step === 1}
+              className="rounded-full px-6 font-bold"
+            >
+              <ChevronRight size={18} />
+              הקודם
+            </Button>
 
-          <div>
-            <Label htmlFor="notes">הערות</Label>
-            <Textarea id="notes" placeholder="הערות נוספות..." className="mt-1 rounded-2xl" />
+            {step < 6 ? (
+              <Button
+                onClick={() => setStep((s) => s + 1)}
+                disabled={!canProceed()}
+                className="gradient-honey text-primary-foreground rounded-full px-6 border-none font-bold hover:scale-105 transition-transform"
+              >
+                הבא
+                <ChevronLeft size={18} />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                className="gradient-honey text-primary-foreground rounded-full px-8 border-none font-extrabold hover:scale-105 transition-transform text-lg"
+              >
+                פרסם מטלה 🐝
+              </Button>
+            )}
           </div>
-
-          <Button type="submit" className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
-            פרסם מטלה 🐝
-          </Button>
-        </form>
+        </div>
       </div>
     </div>
   );
 };
+
+const SummaryRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between items-start">
+    <span className="font-bold text-foreground">{label}:</span>
+    <span className="text-muted-foreground text-left max-w-[60%]">{value}</span>
+  </div>
+);
 
 export default CreateTask;
