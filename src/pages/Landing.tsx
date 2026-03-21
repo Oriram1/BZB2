@@ -12,9 +12,9 @@ const Landing = () => {
         style={{
           backgroundImage: `url(${heroBg})`,
           backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
+          backgroundPosition: "center"
+        }}>
+        
         {/* Animated gradient overlay */}
         <div className="absolute inset-0 gradient-hero opacity-80" />
         
@@ -25,13 +25,13 @@ const Landing = () => {
 
         <div className="relative z-10 flex flex-col items-center gap-5 max-w-2xl">
           <img
-            src={bzbLogo}
+
             alt="BZB Logo"
-            className="w-36 h-36 animate-float drop-shadow-2xl"
-          />
-          <h1 className="text-7xl md:text-8xl font-black text-primary-foreground tracking-tighter animate-slide-up">
-            BZB
-          </h1>
+            className="w-36 h-36 animate-float drop-shadow-2xl" src="/lovable-uploads/fda6b89c-0941-4063-be76-2c8add950695.jpg" />
+          
+          
+
+          
           <p className="text-2xl md:text-3xl font-bold text-primary-foreground/95 animate-slide-up" style={{ animationDelay: "0.1s" }}>
             Busy Bee
           </p>
@@ -48,8 +48,8 @@ const Landing = () => {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-10 py-7 glass text-foreground font-bold rounded-full border-2 border-primary-foreground/30 hover:scale-105 transition-transform duration-300"
-              >
+                className="text-lg px-10 py-7 glass text-foreground font-bold rounded-full border-2 border-primary-foreground/30 hover:scale-105 transition-transform duration-300">
+                
                 סיור כאורח 👀
               </Button>
             </Link>
@@ -79,20 +79,20 @@ const Landing = () => {
               emoji="📋"
               title="פרסם מטלה"
               description="פרסם מטלה, קבע תשלום והמתן להצעות מבני נוער חרוצים"
-              delay={0}
-            />
+              delay={0} />
+            
             <FeatureCard
               emoji="🔍"
               title="חפש עבודה"
               description="עיין במטלות זמינות באזורך, בחר מה שמתאים לך והרוויח דמי כיס"
-              delay={1}
-            />
+              delay={1} />
+            
             <FeatureCard
               emoji="🤝"
               title="התאמה מושלמת"
               description="מערכת דירוגים ומשובים מבטיחה חוויה בטוחה ואמינה לכולם"
-              delay={2}
-            />
+              delay={2} />
+            
           </div>
         </div>
       </section>
@@ -104,15 +104,15 @@ const Landing = () => {
           <p className="text-muted-foreground text-lg mb-10">מה צריכים? יש לנו! 🏠</p>
           <div className="flex flex-wrap justify-center gap-3" dir="rtl">
             {["🏠 עבודות בית", "🌿 גינון", "👶 בייביסיטר", "🐾 חיות מחמד", "🔧 הנדימן", "🚚 משלוחים", "📚 מטלות בית ספר", "👨‍🏫 שיעורים פרטיים"].map(
-              (cat, i) => (
-                <span
-                  key={cat}
-                  className="px-6 py-3 rounded-2xl bg-card shadow-sm text-foreground font-semibold border border-border card-hover cursor-default text-base"
-                  style={{ animationDelay: `${i * 0.05}s` }}
-                >
+              (cat, i) =>
+              <span
+                key={cat}
+                className="px-6 py-3 rounded-2xl bg-card shadow-sm text-foreground font-semibold border border-border card-hover cursor-default text-base"
+                style={{ animationDelay: `${i * 0.05}s` }}>
+                
                   {cat}
                 </span>
-              )
+
             )}
           </div>
         </div>
@@ -131,8 +131,8 @@ const Landing = () => {
           <Link to="/auth">
             <Button
               size="lg"
-              className="text-lg px-10 py-7 bg-card text-foreground font-extrabold rounded-full hover:scale-105 transition-transform duration-300 shadow-glow"
-            >
+              className="text-lg px-10 py-7 bg-card text-foreground font-extrabold rounded-full hover:scale-105 transition-transform duration-300 shadow-glow">
+              
               הירשמו עכשיו 🐝
             </Button>
           </Link>
@@ -145,29 +145,29 @@ const Landing = () => {
           © 2026 Busy Bee (BZB). כל הזכויות שמורות. 🐝
         </p>
       </footer>
-    </div>
-  );
+    </div>);
+
 };
 
 const FeatureCard = ({
   emoji,
   title,
   description,
-  delay,
-}: {
-  emoji: string;
-  title: string;
-  description: string;
-  delay: number;
-}) => (
-  <div
-    className="bg-card rounded-3xl p-8 text-center card-hover border border-border relative overflow-hidden group"
-  >
+  delay
+
+
+
+
+
+}: {emoji: string;title: string;description: string;delay: number;}) =>
+<div
+  className="bg-card rounded-3xl p-8 text-center card-hover border border-border relative overflow-hidden group">
+  
     <div className="absolute inset-0 gradient-honey opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
     <div className="text-5xl mb-5 group-hover:animate-buzz">{emoji}</div>
     <h3 className="text-xl font-extrabold mb-3 text-foreground">{title}</h3>
     <p className="text-muted-foreground leading-relaxed">{description}</p>
-  </div>
-);
+  </div>;
+
 
 export default Landing;
