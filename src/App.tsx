@@ -11,6 +11,8 @@ import CreateTask from "./pages/CreateTask";
 import TaskList from "./pages/TaskList";
 import MyTasks from "./pages/MyTasks";
 import Pricing from "./pages/Pricing";
+import ParentalHub from "./pages/ParentalHub";
+import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/tasks" element={<TaskList />} />
           <Route path="/my-tasks" element={<MyTasks />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/parent" element={<ParentalHub />} />
+          <Route path="/chat" element={<Chat />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
