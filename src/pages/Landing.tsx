@@ -140,7 +140,16 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 bg-foreground text-center">
+      <footer className="py-8 px-4 bg-foreground text-center" dir="rtl">
+        <div className="flex justify-center gap-4 mb-3">
+          <Link to="/terms" className="text-background/70 text-sm font-medium hover:text-background underline transition-colors">
+            תקנון ותנאי שימוש
+          </Link>
+          <span className="text-background/40">|</span>
+          <Link to="/privacy" className="text-background/70 text-sm font-medium hover:text-background underline transition-colors">
+            מדיניות פרטיות
+          </Link>
+        </div>
         <p className="text-background/60 text-sm font-medium">
           © 2026 Busy Bee (BZB). כל הזכויות שמורות. 🐝
         </p>

@@ -13,6 +13,8 @@ import MyTasks from "./pages/MyTasks";
 import Pricing from "./pages/Pricing";
 import ParentalHub from "./pages/ParentalHub";
 import Chat from "./pages/Chat";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import { MobileNav } from "./components/MobileNav";
 
@@ -36,6 +38,8 @@ const App = () => (
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/parent" element={<ParentalHub />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
