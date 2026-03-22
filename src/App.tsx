@@ -38,6 +38,8 @@ const App = () => (
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/parent" element={<ParentalHub />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

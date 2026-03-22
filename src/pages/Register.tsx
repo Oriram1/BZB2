@@ -95,7 +95,9 @@ const Register = () => {
             />
             <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
               אני מאשר/ת את{" "}
-              <span className="text-primary font-bold underline">תנאי השימוש</span>
+              <Link to="/terms" className="text-primary font-bold underline" target="_blank">תנאי השימוש</Link>
+              {" "}ואת{" "}
+              <Link to="/privacy" className="text-primary font-bold underline" target="_blank">מדיניות הפרטיות</Link>
             </Label>
           </div>
 
