@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, MessageCircle } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, MessageCircle, UserCircle, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const navItems = [
   { label: "דף הבית", to: "/", icon: Home },
@@ -14,9 +15,28 @@ const navItems = [
   { label: "מנויים", to: "/pricing", icon: CreditCard },
 ];
 
+// Mock user state — replace with real auth later
+const useMockUser = () => {
+  const [user] = useState(() => {
+    const saved = localStorage.getItem("bzb-user");
+    return saved ? JSON.parse(saved) : null;
+  });
+  return user as { name: string; role: string } | null;
+};
+
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const user = useMockUser();
+
+  const handleLogout = () => {
+    localStorage.removeItem("bzb-user");
+    setOpen(false);
+    toast.success("התנתקת בהצלחה 👋");
+    navigate("/");
+    window.location.reload();
+  };
 
   return (
     <>
@@ -45,16 +65,44 @@ export function MobileNav() {
         )}
         dir="rtl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <span className="text-lg font-bold text-primary">🐝 BZB</span>
-          <button
-            onClick={() => setOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-            aria-label="סגור תפריט"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        {/* Profile Header */}
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-lg font-bold text-primary">🐝 BZB</span>
+            <button
+              onClick={() => setOpen(false)}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              aria-label="סגור תפריט"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* User profile section */}
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <UserCircle className="w-6 h-6 text-primary" />
+            </div>
+            {user ? (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{user.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {user.role === "tasker" ? "מציע מטלות" : user.role === "bee" ? "מבצע מטלות 🐝" : "הורה"}
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">אורח</p>
+                <Link
+                  to="/auth"
+                  onClick={() => setOpen(false)}
+                  className="text-xs text-primary hover:underline"
+                >
+                  התחבר או הירשם →
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Nav items */}
@@ -80,9 +128,20 @@ export function MobileNav() {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-border text-center text-xs text-muted-foreground">
-          Busy Bee © 2026
+        {/* Footer with logout */}
+        <div className="border-t border-border">
+          {user && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-5 py-3.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="w-5 h-5 shrink-0" />
+              <span>התנתק</span>
+            </button>
+          )}
+          <div className="p-4 text-center text-xs text-muted-foreground">
+            Busy Bee © 2026
+          </div>
         </div>
       </div>
     </>
