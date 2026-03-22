@@ -103,7 +103,7 @@ const Landing = () => {
           <h2 className="text-4xl font-extrabold mb-4 text-foreground">קטגוריות</h2>
           <p className="text-muted-foreground text-lg mb-10">מה צריכים? יש לנו! 🏠</p>
           <div className="flex flex-wrap justify-center gap-3" dir="rtl">
-            {["🏠 עבודות בית", "🌿 גינון", "👶 בייביסיטר", "🐾 חיות מחמד", "🔧 הנדימן", "🚚 משלוחים", "📚 מטלות בית ספר", "👨‍🏫 שיעורים פרטיים"].map(
+            {["🏠 עבודות בית", "🔧 הנדימן", "📚 לימודים", "👶 בייביסיטר", "🐾 חיות מחמד", "🌿 גינון", "📦 אחר"].map(
               (cat, i) =>
               <span
                 key={cat}
