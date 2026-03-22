@@ -14,6 +14,7 @@ import Pricing from "./pages/Pricing";
 import ParentalHub from "./pages/ParentalHub";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
+import { MobileNav } from "./components/MobileNav";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <MobileNav />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
