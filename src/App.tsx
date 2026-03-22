@@ -13,6 +13,8 @@ import MyTasks from "./pages/MyTasks";
 import Pricing from "./pages/Pricing";
 import ParentalHub from "./pages/ParentalHub";
 import Chat from "./pages/Chat";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import { MobileNav } from "./components/MobileNav";
 
