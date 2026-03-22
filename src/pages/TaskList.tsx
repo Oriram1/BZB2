@@ -8,13 +8,11 @@ import { Map, List, MapPin, Clock, Users, DollarSign, Calendar, SlidersHorizonta
 const categoryOptions = [
   { value: "all", label: "הכל" },
   { value: "housework", label: "🏠 עבודות בית" },
-  { value: "gardening", label: "🌿 גינון" },
+  { value: "handyman", label: "🔧 הנדימן" },
+  { value: "tutoring", label: "📚 לימודים" },
   { value: "babysitting", label: "👶 בייביסיטר" },
   { value: "pets", label: "🐾 חיות מחמד" },
-  { value: "handyman", label: "🔧 הנדימן" },
-  { value: "delivery", label: "🚚 משלוחים" },
-  { value: "school", label: "📚 בית ספר" },
-  { value: "tutoring", label: "👨‍🏫 שיעורים" },
+  { value: "gardening", label: "🌿 גינון" },
   { value: "other", label: "📦 אחר" },
 ];
 

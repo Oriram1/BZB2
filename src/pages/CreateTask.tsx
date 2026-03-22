@@ -17,13 +17,11 @@ import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Im
 
 const categories = [
   { value: "housework", label: "🏠 עבודות בית" },
-  { value: "gardening", label: "🌿 גינון" },
+  { value: "handyman", label: "🔧 הנדימן" },
+  { value: "tutoring", label: "📚 לימודים" },
   { value: "babysitting", label: "👶 בייביסיטר" },
   { value: "pets", label: "🐾 חיות מחמד" },
-  { value: "handyman", label: "🔧 הנדימן" },
-  { value: "delivery", label: "🚚 משלוחים" },
-  { value: "school", label: "📚 מטלות בית ספר" },
-  { value: "tutoring", label: "👨‍🏫 שיעורים פרטיים" },
+  { value: "gardening", label: "🌿 גינון" },
   { value: "other", label: "📦 אחר" },
 ];
 
