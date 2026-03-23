@@ -1,87 +1,124 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { MapPin, DollarSign, Calendar, Clock } from "lucide-react";
+import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import type { Task } from "./TaskCard";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// Fix default marker icon issue with bundlers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+const categoryEmoji: Record<string, string> = {
+  housework: "🏠",
+  handyman: "🔧",
+  tutoring: "📚",
+  babysitting: "👶",
+  pets: "🐾",
+  gardening: "🌿",
+  other: "📦",
+};
+
+const createTaskIcon = (category: string, isSelected: boolean) => {
+  const emoji = categoryEmoji[category] || "📌";
+  return L.divIcon({
+    className: "custom-task-marker",
+    html: `<div style="
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      background: ${isSelected ? "linear-gradient(135deg, #FCD34D, #F59E0B)" : "white"};
+      border: 3px solid ${isSelected ? "#B45309" : "#E5E7EB"};
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: all 0.3s;
+      transform: ${isSelected ? "scale(1.3)" : "scale(1)"};
+    ">${emoji}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+  });
+};
+
+const FitBounds = ({ tasks }: { tasks: Task[] }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (tasks.length > 0) {
+      const bounds = L.latLngBounds(tasks.map((t) => [t.lat, t.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  }, [tasks, map]);
+  return null;
+};
 
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
 
+  const center: [number, number] = tasks.length > 0
+    ? [tasks.reduce((s, t) => s + t.lat, 0) / tasks.length, tasks.reduce((s, t) => s + t.lng, 0) / tasks.length]
+    : [32.08, 34.78];
+
   return (
-    <div className="rounded-3xl overflow-hidden border border-border shadow-lg animate-fade-in">
-      <div className="relative bg-gradient-to-br from-accent/20 via-muted to-primary/5 h-[500px]">
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `
-            linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-            linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-          `,
-          backgroundSize: "60px 60px",
-        }} />
-
-        <div className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm rounded-2xl px-4 py-2 border border-border shadow-sm">
-          <p className="text-xs font-bold text-muted-foreground flex items-center gap-1">
-            <MapPin size={12} /> מרכז ישראל
-          </p>
-        </div>
-
-        {tasks.map((task, i) => {
-          const x = ((task.lng - 34.7) / 0.3) * 80 + 10;
-          const y = ((32.2 - task.lat) / 0.3) * 80 + 10;
-          return (
-            <button
-              key={task.id}
-              onClick={() => setSelectedTask(task.id === selectedTask ? null : task.id)}
-              className={`absolute transition-all duration-300 group animate-pop-in opacity-0 ${
-                task.id === selectedTask ? "z-30 scale-125" : "z-20 hover:scale-110"
-              }`}
-              style={{
-                left: `${Math.min(Math.max(x, 5), 90)}%`,
-                top: `${Math.min(Math.max(y, 5), 85)}%`,
-                animationDelay: `${i * 0.12}s`,
-                animationFillMode: "forwards",
-              }}
-            >
-              <div className="relative flex flex-col items-center">
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg border-2 transition-all duration-300 ${
-                  task.id === selectedTask
-                    ? "gradient-honey border-primary-foreground shadow-glow"
-                    : "bg-card border-border group-hover:border-primary group-hover:shadow-honey"
-                }`}>
-                  <CategoryIcon category={task.category} showBg={false} size={18} />
-                </div>
-                <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-transparent border-t-card -mt-0.5" />
-                <span className={`absolute -bottom-5 text-[10px] font-bold whitespace-nowrap px-2 py-0.5 rounded-full transition-all duration-300 ${
-                  task.id === selectedTask ? "bg-primary text-primary-foreground scale-110" : "bg-card/90 text-foreground"
-                }`}>
-                  ₪{task.payment}
-                </span>
+    <div className="rounded-3xl overflow-hidden border border-border shadow-lg animate-fade-in relative">
+      <MapContainer
+        center={center}
+        zoom={12}
+        style={{ height: "500px", width: "100%" }}
+        zoomControl={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <FitBounds tasks={tasks} />
+        {tasks.map((task) => (
+          <Marker
+            key={task.id}
+            position={[task.lat, task.lng]}
+            icon={createTaskIcon(task.category, task.id === selectedTask)}
+            eventHandlers={{
+              click: () => setSelectedTask(task.id === selectedTask ? null : task.id),
+            }}
+          >
+            <Popup>
+              <div className="text-right" dir="rtl">
+                <strong>{task.name}</strong>
+                <br />
+                <span className="text-sm text-gray-600">{task.shortDesc}</span>
+                <br />
+                <span className="text-sm font-bold">₪{task.payment}</span>
               </div>
-            </button>
-          );
-        })}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
 
-        {selected && (
-          <div className="absolute bottom-4 left-4 right-4 bg-card rounded-2xl p-4 border border-border shadow-xl animate-slide-up z-40">
-            <div className="flex items-start gap-3">
-              <CategoryIcon category={selected.category} />
-              <div className="flex-1">
-                <h3 className="font-extrabold text-foreground">{selected.name}</h3>
-                <p className="text-sm text-muted-foreground">{selected.shortDesc}</p>
-                <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><DollarSign size={12} />₪{selected.payment}/{selected.paymentType === "hour" ? "שעה" : "משימה"}</span>
-                  <span className="flex items-center gap-1"><MapPin size={12} />{selected.distance} ק״מ</span>
-                  <span className="flex items-center gap-1"><Calendar size={12} />{selected.date}</span>
-                  <span className="flex items-center gap-1"><Clock size={12} />{selected.time}</span>
-                </div>
+      {selected && (
+        <div className="absolute bottom-4 left-4 right-4 bg-card rounded-2xl p-4 border border-border shadow-xl animate-slide-up z-[1000]">
+          <div className="flex items-start gap-3">
+            <CategoryIcon category={selected.category} />
+            <div className="flex-1">
+              <h3 className="font-extrabold text-foreground">{selected.name}</h3>
+              <p className="text-sm text-muted-foreground">{selected.shortDesc}</p>
+              <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><DollarSign size={12} />₪{selected.payment}/{selected.paymentType === "hour" ? "שעה" : "משימה"}</span>
+                <span className="flex items-center gap-1"><MapPin size={12} />{selected.distance} ק״מ</span>
+                <span className="flex items-center gap-1"><Calendar size={12} />{selected.date}</span>
+                <span className="flex items-center gap-1"><Clock size={12} />{selected.time}</span>
               </div>
-              <Button size="sm" className="gradient-honey text-primary-foreground rounded-full border-none font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300">
-                אני מעוניין/ת 🐝
-              </Button>
             </div>
+            <Button size="sm" className="gradient-honey text-primary-foreground rounded-full border-none font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300">
+              אני מעוניין/ת 🐝
+            </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
