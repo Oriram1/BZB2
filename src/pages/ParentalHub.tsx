@@ -134,52 +134,7 @@ const ParentalHub = () => {
                 <span className="text-xs text-muted-foreground font-semibold">Live</span>
               </div>
             </div>
-            <div className="relative h-[350px] bg-gradient-to-br from-emerald-100 via-green-50 to-teal-50">
-              {/* Grid lines */}
-              <div className="absolute inset-0 opacity-10" style={{
-                backgroundImage: `
-                  linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-                  linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-                `,
-                backgroundSize: "40px 40px",
-              }} />
-              
-              {/* Task location pin */}
-              <div className="absolute z-10" style={{ left: "50%", top: "35%" }}>
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-destructive/20 border-2 border-destructive flex items-center justify-center">
-                    <MapPin size={14} className="text-destructive" />
-                  </div>
-                  <span className="text-[9px] bg-card/90 px-2 py-0.5 rounded-full font-bold mt-1 whitespace-nowrap">
-                    {mockChild.activeTask.location.split(",")[0]}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bee (child) moving position */}
-              <div
-                className="absolute z-20 transition-all duration-[2000ms] ease-in-out"
-                style={{ left: `${beePosition.x}%`, top: `${beePosition.y}%` }}
-              >
-                <div className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full gradient-honey border-2 border-primary-foreground shadow-glow flex items-center justify-center animate-bounce-subtle">
-                    <span className="text-lg">🐝</span>
-                  </div>
-                  <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold mt-1">
-                    {mockChild.name.split(" ")[0]}
-                  </span>
-                </div>
-              </div>
-
-              {/* Distance line */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-5">
-                <line
-                  x1="50%" y1="35%"
-                  x2={`${beePosition.x}%`} y2={`${beePosition.y}%`}
-                  stroke="hsl(25 100% 55%)" strokeWidth="1.5" strokeDasharray="6 4" opacity="0.4"
-                />
-              </svg>
-            </div>
+            <div ref={mapContainerRef} style={{ height: "350px", width: "100%" }} />
             {/* Active task info */}
             <div className="p-4 bg-muted/50 border-t border-border">
               <div className="flex items-center justify-between">
