@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User } from "lucide-react";
 
+const TASK_LOCATION: [number, number] = [32.0753, 34.7754]; // Dizengoff, Tel Aviv
+
 const mockChild = {
   name: "יואב כהן",
   age: 15,
@@ -17,6 +19,8 @@ const mockChild = {
     startTime: "10:00",
     estimatedEnd: "13:00",
     taskerName: "משפחת לוי",
+    lat: TASK_LOCATION[0],
+    lng: TASK_LOCATION[1],
   },
 };
 
