@@ -32,18 +32,62 @@ const mockNotifications = [
 ];
 
 const ParentalHub = () => {
-  const [beePosition, setBeePosition] = useState({ x: 45, y: 40 });
+  const [beeLatLng, setBeeLatLng] = useState<[number, number]>([32.0763, 34.7734]);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const beeMarkerRef = useRef<L.Marker | null>(null);
 
   // Simulate real-time movement
   useEffect(() => {
     const interval = setInterval(() => {
-      setBeePosition((prev) => ({
-        x: prev.x + (Math.random() - 0.5) * 3,
-        y: prev.y + (Math.random() - 0.5) * 3,
-      }));
+      setBeeLatLng((prev) => [
+        prev[0] + (Math.random() - 0.5) * 0.001,
+        prev[1] + (Math.random() - 0.5) * 0.001,
+      ]);
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // Initialize Leaflet map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, { zoomControl: false }).setView(TASK_LOCATION, 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+    L.control.zoom({ position: "topright" }).addTo(map);
+
+    // Task location marker
+    const taskIcon = L.divIcon({
+      className: "task-pin",
+      html: `<div style="width:32px;height:32px;border-radius:50%;background:hsl(0 84% 60%/0.2);border:2px solid hsl(0 84% 60%);display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;">📍</span></div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    });
+    L.marker(TASK_LOCATION, { icon: taskIcon }).addTo(map)
+      .bindPopup(`<strong>${mockChild.activeTask.location}</strong>`);
+
+    // Bee marker
+    const beeIcon = L.divIcon({
+      className: "bee-marker",
+      html: `<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#FCD34D,#F59E0B);border:3px solid white;box-shadow:0 0 16px rgba(245,158,11,0.5);display:flex;align-items:center;justify-content:center;font-size:22px;">🐝</div>`,
+      iconSize: [42, 42],
+      iconAnchor: [21, 21],
+    });
+    beeMarkerRef.current = L.marker(beeLatLng, { icon: beeIcon }).addTo(map)
+      .bindPopup(`<strong>${mockChild.name}</strong>`);
+
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+  }, []);
+
+  // Update bee position on map
+  useEffect(() => {
+    if (beeMarkerRef.current) {
+      beeMarkerRef.current.setLatLng(beeLatLng);
+    }
+  }, [beeLatLng]);
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
