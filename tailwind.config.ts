@@ -111,6 +111,7 @@ export default {
         "buzz": "buzz 0.4s ease-in-out",
         "slide-up": "slide-up 0.5s ease-out forwards",
         "pop-in": "pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        "fade-in": "fade-in 0.5s ease-out forwards",
       },
     },
   },
