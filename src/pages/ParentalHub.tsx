@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User } from "lucide-react";
+
+const TASK_LOCATION: [number, number] = [32.0753, 34.7754]; // Dizengoff, Tel Aviv
 
 const mockChild = {
   name: "יואב כהן",
@@ -15,6 +19,8 @@ const mockChild = {
     startTime: "10:00",
     estimatedEnd: "13:00",
     taskerName: "משפחת לוי",
+    lat: TASK_LOCATION[0],
+    lng: TASK_LOCATION[1],
   },
 };
 
@@ -26,18 +32,62 @@ const mockNotifications = [
 ];
 
 const ParentalHub = () => {
-  const [beePosition, setBeePosition] = useState({ x: 45, y: 40 });
+  const [beeLatLng, setBeeLatLng] = useState<[number, number]>([32.0763, 34.7734]);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const beeMarkerRef = useRef<L.Marker | null>(null);
 
   // Simulate real-time movement
   useEffect(() => {
     const interval = setInterval(() => {
-      setBeePosition((prev) => ({
-        x: prev.x + (Math.random() - 0.5) * 3,
-        y: prev.y + (Math.random() - 0.5) * 3,
-      }));
+      setBeeLatLng((prev) => [
+        prev[0] + (Math.random() - 0.5) * 0.001,
+        prev[1] + (Math.random() - 0.5) * 0.001,
+      ]);
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // Initialize Leaflet map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, { zoomControl: false }).setView(TASK_LOCATION, 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+    L.control.zoom({ position: "topright" }).addTo(map);
+
+    // Task location marker
+    const taskIcon = L.divIcon({
+      className: "task-pin",
+      html: `<div style="width:32px;height:32px;border-radius:50%;background:hsl(0 84% 60%/0.2);border:2px solid hsl(0 84% 60%);display:flex;align-items:center;justify-content:center;"><span style="font-size:14px;">📍</span></div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    });
+    L.marker(TASK_LOCATION, { icon: taskIcon }).addTo(map)
+      .bindPopup(`<strong>${mockChild.activeTask.location}</strong>`);
+
+    // Bee marker
+    const beeIcon = L.divIcon({
+      className: "bee-marker",
+      html: `<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#FCD34D,#F59E0B);border:3px solid white;box-shadow:0 0 16px rgba(245,158,11,0.5);display:flex;align-items:center;justify-content:center;font-size:22px;">🐝</div>`,
+      iconSize: [42, 42],
+      iconAnchor: [21, 21],
+    });
+    beeMarkerRef.current = L.marker(beeLatLng, { icon: beeIcon }).addTo(map)
+      .bindPopup(`<strong>${mockChild.name}</strong>`);
+
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+  }, []);
+
+  // Update bee position on map
+  useEffect(() => {
+    if (beeMarkerRef.current) {
+      beeMarkerRef.current.setLatLng(beeLatLng);
+    }
+  }, [beeLatLng]);
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
@@ -84,52 +134,7 @@ const ParentalHub = () => {
                 <span className="text-xs text-muted-foreground font-semibold">Live</span>
               </div>
             </div>
-            <div className="relative h-[350px] bg-gradient-to-br from-emerald-100 via-green-50 to-teal-50">
-              {/* Grid lines */}
-              <div className="absolute inset-0 opacity-10" style={{
-                backgroundImage: `
-                  linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-                  linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-                `,
-                backgroundSize: "40px 40px",
-              }} />
-              
-              {/* Task location pin */}
-              <div className="absolute z-10" style={{ left: "50%", top: "35%" }}>
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-destructive/20 border-2 border-destructive flex items-center justify-center">
-                    <MapPin size={14} className="text-destructive" />
-                  </div>
-                  <span className="text-[9px] bg-card/90 px-2 py-0.5 rounded-full font-bold mt-1 whitespace-nowrap">
-                    {mockChild.activeTask.location.split(",")[0]}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bee (child) moving position */}
-              <div
-                className="absolute z-20 transition-all duration-[2000ms] ease-in-out"
-                style={{ left: `${beePosition.x}%`, top: `${beePosition.y}%` }}
-              >
-                <div className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full gradient-honey border-2 border-primary-foreground shadow-glow flex items-center justify-center animate-bounce-subtle">
-                    <span className="text-lg">🐝</span>
-                  </div>
-                  <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold mt-1">
-                    {mockChild.name.split(" ")[0]}
-                  </span>
-                </div>
-              </div>
-
-              {/* Distance line */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-5">
-                <line
-                  x1="50%" y1="35%"
-                  x2={`${beePosition.x}%`} y2={`${beePosition.y}%`}
-                  stroke="hsl(25 100% 55%)" strokeWidth="1.5" strokeDasharray="6 4" opacity="0.4"
-                />
-              </svg>
-            </div>
+            <div ref={mapContainerRef} style={{ height: "350px", width: "100%" }} />
             {/* Active task info */}
             <div className="p-4 bg-muted/50 border-t border-border">
               <div className="flex items-center justify-between">
