@@ -10,10 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const categories = [
   { value: "housework", label: "🏠 עבודות בית" },
@@ -35,7 +37,10 @@ const steps = [
 ];
 
 const CreateTask = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
     payment: "", paymentType: "task", workers: "1",
@@ -55,8 +60,36 @@ const CreateTask = () => {
     }
   };
 
-  const handleSubmit = () => {
-    toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
+  const handleSubmit = async () => {
+    if (!user) {
+      toast.error("יש להתחבר כדי לפרסם מטלה");
+      navigate("/login");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.from("tasks").insert({
+      creator_id: user.id,
+      category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
+      name: form.taskName,
+      short_desc: form.shortDesc,
+      full_desc: form.fullDesc || null,
+      payment: parseFloat(form.payment) || 0,
+      payment_type: form.paymentType as "task" | "hour",
+      workers_needed: parseInt(form.workers) || 1,
+      location: form.location,
+      scheduled_date: form.date || null,
+      scheduled_time: form.time || null,
+      duration_hours: parseFloat(form.duration) || null,
+      expiry_hours: parseInt(form.expiry) || 24,
+      notes: form.notes || null,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error("שגיאה בפרסום המטלה: " + error.message);
+    } else {
+      toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
+      navigate("/my-tasks");
+    }
   };
 
   return (
@@ -271,9 +304,10 @@ const CreateTask = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
+                disabled={loading}
                 className="gradient-honey text-primary-foreground rounded-full px-8 border-none font-extrabold hover:scale-105 transition-transform text-lg"
               >
-                פרסם מטלה 🐝
+                {loading ? "מפרסם..." : "פרסם מטלה 🐝"}
               </Button>
             )}
           </div>
