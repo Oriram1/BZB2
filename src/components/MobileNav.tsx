@@ -3,44 +3,52 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, MessageCircle, UserCircle, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "דף הבית", to: "/", icon: Home },
-  { label: "כניסה / הרשמה", to: "/auth", icon: LogIn },
+  { label: "כניסה / הרשמה", to: "/auth", icon: LogIn, guestOnly: true },
   { label: "מטלות זמינות", to: "/tasks", icon: ListTodo },
-  { label: "צור מטלה", to: "/create-task", icon: PlusCircle },
-  { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList },
-  { label: "צ'אט", to: "/chat", icon: MessageCircle },
-  { label: "לוח הורים", to: "/parent", icon: Shield },
+  { label: "צור מטלה", to: "/create-task", icon: PlusCircle, authOnly: true },
+  { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList, authOnly: true },
+  { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true },
+  { label: "לוח הורים", to: "/parent", icon: Shield, authOnly: true },
   { label: "מנויים", to: "/pricing", icon: CreditCard },
 ];
-
-// Mock user state — replace with real auth later
-const useMockUser = () => {
-  const [user] = useState(() => {
-    const saved = localStorage.getItem("bzb-user");
-    return saved ? JSON.parse(saved) : null;
-  });
-  return user as { name: string; role: string } | null;
-};
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const user = useMockUser();
+  const { user, profile, roles, signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem("bzb-user");
+  const handleLogout = async () => {
+    await signOut();
     setOpen(false);
     toast.success("התנתקת בהצלחה 👋");
     navigate("/");
-    window.location.reload();
   };
+
+  const displayName = profile
+    ? `${profile.first_name} ${profile.last_name}`.trim() || user?.email || "משתמש"
+    : user?.email || "משתמש";
+
+  const roleLabel = roles.includes("tasker")
+    ? "מציע מטלות"
+    : roles.includes("bee")
+    ? "מבצע מטלות 🐝"
+    : roles.includes("parent")
+    ? "הורה"
+    : "";
+
+  const filteredItems = navItems.filter((item) => {
+    if (item.guestOnly && user) return false;
+    if (item.authOnly && !user) return false;
+    return true;
+  });
 
   return (
     <>
-      {/* Hamburger button */}
       <button
         onClick={() => setOpen(true)}
         className="fixed top-4 right-4 z-[60] p-2 rounded-xl bg-primary/90 text-primary-foreground shadow-lg backdrop-blur-sm hover:bg-primary transition-colors"
@@ -49,7 +57,6 @@ export function MobileNav() {
         <Menu className="w-6 h-6" />
       </button>
 
-      {/* Overlay */}
       {open && (
         <div
           className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm transition-opacity"
@@ -57,7 +64,6 @@ export function MobileNav() {
         />
       )}
 
-      {/* Drawer */}
       <div
         className={cn(
           "fixed top-0 right-0 z-[80] h-full w-72 bg-background border-l border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
@@ -65,7 +71,6 @@ export function MobileNav() {
         )}
         dir="rtl"
       >
-        {/* Profile Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <span className="text-lg font-bold text-primary">🐝 BZB</span>
@@ -78,26 +83,19 @@ export function MobileNav() {
             </button>
           </div>
 
-          {/* User profile section */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
               <UserCircle className="w-6 h-6 text-primary" />
             </div>
             {user ? (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {user.role === "tasker" ? "מציע מטלות" : user.role === "bee" ? "מבצע מטלות 🐝" : "הורה"}
-                </p>
+                <p className="text-sm font-semibold truncate">{displayName}</p>
+                {roleLabel && <p className="text-xs text-muted-foreground">{roleLabel}</p>}
               </div>
             ) : (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">אורח</p>
-                <Link
-                  to="/auth"
-                  onClick={() => setOpen(false)}
-                  className="text-xs text-primary hover:underline"
-                >
+                <Link to="/auth" onClick={() => setOpen(false)} className="text-xs text-primary hover:underline">
                   התחבר או הירשם →
                 </Link>
               </div>
@@ -105,9 +103,8 @@ export function MobileNav() {
           </div>
         </div>
 
-        {/* Nav items */}
         <nav className="flex-1 overflow-y-auto py-2">
-          {navItems.map((item) => {
+          {filteredItems.map((item) => {
             const isActive = location.pathname === item.to;
             return (
               <Link
@@ -128,7 +125,6 @@ export function MobileNav() {
           })}
         </nav>
 
-        {/* Footer with logout */}
         <div className="border-t border-border">
           {user && (
             <button
