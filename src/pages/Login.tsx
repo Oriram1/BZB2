@@ -1,14 +1,29 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("התחברת בהצלחה! 🎉");
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("התחברת בהצלחה! 🎉");
+      navigate("/tasks");
+    }
   };
 
   return (
@@ -25,33 +40,24 @@ const Login = () => {
           <h1 className="text-2xl font-extrabold text-foreground">כניסה</h1>
         </div>
 
-        {/* Social Login */}
-        <div className="flex flex-col gap-2 mb-6">
-          {["Google", "Facebook", "Instagram"].map((provider) => (
-            <Button key={provider} variant="outline" className="w-full py-5 rounded-2xl border-border text-foreground font-semibold hover:scale-[1.02] transition-transform duration-300">
-              הכנס עם {provider}
-            </Button>
-          ))}
-        </div>
-
         <div className="flex items-center gap-3 mb-6">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-muted-foreground text-sm font-medium">או</span>
+          <span className="text-muted-foreground text-sm font-medium">כניסה עם אימייל</span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="username">שם משתמש</Label>
-            <Input id="username" placeholder="שם משתמש" className="mt-1 rounded-2xl h-12" required />
+            <Label htmlFor="email">אימייל</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" className="mt-1 rounded-2xl h-12" dir="ltr" required />
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <Input id="password" type="password" placeholder="סיסמה" className="mt-1 rounded-2xl h-12" required />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="mt-1 rounded-2xl h-12" required />
           </div>
 
-          <Button type="submit" className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
-            כניסה 🐝
+          <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
+            {loading ? "מתחבר..." : "כניסה 🐝"}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground mt-2">
