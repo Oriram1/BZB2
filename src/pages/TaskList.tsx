@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import bzbLogo from "@/assets/bzb-logo.png";
@@ -6,6 +6,7 @@ import { Map, List, SlidersHorizontal, Home, Wrench, BookOpen, Baby, PawPrint, L
 import TaskCard from "@/components/tasks/TaskCard";
 import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
+import { supabase } from "@/integrations/supabase/client";
 
 const categoryOptions = [
   { value: "all", label: "הכל", icon: Sparkles },
@@ -18,21 +19,54 @@ const categoryOptions = [
   { value: "other", label: "אחר", icon: Package },
 ];
 
-const mockTasks: Task[] = [
-  { id: 1, name: "ניקיון בית", shortDesc: "ניקיון כללי של דירה 3 חדרים", category: "housework", categoryLabel: "🏠 עבודות בית", payment: 80, paymentType: "task", location: "תל אביב, רח׳ דיזנגוף 50", date: "2026-02-20", time: "10:00", duration: 3, workers: 1, status: "open", lat: 32.0753, lng: 34.7754, distance: 1.2 },
-  { id: 2, name: "טיול עם כלב", shortDesc: "טיול שעה עם גולדן רטריבר", category: "pets", categoryLabel: "🐾 חיות מחמד", payment: 40, paymentType: "hour", location: "הרצליה, פארק הנשיא", date: "2026-02-18", time: "16:00", duration: 1, workers: 1, status: "open", lat: 32.1629, lng: 34.7908, distance: 3.5 },
-  { id: 3, name: "גיזום גינה", shortDesc: "גיזום עצים ושיחים בגינה", category: "gardening", categoryLabel: "🌿 גינון", payment: 60, paymentType: "hour", location: "רמת גן, רח׳ ביאליק 12", date: "2026-02-22", time: "08:00", duration: 4, workers: 2, status: "open", lat: 32.0686, lng: 34.8248, distance: 2.8 },
-  { id: 4, name: "בייביסיטר ערב", shortDesc: "השגחה על 2 ילדים גילאי 4-7", category: "babysitting", categoryLabel: "👶 בייביסיטר", payment: 50, paymentType: "hour", location: "גבעתיים, רח׳ כצנלסון 8", date: "2026-02-19", time: "18:00", duration: 4, workers: 1, status: "open", lat: 32.0715, lng: 34.8117, distance: 4.1 },
-  { id: 5, name: "עזרה במתמטיקה", shortDesc: "שיעור פרטי מתמטיקה לכיתה י׳", category: "tutoring", categoryLabel: "📚 לימודים", payment: 70, paymentType: "hour", location: "פתח תקווה, רח׳ רוטשילד 5", date: "2026-02-21", time: "15:00", duration: 1.5, workers: 1, status: "open", lat: 32.0841, lng: 34.8878, distance: 6.2 },
-  { id: 6, name: "הרכבת ארון", shortDesc: "הרכבת ארון איקאה 3 דלתות", category: "handyman", categoryLabel: "🔧 הנדימן", payment: 100, paymentType: "task", location: "ראשון לציון, רח׳ הרצל 20", date: "2026-02-18", time: "12:00", duration: 2, workers: 1, status: "open", lat: 31.9642, lng: 34.8048, distance: 8.0 },
-];
+const categoryLabels: Record<string, string> = {
+  housework: "🏠 עבודות בית", handyman: "🔧 הנדימן", tutoring: "📚 לימודים",
+  babysitting: "👶 בייביסיטר", pets: "🐾 חיות מחמד", gardening: "🌿 גינון", other: "📦 אחר",
+};
 
 const TaskList = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [maxDistance, setMaxDistance] = useState(10);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredTasks = mockTasks
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        const mapped: Task[] = data.map((t, i) => ({
+          id: i + 1,
+          dbId: t.id,
+          name: t.name,
+          shortDesc: t.short_desc,
+          category: t.category,
+          categoryLabel: categoryLabels[t.category] || "📦 אחר",
+          payment: Number(t.payment),
+          paymentType: t.payment_type,
+          location: t.location || "",
+          date: t.scheduled_date || "",
+          time: t.scheduled_time || "",
+          duration: Number(t.duration_hours) || 0,
+          workers: t.workers_needed,
+          status: t.status,
+          lat: t.latitude || 32.0753,
+          lng: t.longitude || 34.7754,
+          distance: Math.round(Math.random() * 8 * 10) / 10 + 0.5,
+        }));
+        setTasks(mapped);
+      }
+      setLoading(false);
+    };
+    fetchTasks();
+  }, []);
+
+  const filteredTasks = tasks
     .filter((t) => selectedCategory === "all" || t.category === selectedCategory)
     .filter((t) => t.distance <= maxDistance);
 
