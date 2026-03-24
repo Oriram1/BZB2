@@ -304,9 +304,10 @@ const CreateTask = () => {
             ) : (
               <Button
                 onClick={handleSubmit}
+                disabled={loading}
                 className="gradient-honey text-primary-foreground rounded-full px-8 border-none font-extrabold hover:scale-105 transition-transform text-lg"
               >
-                פרסם מטלה 🐝
+                {loading ? "מפרסם..." : "פרסם מטלה 🐝"}
               </Button>
             )}
           </div>
