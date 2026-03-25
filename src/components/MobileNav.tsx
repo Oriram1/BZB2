@@ -12,6 +12,7 @@ const navItems = [
   { label: "צור מטלה", to: "/create-task", icon: PlusCircle, authOnly: true },
   { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList, authOnly: true },
   { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true },
+  { label: "הפרופיל שלי", to: "/profile", icon: UserCircle, authOnly: true },
   { label: "לוח הורים", to: "/parent", icon: Shield, authOnly: true },
   { label: "מנויים", to: "/pricing", icon: CreditCard },
 ];
