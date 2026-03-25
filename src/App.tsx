@@ -14,6 +14,7 @@ import MyTasks from "./pages/MyTasks";
 import Pricing from "./pages/Pricing";
 import ParentalHub from "./pages/ParentalHub";
 import Chat from "./pages/Chat";
+import Profile from "./pages/Profile";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
