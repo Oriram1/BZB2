@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ interface Message {
 
 const Chat = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -164,12 +165,10 @@ const Chat = () => {
             <span className="font-extrabold text-primary-foreground">BZB</span>
           </Link>
           <span className="font-bold text-primary-foreground text-sm">הודעות</span>
-          <Link to="/tasks">
-            <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold">
-              <ArrowRight size={16} />
-              חזרה
-            </Button>
-          </Link>
+          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={() => navigate(-1)}>
+            <ArrowRight size={16} />
+            חזרה
+          </Button>
         </div>
       </header>
 

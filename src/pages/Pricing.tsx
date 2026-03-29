@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +23,7 @@ const plans = [
 
 const Pricing = () => {
   const [wantInsurance, setWantInsurance] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
@@ -35,11 +37,10 @@ const Pricing = () => {
             <img src={bzbLogo} alt="BZB" className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
-          <Link to="/tasks">
-            <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold">
-              חזרה למטלות
-            </Button>
-          </Link>
+          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={() => navigate(-1)}>
+            <ArrowRight size={16} />
+            חזרה
+          </Button>
         </div>
       </header>
 

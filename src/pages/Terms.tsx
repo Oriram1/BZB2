@@ -1,14 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
 const Terms = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-muted py-12 px-4" dir="rtl">
       <div className="max-w-3xl mx-auto bg-card rounded-3xl shadow-glow p-8 md:p-12 border border-border">
-        <Link to="/" className="inline-flex items-center gap-2 text-primary font-bold mb-6 hover:underline">
+        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-primary font-bold mb-6 hover:underline">
           <ArrowRight className="w-4 h-4" />
-          חזרה לדף הבית
-        </Link>
+          חזרה
+        </button>
 
         <h1 className="text-3xl font-extrabold text-foreground mb-2">תקנון ותנאי שימוש</h1>
         <p className="text-muted-foreground mb-8">עדכון אחרון: מרץ 2026</p>
