@@ -31,6 +31,12 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const handleCardClick = () => {
+    if (task.dbId) {
+      navigate(`/task/${task.dbId}`);
+    }
+  };
+
   const handleApply = async () => {
     if (!user) {
       toast.error("יש להתחבר כדי להגיש מועמדות");
@@ -57,6 +63,7 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
     <div
       className="bg-card rounded-3xl p-6 border border-border card-hover cursor-pointer group relative overflow-hidden animate-fade-in opacity-0"
       style={{ animationDelay: `${index * 0.08}s`, animationFillMode: "forwards" }}
+      onClick={handleCardClick}
     >
       <div className="absolute inset-0 gradient-honey opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500" />
       <div className="flex items-start gap-3 mb-3 relative">
@@ -83,7 +90,7 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
         </Badge>
         <Button
           size="sm"
-          onClick={handleApply}
+          onClick={(e) => { e.stopPropagation(); handleApply(); }}
           className="gradient-honey text-primary-foreground rounded-full border-none hover:scale-110 active:scale-95 transition-transform duration-300 font-bold"
         >
           אני מעוניין/ת 🐝

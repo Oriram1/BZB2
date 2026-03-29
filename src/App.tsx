@@ -15,6 +15,7 @@ import Pricing from "./pages/Pricing";
 import ParentalHub from "./pages/ParentalHub";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
+import TaskDetail from "./pages/TaskDetail";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/register/:role" element={<Register />} />
             <Route path="/create-task" element={<CreateTask />} />
             <Route path="/tasks" element={<TaskList />} />
+            <Route path="/task/:id" element={<TaskDetail />} />
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/parent" element={<ParentalHub />} />
