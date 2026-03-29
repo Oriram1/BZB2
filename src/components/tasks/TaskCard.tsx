@@ -63,6 +63,7 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
     <div
       className="bg-card rounded-3xl p-6 border border-border card-hover cursor-pointer group relative overflow-hidden animate-fade-in opacity-0"
       style={{ animationDelay: `${index * 0.08}s`, animationFillMode: "forwards" }}
+      onClick={handleCardClick}
     >
       <div className="absolute inset-0 gradient-honey opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500" />
       <div className="flex items-start gap-3 mb-3 relative">
