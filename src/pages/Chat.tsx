@@ -30,6 +30,7 @@ interface Message {
 const Chat = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -165,7 +166,7 @@ const Chat = () => {
             <span className="font-extrabold text-primary-foreground">BZB</span>
           </Link>
           <span className="font-bold text-primary-foreground text-sm">הודעות</span>
-          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={() => navigate(-1)}>
+          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={goBack}>
             <ArrowRight size={16} />
             חזרה
           </Button>
