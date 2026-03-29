@@ -31,6 +31,12 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const handleCardClick = () => {
+    if (task.dbId) {
+      navigate(`/task/${task.dbId}`);
+    }
+  };
+
   const handleApply = async () => {
     if (!user) {
       toast.error("יש להתחבר כדי להגיש מועמדות");
