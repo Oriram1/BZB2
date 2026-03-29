@@ -23,6 +23,7 @@ const plans = [
 
 const Pricing = () => {
   const [wantInsurance, setWantInsurance] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
