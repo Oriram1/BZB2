@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
 const PrivacyPolicy = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-muted py-12 px-4" dir="rtl">
       <div className="max-w-3xl mx-auto bg-card rounded-3xl shadow-glow p-8 md:p-12 border border-border">
