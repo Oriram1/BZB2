@@ -90,7 +90,7 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
         </Badge>
         <Button
           size="sm"
-          onClick={handleApply}
+          onClick={(e) => { e.stopPropagation(); handleApply(); }}
           className="gradient-honey text-primary-foreground rounded-full border-none hover:scale-110 active:scale-95 transition-transform duration-300 font-bold"
         >
           אני מעוניין/ת 🐝

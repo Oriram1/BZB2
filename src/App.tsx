@@ -38,6 +38,7 @@ const App = () => (
             <Route path="/register/:role" element={<Register />} />
             <Route path="/create-task" element={<CreateTask />} />
             <Route path="/tasks" element={<TaskList />} />
+            <Route path="/task/:id" element={<TaskDetail />} />
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/parent" element={<ParentalHub />} />
