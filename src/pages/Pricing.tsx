@@ -38,7 +38,7 @@ const Pricing = () => {
             <img src={bzbLogo} alt="BZB" className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
-          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={() => navigate(-1)}>
+          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={goBack}>
             <ArrowRight size={16} />
             חזרה
           </Button>
