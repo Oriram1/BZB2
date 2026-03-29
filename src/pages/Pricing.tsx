@@ -24,6 +24,7 @@ const plans = [
 const Pricing = () => {
   const [wantInsurance, setWantInsurance] = useState(false);
   const navigate = useNavigate();
+  const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
 
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
