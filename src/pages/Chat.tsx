@@ -30,6 +30,7 @@ interface Message {
 const Chat = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
