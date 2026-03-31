@@ -68,7 +68,8 @@ interface CreatorProfile {
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isBee = roles.includes("bee");
   const [task, setTask] = useState<TaskData | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,9 +118,13 @@ const TaskDetail = () => {
   }, [id, user]);
 
   const handleApply = async () => {
-    if (!user) {
-      toast.error("יש להתחבר כדי להגיש מועמדות");
-      navigate("/login");
+    if (!user || !isBee) {
+      if (!user) {
+        toast.error("יש להתחבר כדי להגיש מועמדות");
+        navigate("/login");
+      } else {
+        toast.error("רק מקבלי מטלות יכולים להגיש מועמדות");
+      }
       return;
     }
     if (!task) return;
@@ -291,7 +296,7 @@ const TaskDetail = () => {
       </div>
 
       {/* Bottom Action Bar */}
-      {!isOwner && task.status === "open" && (
+      {!isOwner && task.status === "open" && isBee && (
         <div className="fixed bottom-16 left-0 right-0 bg-background/90 backdrop-blur-lg border-t border-border p-4 z-30">
           <div className="max-w-2xl mx-auto">
             <Button
