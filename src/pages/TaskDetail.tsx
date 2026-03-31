@@ -68,7 +68,8 @@ interface CreatorProfile {
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isBee = roles.includes("bee");
   const [task, setTask] = useState<TaskData | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
