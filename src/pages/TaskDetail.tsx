@@ -296,7 +296,7 @@ const TaskDetail = () => {
       </div>
 
       {/* Bottom Action Bar */}
-      {!isOwner && task.status === "open" && (
+      {!isOwner && task.status === "open" && isBee && (
         <div className="fixed bottom-16 left-0 right-0 bg-background/90 backdrop-blur-lg border-t border-border p-4 z-30">
           <div className="max-w-2xl mx-auto">
             <Button
