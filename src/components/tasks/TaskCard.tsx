@@ -28,7 +28,8 @@ interface Task {
 }
 
 const TaskCard = ({ task, index }: { task: Task; index: number }) => {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isBee = roles.includes("bee");
   const navigate = useNavigate();
 
   const handleCardClick = () => {
