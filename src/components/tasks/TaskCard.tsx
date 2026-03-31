@@ -39,9 +39,13 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
   };
 
   const handleApply = async () => {
-    if (!user) {
-      toast.error("יש להתחבר כדי להגיש מועמדות");
-      navigate("/login");
+    if (!user || !isBee) {
+      if (!user) {
+        toast.error("יש להתחבר כדי להגיש מועמדות");
+        navigate("/login");
+      } else {
+        toast.error("רק מקבלי מטלות יכולים להגיש מועמדות");
+      }
       return;
     }
     if (!task.dbId) return;
