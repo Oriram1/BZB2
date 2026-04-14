@@ -57,6 +57,32 @@ const CreateTask = () => {
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("גודל הקובץ חייב להיות עד 5MB");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile || !user) return null;
+    setUploadingImage(true);
+    const ext = imageFile.name.split(".").pop();
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("task-images").upload(path, imageFile);
+    setUploadingImage(false);
+    if (error) {
+      toast.error("שגיאה בהעלאת התמונה");
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
   const canProceed = () => {
     switch (step) {
       case 1: return !!form.category;
