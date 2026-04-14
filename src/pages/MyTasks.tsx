@@ -68,7 +68,7 @@ const MyTasks = () => {
     fetchTasks();
   }, [user]);
 
-  const handleApplicationStatus = async (applicationId: string, status: "accepted" | "rejected") => {
+  const handleApplicationStatus = async (applicationId: string, taskId: string, applicantId: string, status: "accepted" | "rejected") => {
     const { error } = await supabase
       .from("task_applications")
       .update({ status })
@@ -77,6 +77,19 @@ const MyTasks = () => {
       toast.error("שגיאה בעדכון הסטטוס");
     } else {
       toast.success(status === "accepted" ? "המועמד התקבל! ✓" : "המועמד נדחה");
+
+      // Auto-create conversation when accepting
+      if (status === "accepted" && user) {
+        const { error: convError } = await supabase.from("conversations").insert({
+          participant_1: user.id,
+          participant_2: applicantId,
+          task_id: taskId,
+        });
+        if (!convError) {
+          toast.success("שיחת צ'אט נפתחה עם המבצע 💬");
+        }
+      }
+
       // Refresh
       setTasks((prev) =>
         prev.map((t) => ({
