@@ -14,6 +14,7 @@ import { Link, useNavigate } from "react-router-dom";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowLeft } from "lucide-react";
+import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -47,6 +48,8 @@ const CreateTask = () => {
     location: "", date: "", time: "", duration: "", expiry: "24",
     notes: "",
   });
+  const [selectedLat, setSelectedLat] = useState<number | null>(null);
+  const [selectedLng, setSelectedLng] = useState<number | null>(null);
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -77,6 +80,8 @@ const CreateTask = () => {
       payment_type: form.paymentType as "task" | "hour",
       workers_needed: parseInt(form.workers) || 1,
       location: form.location,
+      latitude: selectedLat,
+      longitude: selectedLng,
       scheduled_date: form.date || null,
       scheduled_time: form.time || null,
       duration_hours: parseFloat(form.duration) || null,
@@ -214,13 +219,15 @@ const CreateTask = () => {
               <div>
                 <Label htmlFor="location">מיקום המטלה</Label>
                 <Input id="location" value={form.location} onChange={(e) => updateForm("location", e.target.value)} placeholder="כתובת מלאה" className="mt-1 rounded-2xl h-12" />
-                {/* Map placeholder */}
-                <div className="mt-3 h-40 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 border border-border flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <MapPin size={32} className="mx-auto mb-2 text-primary" />
-                    <p className="text-sm font-semibold">בחירת מיקום על המפה</p>
-                    <p className="text-xs">(Google Maps placeholder)</p>
-                  </div>
+                <div className="mt-3">
+                  <GoogleMapPicker
+                    lat={selectedLat}
+                    lng={selectedLng}
+                    onLocationSelect={(lat, lng) => {
+                      setSelectedLat(lat);
+                      setSelectedLng(lng);
+                    }}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
