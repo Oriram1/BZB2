@@ -81,10 +81,15 @@ const TaskList = () => {
       {/* Header */}
       <header className="gradient-honey py-4 px-4 sticky top-0 z-50 shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 hover:scale-105 transition-transform duration-300">
-            <img src={bzbLogo} alt="BZB" className="w-10 h-10" />
-            <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full text-primary-foreground hover:bg-primary-foreground/10">
+              <ArrowLeft size={20} />
+            </Button>
+            <Link to="/" className="flex items-center gap-2 hover:scale-105 transition-transform duration-300">
+              <img src={bzbLogo} alt="BZB" className="w-10 h-10" />
+              <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
+            </Link>
+          </div>
           <nav className="flex items-center gap-2">
             {isTasker && (
               <Link to="/create-task">
