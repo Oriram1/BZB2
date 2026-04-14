@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, Upload, X } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -88,10 +87,9 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button className="relative group">
-          <Avatar className="w-24 h-24 border-4 border-primary/20 shadow-lg">
-            <AvatarImage src={displayAvatar} alt="Profile" />
-            <AvatarFallback className="bg-primary/10 text-primary text-2xl">👤</AvatarFallback>
-          </Avatar>
+          <div className="w-24 h-24 rounded-full border-4 border-primary/20 shadow-lg overflow-hidden bg-muted">
+            <img src={displayAvatar} alt="Profile" className="w-full h-full object-cover" />
+          </div>
           <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <Camera className="w-6 h-6 text-white" />
           </div>
@@ -100,6 +98,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
       <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-right">בחר תמונת פרופיל</DialogTitle>
+          <DialogDescription className="text-right">בחר אווטאר מהגלריה או העלה תמונה משלך</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -115,9 +114,14 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
                     displayAvatar.includes(seed) && "border-primary ring-2 ring-primary/30"
                   )}
                 >
-                  <Avatar className="w-14 h-14">
-                    <AvatarImage src={`https://api.multiavatar.com/${seed}.svg`} />
-                  </Avatar>
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-muted">
+                    <img
+                      src={`https://api.multiavatar.com/${seed}.svg`}
+                      alt={seed}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
                 </button>
               ))}
             </div>
