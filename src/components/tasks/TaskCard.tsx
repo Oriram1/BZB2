@@ -91,7 +91,7 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
       </div>
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-border relative">
         <Badge className="gradient-honey text-primary-foreground border-none rounded-xl font-bold animate-pulse">
-          פתוחה
+          הרחבה
         </Badge>
         <Button
           size="sm"

@@ -30,7 +30,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  open: "פתוחה",
+  open: "הרחבה",
   accepted: "התקבלה",
   in_progress: "בביצוע",
   completed: "הושלמה",
