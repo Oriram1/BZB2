@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
-import { Send, ArrowRight, Phone, MoreVertical } from "lucide-react";
+import { Send, ArrowLeft, Phone, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
