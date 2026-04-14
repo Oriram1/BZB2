@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Im
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const categories = [
   { value: "housework", label: "🏠 עבודות בית" },
@@ -329,6 +330,24 @@ const CreateTask = () => {
               <div>
                 <Label htmlFor="notes">הערות נוספות</Label>
                 <Textarea id="notes" value={form.notes} onChange={(e) => updateForm("notes", e.target.value)} placeholder="הערות נוספות..." className="mt-1 rounded-2xl min-h-[100px]" />
+              </div>
+
+              {/* Insurance option - for paid subscribers only */}
+              <div className="bg-muted/50 rounded-2xl p-4 border border-border">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-lg">🛡️</span>
+                  <h3 className="text-sm font-extrabold text-foreground">ביטוח מטלות</h3>
+                  <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">למנויים בתשלום</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  כיסוי לנזק ישיר לרכוש עד 2,000 ₪ למשימה (5 ₪/חודש)
+                </p>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="insurance" />
+                  <label htmlFor="insurance" className="text-sm font-bold text-foreground cursor-pointer">
+                    הפעל ביטוח למטלה זו
+                  </label>
+                </div>
               </div>
             </div>
           )}
