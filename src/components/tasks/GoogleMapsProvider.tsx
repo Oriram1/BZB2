@@ -7,7 +7,7 @@ const GoogleMapsContext = createContext<{ isLoaded: boolean }>({ isLoaded: false
 
 export const useGoogleMaps = () => useContext(GoogleMapsContext);
 
-let loaderPromise: Promise<typeof google> | null = null;
+let loaderPromise: Promise<void> | null = null;
 
 export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -19,7 +19,7 @@ export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
         language: "he",
         region: "IL",
       });
-      loaderPromise = loader.load();
+      loaderPromise = loader.importLibrary("maps").then(() => {});
     }
     loaderPromise.then(() => setIsLoaded(true)).catch(console.error);
   }, []);
