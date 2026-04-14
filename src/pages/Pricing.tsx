@@ -3,7 +3,6 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
-import bzbLogo from "@/assets/bzb-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
