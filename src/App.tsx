@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import RoleGuard from "@/components/RoleGuard";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Login from "./pages/Login";
@@ -36,14 +37,14 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register/:role" element={<Register />} />
-            <Route path="/create-task" element={<CreateTask />} />
+            <Route path="/create-task" element={<RoleGuard allowedRoles={["tasker"]}><CreateTask /></RoleGuard>} />
             <Route path="/tasks" element={<TaskList />} />
             <Route path="/task/:id" element={<TaskDetail />} />
-            <Route path="/my-tasks" element={<MyTasks />} />
+            <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker"]}><MyTasks /></RoleGuard>} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/parent" element={<ParentalHub />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
+            <Route path="/chat" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Chat /></RoleGuard>} />
+            <Route path="/profile" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Profile /></RoleGuard>} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="*" element={<NotFound />} />

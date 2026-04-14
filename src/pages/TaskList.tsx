@@ -7,6 +7,7 @@ import TaskCard from "@/components/tasks/TaskCard";
 import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const categoryOptions = [
   { value: "all", label: "הכל", icon: Sparkles },
@@ -25,6 +26,8 @@ const categoryLabels: Record<string, string> = {
 };
 
 const TaskList = () => {
+  const { roles } = useAuth();
+  const isTasker = roles.includes("tasker");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [maxDistance, setMaxDistance] = useState(10);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
@@ -83,11 +86,13 @@ const TaskList = () => {
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
           <nav className="flex items-center gap-2">
-            <Link to="/create-task">
-              <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 active:scale-95 transition-transform duration-300">
-                + פרסם מטלה
-              </Button>
-            </Link>
+            {isTasker && (
+              <Link to="/create-task">
+                <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 active:scale-95 transition-transform duration-300">
+                  + פרסם מטלה
+                </Button>
+              </Link>
+            )}
             <Link to="/pricing">
               <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold">
                 מחירים

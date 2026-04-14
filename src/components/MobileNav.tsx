@@ -9,11 +9,11 @@ const navItems = [
   { label: "דף הבית", to: "/", icon: Home },
   { label: "כניסה / הרשמה", to: "/auth", icon: LogIn, guestOnly: true },
   { label: "מטלות זמינות", to: "/tasks", icon: ListTodo },
-  { label: "צור מטלה", to: "/create-task", icon: PlusCircle, authOnly: true },
-  { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList, authOnly: true },
-  { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true },
-  { label: "הפרופיל שלי", to: "/profile", icon: UserCircle, authOnly: true },
-  { label: "לוח הורים", to: "/parent", icon: Shield, authOnly: true },
+  { label: "צור מטלה", to: "/create-task", icon: PlusCircle, authOnly: true, requiredRoles: ["tasker"] as string[] },
+  { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList, authOnly: true, requiredRoles: ["tasker"] as string[] },
+  { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true, requiredRoles: ["tasker", "bee"] as string[] },
+  { label: "הפרופיל שלי", to: "/profile", icon: UserCircle, authOnly: true, requiredRoles: ["tasker", "bee"] as string[] },
+  { label: "לוח הורים", to: "/parent", icon: Shield, authOnly: true, requiredRoles: ["parent"] as string[] },
   { label: "מנויים", to: "/pricing", icon: CreditCard },
 ];
 
@@ -45,6 +45,9 @@ export function MobileNav() {
   const filteredItems = navItems.filter((item) => {
     if (item.guestOnly && user) return false;
     if (item.authOnly && !user) return false;
+    if (item.requiredRoles && item.requiredRoles.length > 0) {
+      if (!item.requiredRoles.some((r) => roles.includes(r))) return false;
+    }
     return true;
   });
 
