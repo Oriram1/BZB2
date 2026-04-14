@@ -45,7 +45,7 @@ const CreateTask = () => {
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
     payment: "", paymentType: "task", workers: "1",
-    location: "", date: "", time: "", duration: "", expiry: "24",
+    location: "", date: "", time: "", duration: "", durationUnit: "hours", expiry: "24",
     notes: "",
   });
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
@@ -84,7 +84,7 @@ const CreateTask = () => {
       longitude: selectedLng,
       scheduled_date: form.date || null,
       scheduled_time: form.time || null,
-      duration_hours: parseFloat(form.duration) || null,
+      duration_hours: form.duration ? (form.durationUnit === "minutes" ? parseFloat(form.duration) / 60 : parseFloat(form.duration)) : null,
       expiry_hours: parseInt(form.expiry) || 24,
       notes: form.notes || null,
     });
@@ -240,11 +240,20 @@ const CreateTask = () => {
                   <Input id="time" type="time" value={form.time} onChange={(e) => updateForm("time", e.target.value)} className="mt-1 rounded-2xl h-12" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="duration">אורך (שעות)</Label>
-                  <Input id="duration" type="number" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="mt-1 rounded-2xl h-12" min={0.5} step={0.5} />
+              <div>
+                <Label htmlFor="duration">משך זמן</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input id="duration" type="number" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="rounded-2xl h-12 flex-1" min={1} step={1} />
+                  <Select value={form.durationUnit} onValueChange={(v) => updateForm("durationUnit", v)}>
+                    <SelectTrigger className="rounded-2xl h-12 w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hours">שעות</SelectItem>
+                      <SelectItem value="minutes">דקות</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="expiry">תוקף (שעות)</Label>
                   <Input id="expiry" type="number" value={form.expiry} onChange={(e) => updateForm("expiry", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
@@ -282,7 +291,7 @@ const CreateTask = () => {
                 <SummaryRow label="עובדים" value={form.workers} />
                 <SummaryRow label="מיקום" value={form.location} />
                 <SummaryRow label="תאריך" value={`${form.date} ${form.time}`} />
-                <SummaryRow label="אורך" value={`${form.duration} שעות`} />
+                <SummaryRow label="אורך" value={`${form.duration} ${form.durationUnit === "minutes" ? "דקות" : "שעות"}`} />
                 <SummaryRow label="תוקף" value={`${form.expiry} שעות`} />
                 {form.notes && <SummaryRow label="הערות" value={form.notes} />}
               </div>
