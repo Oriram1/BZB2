@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Camera, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -10,6 +9,9 @@ const AVATAR_SEEDS = [
   "Felix", "Aneka", "Mimi", "Leo", "Zoe", "Max", "Luna", "Oscar",
   "Bella", "Charlie", "Daisy", "Rocky", "Coco", "Buddy", "Molly", "Bear"
 ];
+
+const getAvatarUrl = (seed: string) =>
+  `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${seed}`;
 
 interface AvatarPickerProps {
   userId: string;
@@ -21,11 +23,11 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const defaultAvatar = `https://api.multiavatar.com/${userId}.svg`;
+  const defaultAvatar = getAvatarUrl(userId);
   const displayAvatar = currentAvatarUrl || defaultAvatar;
 
   const handleSelectAvatar = async (seed: string) => {
-    const url = `https://api.multiavatar.com/${seed}.svg`;
+    const url = getAvatarUrl(seed);
     const { error } = await supabase
       .from("profiles")
       .update({ avatar_url: url })
@@ -111,12 +113,12 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
                   onClick={() => handleSelectAvatar(seed)}
                   className={cn(
                     "rounded-full border-2 border-transparent hover:border-primary transition-colors p-1",
-                    displayAvatar.includes(seed) && "border-primary ring-2 ring-primary/30"
+                    displayAvatar.includes(`seed=${seed}`) && "border-primary ring-2 ring-primary/30"
                   )}
                 >
                   <div className="w-14 h-14 rounded-full overflow-hidden bg-muted">
                     <img
-                      src={`https://api.multiavatar.com/${seed}.svg`}
+                      src={getAvatarUrl(seed)}
                       alt={seed}
                       className="w-full h-full object-cover"
                       loading="lazy"
