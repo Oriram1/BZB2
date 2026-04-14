@@ -301,11 +301,29 @@ const CreateTask = () => {
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2">תמונה והערות</h2>
               <div>
-                <Label htmlFor="image">הוסף תמונה</Label>
-                <div className="mt-2 border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary transition-colors">
-                  <Image size={40} className="mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-sm font-semibold text-muted-foreground">לחץ להעלאת תמונה</p>
-                  <input type="file" accept="image/*" className="hidden" id="image" />
+                <Label>הוסף תמונה</Label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-2 border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                >
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img src={imagePreview} alt="תצוגה מקדימה" className="max-h-48 mx-auto rounded-xl object-cover" />
+                      <p className="text-xs text-muted-foreground mt-2">לחץ להחלפת התמונה</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Image size={40} className="mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-sm font-semibold text-muted-foreground">לחץ להעלאת תמונה</p>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
                 </div>
               </div>
               <div>
