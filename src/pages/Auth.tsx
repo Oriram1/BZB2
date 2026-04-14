@@ -23,7 +23,7 @@ const Auth = () => {
               כניסה 🔑
             </Button>
           </Link>
-          <Link to="/register/proposer">
+          <Link to="/pricing">
             <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-primary/40 text-foreground hover:bg-primary/5 hover:scale-[1.02] transition-transform duration-300">
               הרשם כמציע מטלות 📋
             </Button>
