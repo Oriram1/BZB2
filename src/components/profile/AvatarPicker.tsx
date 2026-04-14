@@ -22,11 +22,11 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
+  const defaultAvatar = `https://api.multiavatar.com/${userId}.svg`;
   const displayAvatar = currentAvatarUrl || defaultAvatar;
 
   const handleSelectAvatar = async (seed: string) => {
-    const url = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+    const url = `https://api.multiavatar.com/${seed}.svg`;
     const { error } = await supabase
       .from("profiles")
       .update({ avatar_url: url })
@@ -112,11 +112,11 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
                   onClick={() => handleSelectAvatar(seed)}
                   className={cn(
                     "rounded-full border-2 border-transparent hover:border-primary transition-colors p-1",
-                    displayAvatar.includes(`seed=${seed}`) && "border-primary ring-2 ring-primary/30"
+                    displayAvatar.includes(seed) && "border-primary ring-2 ring-primary/30"
                   )}
                 >
                   <Avatar className="w-14 h-14">
-                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`} />
+                    <AvatarImage src={`https://api.multiavatar.com/${seed}.svg`} />
                   </Avatar>
                 </button>
               ))}
