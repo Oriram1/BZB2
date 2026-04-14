@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,8 +50,38 @@ const CreateTask = () => {
   });
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
   const [selectedLng, setSelectedLng] = useState<number | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("גודל הקובץ חייב להיות עד 5MB");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile || !user) return null;
+    setUploadingImage(true);
+    const ext = imageFile.name.split(".").pop();
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("task-images").upload(path, imageFile);
+    setUploadingImage(false);
+    if (error) {
+      toast.error("שגיאה בהעלאת התמונה");
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
+    return urlData.publicUrl;
+  };
 
   const canProceed = () => {
     switch (step) {
@@ -70,6 +100,10 @@ const CreateTask = () => {
       return;
     }
     setLoading(true);
+    let imageUrl: string | null = null;
+    if (imageFile) {
+      imageUrl = await uploadImage();
+    }
     const { error } = await supabase.from("tasks").insert({
       creator_id: user.id,
       category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
@@ -87,6 +121,7 @@ const CreateTask = () => {
       duration_hours: form.duration ? (form.durationUnit === "minutes" ? parseFloat(form.duration) / 60 : parseFloat(form.duration)) : null,
       expiry_hours: parseInt(form.expiry) || 24,
       notes: form.notes || null,
+      image_url: imageUrl,
     });
     setLoading(false);
     if (error) {
@@ -266,11 +301,29 @@ const CreateTask = () => {
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2">תמונה והערות</h2>
               <div>
-                <Label htmlFor="image">הוסף תמונה</Label>
-                <div className="mt-2 border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary transition-colors">
-                  <Image size={40} className="mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-sm font-semibold text-muted-foreground">לחץ להעלאת תמונה</p>
-                  <input type="file" accept="image/*" className="hidden" id="image" />
+                <Label>הוסף תמונה</Label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-2 border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                >
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img src={imagePreview} alt="תצוגה מקדימה" className="max-h-48 mx-auto rounded-xl object-cover" />
+                      <p className="text-xs text-muted-foreground mt-2">לחץ להחלפת התמונה</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Image size={40} className="mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-sm font-semibold text-muted-foreground">לחץ להעלאת תמונה</p>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
                 </div>
               </div>
               <div>
