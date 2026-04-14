@@ -1,20 +1,17 @@
-import { useState, useCallback } from "react";
-import { GoogleMap, Marker } from "@react-google-maps/api";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import type { Task } from "./TaskCard";
 import { useGoogleMaps } from "./GoogleMapsProvider";
 
-const containerStyle = {
-  width: "100%",
-  height: "500px",
-};
-
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
   const { isLoaded } = useGoogleMaps();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
 
   const center =
     tasks.length > 0
@@ -24,9 +21,43 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
         }
       : { lat: 32.08, lng: 34.78 };
 
-  const handleMarkerClick = useCallback((taskId: number) => {
-    setSelectedTask((prev) => (prev === taskId ? null : taskId));
-  }, []);
+  useEffect(() => {
+    if (!isLoaded || !containerRef.current || mapRef.current) return;
+
+    mapRef.current = new google.maps.Map(containerRef.current, {
+      center,
+      zoom: 12,
+      streetViewControl: false,
+      mapTypeControl: false,
+      fullscreenControl: false,
+    });
+  }, [isLoaded]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Clear old markers
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    tasks.forEach((task) => {
+      const marker = new google.maps.Marker({
+        position: { lat: task.lat, lng: task.lng },
+        map,
+      });
+      marker.addListener("click", () => {
+        setSelectedTask((prev) => (prev === task.id ? null : task.id));
+      });
+      markersRef.current.push(marker);
+    });
+
+    if (tasks.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      tasks.forEach((t) => bounds.extend({ lat: t.lat, lng: t.lng }));
+      map.fitBounds(bounds, 50);
+    }
+  }, [tasks, selectedTask, isLoaded]);
 
   if (!isLoaded) {
     return (
@@ -38,24 +69,7 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
 
   return (
     <div className="rounded-3xl overflow-hidden border border-border shadow-lg animate-fade-in relative">
-      <GoogleMap
-        mapContainerStyle={containerStyle}
-        center={center}
-        zoom={12}
-        options={{
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: false,
-        }}
-      >
-        {tasks.map((task) => (
-          <Marker
-            key={task.id}
-            position={{ lat: task.lat, lng: task.lng }}
-            onClick={() => handleMarkerClick(task.id)}
-          />
-        ))}
-      </GoogleMap>
+      <div ref={containerRef} style={{ height: "500px", width: "100%" }} />
 
       {selected && (
         <div className="absolute bottom-4 left-4 right-4 bg-card rounded-2xl p-4 border border-border shadow-xl animate-slide-up z-[1000]">

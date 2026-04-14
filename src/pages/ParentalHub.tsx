@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GoogleMap, Marker } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
-import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User, ArrowLeft, DollarSign } from "lucide-react";
+import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User, ArrowLeft } from "lucide-react";
 import { useGoogleMaps } from "@/components/tasks/GoogleMapsProvider";
 
 const TASK_LOCATION = { lat: 32.0753, lng: 34.7754 };
@@ -33,9 +32,12 @@ const mockNotifications = [
 
 const ParentalHub = () => {
   const navigate = useNavigate();
-  const [beePosition, setBeePosition] = useState({ lat: 32.0763, lng: 34.7734 });
-
   const { isLoaded } = useGoogleMaps();
+  const [beePosition, setBeePosition] = useState({ lat: 32.0763, lng: 34.7734 });
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const beeMarkerRef = useRef<google.maps.Marker | null>(null);
+  const taskMarkerRef = useRef<google.maps.Marker | null>(null);
 
   // Simulate real-time movement
   useEffect(() => {
@@ -47,6 +49,40 @@ const ParentalHub = () => {
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // Initialize map
+  useEffect(() => {
+    if (!isLoaded || !mapContainerRef.current || mapRef.current) return;
+
+    const map = new google.maps.Map(mapContainerRef.current, {
+      center: TASK_LOCATION,
+      zoom: 15,
+      streetViewControl: false,
+      mapTypeControl: false,
+      fullscreenControl: false,
+    });
+
+    taskMarkerRef.current = new google.maps.Marker({
+      position: TASK_LOCATION,
+      map,
+      label: "📍",
+    });
+
+    beeMarkerRef.current = new google.maps.Marker({
+      position: beePosition,
+      map,
+      label: "🐝",
+    });
+
+    mapRef.current = map;
+  }, [isLoaded]);
+
+  // Update bee position
+  useEffect(() => {
+    if (beeMarkerRef.current) {
+      beeMarkerRef.current.setPosition(beePosition);
+    }
+  }, [beePosition]);
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
@@ -69,7 +105,6 @@ const ParentalHub = () => {
       </header>
 
       <div className="max-w-5xl mx-auto py-8 px-4 relative z-10">
-        {/* Child info */}
         <div className="glass rounded-3xl p-6 border border-border mb-6">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full gradient-honey flex items-center justify-center text-primary-foreground">
@@ -86,7 +121,6 @@ const ParentalHub = () => {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Live Map */}
           <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-lg">
             <div className="p-4 border-b border-border flex items-center gap-2">
               <MapPin size={18} className="text-primary" />
@@ -97,21 +131,12 @@ const ParentalHub = () => {
               </div>
             </div>
             {isLoaded ? (
-              <GoogleMap
-                mapContainerStyle={{ height: "350px", width: "100%" }}
-                center={TASK_LOCATION}
-                zoom={15}
-                options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
-              >
-                <Marker position={TASK_LOCATION} label="📍" />
-                <Marker position={beePosition} label="🐝" />
-              </GoogleMap>
+              <div ref={mapContainerRef} style={{ height: "350px", width: "100%" }} />
             ) : (
               <div style={{ height: "350px" }} className="flex items-center justify-center bg-muted">
                 <p className="text-muted-foreground">טוען מפה...</p>
               </div>
             )}
-            {/* Active task info */}
             <div className="p-4 bg-muted/50 border-t border-border">
               <div className="flex items-center justify-between">
                 <div>
@@ -126,7 +151,6 @@ const ParentalHub = () => {
             </div>
           </div>
 
-          {/* Notifications */}
           <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-lg">
             <div className="p-4 border-b border-border flex items-center gap-2">
               <Bell size={18} className="text-primary" />
