@@ -14,7 +14,7 @@ const navItems = [
   { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true, requiredRoles: ["tasker", "bee"] as string[] },
   { label: "הפרופיל שלי", to: "/profile", icon: UserCircle, authOnly: true, requiredRoles: ["tasker", "bee"] as string[] },
   { label: "לוח הורים", to: "/parent", icon: Shield, authOnly: true, requiredRoles: ["parent"] as string[] },
-  { label: "מנויים", to: "/pricing", icon: CreditCard },
+  { label: "מנויים", to: "/pricing", icon: CreditCard, bold: true },
 ];
 
 export function MobileNav() {
@@ -123,7 +123,7 @@ export function MobileNav() {
                 )}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
-                <span className="font-medium">{item.label}</span>
+                <span className={cn("font-medium", (item as any).bold && "font-bold")}>{item.label}</span>
               </Link>
             );
           })}
