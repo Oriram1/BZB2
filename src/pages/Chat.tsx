@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
-import { Send, ArrowRight, Phone, MoreVertical } from "lucide-react";
+import { Send, ArrowLeft, ArrowRight, Phone, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -167,8 +167,8 @@ const Chat = () => {
           </Link>
           <span className="font-bold text-primary-foreground text-sm">הודעות</span>
           <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={goBack}>
-            <ArrowRight size={16} />
             חזרה
+            <ArrowLeft size={16} />
           </Button>
         </div>
       </header>
