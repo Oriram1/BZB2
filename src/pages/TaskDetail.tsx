@@ -169,7 +169,7 @@ const TaskDetail = () => {
   if (!task) return null;
 
   const isOwner = user?.id === task.creator_id;
-  const creatorAvatar = creator?.avatar_url || `https://api.multiavatar.com/${task.creator_id}.svg`;
+  const creatorAvatar = creator?.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${task.creator_id}`;
 
   return (
     <div className="min-h-screen bg-background pb-24" dir="rtl">

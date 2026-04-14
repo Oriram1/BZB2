@@ -221,7 +221,7 @@ const Profile = () => {
     );
   }
 
-  const defaultAvatar = `https://api.multiavatar.com/${user.id}.svg`;
+  const defaultAvatar = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${user.id}`;
   const displayAvatar = avatarUrl || defaultAvatar;
   const displayName = `${form.first_name} ${form.last_name}`.trim() || user.email || "משתמש";
   const roleLabel = isTasker ? "מציע מטלות" : isBee ? "מבצע מטלות 🐝" : roles.includes("parent") ? "הורה" : "";
@@ -363,7 +363,7 @@ const Profile = () => {
                             <div key={app.id} className="flex items-center justify-between bg-card rounded-xl p-2.5">
                               <div className="flex items-center gap-2">
                                 <Avatar className="w-8 h-8">
-                                  <AvatarImage src={app.profile?.avatar_url || `https://api.multiavatar.com/${app.applicant_id}.svg`} />
+                                  <AvatarImage src={app.profile?.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${app.applicant_id}`} />
                                   <AvatarFallback>👤</AvatarFallback>
                                 </Avatar>
                                 <div>
