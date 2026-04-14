@@ -86,7 +86,6 @@ const TaskList = () => {
             <img src={bzbLogo} alt="BZB" className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
-          <div className="flex items-center gap-2">
           <nav className="flex items-center gap-2">
             {isTasker && (
               <Link to="/create-task">
@@ -105,6 +104,9 @@ const TaskList = () => {
                 כניסה
               </Button>
             </Link>
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full text-primary-foreground hover:bg-primary-foreground/10">
+              <ArrowLeft size={20} />
+            </Button>
           </nav>
         </div>
       </header>
