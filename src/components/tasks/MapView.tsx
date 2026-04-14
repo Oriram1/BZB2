@@ -1,90 +1,65 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import type { Task } from "./TaskCard";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
-const categoryEmoji: Record<string, string> = {
-  housework: "🏠",
-  handyman: "🔧",
-  tutoring: "📚",
-  babysitting: "👶",
-  pets: "🐾",
-  gardening: "🌿",
-  other: "📦",
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+const containerStyle = {
+  width: "100%",
+  height: "500px",
 };
 
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
-  const mapRef = useRef<L.Map | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<L.Marker[]>([]);
 
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+  });
 
-    const center: [number, number] = tasks.length > 0
-      ? [tasks.reduce((s, t) => s + t.lat, 0) / tasks.length, tasks.reduce((s, t) => s + t.lng, 0) / tasks.length]
-      : [32.08, 34.78];
+  const center =
+    tasks.length > 0
+      ? {
+          lat: tasks.reduce((s, t) => s + t.lat, 0) / tasks.length,
+          lng: tasks.reduce((s, t) => s + t.lng, 0) / tasks.length,
+        }
+      : { lat: 32.08, lng: 34.78 };
 
-    const map = L.map(containerRef.current, { zoomControl: false }).setView(center, 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
-
-    L.control.zoom({ position: "topright" }).addTo(map);
-    mapRef.current = map;
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
+  const handleMarkerClick = useCallback((taskId: number) => {
+    setSelectedTask((prev) => (prev === taskId ? null : taskId));
   }, []);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    // Clear old markers
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    tasks.forEach((task) => {
-      const emoji = categoryEmoji[task.category] || "📌";
-      const icon = L.divIcon({
-        className: "custom-task-marker",
-        html: `<div style="
-          width:40px;height:40px;border-radius:50%;
-          display:flex;align-items:center;justify-content:center;
-          font-size:20px;
-          background:${task.id === selectedTask ? "linear-gradient(135deg,#FCD34D,#F59E0B)" : "white"};
-          border:3px solid ${task.id === selectedTask ? "#B45309" : "#E5E7EB"};
-          box-shadow:0 4px 12px rgba(0,0,0,0.2);
-          cursor:pointer;
-        ">${emoji}</div>`,
-        iconSize: [40, 40],
-        iconAnchor: [20, 40],
-      });
-
-      const marker = L.marker([task.lat, task.lng], { icon }).addTo(map);
-      marker.on("click", () => {
-        setSelectedTask((prev) => (prev === task.id ? null : task.id));
-      });
-      markersRef.current.push(marker);
-    });
-
-    if (tasks.length > 0) {
-      const bounds = L.latLngBounds(tasks.map((t) => [t.lat, t.lng] as [number, number]));
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-    }
-  }, [tasks, selectedTask]);
+  if (!isLoaded) {
+    return (
+      <div className="rounded-3xl overflow-hidden border border-border shadow-lg h-[500px] flex items-center justify-center bg-muted">
+        <p className="text-muted-foreground">טוען מפה...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-3xl overflow-hidden border border-border shadow-lg animate-fade-in relative">
-      <div ref={containerRef} style={{ height: "500px", width: "100%" }} />
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={center}
+        zoom={12}
+        options={{
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: false,
+        }}
+      >
+        {tasks.map((task) => (
+          <Marker
+            key={task.id}
+            position={{ lat: task.lat, lng: task.lng }}
+            onClick={() => handleMarkerClick(task.id)}
+          />
+        ))}
+      </GoogleMap>
 
       {selected && (
         <div className="absolute bottom-4 left-4 right-4 bg-card rounded-2xl p-4 border border-border shadow-xl animate-slide-up z-[1000]">
