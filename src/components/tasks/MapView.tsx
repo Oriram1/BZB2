@@ -1,11 +1,10 @@
 import { useState, useCallback } from "react";
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api";
+import { GoogleMap, Marker } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import type { Task } from "./TaskCard";
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+import { useGoogleMaps } from "./GoogleMapsProvider";
 
 const containerStyle = {
   width: "100%",
@@ -15,10 +14,7 @@ const containerStyle = {
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
-
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-  });
+  const { isLoaded } = useGoogleMaps();
 
   const center =
     tasks.length > 0

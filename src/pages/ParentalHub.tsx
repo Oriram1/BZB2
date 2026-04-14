@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { GoogleMap, Marker } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
