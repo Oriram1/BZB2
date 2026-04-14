@@ -100,6 +100,10 @@ const CreateTask = () => {
       return;
     }
     setLoading(true);
+    let imageUrl: string | null = null;
+    if (imageFile) {
+      imageUrl = await uploadImage();
+    }
     const { error } = await supabase.from("tasks").insert({
       creator_id: user.id,
       category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
@@ -117,6 +121,7 @@ const CreateTask = () => {
       duration_hours: form.duration ? (form.durationUnit === "minutes" ? parseFloat(form.duration) / 60 : parseFloat(form.duration)) : null,
       expiry_hours: parseInt(form.expiry) || 24,
       notes: form.notes || null,
+      image_url: imageUrl,
     });
     setLoading(false);
     if (error) {
