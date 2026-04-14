@@ -39,7 +39,7 @@ const Landing = () => {
             🐝 Your chores are their honey 🍯
           </p>
           <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
-            <Link to="/auth">
+            <Link to="/pricing">
               <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
                 בואו נתחיל! 🚀
               </Button>
