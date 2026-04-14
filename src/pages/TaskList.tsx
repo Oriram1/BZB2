@@ -26,6 +26,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const TaskList = () => {
+  const navigate = useNavigate();
   const { roles } = useAuth();
   const isTasker = roles.includes("tasker");
   const [selectedCategory, setSelectedCategory] = useState("all");
