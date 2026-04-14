@@ -142,7 +142,7 @@ const MyTasks = () => {
                     <p className="text-muted-foreground text-sm">{task.short_desc}</p>
                   </div>
                   <Badge className="gradient-honey text-primary-foreground border-none rounded-xl font-bold">
-                    {task.status === "open" ? "הרחבה" : task.status === "accepted" ? "התקבלה" : task.status === "in_progress" ? "בביצוע" : task.status === "completed" ? "הושלמה" : "בוטלה"} : task.status === "accepted" ? "התקבלה" : task.status === "in_progress" ? "בביצוע" : task.status === "completed" ? "הושלמה" : "בוטלה"}
+                    {task.status === "open" ? "הרחבה" : task.status === "accepted" ? "התקבלה" : task.status === "in_progress" ? "בביצוע" : task.status === "completed" ? "הושלמה" : "בוטלה"}
                   </Badge>
                 </div>
 

@@ -225,7 +225,7 @@ const Profile = () => {
   const displayAvatar = avatarUrl || defaultAvatar;
   const displayName = `${form.first_name} ${form.last_name}`.trim() || user.email || "משתמש";
   const roleLabel = isTasker ? "מציע מטלות" : isBee ? "מבצע מטלות 🐝" : roles.includes("parent") ? "הורה" : "";
-  const statusLabel = (s: string) => const statusLabel = (s: string) => s === "open" ? "הרחבה" : s === "accepted" ? "התקבלה" : s === "in_progress" ? "בביצוע" : s === "completed" ? "הושלמה" : "בוטלה"; : s === "accepted" ? "התקבלה" : s === "in_progress" ? "בביצוע" : s === "completed" ? "הושלמה" : "בוטלה";
+  const statusLabel = (s: string) => s === "open" ? "הרחבה" : s === "accepted" ? "התקבלה" : s === "in_progress" ? "בביצוע" : s === "completed" ? "הושלמה" : "בוטלה";
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
