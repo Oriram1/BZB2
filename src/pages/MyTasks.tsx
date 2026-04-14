@@ -182,7 +182,7 @@ const MyTasks = () => {
                           <div className="flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleApplicationStatus(app.id, "accepted")}
+                              onClick={() => handleApplicationStatus(app.id, task.id, app.applicant_id, "accepted")}
                               className="gradient-honey text-primary-foreground rounded-full border-none hover:scale-105 transition-transform duration-300 font-bold"
                             >
                               קבל ✓
@@ -190,7 +190,7 @@ const MyTasks = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleApplicationStatus(app.id, "rejected")}
+                              onClick={() => handleApplicationStatus(app.id, task.id, app.applicant_id, "rejected")}
                               className="rounded-full border-border text-muted-foreground hover:text-destructive hover:border-destructive font-semibold"
                             >
                               דחה ✕
