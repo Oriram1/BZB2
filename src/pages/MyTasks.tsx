@@ -24,6 +24,7 @@ interface TaskWithApplications {
 
 const MyTasks = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskWithApplications[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -32,6 +32,7 @@ const mockNotifications = [
 ];
 
 const ParentalHub = () => {
+  const navigate = useNavigate();
   const [beeLatLng, setBeeLatLng] = useState<[number, number]>([32.0763, 34.7734]);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
