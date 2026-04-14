@@ -1,14 +1,7 @@
-import { useState, useCallback } from "react";
-import { GoogleMap, Marker } from "@react-google-maps/api";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "lucide-react";
 import { useGoogleMaps } from "./GoogleMapsProvider";
-
-const containerStyle = {
-  width: "100%",
-  height: "250px",
-  borderRadius: "1rem",
-};
 
 const defaultCenter = { lat: 32.08, lng: 34.78 };
 
@@ -20,19 +13,47 @@ interface GoogleMapPickerProps {
 
 const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) => {
   const { isLoaded } = useGoogleMaps();
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
   const [locating, setLocating] = useState(false);
 
   const center = lat && lng ? { lat, lng } : defaultCenter;
 
-  const handleMapClick = useCallback(
-    (e: google.maps.MapMouseEvent) => {
+  useEffect(() => {
+    if (!isLoaded || !containerRef.current || mapRef.current) return;
+
+    const map = new google.maps.Map(containerRef.current, {
+      center,
+      zoom: 13,
+      streetViewControl: false,
+      mapTypeControl: false,
+      fullscreenControl: false,
+    });
+
+    map.addListener("click", (e: google.maps.MapMouseEvent) => {
       if (e.latLng) {
         onLocationSelect(e.latLng.lat(), e.latLng.lng());
       }
-    },
-    [onLocationSelect]
-  );
+    });
+
+    mapRef.current = map;
+  }, [isLoaded]);
+
+  // Update marker when lat/lng changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (markerRef.current) {
+      markerRef.current.setMap(null);
+    }
+    if (lat && lng) {
+      markerRef.current = new google.maps.Marker({
+        position: { lat, lng },
+        map: mapRef.current,
+      });
+      mapRef.current.panTo({ lat, lng });
+    }
+  }, [lat, lng]);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
@@ -44,7 +65,6 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) =
       (pos) => {
         const { latitude, longitude } = pos.coords;
         onLocationSelect(latitude, longitude);
-        map?.panTo({ lat: latitude, lng: longitude });
         setLocating(false);
       },
       () => {
@@ -64,20 +84,7 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) =
 
   return (
     <div className="flex flex-col gap-2">
-      <GoogleMap
-        mapContainerStyle={containerStyle}
-        center={center}
-        zoom={13}
-        onClick={handleMapClick}
-        onLoad={(m) => setMap(m)}
-        options={{
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: false,
-        }}
-      >
-        {lat && lng && <Marker position={{ lat, lng }} />}
-      </GoogleMap>
+      <div ref={containerRef} style={{ width: "100%", height: "250px", borderRadius: "1rem" }} />
 
       <Button
         type="button"
