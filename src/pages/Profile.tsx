@@ -252,7 +252,7 @@ const Profile = () => {
 
       <div className="max-w-3xl mx-auto py-8 px-4 relative z-10 space-y-6">
         {/* Profile Card */}
-        <Card className="overflow-hidden border-border">
+        <Card className="border-border overflow-visible">
           <div className="h-24 gradient-honey" />
           <CardContent className="relative pt-0 -mt-12 pb-6">
             <div className="flex items-end gap-4 mb-4">
