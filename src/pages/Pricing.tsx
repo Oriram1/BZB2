@@ -2,8 +2,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -25,7 +23,7 @@ const plans = [
 
 const Pricing = () => {
   const { user } = useAuth();
-  const [wantInsurance, setWantInsurance] = useState(false);
+  
   const navigate = useNavigate();
   const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
 
@@ -106,23 +104,10 @@ const Pricing = () => {
           ))}
         </div>
 
-        {/* Insurance Option */}
-        <div className="glass rounded-3xl p-6 border border-border max-w-lg mx-auto text-center">
-          <h3 className="text-lg font-extrabold text-foreground mb-2">🛡️ ביטוח מטלות</h3>
-          <p className="text-muted-foreground text-sm mb-4">
-            למנויים בלבד - הוסיפו ביטוח בעלות של 5 ₪ לחודש
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            <Checkbox
-              id="insurance"
-              checked={wantInsurance}
-              onCheckedChange={(v) => setWantInsurance(v === true)}
-            />
-            <label htmlFor="insurance" className="text-sm font-bold text-foreground cursor-pointer">
-              אני מעוניין/ת בביטוח (+5 ₪/חודש)
-            </label>
-          </div>
-        </div>
+        {/* Insurance info note */}
+        <p className="text-center text-muted-foreground text-sm max-w-lg mx-auto">
+          🛡️ למנויים בתשלום — אפשרות להוסיף ביטוח מטלות (5 ₪/חודש) זמינה בעת ההרשמה ובמסך יצירת מטלה.
+        </p>
       </div>
     </div>
   );
