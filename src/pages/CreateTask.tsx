@@ -240,21 +240,20 @@ const CreateTask = () => {
                   <Input id="time" type="time" value={form.time} onChange={(e) => updateForm("time", e.target.value)} className="mt-1 rounded-2xl h-12" />
                 </div>
               </div>
+              <div>
+                <Label htmlFor="duration">משך זמן</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input id="duration" type="number" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="rounded-2xl h-12 flex-1" min={1} step={1} />
+                  <Select value={form.durationUnit} onValueChange={(v) => updateForm("durationUnit", v)}>
+                    <SelectTrigger className="rounded-2xl h-12 w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hours">שעות</SelectItem>
+                      <SelectItem value="minutes">דקות</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="duration">משך זמן</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input id="duration" type="number" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="rounded-2xl h-12 flex-1" min={1} step={1} />
-                    <Select value={form.durationUnit} onValueChange={(v) => updateForm("durationUnit", v)}>
-                      <SelectTrigger className="rounded-2xl h-12 w-28"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hours">שעות</SelectItem>
-                        <SelectItem value="minutes">דקות</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                </div>
                 <div>
                   <Label htmlFor="expiry">תוקף (שעות)</Label>
                   <Input id="expiry" type="number" value={form.expiry} onChange={(e) => updateForm("expiry", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
