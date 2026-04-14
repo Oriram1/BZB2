@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import bzbLogo from "@/assets/bzb-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const plans = [
   {
@@ -22,9 +24,18 @@ const plans = [
 ];
 
 const Pricing = () => {
+  const { user } = useAuth();
   const [wantInsurance, setWantInsurance] = useState(false);
   const navigate = useNavigate();
   const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
+
+  const handlePlanClick = (planId: string) => {
+    if (!user) {
+      navigate("/register/proposer");
+    } else {
+      toast.info("מערכת הסליקה תהיה זמינה בקרוב");
+    }
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
@@ -82,6 +93,7 @@ const Pricing = () => {
                 ))}
               </ul>
               <Button
+                onClick={() => handlePlanClick(plan.id)}
                 className={`w-full py-5 rounded-2xl font-extrabold text-lg border-none hover:scale-[1.02] transition-transform duration-300 ${
                   plan.popular
                     ? "gradient-honey text-primary-foreground"
