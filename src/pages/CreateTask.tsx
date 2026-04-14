@@ -100,13 +100,13 @@ const CreateTask = () => {
 
       <div className="relative z-10 w-full max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
-            <ArrowLeft size={22} />
-          </Button>
-          <h1 className="text-2xl font-extrabold text-foreground">פרסום מטלה חדשה 📋</h1>
           <Link to="/">
             <img src={bzbLogo} alt="BZB" className="w-12 h-12 hover:animate-buzz" />
           </Link>
+          <h1 className="text-2xl font-extrabold text-foreground">פרסום מטלה חדשה 📋</h1>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
+            <ArrowLeft size={22} />
+          </Button>
         </div>
 
         {/* Progress Steps */}
