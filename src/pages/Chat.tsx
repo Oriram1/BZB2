@@ -167,8 +167,8 @@ const Chat = () => {
           </Link>
           <span className="font-bold text-primary-foreground text-sm">הודעות</span>
           <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={goBack}>
-            <ArrowRight size={16} />
             חזרה
+            <ArrowLeft size={16} />
           </Button>
         </div>
       </header>
