@@ -1,9 +1,8 @@
 import { useState, useCallback } from "react";
-import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { GoogleMap, Marker } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "lucide-react";
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+import { useGoogleMaps } from "./GoogleMapsProvider";
 
 const containerStyle = {
   width: "100%",
@@ -11,7 +10,7 @@ const containerStyle = {
   borderRadius: "1rem",
 };
 
-const defaultCenter = { lat: 32.08, lng: 34.78 }; // Tel Aviv
+const defaultCenter = { lat: 32.08, lng: 34.78 };
 
 interface GoogleMapPickerProps {
   lat: number | null;
@@ -20,10 +19,7 @@ interface GoogleMapPickerProps {
 }
 
 const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) => {
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-  });
-
+  const { isLoaded } = useGoogleMaps();
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [locating, setLocating] = useState(false);
 

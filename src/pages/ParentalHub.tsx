@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { GoogleMap, Marker } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import bzbLogo from "@/assets/bzb-logo.png";
 import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User, ArrowLeft, DollarSign } from "lucide-react";
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+import { useGoogleMaps } from "@/components/tasks/GoogleMapsProvider";
 
 const TASK_LOCATION = { lat: 32.0753, lng: 34.7754 };
 
@@ -36,9 +35,7 @@ const ParentalHub = () => {
   const navigate = useNavigate();
   const [beePosition, setBeePosition] = useState({ lat: 32.0763, lng: 34.7734 });
 
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-  });
+  const { isLoaded } = useGoogleMaps();
 
   // Simulate real-time movement
   useEffect(() => {
