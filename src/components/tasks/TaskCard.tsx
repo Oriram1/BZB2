@@ -89,23 +89,25 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
         <div className="flex items-center gap-1.5"><Clock size={14} className="text-primary" />{task.time}</div>
         <div className="flex items-center gap-1.5"><Clock size={14} className="text-primary" />{task.duration} שעות</div>
       </div>
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border relative">
-        {isBee && (
-          <Badge className="gradient-honey text-primary-foreground border-none rounded-xl font-bold animate-pulse">
-            הרחבה
-          </Badge>
-        )}
-        {!isBee && <div />}
-        {isBee && (
-          <Button
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); handleApply(); }}
-            className="gradient-honey text-primary-foreground rounded-full border-none hover:scale-110 active:scale-95 transition-transform duration-300 font-bold"
-          >
-            אני מעוניין/ת 🐝
-          </Button>
-        )}
-      </div>
+      {user && (
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border relative">
+          {isBee && (
+            <Badge className="gradient-honey text-primary-foreground border-none rounded-xl font-bold animate-pulse">
+              הרחבה
+            </Badge>
+          )}
+          {!isBee && <div />}
+          {isBee && (
+            <Button
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); handleApply(); }}
+              className="gradient-honey text-primary-foreground rounded-full border-none hover:scale-110 active:scale-95 transition-transform duration-300 font-bold"
+            >
+              אני מעוניין/ת 🐝
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
