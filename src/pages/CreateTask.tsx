@@ -142,7 +142,7 @@ const CreateTask = () => {
       <div className="relative z-10 w-full max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Link to="/">
-            <img src={bzbLogo} alt="BZB" className="w-12 h-12 hover:animate-buzz" />
+            <BzbLogo className="w-12 h-12" animate />
           </Link>
           <h1 className="text-2xl font-extrabold text-foreground">פרסום מטלה חדשה 📋</h1>
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">

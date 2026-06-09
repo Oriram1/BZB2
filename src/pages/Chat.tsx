@@ -162,7 +162,7 @@ const Chat = () => {
       <header className="gradient-honey py-3 px-4 shadow-md z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img src={bzbLogo} alt="BZB" className="w-8 h-8" />
+            <BzbLogo className="w-8 h-8" />
             <span className="font-extrabold text-primary-foreground">BZB</span>
           </Link>
           <span className="font-bold text-primary-foreground text-sm">הודעות</span>

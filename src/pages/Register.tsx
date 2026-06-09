@@ -79,7 +79,7 @@ const Register = () => {
       <div className="relative z-10 w-full max-w-lg mx-auto glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in">
         <div className="flex flex-col items-center mb-6">
           <Link to="/">
-            <img src={bzbLogo} alt="BZB" className="w-16 h-16 mb-3 hover:animate-buzz" />
+            <BzbLogo className="w-16 h-16 mb-3" animate />
           </Link>
           <h1 className="text-2xl font-extrabold text-foreground">{title}</h1>
         </div>

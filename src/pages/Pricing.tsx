@@ -44,7 +44,7 @@ const Pricing = () => {
       <header className="relative z-20 gradient-honey py-4 px-4 sticky top-0 shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img src={bzbLogo} alt="BZB" className="w-10 h-10" />
+            <BzbLogo className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
           <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={goBack}>
