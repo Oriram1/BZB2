@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,7 +35,7 @@ const Login = () => {
       <div className="relative z-10 w-full max-w-md glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in">
         <div className="flex flex-col items-center mb-8">
           <Link to="/">
-            <img src={bzbLogo} alt="BZB" className="w-20 h-20 mb-4 hover:animate-buzz transition-transform" />
+            <BzbLogo className="w-20 h-20 mb-4" animate />
           </Link>
           <h1 className="text-2xl font-extrabold text-foreground">כניסה</h1>
         </div>

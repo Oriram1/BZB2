@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 
 const Auth = () => {
   return (
@@ -12,7 +12,7 @@ const Auth = () => {
 
       <div className="relative z-10 w-full max-w-md glass rounded-3xl shadow-glow p-8 border border-primary-foreground/10 animate-pop-in">
         <div className="flex flex-col items-center mb-8">
-          <img src={bzbLogo} alt="BZB" className="w-24 h-24 mb-4 animate-float" />
+          <BzbLogo className="w-24 h-24 mb-4 animate-float" />
           <h1 className="text-3xl font-extrabold text-foreground">ברוכים הבאים</h1>
           <p className="text-muted-foreground mt-1 font-medium">Busy Bee 🐝</p>
         </div>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 import { Send, ArrowLeft, ArrowRight, Phone, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -162,7 +162,7 @@ const Chat = () => {
       <header className="gradient-honey py-3 px-4 shadow-md z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img src={bzbLogo} alt="BZB" className="w-8 h-8" />
+            <BzbLogo className="w-8 h-8" />
             <span className="font-extrabold text-primary-foreground">BZB</span>
           </Link>
           <span className="font-bold text-primary-foreground text-sm">הודעות</span>

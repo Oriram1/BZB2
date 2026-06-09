@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User, ArrowLeft } from "lucide-react";
 import { useGoogleMaps } from "@/components/tasks/GoogleMapsProvider";
 
@@ -91,7 +91,7 @@ const ParentalHub = () => {
       <header className="gradient-honey py-4 px-4 sticky top-0 z-50 shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <img src={bzbLogo} alt="BZB" className="w-10 h-10" />
+            <BzbLogo className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
           <div className="flex items-center gap-2">
