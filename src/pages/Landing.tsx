@@ -1,6 +1,18 @@
 import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { ListTodo, PlusCircle, ClipboardList, MessageCircle, UserCircle, CreditCard, Shield } from "lucide-react";
+
+const quickLinks = [
+  { label: "מטלות זמינות", to: "/tasks", icon: ListTodo, roles: ["tasker", "bee", "parent"] },
+  { label: "צור מטלה", to: "/create-task", icon: PlusCircle, roles: ["tasker"] },
+  { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList, roles: ["tasker"] },
+  { label: "צ'אט", to: "/chat", icon: MessageCircle, roles: ["tasker", "bee"] },
+  { label: "הפרופיל שלי", to: "/profile", icon: UserCircle, roles: ["tasker", "bee"] },
+  { label: "לוח הורים", to: "/parent", icon: Shield, roles: ["parent"] },
+  { label: "מנויים", to: "/pricing", icon: CreditCard, roles: ["tasker", "bee", "parent"] },
+];
 
 const Landing = () => {
   return (
