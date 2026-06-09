@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import bzbLogo from "@/assets/bzb-logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
 
