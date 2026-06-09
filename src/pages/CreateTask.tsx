@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Link, useNavigate } from "react-router-dom";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowLeft } from "lucide-react";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User, ArrowLeft } from "lucide-react";
 import { useGoogleMaps } from "@/components/tasks/GoogleMapsProvider";
 

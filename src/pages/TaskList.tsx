@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 import { Map, List, SlidersHorizontal, Home, Wrench, BookOpen, Baby, PawPrint, Leaf, Package, Sparkles, ArrowLeft } from "lucide-react";
 import TaskCard from "@/components/tasks/TaskCard";
 import MapView from "@/components/tasks/MapView";

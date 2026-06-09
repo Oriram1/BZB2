@@ -10,7 +10,7 @@ import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import bzbLogo from "@/assets/bzb-logo.png";
+import BzbLogo from "@/components/BzbLogo";
 import {
   User, Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
   Eye, Users, CheckCircle, Clock, BarChart3, ArrowLeft
