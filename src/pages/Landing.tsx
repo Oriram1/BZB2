@@ -15,6 +15,8 @@ const quickLinks = [
 ];
 
 const Landing = () => {
+  const { user, roles } = useAuth();
+  const visibleLinks = quickLinks.filter((l) => l.roles.some((r) => roles.includes(r)));
   return (
     <div className="min-h-screen flex flex-col overflow-hidden">
       {/* Hero Section */}
