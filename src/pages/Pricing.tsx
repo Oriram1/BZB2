@@ -29,9 +29,11 @@ const Pricing = () => {
 
   const handlePlanClick = (planId: string) => {
     if (!user) {
-      navigate("/register/proposer");
+      navigate(`/register/proposer?plan=${planId}`);
+    } else if (planId === "free") {
+      toast.info("אתה כבר רשום בתוכנית החינמית");
     } else {
-      toast.info("מערכת הסליקה תהיה זמינה בקרוב");
+      navigate(`/register/proposer?plan=${planId}`);
     }
   };
 
