@@ -2,21 +2,8 @@ import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { ListTodo, PlusCircle, ClipboardList, MessageCircle, UserCircle, CreditCard, Shield } from "lucide-react";
-
-const quickLinks = [
-  { label: "מטלות זמינות", to: "/tasks", icon: ListTodo, roles: ["tasker", "bee", "parent"] },
-  { label: "צור מטלה", to: "/create-task", icon: PlusCircle, roles: ["tasker"] },
-  { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList, roles: ["tasker"] },
-  { label: "צ'אט", to: "/chat", icon: MessageCircle, roles: ["tasker", "bee"] },
-  { label: "הפרופיל שלי", to: "/profile", icon: UserCircle, roles: ["tasker", "bee"] },
-  { label: "לוח הורים", to: "/parent", icon: Shield, roles: ["parent"] },
-  { label: "מנויים", to: "/pricing", icon: CreditCard, roles: ["tasker", "bee", "parent"] },
-];
-
 const Landing = () => {
-  const { user, roles } = useAuth();
-  const visibleLinks = quickLinks.filter((l) => l.roles.some((r) => roles.includes(r)));
+  const { user } = useAuth();
   return (
     <div className="min-h-screen flex flex-col overflow-hidden">
       {/* Hero Section */}
@@ -51,21 +38,7 @@ const Landing = () => {
           <p className="text-lg md:text-xl text-primary-foreground/85 font-medium animate-slide-up" style={{ animationDelay: "0.2s" }}>
             🐝 Your chores are their honey 🍯
           </p>
-          {user ? (
-            <div className="w-full max-w-2xl grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }} dir="rtl">
-              {visibleLinks.map((link) => (
-                <Link key={link.to} to={link.to}>
-                  <Button
-                    size="lg"
-                    className="w-full h-auto py-5 px-3 bg-card text-foreground shadow-glow font-extrabold rounded-2xl border-none hover:scale-105 transition-transform duration-300 flex flex-col items-center gap-2"
-                  >
-                    <link.icon className="w-6 h-6 text-primary" />
-                    <span className="text-sm">{link.label}</span>
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          ) : (
+          {!user && (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
               <Link to="/pricing">
                 <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
