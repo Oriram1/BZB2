@@ -88,8 +88,12 @@ export function MobileNav() {
           </div>
 
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <UserCircle className="w-6 h-6 text-primary" />
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <UserCircle className="w-6 h-6 text-primary" />
+              )}
             </div>
             {user ? (
               <div className="flex-1 min-w-0">
