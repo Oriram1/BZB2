@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          success: boolean
+          target_identifier: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          success?: boolean
+          target_identifier?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          success?: boolean
+          target_identifier?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -289,7 +322,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "tasker" | "bee" | "parent"
+      app_role: "tasker" | "bee" | "parent" | "admin"
       application_status: "pending" | "accepted" | "rejected"
       payment_type: "task" | "hour"
       task_category:
@@ -433,7 +466,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["tasker", "bee", "parent"],
+      app_role: ["tasker", "bee", "parent", "admin"],
       application_status: ["pending", "accepted", "rejected"],
       payment_type: ["task", "hour"],
       task_category: [
