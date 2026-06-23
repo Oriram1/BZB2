@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
