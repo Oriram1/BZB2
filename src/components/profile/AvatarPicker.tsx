@@ -16,6 +16,7 @@ interface AvatarPickerProps {
 export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: AvatarPickerProps) {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const { refreshProfile } = useAuth();
 
   const persist = async (url: string) => {
     const { error } = await supabase
@@ -28,6 +29,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
       return false;
     }
     onAvatarChange(url);
+    await refreshProfile();
     toast.success("התמונה עודכנה!");
     setOpen(false);
     return true;
