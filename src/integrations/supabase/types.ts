@@ -289,7 +289,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "tasker" | "bee" | "parent"
+      app_role: "tasker" | "bee" | "parent" | "admin"
       application_status: "pending" | "accepted" | "rejected"
       payment_type: "task" | "hour"
       task_category:
@@ -433,7 +433,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["tasker", "bee", "parent"],
+      app_role: ["tasker", "bee", "parent", "admin"],
       application_status: ["pending", "accepted", "rejected"],
       payment_type: ["task", "hour"],
       task_category: [
