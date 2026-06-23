@@ -30,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   roles: [],
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
