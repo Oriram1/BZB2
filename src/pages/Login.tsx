@@ -74,7 +74,7 @@ const Login = () => {
           <div>
             <Label htmlFor="password">סיסמה</Label>
             <div className="relative mt-1">
-              <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="rounded-2xl h-12 pr-12" required />
+              <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="rounded-2xl h-12 pe-12" required />
               <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}>
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
