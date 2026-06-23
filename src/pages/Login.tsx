@@ -73,7 +73,18 @@ const Login = () => {
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="mt-1 rounded-2xl h-12" required />
+            <div className="relative mt-1">
+              <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="rounded-2xl h-12 pr-12" required />
+              <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}>
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-start">
+            <button type="button" onClick={handleForgotPassword} disabled={forgotLoading} className="text-sm text-primary font-medium hover:underline disabled:opacity-50">
+              {forgotLoading ? "שולח..." : "שחכתי סיסמה"}
+            </button>
           </div>
 
           <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
