@@ -99,13 +99,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRoles([]);
   };
 
-  return (
-    const refreshProfile = async () => {
-      if (user) {
-        await fetchProfile(user.id);
-      }
-    };
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
 
+  return (
     <AuthContext.Provider value={{ user, session, profile, roles, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
