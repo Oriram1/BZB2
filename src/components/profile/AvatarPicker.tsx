@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import BeePicker from "@/components/bee-library/BeePicker";
 
 const AVATAR_SEEDS = [
   "Felix", "Aneka", "Mimi", "Leo", "Zoe", "Max", "Luna", "Oscar",
@@ -26,8 +28,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
   const defaultAvatar = getAvatarUrl(userId);
   const displayAvatar = currentAvatarUrl || defaultAvatar;
 
-  const handleSelectAvatar = async (seed: string) => {
-    const url = getAvatarUrl(seed);
+  const persist = async (url: string) => {
     const { error } = await supabase
       .from("profiles")
       .update({ avatar_url: url })
@@ -35,12 +36,16 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
 
     if (error) {
       toast.error("שגיאה בעדכון התמונה");
-      return;
+      return false;
     }
     onAvatarChange(url);
     toast.success("התמונה עודכנה!");
     setOpen(false);
+    return true;
   };
+
+  const handleSelectAvatar = (seed: string) => persist(getAvatarUrl(seed));
+  const handleSelectBee = (_id: string, src: string) => persist(src);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -69,19 +74,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
       .from("avatars")
       .getPublicUrl(path);
 
-    const url = `${publicUrl}?t=${Date.now()}`;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ avatar_url: url })
-      .eq("user_id", userId);
-
-    if (error) {
-      toast.error("שגיאה בעדכון הפרופיל");
-    } else {
-      onAvatarChange(url);
-      toast.success("התמונה הועלתה בהצלחה!");
-      setOpen(false);
-    }
+    await persist(`${publicUrl}?t=${Date.now()}`);
     setUploading(false);
   };
 
@@ -100,12 +93,21 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
       <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-right">בחר תמונת פרופיל</DialogTitle>
-          <DialogDescription className="text-right">בחר אווטאר מהגלריה או העלה תמונה משלך</DialogDescription>
+          <DialogDescription className="text-right">בחר דבורה, אווטאר או העלה תמונה משלך</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm font-semibold text-muted-foreground mb-3">בחר אווטאר:</p>
+        <Tabs defaultValue="bees" dir="rtl" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="bees">🐝 דבורה</TabsTrigger>
+            <TabsTrigger value="avatars">אווטאר</TabsTrigger>
+            <TabsTrigger value="upload">העלאה</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="bees" className="mt-4">
+            <BeePicker value={null} onChange={handleSelectBee} />
+          </TabsContent>
+
+          <TabsContent value="avatars" className="mt-4">
             <div className="grid grid-cols-4 gap-3">
               {AVATAR_SEEDS.map((seed) => (
                 <button
@@ -127,14 +129,13 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
                 </button>
               ))}
             </div>
-          </div>
+          </TabsContent>
 
-          <div className="border-t border-border pt-4">
-            <p className="text-sm font-semibold text-muted-foreground mb-3">או העלה תמונה:</p>
-            <label className="flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors">
+          <TabsContent value="upload" className="mt-4">
+            <label className="flex items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors">
               <Upload className="w-5 h-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                {uploading ? "מעלה..." : "לחץ לבחירת תמונה"}
+                {uploading ? "מעלה..." : "לחץ לבחירת תמונה (מקס׳ 2MB)"}
               </span>
               <input
                 type="file"
@@ -144,8 +145,8 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
                 disabled={uploading}
               />
             </label>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
