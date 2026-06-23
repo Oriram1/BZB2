@@ -6,12 +6,15 @@ import { Label } from "@/components/ui/label";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +26,23 @@ const Login = () => {
     } else {
       toast.success("התחברת בהצלחה! 🎉");
       navigate("/tasks");
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("אנא הזן את כתובת האימייל שלך");
+      return;
+    }
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("קישור לאיפוס סיסמה נשלח לאימייל שלך 📧");
     }
   };
 
@@ -53,7 +73,18 @@ const Login = () => {
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="mt-1 rounded-2xl h-12" required />
+            <div className="relative mt-1">
+              <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="rounded-2xl h-12 pe-12" required />
+              <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}>
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-start">
+            <button type="button" onClick={handleForgotPassword} disabled={forgotLoading} className="text-sm text-primary font-medium hover:underline disabled:opacity-50">
+              {forgotLoading ? "שולח..." : "שחכתי סיסמה"}
+            </button>
           </div>
 
           <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
