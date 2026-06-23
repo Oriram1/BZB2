@@ -29,6 +29,23 @@ const Login = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("אנא הזן את כתובת האימייל שלך");
+      return;
+    }
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("קישור לאיפוס סיסמה נשלח לאימייל שלך 📧");
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" dir="rtl">
       <div className="absolute inset-0 bg-muted" />
