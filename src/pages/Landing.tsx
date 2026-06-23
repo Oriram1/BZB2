@@ -38,7 +38,7 @@ const Landing = () => {
           <p className="text-lg md:text-xl text-primary-foreground/85 font-medium animate-slide-up" style={{ animationDelay: "0.2s" }}>
             🐝 Your chores are their honey 🍯
           </p>
-          {!user ? (
+          {!user && (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
               <Link to="/pricing">
                 <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
