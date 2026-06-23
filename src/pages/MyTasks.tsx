@@ -127,7 +127,7 @@ const MyTasks = () => {
             <BzbLogo className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <Link to="/create-task">
               <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300">
                 + מטלה חדשה

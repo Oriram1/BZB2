@@ -94,7 +94,7 @@ const ParentalHub = () => {
             <BzbLogo className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <Shield size={20} className="text-primary-foreground" />
             <span className="font-bold text-primary-foreground text-sm">לוח בקרה הורי</span>
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full text-primary-foreground hover:bg-primary-foreground/10">

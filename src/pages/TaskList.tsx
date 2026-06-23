@@ -86,7 +86,7 @@ const TaskList = () => {
             <BzbLogo className="w-10 h-10" />
             <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
           </Link>
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-4">
             {isTasker && (
               <Link to="/create-task">
                 <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 active:scale-95 transition-transform duration-300">
