@@ -21,10 +21,13 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         <Input
           ref={ref}
           type={visible ? "text" : "password"}
-          // Passwords are effectively LTR strings; typing them in an RTL field
-          // puts the caret on the wrong side. pe-12 leaves room for the toggle.
+          // dir="ltr" keeps Latin characters and the caret in the right order,
+          // but the text is right-aligned so it reads with the rest of the
+          // Hebrew form. ps-12 is the padding on the side the toggle sits on:
+          // the button uses `end-1` against the RTL wrapper (= left), which is
+          // the inline START of this LTR input.
           dir="ltr"
-          className={cn("pe-12", className)}
+          className={cn("ps-12 text-right", className)}
           {...props}
         />
         <button
