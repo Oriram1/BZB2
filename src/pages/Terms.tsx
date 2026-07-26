@@ -9,7 +9,7 @@ const Terms = () => {
   return (
     <div className="min-h-screen bg-muted py-12 px-4" dir="rtl">
       <div className="max-w-3xl mx-auto bg-card rounded-3xl shadow-glow p-8 md:p-12 border border-border">
-        <button onClick={goBack} className="inline-flex items-center gap-2 text-primary font-bold mb-6 hover:underline">
+        <button onClick={goBack} className="inline-flex items-center gap-2 text-primary-ink font-bold mb-6 hover:underline">
           <ArrowRight className="w-4 h-4" />
           חזרה
         </button>

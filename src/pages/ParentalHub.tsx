@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import BzbLogo from "@/components/BzbLogo";
-import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User, ArrowLeft } from "lucide-react";
+import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { useGoogleMaps } from "@/components/tasks/GoogleMapsProvider";
 
 const TASK_LOCATION = { lat: 32.0753, lng: 34.7754 };
@@ -88,21 +88,7 @@ const ParentalHub = () => {
     <div className="min-h-screen bg-muted relative" dir="rtl">
       <div className="absolute top-40 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
 
-      <header className="gradient-honey py-4 px-4 sticky top-0 z-50 shadow-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <BzbLogo className="w-10 h-10" />
-            <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Shield size={20} className="text-primary-foreground" />
-            <span className="font-bold text-primary-foreground text-sm">לוח בקרה הורי</span>
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full text-primary-foreground hover:bg-primary-foreground/10">
-              <ArrowLeft size={20} />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="לוח בקרה הורי" icon={<Shield size={16} />} />
 
       <div className="max-w-5xl mx-auto py-8 px-4 relative z-10">
         <div className="glass rounded-3xl p-6 border border-border mb-6">
@@ -123,7 +109,7 @@ const ParentalHub = () => {
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-lg">
             <div className="p-4 border-b border-border flex items-center gap-2">
-              <MapPin size={18} className="text-primary" />
+              <MapPin size={18} className="text-primary-ink" />
               <h2 className="font-extrabold text-foreground">מיקום בזמן אמת</h2>
               <div className="mr-auto flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -153,7 +139,7 @@ const ParentalHub = () => {
 
           <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-lg">
             <div className="p-4 border-b border-border flex items-center gap-2">
-              <Bell size={18} className="text-primary" />
+              <Bell size={18} className="text-primary-ink" />
               <h2 className="font-extrabold text-foreground">התראות</h2>
               <Badge variant="secondary" className="mr-auto rounded-lg text-xs font-bold">
                 {mockNotifications.filter(n => !n.read).length} חדשות

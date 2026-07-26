@@ -1,32 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import BzbLogo from "@/components/BzbLogo";
-import { Map, List, SlidersHorizontal, Home, Wrench, BookOpen, Baby, PawPrint, Leaf, Package, Sparkles, ArrowLeft } from "lucide-react";
+import { Map, List, SlidersHorizontal, SearchX } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { categoryFilters, categoryLabel } from "@/lib/categories";
+import { distanceKm } from "@/lib/format";
 import TaskCard from "@/components/tasks/TaskCard";
 import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const categoryOptions = [
-  { value: "all", label: "הכל", icon: Sparkles },
-  { value: "housework", label: "עבודות בית", icon: Home },
-  { value: "handyman", label: "הנדימן", icon: Wrench },
-  { value: "tutoring", label: "לימודים", icon: BookOpen },
-  { value: "babysitting", label: "בייביסיטר", icon: Baby },
-  { value: "pets", label: "חיות מחמד", icon: PawPrint },
-  { value: "gardening", label: "גינון", icon: Leaf },
-  { value: "other", label: "אחר", icon: Package },
-];
-
-const categoryLabels: Record<string, string> = {
-  housework: "🏠 עבודות בית", handyman: "🔧 הנדימן", tutoring: "📚 לימודים",
-  babysitting: "👶 בייביסיטר", pets: "🐾 חיות מחמד", gardening: "🌿 גינון", other: "📦 אחר",
-};
-
 const TaskList = () => {
-  const navigate = useNavigate();
   const { roles } = useAuth();
   const isTasker = roles.includes("tasker");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -34,6 +19,18 @@ const TaskList = () => {
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  /** null until the browser hands us a position; distance stays hidden until then. */
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      // Permission denied or unavailable: leave userPos null rather than guessing.
+      () => setUserPos(null),
+      { timeout: 8000, maximumAge: 5 * 60 * 1000 },
+    );
+  }, []);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -50,7 +47,7 @@ const TaskList = () => {
           name: t.name,
           shortDesc: t.short_desc,
           category: t.category,
-          categoryLabel: categoryLabels[t.category] || "📦 אחר",
+          categoryLabel: categoryLabel(t.category),
           payment: Number(t.payment),
           paymentType: t.payment_type,
           location: t.location || "",
@@ -61,7 +58,6 @@ const TaskList = () => {
           status: t.status,
           lat: t.latitude || 32.0753,
           lng: t.longitude || 34.7754,
-          distance: Math.round(Math.random() * 8 * 10) / 10 + 0.5,
         }));
         setTasks(mapped);
       }
@@ -70,56 +66,42 @@ const TaskList = () => {
     fetchTasks();
   }, []);
 
-  const filteredTasks = tasks
+  /** Distance is only real once we know where the user is. */
+  const tasksWithDistance = tasks.map((t) => ({
+    ...t,
+    distance: userPos ? distanceKm(userPos, { lat: t.lat, lng: t.lng }) : undefined,
+  }));
+
+  const filteredTasks = tasksWithDistance
     .filter((t) => selectedCategory === "all" || t.category === selectedCategory)
-    .filter((t) => t.distance <= maxDistance);
+    // Without a location there is nothing to filter on, so show everything.
+    .filter((t) => t.distance === undefined || t.distance <= maxDistance);
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
       <div className="absolute top-40 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-20 right-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl animate-blob animation-delay-2000" />
 
-      {/* Header */}
-      <header className="gradient-honey py-4 px-4 sticky top-0 z-50 shadow-md">
-        <div className="max-w-5xl mx-auto flex items-center">
-          <Link to="/" className="flex items-center gap-2 hover:scale-105 transition-transform duration-300 shrink-0">
-            <BzbLogo className="w-10 h-10" />
-            <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
-          </Link>
-          <div className="flex-1 flex justify-center">
-            {isTasker && (
-              <Link to="/create-task">
-                <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 active:scale-95 transition-transform duration-300">
-                  + פרסם מטלה
-                </Button>
-              </Link>
-            )}
-          </div>
-          <nav className="flex items-center gap-4">
-            <Link to="/pricing">
-              <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold">
-                מחירים
+      <PageHeader
+        action={
+          isTasker && (
+            <Link to="/create-task">
+              <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 active:scale-95 transition-transform duration-300">
+                + פרסם מטלה
               </Button>
             </Link>
-            <Link to="/auth">
-              <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold">
-                כניסה
-              </Button>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full text-primary-foreground hover:bg-primary-foreground/10">
-              <ArrowLeft size={20} />
-            </Button>
-          </nav>
-        </div>
-      </header>
+          )
+        }
+      />
 
       <div className="max-w-5xl mx-auto py-8 px-4 relative z-10">
         <div className="flex items-center justify-between mb-6 animate-fade-in">
-          <h1 className="text-3xl font-extrabold text-foreground">מטלות זמינות 🐝</h1>
-          <div className="flex items-center gap-1 bg-card rounded-2xl p-1 border border-border shadow-sm">
+          <h1 className="text-3xl font-bold text-foreground">מטלות זמינות</h1>
+          <div className="flex items-center gap-1 bg-card rounded-2xl p-1 border border-border shadow-sm" role="group" aria-label="תצוגה">
             <button
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${
+              aria-pressed={viewMode === "list"}
+              className={`flex items-center gap-1.5 min-h-11 px-4 py-2 rounded-xl text-sm font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "list"
                   ? "gradient-honey text-primary-foreground shadow-honey"
                   : "text-muted-foreground hover:text-foreground"
@@ -130,7 +112,8 @@ const TaskList = () => {
             </button>
             <button
               onClick={() => setViewMode("map")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${
+              aria-pressed={viewMode === "map"}
+              className={`flex items-center gap-1.5 min-h-11 px-4 py-2 rounded-xl text-sm font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "map"
                   ? "gradient-honey text-primary-foreground shadow-honey"
                   : "text-muted-foreground hover:text-foreground"
@@ -144,35 +127,41 @@ const TaskList = () => {
 
         {/* Filters */}
         <div className="glass rounded-3xl p-6 border border-border mb-6 flex flex-col md:flex-row gap-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          {/* Only offer a distance filter when we can actually measure distance. */}
+          {userPos && (
+            <div className="flex-1">
+              <label htmlFor="distance-filter" className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
+                <SlidersHorizontal size={14} />
+                מרחק (ק״מ): <span className="text-primary-ink font-extrabold tabular">{maxDistance}</span>
+              </label>
+              <input
+                id="distance-filter"
+                type="range"
+                min={1}
+                max={50}
+                value={maxDistance}
+                onChange={(e) => setMaxDistance(Number(e.target.value))}
+                className="w-full h-11 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+              />
+            </div>
+          )}
           <div className="flex-1">
-            <label className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <SlidersHorizontal size={14} />
-              מרחק (ק״מ): <span className="text-primary font-extrabold">{maxDistance}</span>
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={50}
-              value={maxDistance}
-              onChange={(e) => setMaxDistance(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="text-sm font-bold text-muted-foreground mb-2 block">
+            <span id="category-filter-label" className="text-sm font-bold text-muted-foreground mb-2 block">
               קטגוריה
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {categoryOptions.map((c) => {
+            </span>
+            <div className="flex flex-wrap gap-2" role="group" aria-labelledby="category-filter-label">
+              {categoryFilters.map((c) => {
                 const Icon = c.icon;
+                const isSelected = selectedCategory === c.value;
                 return (
                   <button
                     key={c.value}
                     onClick={() => setSelectedCategory(c.value)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-300 border ${
-                      selectedCategory === c.value
-                        ? "gradient-honey text-primary-foreground border-transparent scale-105 shadow-honey"
-                        : "bg-card text-foreground border-border hover:border-primary hover:scale-105"
+                    aria-pressed={isSelected}
+                    className={`flex items-center gap-1.5 min-h-11 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-300 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      isSelected
+                        ? "gradient-honey text-primary-foreground border-transparent shadow-honey"
+                        : "bg-card text-foreground border-border hover:border-primary"
                     }`}
                   >
                     <Icon size={14} />
@@ -185,20 +174,41 @@ const TaskList = () => {
         </div>
 
         {/* Content */}
-        {viewMode === "list" ? (
-          <div className="grid md:grid-cols-2 gap-4">
-            {filteredTasks.map((task, i) => (
-              <TaskCard key={task.id} task={task} index={i} />
-            ))}
-          </div>
-        ) : (
-          <MapView tasks={filteredTasks} />
+        {!loading && filteredTasks.length > 0 && (
+          viewMode === "list" ? (
+            <div className="grid md:grid-cols-2 gap-4">
+              {filteredTasks.map((task, i) => (
+                <TaskCard key={task.id} task={task} index={i} />
+              ))}
+            </div>
+          ) : (
+            <MapView tasks={filteredTasks} />
+          )
         )}
 
-        {filteredTasks.length === 0 && (
-          <div className="text-center py-16 text-muted-foreground animate-fade-in">
-            <p className="text-6xl mb-4">🔍</p>
-            <p className="text-lg font-semibold">לא נמצאו מטלות בטווח זה</p>
+        {loading && (
+          <div className="grid md:grid-cols-2 gap-4" aria-live="polite" aria-busy="true">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="bg-card rounded-3xl p-6 border border-border h-44 animate-pulse" />
+            ))}
+            <span className="sr-only">טוען מטלות</span>
+          </div>
+        )}
+
+        {!loading && filteredTasks.length === 0 && (
+          <div className="text-center py-16 animate-fade-in">
+            <SearchX className="w-12 h-12 mx-auto mb-4 text-muted-foreground" aria-hidden="true" />
+            <p className="text-lg font-semibold text-foreground">לא נמצאו מטלות</p>
+            <p className="text-muted-foreground mt-1">
+              {selectedCategory !== "all"
+                ? "אפשר לנסות קטגוריה אחרת או להרחיב את טווח החיפוש."
+                : "עוד לא פורסמו מטלות באזור. כדאי לבדוק שוב מאוחר יותר."}
+            </p>
+            {selectedCategory !== "all" && (
+              <Button variant="outline" className="mt-4 rounded-full" onClick={() => setSelectedCategory("all")}>
+                לניקוי הסינון
+              </Button>
+            )}
           </div>
         )}
       </div>

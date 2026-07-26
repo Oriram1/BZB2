@@ -22,7 +22,9 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
-import { MobileNav } from "./components/MobileNav";
+import { MobileNav, FloatingNavTrigger } from "./components/MobileNav";
+import { BottomNav } from "./components/BottomNav";
+import { NavDrawerProvider } from "./components/NavDrawerContext";
 
 const queryClient = new QueryClient();
 
@@ -34,25 +36,31 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+          <NavDrawerProvider>
             <MobileNav />
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register/:role" element={<Register />} />
-              <Route path="/create-task" element={<RoleGuard allowedRoles={["tasker"]}><CreateTask /></RoleGuard>} />
-              <Route path="/tasks" element={<TaskList />} />
-              <Route path="/task/:id" element={<TaskDetail />} />
-              <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker"]}><MyTasks /></RoleGuard>} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
-              <Route path="/chat" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Chat /></RoleGuard>} />
-              <Route path="/profile" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Profile /></RoleGuard>} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <div className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register/:role" element={<Register />} />
+                <Route path="/create-task" element={<RoleGuard allowedRoles={["tasker"]}><CreateTask /></RoleGuard>} />
+                <Route path="/tasks" element={<TaskList />} />
+                <Route path="/task/:id" element={<TaskDetail />} />
+                <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker"]}><MyTasks /></RoleGuard>} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
+                <Route path="/chat" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Chat /></RoleGuard>} />
+                <Route path="/profile" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Profile /></RoleGuard>} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+            <BottomNav />
+            <FloatingNavTrigger />
+          </NavDrawerProvider>
           </BrowserRouter>
         </TooltipProvider>
       </GoogleMapsProvider>

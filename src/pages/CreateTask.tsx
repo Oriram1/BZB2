@@ -13,21 +13,13 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowRight } from "lucide-react";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
-
-const categories = [
-  { value: "housework", label: "🏠 עבודות בית" },
-  { value: "handyman", label: "🔧 הנדימן" },
-  { value: "tutoring", label: "📚 לימודים" },
-  { value: "babysitting", label: "👶 בייביסיטר" },
-  { value: "pets", label: "🐾 חיות מחמד" },
-  { value: "gardening", label: "🌿 גינון" },
-  { value: "other", label: "📦 אחר" },
-];
+import { formatCurrency, formatDate, formatTime } from "@/lib/format";
+import { categories, categoryLabel } from "@/lib/categories";
 
 const steps = [
   { id: 1, label: "קטגוריה", icon: Tag },
@@ -144,9 +136,9 @@ const CreateTask = () => {
           <Link to="/">
             <BzbLogo className="w-12 h-12" animate />
           </Link>
-          <h1 className="text-2xl font-extrabold text-foreground">פרסום מטלה חדשה 📋</h1>
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
-            <ArrowLeft size={22} />
+          <h1 className="text-2xl font-bold text-foreground">פרסום מטלה חדשה</h1>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full h-11 w-11" aria-label="חזרה למסך הקודם">
+            <ArrowRight size={22} />
           </Button>
         </div>
 
@@ -166,7 +158,7 @@ const CreateTask = () => {
                   }`}>
                     {isDone ? <Check size={18} /> : <Icon size={18} />}
                   </div>
-                  <span className={`text-[10px] mt-1.5 font-bold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                  <span className={`text-[10px] mt-1.5 font-bold ${isActive ? "text-primary-ink" : "text-muted-foreground"}`}>
                     {s.label}
                   </span>
                 </div>
@@ -184,22 +176,29 @@ const CreateTask = () => {
         <div className="glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in" key={step}>
           {step === 1 && (
             <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-extrabold text-foreground mb-2">בחר קטגוריה</h2>
-              <div className="grid grid-cols-3 gap-3">
-                {categories.map((c) => (
-                  <button
-                    key={c.value}
-                    onClick={() => updateForm("category", c.value)}
-                    className={`p-4 rounded-2xl text-center font-bold transition-all duration-300 border ${
-                      form.category === c.value
-                        ? "gradient-honey text-primary-foreground border-transparent shadow-honey scale-105"
-                        : "bg-card text-foreground border-border hover:border-primary hover:scale-105"
-                    }`}
-                  >
-                    <div className="text-2xl mb-1">{c.label.split(" ")[0]}</div>
-                    <div className="text-xs">{c.label.split(" ").slice(1).join(" ")}</div>
-                  </button>
-                ))}
+              <h2 className="text-xl font-bold text-foreground mb-2">בחירת קטגוריה</h2>
+              <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="קטגוריית המטלה">
+                {categories.map((c) => {
+                  const Icon = c.icon;
+                  const isSelected = form.category === c.value;
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => updateForm("category", c.value)}
+                      className={`flex flex-col items-center gap-2 p-4 min-h-20 rounded-2xl text-center font-bold transition-colors duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                        isSelected
+                          ? "gradient-honey text-primary-foreground border-transparent shadow-honey"
+                          : "bg-card text-foreground border-border hover:border-primary"
+                      }`}
+                    >
+                      <Icon size={24} aria-hidden="true" />
+                      <span className="text-xs">{c.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -229,7 +228,7 @@ const CreateTask = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="payment">תשלום מוצע (₪)</Label>
-                  <Input id="payment" type="number" value={form.payment} onChange={(e) => updateForm("payment", e.target.value)} placeholder="0" className="mt-1 rounded-2xl h-12" min={0} />
+                  <Input id="payment" type="text" inputMode="numeric" dir="ltr" value={form.payment} onChange={(e) => updateForm("payment", e.target.value)} placeholder="0" className="mt-1 rounded-2xl h-12" min={0} />
                 </div>
                 <div>
                   <Label>סוג תשלום</Label>
@@ -244,7 +243,7 @@ const CreateTask = () => {
               </div>
               <div>
                 <Label htmlFor="workers">מספר עובדים נדרש</Label>
-                <Input id="workers" type="number" value={form.workers} onChange={(e) => updateForm("workers", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
+                <Input id="workers" type="text" inputMode="numeric" dir="ltr" value={form.workers} onChange={(e) => updateForm("workers", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
               </div>
             </div>
           )}
@@ -279,7 +278,7 @@ const CreateTask = () => {
               <div>
                 <Label htmlFor="duration">משך זמן</Label>
                 <div className="flex gap-2 mt-1">
-                  <Input id="duration" type="number" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="rounded-2xl h-12 flex-1" min={1} step={1} />
+                  <Input id="duration" type="text" inputMode="numeric" dir="ltr" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="rounded-2xl h-12 flex-1" min={1} step={1} />
                   <Select value={form.durationUnit} onValueChange={(v) => updateForm("durationUnit", v)}>
                     <SelectTrigger className="rounded-2xl h-12 w-28"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -292,7 +291,7 @@ const CreateTask = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="expiry">תוקף (שעות)</Label>
-                  <Input id="expiry" type="number" value={form.expiry} onChange={(e) => updateForm("expiry", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
+                  <Input id="expiry" type="text" inputMode="numeric" dir="ltr" value={form.expiry} onChange={(e) => updateForm("expiry", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
                 </div>
               </div>
             </div>
@@ -337,7 +336,7 @@ const CreateTask = () => {
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-lg">🛡️</span>
                   <h3 className="text-sm font-extrabold text-foreground">ביטוח מטלות</h3>
-                  <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">למנויים בתשלום</span>
+                  <span className="text-xs bg-primary/10 text-primary-ink font-bold px-2 py-0.5 rounded-full">למנויים בתשלום</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
                   כיסוי לנזק ישיר לרכוש עד 2,000 ₪ למשימה (5 ₪/חודש)
@@ -356,13 +355,13 @@ const CreateTask = () => {
             <div className="flex flex-col gap-4">
               <h2 className="text-xl font-extrabold text-foreground mb-2">סיכום המטלה ✅</h2>
               <div className="bg-muted rounded-2xl p-5 space-y-3 text-sm">
-                <SummaryRow label="קטגוריה" value={categories.find(c => c.value === form.category)?.label || ""} />
+                <SummaryRow label="קטגוריה" value={categoryLabel(form.category)} />
                 <SummaryRow label="שם" value={form.taskName} />
                 <SummaryRow label="תיאור" value={form.shortDesc} />
-                <SummaryRow label="תשלום" value={`₪${form.payment} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} />
+                <SummaryRow label="תשלום" value={`${formatCurrency(Number(form.payment))} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} />
                 <SummaryRow label="עובדים" value={form.workers} />
                 <SummaryRow label="מיקום" value={form.location} />
-                <SummaryRow label="תאריך" value={`${form.date} ${form.time}`} />
+                <SummaryRow label="תאריך" value={`${formatDate(form.date)}${form.time ? `, ${formatTime(form.time)}` : ""}`} />
                 <SummaryRow label="אורך" value={`${form.duration} ${form.durationUnit === "minutes" ? "דקות" : "שעות"}`} />
                 <SummaryRow label="תוקף" value={`${form.expiry} שעות`} />
                 {form.notes && <SummaryRow label="הערות" value={form.notes} />}

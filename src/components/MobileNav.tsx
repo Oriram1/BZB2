@@ -1,24 +1,48 @@
-import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, MessageCircle, UserCircle, LogOut } from "lucide-react";
+import { Menu, X, UserCircle, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { navItems } from "@/components/navItems";
+import { useNavDrawer } from "@/components/NavDrawerContext";
 
-const navItems = [
-  { label: "דף הבית", to: "/", icon: Home },
-  { label: "כניסה / הרשמה", to: "/auth", icon: LogIn, guestOnly: true },
-  { label: "מטלות זמינות", to: "/tasks", icon: ListTodo },
-  { label: "צור מטלה", to: "/create-task", icon: PlusCircle, authOnly: true, requiredRoles: ["tasker"] as string[] },
-  { label: "המטלות שלי", to: "/my-tasks", icon: ClipboardList, authOnly: true, requiredRoles: ["tasker"] as string[] },
-  { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true, requiredRoles: ["tasker", "bee"] as string[] },
-  { label: "הפרופיל שלי", to: "/profile", icon: UserCircle, authOnly: true, requiredRoles: ["tasker", "bee"] as string[] },
-  { label: "לוח הורים", to: "/parent", icon: Shield, authOnly: true, requiredRoles: ["parent"] as string[] },
-  { label: "מנויים", to: "/pricing", icon: CreditCard, bold: true },
-];
+/**
+ * Desktop-only navigation drawer. On mobile the bottom bar is the navigation,
+ * so nothing here renders below the md breakpoint.
+ *
+ * The trigger normally lives inside PageHeader; this floating one is the
+ * fallback for the screens that have no header (landing, auth, create-task).
+ */
+export function NavDrawerTrigger({ floating = false }: { floating?: boolean }) {
+  const { open, setOpen } = useNavDrawer();
+
+  return (
+    <button
+      onClick={() => setOpen(true)}
+      className={cn(
+        "hidden md:flex items-center justify-center h-11 w-11 rounded-xl transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        floating
+          ? "fixed top-4 start-4 z-40 bg-primary text-primary-foreground shadow-lg hover:brightness-105"
+          : "text-primary-foreground hover:bg-foreground/10",
+      )}
+      aria-label="פתיחת תפריט"
+      aria-expanded={open}
+    >
+      <Menu className="w-6 h-6" aria-hidden="true" />
+    </button>
+  );
+}
+
+/** Renders the floating trigger only on screens that have no PageHeader. */
+export function FloatingNavTrigger() {
+  const { hasHeader } = useNavDrawer();
+  if (hasHeader) return null;
+  return <NavDrawerTrigger floating />;
+}
 
 export function MobileNav() {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen } = useNavDrawer();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, roles, signOut } = useAuth();
@@ -53,37 +77,34 @@ export function MobileNav() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed top-4 right-4 z-[60] p-2 rounded-xl bg-primary/90 text-primary-foreground shadow-lg backdrop-blur-sm hover:bg-primary transition-colors"
-        aria-label="פתח תפריט"
-      >
-        <Menu className="w-6 h-6" />
-      </button>
-
       {open && (
         <div
-          className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={() => setOpen(false)}
         />
       )}
 
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="תפריט ניווט"
+        aria-hidden={!open}
         className={cn(
-          "fixed top-0 right-0 z-[80] h-full w-72 bg-background border-l border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
-          open ? "translate-x-0" : "translate-x-full"
+          // Logical inset: start-0 is the right edge in Hebrew, the left edge if
+          // the app is ever switched to LTR. border-e faces the page content.
+          "fixed top-0 start-0 z-50 h-full w-72 bg-background border-e border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
+          open ? "translate-x-0" : "rtl:translate-x-full ltr:-translate-x-full"
         )}
-        dir="rtl"
       >
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-lg font-bold text-primary">🐝 BZB</span>
+            <span className="text-lg font-bold text-primary-ink">🐝 BZB</span>
             <button
               onClick={() => setOpen(false)}
-              className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-              aria-label="סגור תפריט"
+              className="flex items-center justify-center h-11 w-11 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="סגירה"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -92,7 +113,7 @@ export function MobileNav() {
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
               ) : (
-                <UserCircle className="w-6 h-6 text-primary" />
+                <UserCircle className="w-6 h-6 text-primary-ink" />
               )}
             </div>
             {user ? (
@@ -103,7 +124,7 @@ export function MobileNav() {
             ) : (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">אורח</p>
-                <Link to="/auth" onClick={() => setOpen(false)} className="text-xs text-primary hover:underline">
+                <Link to="/auth" onClick={() => setOpen(false)} className="text-xs text-primary-ink hover:underline">
                   התחבר או הירשם →
                 </Link>
               </div>
@@ -119,15 +140,17 @@ export function MobileNav() {
                 key={item.to}
                 to={item.to}
                 onClick={() => setOpen(false)}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 px-5 py-3.5 min-h-11 text-sm font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                   isActive
-                    ? "bg-primary/10 text-primary border-r-4 border-primary"
+                    ? "bg-primary/10 text-primary-ink border-s-4 border-primary"
                     : "text-foreground hover:bg-muted"
                 )}
               >
-                <item.icon className="w-5 h-5 shrink-0" />
-                <span className={cn("font-medium", (item as any).bold && "font-bold")}>{item.label}</span>
+                <item.icon className="w-5 h-5 shrink-0" aria-hidden="true" />
+                <span className={cn("font-medium", item.bold && "font-bold")}>{item.label}</span>
               </Link>
             );
           })}
@@ -137,9 +160,9 @@ export function MobileNav() {
           {user && (
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-5 py-3.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              className="flex items-center gap-3 w-full px-5 py-3.5 min-h-11 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-destructive"
             >
-              <LogOut className="w-5 h-5 shrink-0" />
+              <LogOut className="w-5 h-5 shrink-0" aria-hidden="true" />
               <span>התנתק</span>
             </button>
           )}

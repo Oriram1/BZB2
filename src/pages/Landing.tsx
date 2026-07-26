@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { categories } from "@/lib/categories";
 const Landing = () => {
   const { user } = useAuth();
   return (
@@ -35,7 +36,8 @@ const Landing = () => {
           <p className="text-2xl md:text-3xl font-bold text-primary-foreground/95 animate-slide-up" style={{ animationDelay: "0.1s" }}>
             Busy Bee
           </p>
-          <p className="text-lg md:text-xl text-primary-foreground/85 font-medium animate-slide-up" style={{ animationDelay: "0.2s" }}>
+          {/* English tagline: keep LTR so the emoji stay at the intended ends */}
+          <p dir="ltr" className="text-lg md:text-xl text-primary-foreground/85 font-medium animate-slide-up" style={{ animationDelay: "0.2s" }}>
             🐝 Your chores are their honey 🍯
           </p>
           {!user && (
@@ -102,19 +104,21 @@ const Landing = () => {
       <section className="py-20 px-4 bg-muted">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-4xl font-extrabold mb-4 text-foreground">קטגוריות</h2>
-          <p className="text-muted-foreground text-lg mb-10">מה צריכים? יש לנו! 🏠</p>
-          <div className="flex flex-wrap justify-center gap-3" dir="rtl">
-            {["🏠 עבודות בית", "🔧 הנדימן", "📚 לימודים", "👶 בייביסיטר", "🐾 חיות מחמד", "🌿 גינון", "📦 אחר"].map(
-              (cat, i) =>
-              <span
-                key={cat}
-                className="px-6 py-3 rounded-2xl bg-card shadow-sm text-foreground font-semibold border border-border card-hover cursor-default text-base"
-                style={{ animationDelay: `${i * 0.05}s` }}>
-                
-                  {cat}
-                </span>
-
-            )}
+          <p className="text-muted-foreground text-lg mb-10">מה צריכים? יש לנו!</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            {categories.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <Link
+                  key={cat.value}
+                  to="/tasks"
+                  className="flex items-center gap-2 px-6 py-3 min-h-11 rounded-2xl bg-card shadow-sm text-foreground font-semibold border border-border card-hover text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <Icon size={18} className="text-primary-ink" aria-hidden="true" />
+                  {cat.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -14,23 +14,16 @@ import {
   MapPin,
   Calendar,
   Clock,
+  Hourglass,
   FileText,
   StickyNote,
   User,
 } from "lucide-react";
-
-const categoryLabels: Record<string, string> = {
-  housework: "🏠 עבודות בית",
-  handyman: "🔧 הנדימן",
-  tutoring: "📚 לימודים",
-  babysitting: "👶 בייביסיטר",
-  pets: "🐾 חיות מחמד",
-  gardening: "🌿 גינון",
-  other: "📦 אחר",
-};
+import { formatCurrency, formatDate, formatTime, formatDuration } from "@/lib/format";
+import { categoryLabel } from "@/lib/categories";
 
 const statusLabels: Record<string, string> = {
-  open: "הרחבה",
+  open: "פתוחה להצעות",
   accepted: "התקבלה",
   in_progress: "בביצוע",
   completed: "הושלמה",
@@ -201,7 +194,7 @@ const TaskDetail = () => {
             <h2 className="font-extrabold text-2xl text-foreground">{task.name}</h2>
             <p className="text-muted-foreground mt-1">{task.short_desc}</p>
             <Badge variant="secondary" className="mt-2 rounded-xl font-bold text-xs">
-              {categoryLabels[task.category] || task.category}
+              {categoryLabel(task.category)}
             </Badge>
           </div>
         </div>
@@ -210,37 +203,39 @@ const TaskDetail = () => {
         <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <DollarSign size={16} className="text-primary" />
+              <DollarSign size={16} className="text-primary-ink" aria-hidden="true" />
               <span className="text-foreground font-semibold">
-                ₪{task.payment} / {task.payment_type === "hour" ? "שעה" : "משימה"}
+                <span className="tabular">{formatCurrency(task.payment)}</span> / {task.payment_type === "hour" ? "שעה" : "משימה"}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Users size={16} className="text-primary" />
-              <span className="text-foreground">{task.workers_needed} עובדים</span>
+              <Users size={16} className="text-primary-ink" aria-hidden="true" />
+              <span className="text-foreground">
+                {task.workers_needed === 1 ? "עובד אחד" : `${task.workers_needed} עובדים`}
+              </span>
             </div>
             {task.location && (
               <div className="flex items-center gap-2 col-span-2">
-                <MapPin size={16} className="text-primary" />
+                <MapPin size={16} className="text-primary-ink" aria-hidden="true" />
                 <span className="text-foreground">{task.location}</span>
               </div>
             )}
             {task.scheduled_date && (
               <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-primary" />
-                <span className="text-foreground">{task.scheduled_date}</span>
+                <Calendar size={16} className="text-primary-ink" aria-hidden="true" />
+                <span className="text-foreground tabular">{formatDate(task.scheduled_date)}</span>
               </div>
             )}
             {task.scheduled_time && (
               <div className="flex items-center gap-2">
-                <Clock size={16} className="text-primary" />
-                <span className="text-foreground">{task.scheduled_time}</span>
+                <Clock size={16} className="text-primary-ink" aria-hidden="true" />
+                <span className="text-foreground tabular">{formatTime(task.scheduled_time)}</span>
               </div>
             )}
             {task.duration_hours && (
               <div className="flex items-center gap-2">
-                <Clock size={16} className="text-primary" />
-                <span className="text-foreground">{task.duration_hours} שעות</span>
+                <Hourglass size={16} className="text-primary-ink" aria-hidden="true" />
+                <span className="text-foreground">{formatDuration(Number(task.duration_hours))}</span>
               </div>
             )}
           </div>
@@ -250,7 +245,7 @@ const TaskDetail = () => {
         {task.full_desc && (
           <div className="bg-card rounded-2xl border border-border p-5">
             <div className="flex items-center gap-2 mb-3">
-              <FileText size={16} className="text-primary" />
+              <FileText size={16} className="text-primary-ink" />
               <h3 className="font-bold text-foreground">תיאור מפורט</h3>
             </div>
             <p className="text-muted-foreground whitespace-pre-wrap">{task.full_desc}</p>
@@ -261,7 +256,7 @@ const TaskDetail = () => {
         {task.notes && (
           <div className="bg-card rounded-2xl border border-border p-5">
             <div className="flex items-center gap-2 mb-3">
-              <StickyNote size={16} className="text-primary" />
+              <StickyNote size={16} className="text-primary-ink" />
               <h3 className="font-bold text-foreground">הערות</h3>
             </div>
             <p className="text-muted-foreground whitespace-pre-wrap">{task.notes}</p>
