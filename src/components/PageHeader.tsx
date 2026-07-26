@@ -41,7 +41,13 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
         className,
       )}
     >
-      <div className="max-w-5xl mx-auto flex items-center gap-3">
+      {/* This row is a flex container inside dir="rtl", so DOM order IS the
+          right-to-left order: the first child renders furthest right. Navigation
+          controls therefore come first — inline-start is the right edge in Hebrew. */}
+      <div className="max-w-5xl mx-auto flex items-center gap-2">
+        {/* Desktop navigation lives in the drawer; mobile uses the bottom bar. */}
+        <NavDrawerTrigger />
+
         {showBack && (
           <Button
             variant="ghost"
@@ -72,10 +78,8 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
 
         <div className="flex-1" />
 
+        {/* Trailing edge (left in Hebrew) is for page actions, not navigation. */}
         {action && <div className="hidden md:block shrink-0">{action}</div>}
-
-        {/* Desktop navigation lives in the drawer; mobile uses the bottom bar. */}
-        <NavDrawerTrigger />
       </div>
     </header>
   );
