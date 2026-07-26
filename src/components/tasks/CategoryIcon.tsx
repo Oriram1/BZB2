@@ -11,11 +11,11 @@ const categoryIconMap: Record<string, LucideIcon> = {
 };
 
 const categoryColorMap: Record<string, string> = {
-  housework: "bg-primary/10 text-primary",
+  housework: "bg-primary/10 text-primary-ink",
   handyman: "bg-secondary/20 text-secondary-foreground",
   tutoring: "bg-accent/20 text-accent-foreground",
   babysitting: "bg-destructive/10 text-destructive",
-  pets: "bg-primary/10 text-primary",
+  pets: "bg-primary/10 text-primary-ink",
   gardening: "bg-accent/20 text-accent-foreground",
   other: "bg-muted text-muted-foreground",
 };

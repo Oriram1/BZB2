@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
+import { PasswordInput } from "@/components/ui/password-input";
+import { normalizePhone, isValidPhone } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldCheck } from "lucide-react";
 
@@ -61,7 +63,8 @@ const Register = () => {
       await supabase.from("profiles").update({
         age: parseInt(form.age) || null,
         address: form.address,
-        phone: form.phone,
+        // Store a canonical 05XXXXXXXX form regardless of how it was typed.
+        phone: normalizePhone(form.phone),
       }).eq("user_id", data.user.id);
 
       const appRole = isWorker ? "bee" : "tasker";
@@ -82,8 +85,23 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const minAge = isWorker ? 13 : 18;
+    const age = parseInt(form.age, 10);
+    if (!age || age < minAge) {
+      toast.error(`הגיל המינימלי להרשמה הוא ${minAge}`);
+      return;
+    }
+    if (!isValidPhone(form.phone)) {
+      toast.error("מספר הטלפון לא נראה תקין. לדוגמה: 050-000-0000");
+      return;
+    }
+    if (form.password.length < 6) {
+      toast.error("הסיסמה קצרה מדי. צריך לפחות 6 תווים");
+      return;
+    }
     if (!agreed) {
-      toast.error("יש לאשר את תנאי השימוש");
+      toast.error("כדי להמשיך צריך לאשר את תנאי השימוש");
       return;
     }
     // For paid plans, if insurance not yet selected, show popup offer first
@@ -118,41 +136,43 @@ const Register = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="firstName">שם פרטי</Label>
-              <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder="שם פרטי" className="mt-1 rounded-2xl h-12" required />
+              <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} autoComplete="given-name" dir="auto" className="mt-1 rounded-2xl h-12" required />
             </div>
             <div>
               <Label htmlFor="lastName">שם משפחה</Label>
-              <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder="שם משפחה" className="mt-1 rounded-2xl h-12" required />
+              <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} autoComplete="family-name" dir="auto" className="mt-1 rounded-2xl h-12" required />
             </div>
           </div>
           <div>
             <Label htmlFor="age">גיל</Label>
-            <Input id="age" type="number" value={form.age} onChange={(e) => updateField("age", e.target.value)} placeholder="גיל" className="mt-1 rounded-2xl h-12" required min={isWorker ? 13 : 18} />
+            <Input id="age" type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" required />
+            <p className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {isWorker ? 13 : 18}</p>
           </div>
           <div>
             <Label htmlFor="address">כתובת</Label>
-            <Input id="address" value={form.address} onChange={(e) => updateField("address", e.target.value)} placeholder="כתובת מלאה" className="mt-1 rounded-2xl h-12" required />
+            <Input id="address" value={form.address} onChange={(e) => updateField("address", e.target.value)} placeholder="רחוב, מספר ועיר" autoComplete="street-address" dir="auto" className="mt-1 rounded-2xl h-12" required />
           </div>
           <div>
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="email@example.com" className="mt-1 rounded-2xl h-12" dir="ltr" required />
+            <Label htmlFor="email">אימייל</Label>
+            <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="email@example.com" autoComplete="email" className="mt-1 rounded-2xl h-12" dir="ltr" required />
           </div>
           <div>
             <Label htmlFor="phone">טלפון</Label>
-            <Input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-0000000" className="mt-1 rounded-2xl h-12" dir="ltr" required />
+            <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className="mt-1 rounded-2xl h-12" dir="ltr" required />
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <Input id="password" type="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} placeholder="סיסמה (מינימום 6 תווים)" className="mt-1 rounded-2xl h-12" required minLength={6} />
+            <PasswordInput id="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} autoComplete="new-password" className="mt-1 rounded-2xl h-12" required minLength={6} />
+            <p className="text-xs text-muted-foreground mt-1">לפחות 6 תווים</p>
           </div>
 
           <div className="flex items-center gap-2 mt-2">
             <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} />
             <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
               אני מאשר/ת את{" "}
-              <Link to="/terms" className="text-primary font-bold underline" target="_blank">תנאי השימוש</Link>
+              <Link to="/terms" className="text-primary-ink font-bold underline" target="_blank">תנאי השימוש</Link>
               {" "}ואת{" "}
-              <Link to="/privacy" className="text-primary font-bold underline" target="_blank">מדיניות הפרטיות</Link>
+              <Link to="/privacy" className="text-primary-ink font-bold underline" target="_blank">מדיניות הפרטיות</Link>
             </Label>
           </div>
 
@@ -162,11 +182,11 @@ const Register = () => {
                 <Checkbox id="insurance" checked={insurance} onCheckedChange={(v) => setInsurance(v === true)} className="mt-1" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <ShieldCheck size={18} className="text-primary" />
+                    <ShieldCheck size={18} className="text-primary-ink" />
                     <Label htmlFor="insurance" className="text-base font-extrabold text-foreground cursor-pointer">
                       ביטוח מטלות
                     </Label>
-                    <Badge className="bg-primary/10 text-primary border-none rounded-full text-xs font-bold">
+                    <Badge className="bg-primary/10 text-primary-ink border-none rounded-full text-xs font-bold">
                       5 ₪/חודש
                     </Badge>
                   </div>
@@ -184,7 +204,7 @@ const Register = () => {
 
           <p className="text-center text-sm text-muted-foreground mt-2">
             כבר רשום?{" "}
-            <Link to="/login" className="text-primary font-bold underline">
+            <Link to="/login" className="text-primary-ink font-bold underline">
               התחבר
             </Link>
           </p>
@@ -202,7 +222,7 @@ const Register = () => {
               להוסיף ביטוח מטלות? 🛡️
             </DialogTitle>
             <DialogDescription className="text-center text-base font-medium text-muted-foreground pt-2">
-              לפני סיום, מומלץ להוסיף ביטוח מטלות בעלות של <span className="font-extrabold text-primary">5 ₪ בלבד לחודש</span> —
+              לפני סיום, מומלץ להוסיף ביטוח מטלות בעלות של <span className="font-extrabold text-primary-ink">5 ₪ בלבד לחודש</span> —
               כיסוי לנזקים שעלולים להתרחש במהלך ביצוע המטלות.
             </DialogDescription>
           </DialogHeader>

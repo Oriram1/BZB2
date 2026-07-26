@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import BzbLogo from "@/components/BzbLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -121,24 +120,15 @@ const MyTasks = () => {
     <div className="min-h-screen bg-muted relative" dir="rtl">
       <div className="absolute top-40 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
 
-      <header className="gradient-honey py-4 px-4 sticky top-0 z-50 shadow-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <BzbLogo className="w-10 h-10" />
-            <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link to="/create-task">
-              <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300">
-                + מטלה חדשה
-              </Button>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full text-primary-foreground hover:bg-primary-foreground/10">
-              <ArrowLeft size={20} />
+      <PageHeader
+        action={
+          <Link to="/create-task">
+            <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300">
+              + מטלה חדשה
             </Button>
-          </div>
-        </div>
-      </header>
+          </Link>
+        }
+      />
 
       <div className="max-w-3xl mx-auto py-8 px-4 relative z-10">
         <h1 className="text-3xl font-extrabold text-foreground mb-6">המטלות שלי 📋</h1>

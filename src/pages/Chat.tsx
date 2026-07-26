@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import BzbLogo from "@/components/BzbLogo";
-import { Send, ArrowLeft, ArrowRight, Phone, MoreVertical } from "lucide-react";
+import { Send, ArrowRight, Phone, MoreVertical } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -159,19 +159,7 @@ const Chat = () => {
 
   return (
     <div className="h-screen flex flex-col bg-muted" dir="rtl">
-      <header className="gradient-honey py-3 px-4 shadow-md z-50">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <BzbLogo className="w-8 h-8" />
-            <span className="font-extrabold text-primary-foreground">BZB</span>
-          </Link>
-          <span className="font-bold text-primary-foreground text-sm">הודעות</span>
-          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={goBack}>
-            חזרה
-            <ArrowLeft size={16} />
-          </Button>
-        </div>
-      </header>
+      <PageHeader title="הודעות" />
 
       <div className="flex flex-1 overflow-hidden max-w-6xl mx-auto w-full">
         {/* Sidebar */}

@@ -5,14 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
+import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
 
@@ -73,17 +72,12 @@ const Login = () => {
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <div className="relative mt-1">
-              <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="סיסמה" className="rounded-2xl h-12 pe-12" required />
-              <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}>
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
+            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="mt-1 rounded-2xl h-12" required />
           </div>
 
           <div className="flex justify-start">
-            <button type="button" onClick={handleForgotPassword} disabled={forgotLoading} className="text-sm text-primary font-medium hover:underline disabled:opacity-50">
-              {forgotLoading ? "שולח..." : "שחכתי סיסמה"}
+            <button type="button" onClick={handleForgotPassword} disabled={forgotLoading} className="text-sm text-primary-ink font-medium hover:underline disabled:opacity-50">
+              {forgotLoading ? "שולח..." : "שכחתי סיסמה"}
             </button>
           </div>
 
@@ -93,7 +87,7 @@ const Login = () => {
 
           <p className="text-center text-sm text-muted-foreground mt-2">
             עדיין לא רשום?{" "}
-            <Link to="/auth" className="text-primary font-bold underline">
+            <Link to="/auth" className="text-primary-ink font-bold underline">
               הירשם עכשיו
             </Link>
           </p>

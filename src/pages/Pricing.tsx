@@ -1,8 +1,7 @@
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import BzbLogo from "@/components/BzbLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -43,18 +42,7 @@ const Pricing = () => {
       <div className="absolute top-20 left-10 w-80 h-80 bg-primary/10 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
 
-      <header className="relative z-20 gradient-honey py-4 px-4 sticky top-0 shadow-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <BzbLogo className="w-10 h-10" />
-            <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
-          </Link>
-          <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full font-semibold" onClick={goBack}>
-            <ArrowRight size={16} />
-            חזרה
-          </Button>
-        </div>
-      </header>
+      <PageHeader title="תוכניות מנוי" />
 
       <div className="max-w-5xl mx-auto py-12 px-4 relative z-10">
         <div className="text-center mb-14">
@@ -88,7 +76,7 @@ const Pricing = () => {
               <ul className="flex flex-col gap-2.5 mb-8">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-foreground text-sm font-medium">
-                    <span className="text-primary font-bold">✓</span> {f}
+                    <span className="text-primary-ink font-bold">✓</span> {f}
                   </li>
                 ))}
               </ul>

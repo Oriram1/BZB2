@@ -10,11 +10,12 @@ import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import BzbLogo from "@/components/BzbLogo";
+import PageHeader from "@/components/PageHeader";
 import {
   User, Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
-  Eye, Users, CheckCircle, Clock, BarChart3, ArrowLeft
+  Eye, Users, CheckCircle, Clock, BarChart3
 } from "lucide-react";
+import { formatCurrency } from "@/lib/format";
 
 interface TaskStats {
   total: number;
@@ -231,24 +232,15 @@ const Profile = () => {
     <div className="min-h-screen bg-muted relative" dir="rtl">
       <div className="absolute top-40 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
 
-      <header className="gradient-honey py-4 px-4 sticky top-0 z-50 shadow-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <BzbLogo className="w-10 h-10" />
-            <span className="font-extrabold text-primary-foreground text-lg">BZB</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link to="/tasks">
-              <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300">
-                מטלות זמינות
-              </Button>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full text-primary-foreground hover:bg-primary-foreground/10">
-              <ArrowLeft size={20} />
+      <PageHeader
+        action={
+          <Link to="/tasks">
+            <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300">
+              מטלות זמינות
             </Button>
-          </div>
-        </div>
-      </header>
+          </Link>
+        }
+      />
 
       <div className="max-w-3xl mx-auto py-8 px-4 relative z-10 space-y-6">
         {/* Profile Card */}
@@ -291,7 +283,7 @@ const Profile = () => {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">גיל</Label>
-                  <Input type="number" value={form.age} onChange={e => setForm(p => ({ ...p, age: e.target.value }))} />
+                  <Input type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={e => setForm(p => ({ ...p, age: e.target.value }))} />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">טלפון</Label>
@@ -317,7 +309,7 @@ const Profile = () => {
         {isTasker && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={taskerStats.total} color="text-primary" />
+              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={taskerStats.total} color="text-primary-ink" />
               <StatCard icon={Clock} label="פתוחות" value={taskerStats.open} color="text-amber-500" />
               <StatCard icon={CheckCircle} label="הושלמו" value={taskerStats.completed} color="text-green-600" />
               <StatCard icon={Users} label="נרשמים" value={taskerStats.totalApplicants} color="text-blue-500" />
@@ -326,7 +318,7 @@ const Profile = () => {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-primary" />
+                  <BarChart3 className="w-5 h-5 text-primary-ink" />
                   המטלות שלי
                 </CardTitle>
               </CardHeader>
@@ -352,7 +344,7 @@ const Profile = () => {
                       </div>
                       <div className="flex gap-4 text-xs text-muted-foreground mb-2">
                         <span>👁️ {task.views_count} צפיות</span>
-                        <span>₪{task.payment} {task.payment_type === "hour" ? "/שעה" : "/מטלה"}</span>
+                        <span className="tabular">{formatCurrency(task.payment)} {task.payment_type === "hour" ? "/שעה" : "/מטלה"}</span>
                         <span>📝 {task.applications.length} נרשמים</span>
                       </div>
 
@@ -395,10 +387,10 @@ const Profile = () => {
 
         {isBee && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard icon={ClipboardList} label="הגשות" value={beeStats.applied} color="text-primary" />
+            <StatCard icon={ClipboardList} label="הגשות" value={beeStats.applied} color="text-primary-ink" />
             <StatCard icon={CheckCircle} label="התקבלו" value={beeStats.accepted} color="text-green-600" />
             <StatCard icon={TrendingUp} label="הושלמו" value={beeStats.completed} color="text-blue-500" />
-            <StatCard icon={DollarSign} label="הכנסות" value={`₪${beeStats.totalEarnings}`} color="text-amber-500" />
+            <StatCard icon={DollarSign} label="הכנסות" value={formatCurrency(beeStats.totalEarnings)} color="text-amber-500" />
           </div>
         )}
       </div>

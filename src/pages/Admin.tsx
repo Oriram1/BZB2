@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowRight, Shield, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Shield } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
+import { formatDate, formatTime } from "@/lib/format";
 
 interface AuditRow {
   id: string;
@@ -25,7 +27,6 @@ export default function Admin() {
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [showPwd, setShowPwd] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [audit, setAudit] = useState<AuditRow[]>([]);
 
@@ -114,25 +115,13 @@ export default function Admin() {
             </div>
             <div>
               <Label htmlFor="newPassword">סיסמה חדשה</Label>
-              <div className="relative">
-                <Input
-                  id="newPassword"
-                  type={showPwd ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="לפחות 6 תווים"
-                  className="pe-10"
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd((v) => !v)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
-                  tabIndex={-1}
-                >
-                  {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <PasswordInput
+                id="newPassword"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="לפחות 6 תווים"
+                autoComplete="new-password"
+              />
             </div>
             <Button type="submit" disabled={submitting} className="w-full">
               {submitting ? "מאפס..." : "אפס סיסמה"}
@@ -166,11 +155,12 @@ export default function Admin() {
                   <div className="text-muted-foreground">
                     יעד: {row.target_identifier ?? row.target_user_id ?? "—"}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(row.created_at).toLocaleString("he-IL")}
+                  <div className="text-xs text-muted-foreground tabular">
+                    {formatDate(row.created_at)} {formatTime(new Date(row.created_at))}
                   </div>
                   {row.details && (
-                    <pre className="text-xs bg-muted rounded p-2 overflow-x-auto">
+                    /* JSON is code: keep it LTR and left-aligned inside the RTL page. */
+                    <pre dir="ltr" className="text-xs bg-muted rounded p-2 overflow-x-auto text-left">
                       {JSON.stringify(row.details, null, 2)}
                     </pre>
                   )}

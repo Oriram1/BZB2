@@ -1,0 +1,84 @@
+import type { ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+import BzbLogo from "@/components/BzbLogo";
+import { Button } from "@/components/ui/button";
+import { NavDrawerTrigger } from "@/components/MobileNav";
+import { useRegisterHeader } from "@/components/NavDrawerContext";
+import { cn } from "@/lib/utils";
+
+interface PageHeaderProps {
+  /** Short page name shown next to the logo. */
+  title?: string;
+  /** Page-specific call to action. Hidden on mobile — the bottom bar covers navigation there. */
+  action?: ReactNode;
+  /** Optional icon rendered before the title. */
+  icon?: ReactNode;
+  showBack?: boolean;
+  className?: string;
+}
+
+/**
+ * The single app header. Replaces six near-identical copies that had drifted apart.
+ *
+ * RTL layout: back button at the inline start (right in Hebrew) and pointing
+ * right, logo next to it, page action at the inline end (left). Navigation
+ * links are deliberately absent — on mobile they live in the bottom bar and on
+ * desktop in the side drawer, so repeating them here created two competing menus.
+ */
+export function PageHeader({ title, action, icon, showBack = true, className }: PageHeaderProps) {
+  const navigate = useNavigate();
+  useRegisterHeader();
+
+  // Landing directly on a deep link leaves no history to go back to, which would
+  // bounce the user out of the app. Fall back to the home screen instead.
+  const goBack = () => (window.history.length > 2 ? navigate(-1) : navigate("/"));
+
+  return (
+    <header
+      className={cn(
+        "gradient-honey py-3 px-4 sticky top-0 z-30 shadow-md",
+        className,
+      )}
+    >
+      <div className="max-w-5xl mx-auto flex items-center gap-3">
+        {showBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goBack}
+            aria-label="חזרה למסך הקודם"
+            className="rounded-full text-primary-foreground hover:bg-foreground/10 shrink-0 h-11 w-11"
+          >
+            <ArrowRight size={20} />
+          </Button>
+        )}
+
+        <Link
+          to="/"
+          aria-label="לדף הבית"
+          className="flex items-center gap-2 shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+        >
+          <BzbLogo className="w-9 h-9" />
+          <span className="font-bold text-primary-foreground text-lg">BZB</span>
+        </Link>
+
+        {title && (
+          <span className="flex items-center gap-1.5 font-semibold text-primary-foreground/90 text-sm truncate">
+            {icon}
+            {title}
+          </span>
+        )}
+
+        <div className="flex-1" />
+
+        {action && <div className="hidden md:block shrink-0">{action}</div>}
+
+        {/* Desktop navigation lives in the drawer; mobile uses the bottom bar. */}
+        <NavDrawerTrigger />
+      </div>
+    </header>
+  );
+}
+
+export default PageHeader;
