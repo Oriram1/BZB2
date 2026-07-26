@@ -85,6 +85,11 @@
     text-align: start;
   }
 
+  /* A field that failed validation reads as invalid, not only via its message. */
+  [aria-invalid="true"] {
+    border-color: hsl(var(--destructive));
+  }
+
   .tabular {
     direction: ltr;
     font-variant-numeric: tabular-nums;

@@ -18,6 +18,28 @@ const planLabels: Record<string, string> = {
   annual: "שנתי (100 ₪ לשנה)",
 };
 
+/** Supabase returns English auth errors; show the common ones in Hebrew. */
+const hebrewAuthError = (message: string): string => {
+  const m = message.toLowerCase();
+  if (m.includes("already registered") || m.includes("already been registered"))
+    return "כתובת האימייל הזו כבר רשומה. אפשר להתחבר איתה או לבחור כתובת אחרת";
+  if (m.includes("invalid format") || m.includes("validate email"))
+    return "כתובת האימייל לא נראית תקינה";
+  if (m.includes("password") && m.includes("6"))
+    return "הסיסמה קצרה מדי. צריך לפחות 6 תווים";
+  if (m.includes("rate limit") || m.includes("too many"))
+    return "היו יותר מדי ניסיונות. כדאי לנסות שוב בעוד כמה דקות";
+  return "ההרשמה לא הושלמה. כדאי לנסות שוב בעוד רגע";
+};
+
+/** Inline field error. role="alert" so screen readers announce it on submit. */
+const FieldError = ({ id, message }: { id: string; message?: string }) =>
+  message ? (
+    <p id={`${id}-error`} role="alert" className="text-xs text-destructive font-medium mt-1">
+      {message}
+    </p>
+  ) : null;
+
 const Register = () => {
   const { role } = useParams<{ role: string }>();
   const [searchParams] = useSearchParams();
@@ -38,9 +60,44 @@ const Register = () => {
     firstName: "", lastName: "", age: "", address: "",
     email: "", phone: "", password: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const updateField = (key: string, value: string) =>
+  const updateField = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
+    // Clear the field's error as soon as the user starts fixing it.
+    setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
+  };
+
+  const minAge = isWorker ? 13 : 18;
+
+  /** Every rule in one place. Returns a message per invalid field. */
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!form.firstName.trim()) next.firstName = "חסר שם פרטי";
+    if (!form.lastName.trim()) next.lastName = "חסר שם משפחה";
+
+    const age = parseInt(form.age, 10);
+    if (!form.age.trim()) next.age = "חסר גיל";
+    else if (Number.isNaN(age) || age < minAge) next.age = `הגיל המינימלי להרשמה הוא ${minAge}`;
+    else if (age > 120) next.age = "הגיל שהוזן לא נראה תקין";
+
+    if (!form.address.trim()) next.address = "חסרה כתובת";
+
+    if (!form.email.trim()) next.email = "חסרה כתובת אימייל";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim()))
+      next.email = "כתובת האימייל לא נראית תקינה";
+
+    if (!form.phone.trim()) next.phone = "חסר מספר טלפון";
+    else if (!isValidPhone(form.phone)) next.phone = "מספר הטלפון לא תקין. לדוגמה: 050-000-0000";
+
+    if (!form.password) next.password = "חסרה סיסמה";
+    else if (form.password.length < 6)
+      next.password = `הסיסמה קצרה מדי — ${form.password.length} תווים מתוך 6 לפחות`;
+
+    if (!agreed) next.terms = "כדי להמשיך צריך לאשר את תנאי השימוש";
+
+    return next;
+  };
 
   const finishRegistration = async () => {
     setLoading(true);
@@ -54,7 +111,7 @@ const Register = () => {
     });
 
     if (error) {
-      toast.error(error.message);
+      toast.error(hebrewAuthError(error.message));
       setLoading(false);
       return;
     }
@@ -86,24 +143,19 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const minAge = isWorker ? 13 : 18;
-    const age = parseInt(form.age, 10);
-    if (!age || age < minAge) {
-      toast.error(`הגיל המינימלי להרשמה הוא ${minAge}`);
+    const found = validate();
+    setErrors(found);
+
+    const firstInvalid = Object.keys(found).find((key) => found[key]);
+    if (firstInvalid) {
+      // Send focus to the first problem so the user lands on it directly,
+      // instead of hunting for what went wrong.
+      const el = document.getElementById(firstInvalid === "terms" ? "terms" : firstInvalid);
+      el?.focus();
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
     }
-    if (!isValidPhone(form.phone)) {
-      toast.error("מספר הטלפון לא נראה תקין. לדוגמה: 050-000-0000");
-      return;
-    }
-    if (form.password.length < 6) {
-      toast.error("הסיסמה קצרה מדי. צריך לפחות 6 תווים");
-      return;
-    }
-    if (!agreed) {
-      toast.error("כדי להמשיך צריך לאשר את תנאי השימוש");
-      return;
-    }
+
     // For paid plans, if insurance not yet selected, show popup offer first
     if (isPaidPlan && !insurance) {
       setShowInsurancePopup(true);
@@ -132,48 +184,76 @@ const Register = () => {
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* noValidate: the browser's own check blocks submit and shows an English
+            tooltip, which meant our Hebrew messages never ran. Validation is ours. */}
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="firstName">שם פרטי</Label>
-              <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} autoComplete="given-name" dir="auto" className="mt-1 rounded-2xl h-12" required />
+              <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} autoComplete="given-name" dir="auto" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} />
+              <FieldError id="firstName" message={errors.firstName} />
             </div>
             <div>
               <Label htmlFor="lastName">שם משפחה</Label>
-              <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} autoComplete="family-name" dir="auto" className="mt-1 rounded-2xl h-12" required />
+              <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} autoComplete="family-name" dir="auto" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} />
+              <FieldError id="lastName" message={errors.lastName} />
             </div>
           </div>
           <div>
             <Label htmlFor="age">גיל</Label>
-            <Input id="age" type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" required />
-            <p className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {isWorker ? 13 : 18}</p>
+            <Input id="age" type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.age} aria-describedby={errors.age ? "age-error" : "age-hint"} />
+            {errors.age
+              ? <FieldError id="age" message={errors.age} />
+              : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}</p>}
           </div>
           <div>
             <Label htmlFor="address">כתובת</Label>
-            <Input id="address" value={form.address} onChange={(e) => updateField("address", e.target.value)} placeholder="רחוב, מספר ועיר" autoComplete="street-address" dir="auto" className="mt-1 rounded-2xl h-12" required />
+            <Input id="address" value={form.address} onChange={(e) => updateField("address", e.target.value)} placeholder="רחוב, מספר ועיר" autoComplete="street-address" dir="auto" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.address} aria-describedby={errors.address ? "address-error" : undefined} />
+            <FieldError id="address" message={errors.address} />
           </div>
           <div>
             <Label htmlFor="email">אימייל</Label>
-            <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="email@example.com" autoComplete="email" className="mt-1 rounded-2xl h-12" dir="ltr" required />
+            <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="email@example.com" autoComplete="email" className="mt-1 rounded-2xl h-12" dir="ltr" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} />
+            <FieldError id="email" message={errors.email} />
           </div>
           <div>
             <Label htmlFor="phone">טלפון</Label>
-            <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className="mt-1 rounded-2xl h-12" dir="ltr" required />
+            <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className="mt-1 rounded-2xl h-12" dir="ltr" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} />
+            <FieldError id="phone" message={errors.phone} />
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <PasswordInput id="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} autoComplete="new-password" className="mt-1 rounded-2xl h-12" required minLength={6} />
-            <p className="text-xs text-muted-foreground mt-1">לפחות 6 תווים</p>
+            <PasswordInput
+              id="password"
+              value={form.password}
+              onChange={(e) => updateField("password", e.target.value)}
+              // Check as soon as the user leaves the field, not on every keystroke.
+              onBlur={() => {
+                if (form.password && form.password.length < 6) {
+                  setErrors((e) => ({ ...e, password: `הסיסמה קצרה מדי — ${form.password.length} תווים מתוך 6 לפחות` }));
+                }
+              }}
+              autoComplete="new-password"
+              className="mt-1 rounded-2xl h-12"
+              aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? "password-error" : "password-hint"}
+            />
+            {errors.password
+              ? <FieldError id="password" message={errors.password} />
+              : <p id="password-hint" className="text-xs text-muted-foreground mt-1">לפחות 6 תווים</p>}
           </div>
 
-          <div className="flex items-center gap-2 mt-2">
-            <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} />
-            <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
-              אני מאשר/ת את{" "}
-              <Link to="/terms" className="text-primary-ink font-bold underline" target="_blank">תנאי השימוש</Link>
-              {" "}ואת{" "}
-              <Link to="/privacy" className="text-primary-ink font-bold underline" target="_blank">מדיניות הפרטיות</Link>
-            </Label>
+          <div className="mt-2">
+            <div className="flex items-center gap-2">
+              <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => { setAgreed(v === true); setErrors((e) => ({ ...e, terms: "" })); }} aria-invalid={!!errors.terms} aria-describedby={errors.terms ? "terms-error" : undefined} />
+              <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
+                אני מאשר/ת את{" "}
+                <Link to="/terms" className="text-primary-ink font-bold underline" target="_blank">תנאי השימוש</Link>
+                {" "}ואת{" "}
+                <Link to="/privacy" className="text-primary-ink font-bold underline" target="_blank">מדיניות הפרטיות</Link>
+              </Label>
+            </div>
+            <FieldError id="terms" message={errors.terms} />
           </div>
 
           {isPaidPlan && (
