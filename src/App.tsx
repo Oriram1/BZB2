@@ -17,6 +17,7 @@ import Pricing from "./pages/Pricing";
 import ParentalHub from "./pages/ParentalHub";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 import TaskDetail from "./pages/TaskDetail";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
@@ -52,6 +53,8 @@ const App = () => (
                 <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
                 <Route path="/chat" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Chat /></RoleGuard>} />
                 <Route path="/profile" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Profile /></RoleGuard>} />
+                {/* Public profile of another user, linked from a task listing. Open to guests. */}
+                <Route path="/profile/:userId" element={<PublicProfile />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/admin" element={<Admin />} />
