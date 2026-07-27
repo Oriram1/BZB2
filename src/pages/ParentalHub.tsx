@@ -32,7 +32,7 @@ const mockNotifications = [
 
 const ParentalHub = () => {
   const navigate = useNavigate();
-  const { isLoaded } = useGoogleMaps();
+  const { isLoaded, error } = useGoogleMaps();
   const [beePosition, setBeePosition] = useState({ lat: 32.0763, lng: 34.7734 });
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -119,8 +119,11 @@ const ParentalHub = () => {
             {isLoaded ? (
               <div ref={mapContainerRef} style={{ height: "350px", width: "100%" }} />
             ) : (
-              <div style={{ height: "350px" }} className="flex items-center justify-center bg-muted">
-                <p className="text-muted-foreground">טוען מפה...</p>
+              <div style={{ height: "350px" }} className="flex items-center justify-center bg-muted text-center px-4">
+                <div className="space-y-2">
+                  <p className="text-muted-foreground">טוען מפה...</p>
+                  {error && <p className="text-xs text-destructive leading-relaxed">{error}</p>}
+                </div>
               </div>
             )}
             <div className="p-4 bg-muted/50 border-t border-border">

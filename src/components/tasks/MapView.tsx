@@ -8,7 +8,7 @@ import { useGoogleMaps } from "./GoogleMapsProvider";
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
-  const { isLoaded } = useGoogleMaps();
+  const { isLoaded, error } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -61,8 +61,11 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
 
   if (!isLoaded) {
     return (
-      <div className="rounded-3xl overflow-hidden border border-border shadow-lg h-[500px] flex items-center justify-center bg-muted">
-        <p className="text-muted-foreground">טוען מפה...</p>
+      <div className="rounded-3xl overflow-hidden border border-border shadow-lg h-[500px] flex items-center justify-center bg-muted text-center px-4">
+        <div className="space-y-2">
+          <p className="text-muted-foreground">טוען מפה...</p>
+          {error && <p className="text-xs text-destructive leading-relaxed">{error}</p>}
+        </div>
       </div>
     );
   }

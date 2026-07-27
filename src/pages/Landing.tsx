@@ -60,10 +60,16 @@ const Landing = () => {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 animate-bounce-subtle">
-          <div className="w-6 h-10 rounded-full border-2 border-primary-foreground/40 flex items-start justify-center p-1.5">
-            <div className="w-1.5 h-3 bg-primary-foreground/60 rounded-full" />
-          </div>
+        <div className="absolute bottom-8 flex flex-col items-center space-y-[-14px] opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+          <svg className="w-8 h-8 text-primary-foreground animate-[bounce_2s_infinite]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+          </svg>
+          <svg className="w-8 h-8 text-primary-foreground/70 animate-[bounce_2s_infinite_200ms]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+          </svg>
+          <svg className="w-8 h-8 text-primary-foreground/40 animate-[bounce_2s_infinite_400ms]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       </div>
 
