@@ -23,14 +23,14 @@ const Login = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("התחברת בהצלחה! 🎉");
+      toast.success("התחברתם בהצלחה! 🎉");
       navigate("/tasks");
     }
   };
 
   const handleForgotPassword = async () => {
     if (!email) {
-      toast.error("אנא הזן את כתובת האימייל שלך");
+      toast.error("אנא הזינו את כתובת האימייל שלכם");
       return;
     }
     setForgotLoading(true);
@@ -41,7 +41,7 @@ const Login = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("קישור לאיפוס סיסמה נשלח לאימייל שלך 📧");
+      toast.success("קישור לאיפוס סיסמה נשלח לאימייל שלכם 📧");
     }
   };
 
@@ -77,7 +77,7 @@ const Login = () => {
 
           <div className="flex justify-start">
             <button type="button" onClick={handleForgotPassword} disabled={forgotLoading} className="text-sm text-primary-ink font-medium hover:underline disabled:opacity-50">
-              {forgotLoading ? "שולח..." : "שכחתי סיסמה"}
+              {forgotLoading ? "שולחים..." : "שכחתם סיסמה?"}
             </button>
           </div>
 
@@ -86,9 +86,9 @@ const Login = () => {
           </Button>
 
           <p className="text-center text-sm text-muted-foreground mt-2">
-            עדיין לא רשום?{" "}
+            עדיין לא רשומים?{" "}
             <Link to="/auth" className="text-primary-ink font-bold underline">
-              הירשם עכשיו
+              הירשמו עכשיו
             </Link>
           </p>
         </form>

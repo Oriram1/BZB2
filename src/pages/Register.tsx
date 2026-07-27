@@ -46,7 +46,7 @@ const Register = () => {
   const planId = searchParams.get("plan") || "";
   const isPaidPlan = planId === "quarterly" || planId === "annual";
   const navigate = useNavigate();
-  const isWorker = role === "worker";
+  const isWorker = role === "worker" || role === "bee";
   const title = isWorker
     ? "הרשמה למבצעי מטלות 💪"
     : isPaidPlan
@@ -165,7 +165,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8 relative overflow-hidden" dir="rtl">
       <div className="absolute inset-0 bg-muted" />
       <div className="absolute top-10 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-10 left-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
@@ -247,7 +247,7 @@ const Register = () => {
             <div className="flex items-center gap-2">
               <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => { setAgreed(v === true); setErrors((e) => ({ ...e, terms: "" })); }} aria-invalid={!!errors.terms} aria-describedby={errors.terms ? "terms-error" : undefined} />
               <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
-                אני מאשר/ת את{" "}
+                אנו מאשרים את{" "}
                 <Link to="/terms" className="text-primary-ink font-bold underline" target="_blank">תנאי השימוש</Link>
                 {" "}ואת{" "}
                 <Link to="/privacy" className="text-primary-ink font-bold underline" target="_blank">מדיניות הפרטיות</Link>
@@ -279,13 +279,13 @@ const Register = () => {
           )}
 
           <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
-            {loading ? "נרשם..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "הרשם 🐝"}
+            {loading ? "נרשמים..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "הירשמו 🐝"}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground mt-2">
-            כבר רשום?{" "}
+            כבר רשומים?{" "}
             <Link to="/login" className="text-primary-ink font-bold underline">
-              התחבר
+              התחברו
             </Link>
           </p>
         </form>

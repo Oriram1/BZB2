@@ -9,16 +9,31 @@ interface GoogleMapPickerProps {
   lat: number | null;
   lng: number | null;
   onLocationSelect: (lat: number, lng: number) => void;
+  onAddressFound?: (address: string) => void;
 }
 
-const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) => {
-  const { isLoaded } = useGoogleMaps();
+const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleMapPickerProps) => {
+  const { isLoaded, error } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const [locating, setLocating] = useState(false);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
 
   const center = lat && lng ? { lat, lng } : defaultCenter;
+
+  const reverseGeocode = useCallback((latitude: number, longitude: number) => {
+    if (!onAddressFound) return;
+    if (!geocoderRef.current) {
+      if (!window.google) return;
+      geocoderRef.current = new google.maps.Geocoder();
+    }
+    geocoderRef.current.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+      if (status === "OK" && results && results[0]) {
+        onAddressFound(results[0].formatted_address);
+      }
+    });
+  }, [onAddressFound]);
 
   useEffect(() => {
     if (!isLoaded || !containerRef.current || mapRef.current) return;
@@ -33,7 +48,10 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) =
 
     map.addListener("click", (e: google.maps.MapMouseEvent) => {
       if (e.latLng) {
-        onLocationSelect(e.latLng.lat(), e.latLng.lng());
+        const clat = e.latLng.lat();
+        const clng = e.latLng.lng();
+        onLocationSelect(clat, clng);
+        reverseGeocode(clat, clng);
       }
     });
 
@@ -65,6 +83,7 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) =
       (pos) => {
         const { latitude, longitude } = pos.coords;
         onLocationSelect(latitude, longitude);
+        reverseGeocode(latitude, longitude);
         setLocating(false);
       },
       () => {
@@ -76,8 +95,11 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect }: GoogleMapPickerProps) =
 
   if (!isLoaded) {
     return (
-      <div className="h-[250px] rounded-2xl bg-muted flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">טוען מפה...</p>
+      <div className="h-[250px] rounded-2xl bg-muted flex items-center justify-center text-center px-4">
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">טוען מפה...</p>
+          {error && <p className="text-xs text-destructive leading-relaxed">{error}</p>}
+        </div>
       </div>
     );
   }

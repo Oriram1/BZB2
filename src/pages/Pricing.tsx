@@ -30,7 +30,7 @@ const Pricing = () => {
     if (!user) {
       navigate(`/register/proposer?plan=${planId}`);
     } else if (planId === "free") {
-      toast.info("אתה כבר רשום בתוכנית החינמית");
+      toast.info("אתם כבר רשומים בתוכנית החינמית");
     } else {
       navigate(`/register/proposer?plan=${planId}`);
     }
@@ -54,7 +54,7 @@ const Pricing = () => {
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`glass rounded-3xl p-8 border-2 card-hover relative ${
+              className={`glass flex flex-col rounded-3xl p-8 border-2 card-hover relative ${
                 plan.popular
                   ? "border-primary shadow-glow scale-105"
                   : "border-border"
@@ -82,13 +82,13 @@ const Pricing = () => {
               </ul>
               <Button
                 onClick={() => handlePlanClick(plan.id)}
-                className={`w-full py-5 rounded-2xl font-extrabold text-lg border-none hover:scale-[1.02] transition-transform duration-300 ${
+                className={`w-full py-5 mt-auto rounded-2xl font-extrabold text-lg border-none hover:scale-[1.02] transition-transform duration-300 ${
                   plan.popular
                     ? "gradient-honey text-primary-foreground"
                     : "bg-muted text-foreground hover:bg-muted/80"
                 }`}
               >
-                {plan.id === "free" ? "התחל בחינם" : "הירשם עכשיו"}
+                {plan.id === "free" ? "התחילו בחינם" : "הירשמו עכשיו"}
               </Button>
             </div>
           ))}

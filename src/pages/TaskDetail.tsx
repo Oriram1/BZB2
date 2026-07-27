@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import CategoryIcon from "@/components/tasks/CategoryIcon";
 import PageHeader from "@/components/PageHeader";
+import TaskLocationMap from "@/components/tasks/TaskLocationMap";
 import {
   ArrowRight,
   DollarSign,
@@ -54,6 +55,8 @@ interface TaskData {
   payment: number;
   payment_type: string;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   scheduled_date: string | null;
   scheduled_time: string | null;
   duration_hours: number | null;
@@ -102,13 +105,15 @@ const TaskDetail = () => {
       setTask(data);
 
       // Increment view count
-      try {
-        await supabase
-          .from("tasks")
-          .update({ views_count: (data.views_count || 0) + 1 })
-          .eq("id", id);
-      } catch (e) {
-        // Ignore view increment failure
+      if (!user || data.creator_id !== user.id) {
+        try {
+          await supabase
+            .from("tasks")
+            .update({ views_count: (data.views_count || 0) + 1 })
+            .eq("id", id);
+        } catch (e) {
+          // Ignore view increment failure
+        }
       }
 
       // Fetch creator profile
@@ -299,10 +304,21 @@ const TaskDetail = () => {
               <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
                 <MapPin size={20} />
               </div>
-              <div className="overflow-hidden">
+              <div className="overflow-hidden min-w-0 flex-1">
                 <span className="text-xs text-muted-foreground block font-medium">מיקום</span>
                 <span className="font-bold text-foreground text-sm truncate block">{task.location}</span>
               </div>
+            </div>
+          )}
+
+          {task.location && (
+            <div className="col-span-2 overflow-hidden rounded-2xl border border-border/60 bg-card p-2 shadow-sm">
+              <TaskLocationMap
+                location={task.location}
+                latitude={task.latitude}
+                longitude={task.longitude}
+                taskName={task.name}
+              />
             </div>
           )}
 

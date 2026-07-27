@@ -59,6 +59,21 @@ const CreateTask = () => {
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
+  const handleLocationBlur = () => {
+    if (!form.location.trim() || !window.google) return;
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: form.location, region: 'IL' }, (results, status) => {
+      if (status === "OK" && results && results[0]) {
+        const lat = results[0].geometry.location.lat();
+        const lng = results[0].geometry.location.lng();
+        setSelectedLat(lat);
+        setSelectedLng(lng);
+        // We update the form location so it shows the nicely formatted full address
+        updateForm("location", results[0].formatted_address);
+      }
+    });
+  };
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -135,7 +150,7 @@ const CreateTask = () => {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8 relative overflow-hidden" dir="rtl">
       <div className="absolute inset-0 bg-muted" />
       <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
@@ -316,6 +331,8 @@ const CreateTask = () => {
                   dir="rtl"
                   value={form.location}
                   onChange={(e) => updateForm("location", e.target.value)}
+                  onBlur={handleLocationBlur}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLocationBlur(); } }}
                   placeholder="עיר, רחוב ומספר בית"
                   className="rounded-2xl h-12 text-right text-base"
                 />
@@ -327,6 +344,7 @@ const CreateTask = () => {
                       setSelectedLat(lat);
                       setSelectedLng(lng);
                     }}
+                    onAddressFound={(address) => updateForm("location", address)}
                   />
                 </div>
               </div>
@@ -350,6 +368,7 @@ const CreateTask = () => {
                       <Calendar
                         mode="single"
                         selected={form.date ? new Date(form.date) : undefined}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                         onSelect={(d) => {
                           if (d) {
                             const year = d.getFullYear();
@@ -490,19 +509,75 @@ const CreateTask = () => {
           )}
 
           {step === 6 && (
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-extrabold text-foreground mb-2 text-start">סיכום המטלה ✅</h2>
-              <div className="bg-muted/60 rounded-2xl p-5 space-y-3 text-sm border border-border">
-                <SummaryRow label="קטגוריה" value={categoryLabel(form.category)} />
-                <SummaryRow label="שם" value={form.taskName} />
-                <SummaryRow label="תיאור" value={form.shortDesc} />
-                <SummaryRow label="תשלום" value={`${formatCurrency(Number(form.payment))} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} />
-                <SummaryRow label="עובדים" value={form.workers} />
-                <SummaryRow label="מיקום" value={form.location} />
-                <SummaryRow label="תאריך" value={`${formatDate(form.date)}${form.time ? `, ${formatTime(form.time)}` : ""}`} />
-                <SummaryRow label="משך מוערך" value={form.duration ? `${form.duration} ${form.durationUnit === "minutes" ? "דקות" : "שעות"}` : "לא צוין"} />
-                <SummaryRow label="תוקף" value={`${form.expiry} שעות`} />
-                {form.notes && <SummaryRow label="הערות" value={form.notes} />}
+            <div className="flex flex-col gap-5">
+              <h2 className="text-2xl font-extrabold text-foreground text-start">רגע לפני פרסום 🚀</h2>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 1. Details Card */}
+                <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-primary/30">
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
+                    <div className="p-2 bg-primary/15 rounded-xl text-primary-ink">
+                      <FileText size={20} />
+                    </div>
+                    <h3 className="font-extrabold text-foreground text-base">פרטים כלליים</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <SummaryItem label="קטגוריה" value={categoryLabel(form.category)} />
+                    <SummaryItem label="שם המטלה" value={form.taskName} />
+                    <SummaryItem label="תיאור" value={form.shortDesc} />
+                  </div>
+                </div>
+
+                {/* 2. Location & Time Card */}
+                <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-blue-500/30">
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
+                    <div className="p-2 bg-blue-500/15 rounded-xl text-blue-500">
+                      <MapPin size={20} />
+                    </div>
+                    <h3 className="font-extrabold text-foreground text-base">מיקום וזמנים</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <SummaryItem label="כתובת" value={form.location} />
+                    <SummaryItem label="מתי?" value={`${formatDate(form.date)}${form.time ? `, ${formatTime(form.time)}` : ""}`} />
+                    <SummaryItem label="זמן משוער" value={form.duration ? `${form.duration} ${form.durationUnit === "minutes" ? "דקות" : "שעות"}` : "לא צוין"} />
+                  </div>
+                </div>
+
+                {/* 3. Payment & Team Card */}
+                <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-green-500/30">
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
+                    <div className="p-2 bg-green-500/15 rounded-xl text-green-500">
+                      <DollarSign size={20} />
+                    </div>
+                    <h3 className="font-extrabold text-foreground text-base">תשלום ועובדים</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <SummaryItem label="תשלום מוצע" value={`${formatCurrency(Number(form.payment))} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} valueClassName="text-green-600 dark:text-green-400 font-black text-lg" />
+                    <SummaryItem label="עובדים דרושים" value={form.workers} />
+                    <SummaryItem label="תוקף מודעה" value={`${form.expiry} שעות`} />
+                  </div>
+                </div>
+
+                {/* 4. Notes & Extras Card */}
+                {(form.notes || imagePreview) && (
+                  <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-orange-500/30">
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
+                      <div className="p-2 bg-orange-500/15 rounded-xl text-orange-500">
+                        <StickyNote size={20} />
+                      </div>
+                      <h3 className="font-extrabold text-foreground text-base">תוספות</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {form.notes && <SummaryItem label="הערות" value={form.notes} />}
+                      {imagePreview && (
+                        <div>
+                          <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider block mb-1">תמונה שצורפה</span>
+                          <img src={imagePreview} alt="תמונה שצורפה" className="h-24 w-auto rounded-xl object-cover border border-border/50 shadow-sm" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -544,10 +619,10 @@ const CreateTask = () => {
   );
 };
 
-const SummaryRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex justify-between items-start gap-4 py-1 border-b border-border/30 last:border-b-0">
-    <span className="font-bold text-foreground shrink-0 text-start">{label}:</span>
-    <span className="text-muted-foreground text-start max-w-[65%] font-medium" dir="auto">{value || "—"}</span>
+const SummaryItem = ({ label, value, valueClassName = "" }: { label: string; value: string; valueClassName?: string }) => (
+  <div className="flex flex-col gap-0.5 text-start">
+    <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">{label}</span>
+    <span className={`text-sm font-semibold text-foreground ${valueClassName}`}>{value || "—"}</span>
   </div>
 );
 
