@@ -6,6 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Trash2, Plus } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface TaskWithApplications {
   id: string;
@@ -26,6 +38,17 @@ const MyTasks = () => {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<TaskWithApplications[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleDeleteTask = async (taskId: string, taskName: string) => {
+    await supabase.from("task_applications").delete().eq("task_id", taskId);
+    const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+    if (error) {
+      toast.error("שגיאה במחיקת המטלה: " + error.message);
+    } else {
+      toast.success(`המטלה "${taskName}" נמחקה בהצלחה 🗑️`);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -123,9 +146,10 @@ const MyTasks = () => {
       <PageHeader
         action={
           <Link to="/create-task">
-            <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300">
-              + מטלה חדשה
-            </Button>
+            <button className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-white/90 text-slate-950 font-black text-xs sm:text-sm rounded-full shadow-md hover:shadow-lg transition-all duration-200 border border-amber-200/60">
+              <Plus size={16} className="text-amber-600 stroke-[3]" />
+              <span>פרסום מטלה</span>
+            </button>
           </Link>
         }
       />
@@ -146,18 +170,57 @@ const MyTasks = () => {
           <div className="flex flex-col gap-4">
             {tasks.map((task) => (
               <div key={task.id} className="bg-card rounded-3xl p-6 border border-border card-hover">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-extrabold text-lg text-foreground">{task.name}</h3>
+                <div className="flex items-start justify-between mb-3 gap-3">
+                  <Link to={`/task/${task.id}`} className="group flex-1">
+                    <h3 className="font-extrabold text-lg text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                      {task.name}
+                      <span className="text-xs text-muted-foreground font-normal opacity-0 group-hover:opacity-100 transition-opacity">← לצפייה</span>
+                    </h3>
                     <p className="text-muted-foreground text-sm">{task.short_desc}</p>
+                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge className="gradient-honey text-primary-foreground border-none rounded-xl font-bold">
+                      {task.status === "open" ? "פתוחה" : task.status === "accepted" ? "התקבלה" : task.status === "in_progress" ? "בביצוע" : task.status === "completed" ? "הושלמה" : "בוטלה"}
+                    </Badge>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 transition-colors"
+                          title="מחיקת מטלה"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent dir="rtl">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>מחיקת מטלה 🗑️</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            האם אתה בטוח שברצונך למחוק את המטלה "{task.name}"? פעולה זו תמחוק את המטלה לצמיתות ולא ניתן לבטלה.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="rounded-full font-bold">ביטול</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteTask(task.id, task.name)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full font-bold"
+                          >
+                            מחק מטלה
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
-                  <Badge className="gradient-honey text-primary-foreground border-none rounded-xl font-bold">
-                    {task.status === "open" ? "הרחבה" : task.status === "accepted" ? "התקבלה" : task.status === "in_progress" ? "בביצוע" : task.status === "completed" ? "הושלמה" : "בוטלה"}
-                  </Badge>
                 </div>
 
-                <div className="text-sm text-muted-foreground mb-4 font-semibold">
-                  👁️ {task.views_count} צפיות
+                <div className="flex items-center justify-between text-sm text-muted-foreground mb-4 font-semibold border-t border-border/40 pt-3">
+                  <span>👁️ {task.views_count} צפיות</span>
+                  <Link to={`/task/${task.id}`}>
+                    <Button variant="outline" size="sm" className="rounded-full font-bold text-xs gap-1 border-border hover:bg-primary/10 hover:text-primary-ink">
+                      למסך המטלה ←
+                    </Button>
+                  </Link>
                 </div>
 
                 {task.applications.filter(a => a.status === "pending").length > 0 && (

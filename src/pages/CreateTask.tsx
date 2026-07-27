@@ -13,13 +13,22 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowRight } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
+
+const displayFormattedDate = (dateStr: string) => {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  if (y && m && d) return `${d}/${m}/${y}`;
+  return dateStr;
+};
 
 const steps = [
   { id: 1, label: "קטגוריה", icon: Tag },
@@ -143,27 +152,30 @@ const CreateTask = () => {
         </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-8 px-2">
+        <div className="flex items-center justify-between mb-8 px-1 sm:px-2 overflow-x-auto py-2" role="region" aria-label="שלבי התקדמות">
           {steps.map((s, i) => {
             const Icon = s.icon;
             const isActive = step === s.id;
             const isDone = step > s.id;
             return (
-              <div key={s.id} className="flex items-center flex-1 last:flex-initial">
-                <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isDone ? "gradient-honey text-primary-foreground shadow-honey" :
-                    isActive ? "bg-primary text-primary-foreground shadow-glow scale-110" :
-                    "bg-card border-2 border-border text-muted-foreground"
-                  }`}>
+              <div key={s.id} className="flex items-center flex-1 last:flex-initial min-w-0">
+                <div className="flex flex-col items-center shrink-0">
+                  <div
+                    aria-label={`שלב ${s.id}: ${s.label}`}
+                    className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isDone ? "gradient-honey text-primary-foreground shadow-honey" :
+                      isActive ? "bg-primary text-primary-foreground shadow-glow scale-110" :
+                      "bg-card border-2 border-border text-muted-foreground"
+                    }`}
+                  >
                     {isDone ? <Check size={18} /> : <Icon size={18} />}
                   </div>
-                  <span className={`text-[10px] mt-1.5 font-bold ${isActive ? "text-primary-ink" : "text-muted-foreground"}`}>
+                  <span className={`text-xs mt-1.5 font-bold truncate max-w-[60px] sm:max-w-none text-center ${isActive ? "text-primary-ink" : "text-muted-foreground"}`}>
                     {s.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-2 mt-[-12px] rounded-full transition-colors duration-300 ${
+                  <div className={`flex-1 h-0.5 mx-1.5 sm:mx-3 mb-5 rounded-full transition-colors duration-300 ${
                     isDone ? "bg-primary" : "bg-border"
                   }`} />
                 )}
@@ -173,11 +185,11 @@ const CreateTask = () => {
         </div>
 
         {/* Step Content */}
-        <div className="glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in" key={step}>
+        <div className="glass rounded-3xl shadow-glow p-6 sm:p-8 border border-border animate-pop-in" key={step}>
           {step === 1 && (
             <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-bold text-foreground mb-2">בחירת קטגוריה</h2>
-              <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-label="קטגוריית המטלה">
+              <h2 className="text-xl font-bold text-foreground mb-2 text-start">בחירת קטגוריה</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="קטגוריית המטלה">
                 {categories.map((c) => {
                   const Icon = c.icon;
                   const isSelected = form.category === c.value;
@@ -188,14 +200,14 @@ const CreateTask = () => {
                       role="radio"
                       aria-checked={isSelected}
                       onClick={() => updateForm("category", c.value)}
-                      className={`flex flex-col items-center gap-2 p-4 min-h-20 rounded-2xl text-center font-bold transition-colors duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      className={`flex flex-col items-center justify-center gap-2 p-4 min-h-24 rounded-2xl text-center font-bold transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         isSelected
-                          ? "gradient-honey text-primary-foreground border-transparent shadow-honey"
-                          : "bg-card text-foreground border-border hover:border-primary"
+                          ? "gradient-honey text-primary-foreground border-transparent shadow-honey scale-[1.02]"
+                          : "bg-card text-foreground border-border hover:border-primary hover:bg-accent/50"
                       }`}
                     >
-                      <Icon size={24} aria-hidden="true" />
-                      <span className="text-xs">{c.label}</span>
+                      <Icon size={26} aria-hidden="true" />
+                      <span className="text-xs sm:text-sm font-semibold">{c.label}</span>
                     </button>
                   );
                 })}
@@ -205,55 +217,108 @@ const CreateTask = () => {
 
           {step === 2 && (
             <div className="flex flex-col gap-5">
-              <h2 className="text-xl font-extrabold text-foreground mb-2">פרטי המטלה</h2>
+              <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">פרטי המטלה</h2>
               <div>
-                <Label htmlFor="taskName">שם המשימה</Label>
-                <Input id="taskName" value={form.taskName} onChange={(e) => updateForm("taskName", e.target.value)} placeholder="שם המשימה" className="mt-1 rounded-2xl h-12" />
+                <Label htmlFor="taskName" className="text-right block mb-1 font-bold">שם המשימה</Label>
+                <Input
+                  id="taskName"
+                  dir="rtl"
+                  value={form.taskName}
+                  onChange={(e) => updateForm("taskName", e.target.value)}
+                  placeholder="לדוגמה: ניקוי חלונות ויקרא"
+                  className="rounded-2xl h-12 text-right text-base"
+                />
               </div>
               <div>
-                <Label htmlFor="shortDesc">תיאור קצר (עד 40 תווים)</Label>
-                <Input id="shortDesc" value={form.shortDesc} onChange={(e) => updateForm("shortDesc", e.target.value)} placeholder="תיאור קצר" className="mt-1 rounded-2xl h-12" maxLength={40} />
-                <p className="text-xs text-muted-foreground mt-1">{form.shortDesc.length}/40</p>
+                <Label htmlFor="shortDesc" className="text-right block mb-1 font-bold">תיאור קצר (עד 40 תווים)</Label>
+                <Input
+                  id="shortDesc"
+                  dir="rtl"
+                  value={form.shortDesc}
+                  onChange={(e) => updateForm("shortDesc", e.target.value)}
+                  placeholder="לדוגמה: ניקוי 4 חלונות גדולים בסלון"
+                  className="rounded-2xl h-12 text-right text-base"
+                  maxLength={40}
+                />
+                <p className="text-xs text-muted-foreground mt-1 text-left" dir="ltr">{form.shortDesc.length}/40</p>
               </div>
               <div>
-                <Label htmlFor="fullDesc">תיאור מפורט</Label>
-                <Textarea id="fullDesc" value={form.fullDesc} onChange={(e) => updateForm("fullDesc", e.target.value)} placeholder="תאר את המשימה בפירוט..." className="mt-1 rounded-2xl min-h-[120px]" />
+                <Label htmlFor="fullDesc" className="text-right block mb-1 font-bold">תיאור מפורט</Label>
+                <Textarea
+                  id="fullDesc"
+                  dir="rtl"
+                  value={form.fullDesc}
+                  onChange={(e) => updateForm("fullDesc", e.target.value)}
+                  placeholder="תאר את המשימה בפירוט, דרישות מיוחדות, ציוד נדרש וכו'..."
+                  className="rounded-2xl min-h-[120px] text-right text-base"
+                />
               </div>
             </div>
           )}
 
           {step === 3 && (
             <div className="flex flex-col gap-5">
-              <h2 className="text-xl font-extrabold text-foreground mb-2">תשלום ועובדים</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">תשלום ועובדים</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="payment">תשלום מוצע (₪)</Label>
-                  <Input id="payment" type="text" inputMode="numeric" dir="ltr" value={form.payment} onChange={(e) => updateForm("payment", e.target.value)} placeholder="0" className="mt-1 rounded-2xl h-12" min={0} />
+                  <Label htmlFor="payment" className="text-right block mb-1 font-bold">תשלום מוצע</Label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 end-0 flex items-center pe-4 pointer-events-none text-foreground font-extrabold text-base">
+                      ₪
+                    </span>
+                    <Input
+                      id="payment"
+                      type="text"
+                      inputMode="numeric"
+                      dir="rtl"
+                      value={form.payment}
+                      onChange={(e) => updateForm("payment", e.target.value)}
+                      placeholder="0"
+                      className="rounded-2xl h-12 ps-4 pe-9 text-right font-medium text-base"
+                      min={0}
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label>סוג תשלום</Label>
+                  <Label className="text-right block mb-1 font-bold">סוג תשלום</Label>
                   <Select value={form.paymentType} onValueChange={(v) => updateForm("paymentType", v)}>
-                    <SelectTrigger className="mt-1 rounded-2xl h-12"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-2xl h-12 text-right"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="task">למשימה</SelectItem>
+                      <SelectItem value="task">למשימה (פיקס)</SelectItem>
                       <SelectItem value="hour">לשעה</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div>
-                <Label htmlFor="workers">מספר עובדים נדרש</Label>
-                <Input id="workers" type="text" inputMode="numeric" dir="ltr" value={form.workers} onChange={(e) => updateForm("workers", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
+                <Label htmlFor="workers" className="text-right block mb-1 font-bold">מספר עובדים נדרש</Label>
+                <Input
+                  id="workers"
+                  type="text"
+                  inputMode="numeric"
+                  dir="rtl"
+                  value={form.workers}
+                  onChange={(e) => updateForm("workers", e.target.value)}
+                  className="rounded-2xl h-12 text-right text-base"
+                  min={1}
+                />
               </div>
             </div>
           )}
 
           {step === 4 && (
             <div className="flex flex-col gap-5">
-              <h2 className="text-xl font-extrabold text-foreground mb-2">מיקום וזמן</h2>
+              <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">מיקום וזמן</h2>
               <div>
-                <Label htmlFor="location">מיקום המטלה</Label>
-                <Input id="location" value={form.location} onChange={(e) => updateForm("location", e.target.value)} placeholder="כתובת מלאה" className="mt-1 rounded-2xl h-12" />
+                <Label htmlFor="location" className="text-right block mb-1 font-bold">מיקום המטלה</Label>
+                <Input
+                  id="location"
+                  dir="rtl"
+                  value={form.location}
+                  onChange={(e) => updateForm("location", e.target.value)}
+                  placeholder="עיר, רחוב ומספר בית"
+                  className="rounded-2xl h-12 text-right text-base"
+                />
                 <div className="mt-3">
                   <GoogleMapPicker
                     lat={selectedLat}
@@ -265,22 +330,80 @@ const CreateTask = () => {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">תאריך</Label>
-                  <Input id="date" type="date" value={form.date} onChange={(e) => updateForm("date", e.target.value)} className="mt-1 rounded-2xl h-12" />
+                  <Label htmlFor="date" className="text-right block mb-1 font-bold">תאריך</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-12 rounded-2xl justify-between text-right font-medium text-base px-4 border-input bg-background hover:bg-accent/50 focus:ring-2 focus:ring-ring"
+                      >
+                        <span className={form.date ? "text-foreground font-semibold" : "text-muted-foreground"}>
+                          {form.date ? displayFormattedDate(form.date) : "בחירת תאריך (DD/MM/YYYY)"}
+                        </span>
+                        <CalendarIcon size={20} className="text-muted-foreground shrink-0 ms-2" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 rounded-2xl shadow-glow border-border" align="start" dir="rtl">
+                      <Calendar
+                        mode="single"
+                        selected={form.date ? new Date(form.date) : undefined}
+                        onSelect={(d) => {
+                          if (d) {
+                            const year = d.getFullYear();
+                            const month = String(d.getMonth() + 1).padStart(2, "0");
+                            const day = String(d.getDate()).padStart(2, "0");
+                            updateForm("date", `${year}-${month}-${day}`);
+                          } else {
+                            updateForm("date", "");
+                          }
+                        }}
+                        dir="rtl"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
-                  <Label htmlFor="time">שעה</Label>
-                  <Input id="time" type="time" value={form.time} onChange={(e) => updateForm("time", e.target.value)} className="mt-1 rounded-2xl h-12" />
+                  <Label htmlFor="time" className="text-right block mb-1 font-bold">שעה</Label>
+                  <Select value={form.time} onValueChange={(v) => updateForm("time", v)}>
+                    <SelectTrigger className="rounded-2xl h-12 text-right text-base px-4 justify-between">
+                      <SelectValue placeholder="בחירת שעה (HH:MM)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60" dir="rtl">
+                      {Array.from({ length: 32 }).map((_, i) => {
+                        const totalMinutes = 7 * 60 + i * 30; // 07:00 to 22:30
+                        const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+                        const mins = String(totalMinutes % 60).padStart(2, "0");
+                        const timeVal = `${hours}:${mins}`;
+                        return (
+                          <SelectItem key={timeVal} value={timeVal}>
+                            {timeVal}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>
-                <Label htmlFor="duration">משך זמן</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input id="duration" type="text" inputMode="numeric" dir="ltr" value={form.duration} onChange={(e) => updateForm("duration", e.target.value)} className="rounded-2xl h-12 flex-1" min={1} step={1} />
+                <Label htmlFor="duration" className="text-right block mb-1 font-bold">משך זמן מוערך</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="duration"
+                    type="text"
+                    inputMode="numeric"
+                    dir="rtl"
+                    value={form.duration}
+                    onChange={(e) => updateForm("duration", e.target.value)}
+                    className="rounded-2xl h-12 flex-1 text-right text-base"
+                    placeholder="1"
+                    min={1}
+                    step={1}
+                  />
                   <Select value={form.durationUnit} onValueChange={(v) => updateForm("durationUnit", v)}>
-                    <SelectTrigger className="rounded-2xl h-12 w-28"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-2xl h-12 w-32 text-right"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="hours">שעות</SelectItem>
                       <SelectItem value="minutes">דקות</SelectItem>
@@ -288,33 +411,41 @@ const CreateTask = () => {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="expiry">תוקף (שעות)</Label>
-                  <Input id="expiry" type="text" inputMode="numeric" dir="ltr" value={form.expiry} onChange={(e) => updateForm("expiry", e.target.value)} className="mt-1 rounded-2xl h-12" min={1} />
-                </div>
+              <div>
+                <Label htmlFor="expiry" className="text-right block mb-1 font-bold">תוקף הפרסום (שעות)</Label>
+                <Input
+                  id="expiry"
+                  type="text"
+                  inputMode="numeric"
+                  dir="rtl"
+                  value={form.expiry}
+                  onChange={(e) => updateForm("expiry", e.target.value)}
+                  className="rounded-2xl h-12 text-right text-base"
+                  min={1}
+                />
               </div>
             </div>
           )}
 
           {step === 5 && (
             <div className="flex flex-col gap-5">
-              <h2 className="text-xl font-extrabold text-foreground mb-2">תמונה והערות</h2>
+              <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">תמונה והערות</h2>
               <div>
-                <Label>הוסף תמונה</Label>
+                <Label className="text-right block mb-1 font-bold">הוסף תמונה</Label>
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-2 border-2 border-dashed border-border rounded-2xl p-8 text-center cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                  className="mt-2 border-2 border-dashed border-border rounded-2xl p-6 sm:p-8 text-center cursor-pointer hover:border-primary transition-colors overflow-hidden"
                 >
                   {imagePreview ? (
                     <div className="relative">
                       <img src={imagePreview} alt="תצוגה מקדימה" className="max-h-48 mx-auto rounded-xl object-cover" />
-                      <p className="text-xs text-muted-foreground mt-2">לחץ להחלפת התמונה</p>
+                      <p className="text-xs text-muted-foreground mt-2 font-medium">לחץ להחלפת התמונה</p>
                     </div>
                   ) : (
                     <>
                       <Image size={40} className="mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-sm font-semibold text-muted-foreground">לחץ להעלאת תמונה</p>
+                      <p className="text-sm font-bold text-muted-foreground">לחץ להעלאת תמונה</p>
+                      <p className="text-xs text-muted-foreground/80 mt-1">פורמטים נתמכים: JPG, PNG עד 5MB</p>
                     </>
                   )}
                   <input
@@ -327,23 +458,30 @@ const CreateTask = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="notes">הערות נוספות</Label>
-                <Textarea id="notes" value={form.notes} onChange={(e) => updateForm("notes", e.target.value)} placeholder="הערות נוספות..." className="mt-1 rounded-2xl min-h-[100px]" />
+                <Label htmlFor="notes" className="text-right block mb-1 font-bold">הערות נוספות</Label>
+                <Textarea
+                  id="notes"
+                  dir="rtl"
+                  value={form.notes}
+                  onChange={(e) => updateForm("notes", e.target.value)}
+                  placeholder="הערות נוספות למבצע המטלה..."
+                  className="rounded-2xl min-h-[100px] text-right text-base"
+                />
               </div>
 
-              {/* Insurance option - for paid subscribers only */}
-              <div className="bg-muted/50 rounded-2xl p-4 border border-border">
+              {/* Insurance option */}
+              <div className="bg-muted/50 rounded-2xl p-4 sm:p-5 border border-border">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-lg">🛡️</span>
+                  <span className="text-xl">🛡️</span>
                   <h3 className="text-sm font-extrabold text-foreground">ביטוח מטלות</h3>
                   <span className="text-xs bg-primary/10 text-primary-ink font-bold px-2 py-0.5 rounded-full">למנויים בתשלום</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-3 text-start">
                   כיסוי לנזק ישיר לרכוש עד 2,000 ₪ למשימה (5 ₪/חודש)
                 </p>
-                <div className="flex items-center gap-2">
-                  <Checkbox id="insurance" />
-                  <label htmlFor="insurance" className="text-sm font-bold text-foreground cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <Checkbox id="insurance" className="h-5 w-5" />
+                  <label htmlFor="insurance" className="text-sm font-bold text-foreground cursor-pointer select-none">
                     הפעל ביטוח למטלה זו
                   </label>
                 </div>
@@ -353,8 +491,8 @@ const CreateTask = () => {
 
           {step === 6 && (
             <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-extrabold text-foreground mb-2">סיכום המטלה ✅</h2>
-              <div className="bg-muted rounded-2xl p-5 space-y-3 text-sm">
+              <h2 className="text-xl font-extrabold text-foreground mb-2 text-start">סיכום המטלה ✅</h2>
+              <div className="bg-muted/60 rounded-2xl p-5 space-y-3 text-sm border border-border">
                 <SummaryRow label="קטגוריה" value={categoryLabel(form.category)} />
                 <SummaryRow label="שם" value={form.taskName} />
                 <SummaryRow label="תיאור" value={form.shortDesc} />
@@ -362,7 +500,7 @@ const CreateTask = () => {
                 <SummaryRow label="עובדים" value={form.workers} />
                 <SummaryRow label="מיקום" value={form.location} />
                 <SummaryRow label="תאריך" value={`${formatDate(form.date)}${form.time ? `, ${formatTime(form.time)}` : ""}`} />
-                <SummaryRow label="אורך" value={`${form.duration} ${form.durationUnit === "minutes" ? "דקות" : "שעות"}`} />
+                <SummaryRow label="משך מוערך" value={form.duration ? `${form.duration} ${form.durationUnit === "minutes" ? "דקות" : "שעות"}` : "לא צוין"} />
                 <SummaryRow label="תוקף" value={`${form.expiry} שעות`} />
                 {form.notes && <SummaryRow label="הערות" value={form.notes} />}
               </div>
@@ -370,12 +508,12 @@ const CreateTask = () => {
           )}
 
           {/* Navigation */}
-          <div className="flex items-center justify-between mt-8">
+          <div className="flex items-center justify-between mt-8 gap-4">
             <Button
               variant="outline"
               onClick={() => setStep((s) => s - 1)}
               disabled={step === 1}
-              className="rounded-full px-6 font-bold"
+              className="rounded-full px-6 h-12 font-bold min-w-[110px]"
             >
               <ChevronRight size={18} />
               הקודם
@@ -385,7 +523,7 @@ const CreateTask = () => {
               <Button
                 onClick={() => setStep((s) => s + 1)}
                 disabled={!canProceed()}
-                className="gradient-honey text-primary-foreground rounded-full px-6 border-none font-bold hover:scale-105 transition-transform"
+                className="gradient-honey text-primary-foreground rounded-full px-7 h-12 border-none font-extrabold min-w-[110px] hover:scale-105 transition-transform"
               >
                 הבא
                 <ChevronLeft size={18} />
@@ -394,7 +532,7 @@ const CreateTask = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="gradient-honey text-primary-foreground rounded-full px-8 border-none font-extrabold hover:scale-105 transition-transform text-lg"
+                className="gradient-honey text-primary-foreground rounded-full px-8 h-12 border-none font-extrabold hover:scale-105 transition-transform text-lg"
               >
                 {loading ? "מפרסם..." : "פרסם מטלה 🐝"}
               </Button>
@@ -407,9 +545,9 @@ const CreateTask = () => {
 };
 
 const SummaryRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex justify-between items-start">
-    <span className="font-bold text-foreground">{label}:</span>
-    <span className="text-muted-foreground text-left max-w-[60%]">{value}</span>
+  <div className="flex justify-between items-start gap-4 py-1 border-b border-border/30 last:border-b-0">
+    <span className="font-bold text-foreground shrink-0 text-start">{label}:</span>
+    <span className="text-muted-foreground text-start max-w-[65%] font-medium" dir="auto">{value || "—"}</span>
   </div>
 );
 

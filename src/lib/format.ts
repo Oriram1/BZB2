@@ -70,13 +70,19 @@ export function formatCurrency(amount?: number | null): string {
   return currencyFormatter.format(amount);
 }
 
-/** 0.5 -> "חצי שעה", 1 -> "שעה", 2 -> "שעתיים", 3 -> "3 שעות". */
+/** 0.5 -> "חצי שעה", 1 -> "שעה", 2 -> "שעתיים", 0.38 -> "23 דקות". */
 export function formatDuration(hours?: number | null): string {
   if (!hours || Number.isNaN(hours) || hours <= 0) return EMPTY;
-  if (hours === 0.5) return "חצי שעה";
-  if (hours === 1) return "שעה";
-  if (hours === 2) return "שעתיים";
-  return `${hours} שעות`;
+  if (Math.abs(hours - 0.5) < 0.01) return "חצי שעה";
+  if (Math.abs(hours - 1) < 0.01) return "שעה";
+  if (Math.abs(hours - 1.5) < 0.01) return "שעה וחצי";
+  if (Math.abs(hours - 2) < 0.01) return "שעתיים";
+  if (hours < 1) {
+    const mins = Math.round(hours * 60);
+    return `${mins} דקות`;
+  }
+  const rounded = Number.isInteger(hours) ? hours : Number(hours.toFixed(1));
+  return `${rounded} שעות`;
 }
 
 /** Great-circle distance in kilometres between two lat/lng pairs. */

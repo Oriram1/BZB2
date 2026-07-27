@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -73,7 +73,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-rubik;
+    @apply bg-background text-foreground font-heebo;
     /* Hebrew glyphs are denser than Latin and need more leading. Tracking must
        stay at 0 — expanded tracking breaks Hebrew word shapes. */
     line-height: 1.55;
@@ -83,6 +83,52 @@
   /* Numbers, e-mail, URLs and codes stay LTR inside Hebrew text. */
   [dir="ltr"] {
     text-align: start;
+  }
+
+  /* Ensure inputs, textareas and placeholders inside RTL containers align to the right */
+  [dir="rtl"] input:not([dir="ltr"]),
+  [dir="rtl"] textarea:not([dir="ltr"]),
+  html[dir="rtl"] input:not([dir="ltr"]),
+  html[dir="rtl"] textarea:not([dir="ltr"]) {
+    direction: rtl;
+    text-align: right;
+  }
+
+  [dir="rtl"] input:not([dir="ltr"])::placeholder,
+  [dir="rtl"] textarea:not([dir="ltr"])::placeholder,
+  html[dir="rtl"] input:not([dir="ltr"])::placeholder,
+  html[dir="rtl"] textarea:not([dir="ltr"])::placeholder {
+    direction: rtl;
+    text-align: right;
+  }
+
+  /* Native date and time inputs WebKit/Blink shadow DOM RTL fixes */
+  input[type="date"],
+  input[type="time"] {
+    direction: rtl !important;
+    text-align: right !important;
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="time"]::-webkit-datetime-edit,
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    direction: rtl !important;
+    text-align: right !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer !important;
+    margin: 0 !important;
   }
 
   /* A field that failed validation reads as invalid, not only via its message. */

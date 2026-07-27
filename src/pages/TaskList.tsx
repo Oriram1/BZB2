@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, List, SlidersHorizontal, SearchX } from "lucide-react";
+import { Map, List, SlidersHorizontal, SearchX, Plus } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
@@ -86,9 +86,10 @@ const TaskList = () => {
         action={
           isTasker && (
             <Link to="/create-task">
-              <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 active:scale-95 transition-transform duration-300">
-                + פרסם מטלה
-              </Button>
+              <button className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-white/90 text-slate-950 font-black text-xs sm:text-sm rounded-full shadow-md hover:shadow-lg transition-all duration-200 border border-amber-200/60">
+                <Plus size={16} className="text-amber-600 stroke-[3]" />
+                <span>פרסום מטלה</span>
+              </button>
             </Link>
           )
         }

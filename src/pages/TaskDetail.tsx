@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import CategoryIcon from "@/components/tasks/CategoryIcon";
+import PageHeader from "@/components/PageHeader";
 import {
   ArrowRight,
   DollarSign,
@@ -18,9 +19,23 @@ import {
   FileText,
   StickyNote,
   User,
+  Trash2,
+  Share2,
+  Eye,
 } from "lucide-react";
 import { formatCurrency, formatDate, formatTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const statusLabels: Record<string, string> = {
   open: "פתוחה להצעות",
@@ -86,6 +101,16 @@ const TaskDetail = () => {
       }
       setTask(data);
 
+      // Increment view count
+      try {
+        await supabase
+          .from("tasks")
+          .update({ views_count: (data.views_count || 0) + 1 })
+          .eq("id", id);
+      } catch (e) {
+        // Ignore view increment failure
+      }
+
       // Fetch creator profile
       const { data: profile } = await supabase
         .from("profiles")
@@ -140,6 +165,32 @@ const TaskDetail = () => {
     setApplying(false);
   };
 
+  const handleDeleteTask = async () => {
+    if (!task || !user || !isOwner) return;
+    setLoading(true);
+    await supabase.from("task_applications").delete().eq("task_id", task.id);
+    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+    setLoading(false);
+    if (error) {
+      toast.error("שגיאה במחיקת המטלה: " + error.message);
+    } else {
+      toast.success("המטלה נמחקה בהצלחה 🗑️");
+      navigate("/my-tasks");
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: task?.name || "מטלה ב-BusyBee",
+        url: window.location.href,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("הקישור הועתק ללוח! 📋");
+    }
+  };
+
   const goBack = () => {
     if (window.history.length > 2) {
       navigate(-1);
@@ -150,11 +201,11 @@ const TaskDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4 pt-20 max-w-2xl mx-auto" dir="rtl">
-        <Skeleton className="h-8 w-32 mb-6" />
-        <Skeleton className="h-48 w-full rounded-2xl mb-4" />
-        <Skeleton className="h-6 w-3/4 mb-2" />
-        <Skeleton className="h-4 w-1/2" />
+      <div className="min-h-screen bg-background p-4 pt-20 max-w-xl mx-auto" dir="rtl">
+        <Skeleton className="h-8 w-32 mb-6 rounded-xl" />
+        <Skeleton className="h-48 w-full rounded-3xl mb-4" />
+        <Skeleton className="h-6 w-3/4 mb-2 rounded-lg" />
+        <Skeleton className="h-4 w-1/2 rounded-lg" />
       </div>
     );
   }
@@ -165,157 +216,247 @@ const TaskDetail = () => {
   const creatorAvatar = creator?.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${task.creator_id}`;
 
   return (
-    <div className="min-h-screen bg-background pb-24" dir="rtl">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border px-4 py-3 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={goBack}>
-          <ArrowRight size={20} />
-        </Button>
-        <h1 className="font-extrabold text-lg text-foreground truncate flex-1">{task.name}</h1>
-        <Badge variant="secondary" className="rounded-xl font-bold text-xs">
-          {statusLabels[task.status] || task.status}
-        </Badge>
-      </div>
+    <div className="min-h-screen bg-background pb-36" dir="rtl">
+      {/* Standard App Page Header */}
+      <PageHeader
+        title={task.name}
+        showBack={true}
+        action={
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleShare}
+            className="rounded-full text-primary-foreground hover:bg-foreground/10 shrink-0 h-10 w-10"
+            aria-label="שיתוף מטלה"
+          >
+            <Share2 size={18} />
+          </Button>
+        }
+      />
 
-      <div className="max-w-2xl mx-auto p-4 space-y-6">
-        {/* Image */}
+      <div className="max-w-xl mx-auto px-4 pt-4 space-y-5">
+        {/* Cover Image */}
         {task.image_url && (
-          <img
-            src={task.image_url}
-            alt={task.name}
-            className="w-full h-48 object-cover rounded-2xl"
-          />
+          <div className="relative rounded-3xl overflow-hidden shadow-sm border border-border/60">
+            <img
+              src={task.image_url}
+              alt={task.name}
+              className="w-full h-52 sm:h-64 object-cover"
+            />
+            <div className="absolute top-3 right-3">
+              <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs shadow-md">
+                {statusLabels[task.status] || task.status}
+              </Badge>
+            </div>
+          </div>
         )}
 
-        {/* Category & Title */}
-        <div className="flex items-start gap-3">
-          <CategoryIcon category={task.category} className="shrink-0 mt-1" />
-          <div className="flex-1">
-            <h2 className="font-extrabold text-2xl text-foreground">{task.name}</h2>
-            <p className="text-muted-foreground mt-1">{task.short_desc}</p>
-            <Badge variant="secondary" className="mt-2 rounded-xl font-bold text-xs">
-              {categoryLabel(task.category)}
-            </Badge>
+        {/* Title Header Card */}
+        <div className="bg-card rounded-3xl p-5 border border-border/60 shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <CategoryIcon category={task.category} className="shrink-0" />
+              <Badge variant="secondary" className="rounded-full px-3 py-1 font-bold text-xs">
+                {categoryLabel(task.category)}
+              </Badge>
+            </div>
+            {!task.image_url && (
+              <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs">
+                {statusLabels[task.status] || task.status}
+              </Badge>
+            )}
+          </div>
+
+          <div>
+            <h2 className="font-black text-2xl sm:text-3xl text-foreground tracking-tight">{task.name}</h2>
+            <p className="text-muted-foreground text-sm mt-1 leading-relaxed">{task.short_desc}</p>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/40 font-medium">
+            <span className="flex items-center gap-1">
+              <Eye size={14} />
+              {task.views_count} צפיות
+            </span>
           </div>
         </div>
 
-        {/* Details Grid */}
-        <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <DollarSign size={16} className="text-primary-ink" aria-hidden="true" />
-              <span className="text-foreground font-semibold">
-                <span className="tabular">{formatCurrency(task.payment)}</span> / {task.payment_type === "hour" ? "שעה" : "משימה"}
-              </span>
+        {/* Payment Hero Card */}
+        <div className="gradient-honey rounded-3xl p-5 text-primary-foreground shadow-lg shadow-amber-500/10 flex items-center justify-between">
+          <div>
+            <span className="text-xs opacity-90 block font-medium">תשלום מוצע</span>
+            <span className="text-3xl font-black tracking-tight">{formatCurrency(task.payment)}</span>
+            <span className="text-xs opacity-90 mr-1">/ {task.payment_type === "hour" ? "שעה" : "משימה"}</span>
+          </div>
+          <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3">
+            <DollarSign size={28} className="text-primary-foreground" />
+          </div>
+        </div>
+
+        {/* Ergonomic Details Chips Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {task.location && (
+            <div className="col-span-2 bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
+                <MapPin size={20} />
+              </div>
+              <div className="overflow-hidden">
+                <span className="text-xs text-muted-foreground block font-medium">מיקום</span>
+                <span className="font-bold text-foreground text-sm truncate block">{task.location}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-primary-ink" aria-hidden="true" />
-              <span className="text-foreground">
+          )}
+
+          {task.scheduled_date && (
+            <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
+                <Calendar size={18} />
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block font-medium">תאריך</span>
+                <span className="font-bold text-foreground text-sm tabular">{formatDate(task.scheduled_date)}</span>
+              </div>
+            </div>
+          )}
+
+          {task.scheduled_time && (
+            <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
+                <Clock size={18} />
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block font-medium">שעה</span>
+                <span className="font-bold text-foreground text-sm tabular">{formatTime(task.scheduled_time)}</span>
+              </div>
+            </div>
+          )}
+
+          {task.duration_hours && (
+            <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
+                <Hourglass size={18} />
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground block font-medium">משך מוערך</span>
+                <span className="font-bold text-foreground text-sm">{formatDuration(Number(task.duration_hours))}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
+              <Users size={18} />
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block font-medium">עובדים דרושים</span>
+              <span className="font-bold text-foreground text-sm">
                 {task.workers_needed === 1 ? "עובד אחד" : `${task.workers_needed} עובדים`}
               </span>
             </div>
-            {task.location && (
-              <div className="flex items-center gap-2 col-span-2">
-                <MapPin size={16} className="text-primary-ink" aria-hidden="true" />
-                <span className="text-foreground">{task.location}</span>
-              </div>
-            )}
-            {task.scheduled_date && (
-              <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-primary-ink" aria-hidden="true" />
-                <span className="text-foreground tabular">{formatDate(task.scheduled_date)}</span>
-              </div>
-            )}
-            {task.scheduled_time && (
-              <div className="flex items-center gap-2">
-                <Clock size={16} className="text-primary-ink" aria-hidden="true" />
-                <span className="text-foreground tabular">{formatTime(task.scheduled_time)}</span>
-              </div>
-            )}
-            {task.duration_hours && (
-              <div className="flex items-center gap-2">
-                <Hourglass size={16} className="text-primary-ink" aria-hidden="true" />
-                <span className="text-foreground">{formatDuration(Number(task.duration_hours))}</span>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Full Description */}
+        {/* Detailed Description */}
         {task.full_desc && (
-          <div className="bg-card rounded-2xl border border-border p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <FileText size={16} className="text-primary-ink" />
-              <h3 className="font-bold text-foreground">תיאור מפורט</h3>
+          <div className="bg-card rounded-3xl p-5 border border-border/60 shadow-sm space-y-2">
+            <div className="flex items-center gap-2 text-foreground font-extrabold text-base mb-1">
+              <FileText size={18} className="text-primary-ink" />
+              <h3>תיאור מפורט</h3>
             </div>
-            <p className="text-muted-foreground whitespace-pre-wrap">{task.full_desc}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.full_desc}</p>
           </div>
         )}
 
-        {/* Notes */}
+        {/* Notes Card */}
         {task.notes && (
-          <div className="bg-card rounded-2xl border border-border p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <StickyNote size={16} className="text-primary-ink" />
-              <h3 className="font-bold text-foreground">הערות</h3>
+          <div className="bg-amber-500/5 dark:bg-amber-500/10 rounded-3xl p-5 border border-amber-500/20 shadow-sm space-y-2">
+            <div className="flex items-center gap-2 text-foreground font-extrabold text-base mb-1">
+              <StickyNote size={18} className="text-amber-600 dark:text-amber-400" />
+              <h3>הערות דגש</h3>
             </div>
-            <p className="text-muted-foreground whitespace-pre-wrap">{task.notes}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.notes}</p>
           </div>
         )}
 
-        {/* Creator */}
+        {/* Creator Card */}
         {creator && (
-          <div className="bg-card rounded-2xl border border-border p-5 flex items-center gap-4">
-            <img
-              src={creatorAvatar}
-              alt="פרופיל"
-              className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
-            />
-            <div className="flex-1">
-              <p className="text-xs text-muted-foreground">פורסם על ידי</p>
-              <p className="font-bold text-foreground">
-                {creator.first_name} {creator.last_name}
-              </p>
+          <div className="bg-card rounded-3xl p-4 border border-border/60 shadow-sm flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src={creatorAvatar}
+                alt="פרופיל"
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shrink-0"
+              />
+              <div className="min-w-0">
+                <span className="text-xs text-muted-foreground block font-medium">פורסם על ידי</span>
+                <span className="font-bold text-foreground text-sm truncate block">
+                  {creator.first_name} {creator.last_name}
+                </span>
+              </div>
             </div>
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full"
+              className="rounded-full text-xs font-bold shrink-0 border-border hover:bg-primary/10 hover:text-primary-ink"
               onClick={() => navigate(`/profile/${creator.user_id}`)}
             >
-              <User size={14} className="ml-1" />
+              <User size={14} className="ms-1" />
               פרופיל
             </Button>
           </div>
         )}
       </div>
 
-      {/* Bottom Action Bar */}
+      {/* Floating Bottom Action Bar (Thumb Zone) */}
       {!isOwner && task.status === "open" && isBee && (
-        <div className="fixed bottom-16 left-0 right-0 bg-background/90 backdrop-blur-lg border-t border-border p-4 z-30">
-          <div className="max-w-2xl mx-auto">
-            <Button
-              className="w-full gradient-honey text-primary-foreground rounded-full font-bold text-lg py-6 hover:scale-[1.02] active:scale-95 transition-transform"
-              onClick={handleApply}
-              disabled={applying || alreadyApplied}
-            >
-              {alreadyApplied ? "כבר הגשת מועמדות ✓" : "אני מעוניין/ת 🐝"}
-            </Button>
-          </div>
+        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl rounded-3xl p-3">
+          <Button
+            className="w-full h-12 gradient-honey text-primary-foreground rounded-2xl font-extrabold text-base shadow-md hover:scale-[1.01] active:scale-95 transition-transform"
+            onClick={handleApply}
+            disabled={applying || alreadyApplied}
+          >
+            {alreadyApplied ? "כבר הגשת מועמדות ✓" : "אני מעוניין/ת לבצע 🐝"}
+          </Button>
         </div>
       )}
 
       {isOwner && (
-        <div className="fixed bottom-16 left-0 right-0 bg-background/90 backdrop-blur-lg border-t border-border p-4 z-30">
-          <div className="max-w-2xl mx-auto">
-            <Button
-              variant="outline"
-              className="w-full rounded-full font-bold text-lg py-6"
-              onClick={() => navigate("/my-tasks")}
-            >
-              ניהול מטלה
-            </Button>
-          </div>
+        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl rounded-3xl p-3 flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 h-12 rounded-2xl font-bold text-base border-border bg-card hover:bg-accent text-foreground"
+            onClick={() => navigate("/my-tasks")}
+          >
+            ניהול מטלה
+          </Button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                className="h-12 px-5 rounded-2xl font-bold text-base gap-2"
+              >
+                <Trash2 size={18} />
+                מחיקה
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>מחיקת מטלה 🗑️</AlertDialogTitle>
+                <AlertDialogDescription>
+                  האם אתה בטוח שברצונך למחוק את המטלה "{task.name}"? פעולה זו תמחוק את המטלה לצמיתות ולא ניתן לבטלה.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-full font-bold">ביטול</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteTask}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full font-bold"
+                >
+                  מחק מטלה
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
     </div>

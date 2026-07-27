@@ -13,6 +13,8 @@ export default {
     },
     extend: {
       fontFamily: {
+        sans: ["Heebo", "sans-serif"],
+        heebo: ["Heebo", "sans-serif"],
         rubik: ["Rubik", "sans-serif"],
       },
       colors: {
