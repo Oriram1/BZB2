@@ -1,184 +1,297 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { AlertCircle, Bell, CheckCircle2, MapPin, Shield, User } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, MapPin, Bell, Clock, CheckCircle2, AlertCircle, User } from "lucide-react";
-import PageHeader from "@/components/PageHeader";
-import { useGoogleMaps } from "@/components/tasks/GoogleMapsProvider";
+import { Card } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDate, formatTime } from "@/lib/format";
 
-const TASK_LOCATION = { lat: 32.0753, lng: 34.7754 };
-
-const mockChild = {
-  name: "יואב כהן",
-  age: 15,
+type ChildSummary = {
+  userId: string;
+  name: string;
+  age: number | null;
   activeTask: {
-    name: "ניקיון בית",
-    location: "תל אביב, רח׳ דיזנגוף 50",
-    status: "in-progress" as const,
-    startTime: "10:00",
-    estimatedEnd: "13:00",
-    taskerName: "משפחת לוי",
-    lat: TASK_LOCATION.lat,
-    lng: TASK_LOCATION.lng,
-  },
+    name: string;
+    status: string;
+    location: string | null;
+    scheduledDate: string | null;
+    scheduledTime: string | null;
+    taskerName: string;
+  } | null;
+  notifications: {
+    id: string;
+    type: "accepted" | "rejected" | "completed" | "pending";
+    message: string;
+    time: string;
+    read: boolean;
+  }[];
 };
 
-const mockNotifications = [
-  { id: 1, type: "accepted" as const, message: "יואב התקבל למטלה ״ניקיון בית״", time: "לפני 2 שעות", read: false },
-  { id: 2, type: "started" as const, message: "יואב התחיל לעבוד על ״ניקיון בית״", time: "לפני שעה", read: false },
-  { id: 3, type: "completed" as const, message: "יואב סיים את המטלה ״טיול עם כלב״", time: "אתמול", read: true },
-  { id: 4, type: "payment" as const, message: "תשלום של ₪40 התקבל עבור ״טיול עם כלב״", time: "אתמול", read: true },
-];
+const statusLabel = (status: string) => {
+  if (status === "accepted") return "התקבל";
+  if (status === "in_progress") return "בביצוע";
+  if (status === "completed") return "הושלם";
+  if (status === "rejected") return "נדחה";
+  return "ממתין";
+};
 
 const ParentalHub = () => {
-  const navigate = useNavigate();
-  const { isLoaded, error } = useGoogleMaps();
-  const [beePosition, setBeePosition] = useState({ lat: 32.0763, lng: 34.7734 });
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const beeMarkerRef = useRef<google.maps.Marker | null>(null);
-  const taskMarkerRef = useRef<google.maps.Marker | null>(null);
+  const { user } = useAuth();
+  const [children, setChildren] = useState<ChildSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Simulate real-time movement
   useEffect(() => {
-    const interval = setInterval(() => {
-      setBeePosition((prev) => ({
-        lat: prev.lat + (Math.random() - 0.5) * 0.001,
-        lng: prev.lng + (Math.random() - 0.5) * 0.001,
-      }));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!user) return;
 
-  // Initialize map
-  useEffect(() => {
-    if (!isLoaded || !mapContainerRef.current || mapRef.current) return;
+    const load = async () => {
+      setLoading(true);
 
-    const map = new google.maps.Map(mapContainerRef.current, {
-      center: TASK_LOCATION,
-      zoom: 15,
-      streetViewControl: false,
-      mapTypeControl: false,
-      fullscreenControl: false,
-    });
+      const { data: links } = await supabase
+        .from("parent_links")
+        .select("child_user_id")
+        .eq("parent_user_id", user.id);
 
-    taskMarkerRef.current = new google.maps.Marker({
-      position: TASK_LOCATION,
-      map,
-      label: "📍",
-    });
+      if (!links || links.length === 0) {
+        setChildren([]);
+        setLoading(false);
+        return;
+      }
 
-    beeMarkerRef.current = new google.maps.Marker({
-      position: beePosition,
-      map,
-      label: "🐝",
-    });
+      const childIds = links.map((link) => link.child_user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, first_name, last_name, age")
+        .in("user_id", childIds);
 
-    mapRef.current = map;
-  }, [isLoaded]);
+      const nextChildren: ChildSummary[] = [];
 
-  // Update bee position
-  useEffect(() => {
-    if (beeMarkerRef.current) {
-      beeMarkerRef.current.setPosition(beePosition);
-    }
-  }, [beePosition]);
+      for (const childId of childIds) {
+        const profile = profiles?.find((item) => item.user_id === childId);
+        const { data: apps } = await supabase
+          .from("task_applications")
+          .select("id, status, created_at, task_id")
+          .eq("applicant_id", childId)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        let activeTask: ChildSummary["activeTask"] = null;
+        const notifications: ChildSummary["notifications"] = [];
+
+        for (const app of apps || []) {
+          const { data: task } = await supabase
+            .from("tasks")
+            .select("id, name, status, scheduled_date, scheduled_time, location, creator_id")
+            .eq("id", app.task_id)
+            .maybeSingle();
+
+          if (!task) continue;
+
+          const { data: taskerProfile } = await supabase
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("user_id", task.creator_id)
+            .maybeSingle();
+
+          const taskerName = taskerProfile
+            ? `${taskerProfile.first_name} ${taskerProfile.last_name}`.trim()
+            : "מציע מטלה";
+
+          if (!activeTask && (app.status === "accepted" || task.status === "in_progress")) {
+            activeTask = {
+              name: task.name,
+              status: task.status,
+              location: task.location,
+              scheduledDate: task.scheduled_date,
+              scheduledTime: task.scheduled_time,
+              taskerName,
+            };
+          }
+
+          notifications.push({
+            id: app.id,
+            type:
+              app.status === "accepted"
+                ? "accepted"
+                : app.status === "rejected"
+                ? "rejected"
+                : task.status === "completed"
+                ? "completed"
+                : "pending",
+            message:
+              app.status === "accepted"
+                ? `${profile?.first_name || "הילד"} התקבל למטלה "${task.name}"`
+                : app.status === "rejected"
+                ? `${profile?.first_name || "הילד"} לא התקבל למטלה "${task.name}"`
+                : task.status === "completed"
+                ? `${profile?.first_name || "הילד"} סיים את המטלה "${task.name}"`
+                : `${profile?.first_name || "הילד"} הגיש מועמדות למטלה "${task.name}"`,
+            time: formatDate(app.created_at),
+            read: app.status !== "accepted",
+          });
+        }
+
+        nextChildren.push({
+          userId: childId,
+          name: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "ילד מקושר",
+          age: profile?.age ?? null,
+          activeTask,
+          notifications,
+        });
+      }
+
+      setChildren(nextChildren);
+      setLoading(false);
+    };
+
+    void load();
+  }, [user]);
+
+  const unreadCount = useMemo(
+    () => children.reduce((sum, child) => sum + child.notifications.filter((item) => !item.read).length, 0),
+    [children],
+  );
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
       <div className="absolute top-40 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
 
-      <PageHeader title="לוח בקרה הורי" icon={<Shield size={16} />} />
+      <PageHeader title="לוח הורים" icon={<Shield size={16} />} />
 
-      <div className="max-w-5xl mx-auto py-8 px-4 relative z-10">
-        <div className="glass rounded-3xl p-6 border border-border mb-6">
+      <div className="max-w-5xl mx-auto py-8 px-4 relative z-10 space-y-6">
+        <Card className="p-6 border border-border">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full gradient-honey flex items-center justify-center text-primary-foreground">
-              <User size={28} />
+              <Shield size={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-foreground">{mockChild.name}</h1>
-              <p className="text-muted-foreground text-sm">גיל {mockChild.age} • מטלה פעילה כרגע</p>
+              <h1 className="text-2xl font-extrabold text-foreground">מעקב הורים</h1>
+              <p className="text-muted-foreground text-sm">
+                מסך זה מציג ילדים שקושרו להורה במערכת, עם עדכונים על מועמדויות ומטלות פעילות.
+              </p>
             </div>
-            <Badge className="gradient-honey text-primary-foreground border-none rounded-xl font-bold mr-auto">
-              🟢 פעיל/ה
+            <Badge variant="secondary" className="mr-auto rounded-xl font-bold">
+              {unreadCount} עדכונים
             </Badge>
           </div>
-        </div>
+        </Card>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-lg">
-            <div className="p-4 border-b border-border flex items-center gap-2">
-              <MapPin size={18} className="text-primary-ink" />
-              <h2 className="font-extrabold text-foreground">מיקום בזמן אמת</h2>
-              <div className="mr-auto flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs text-muted-foreground font-semibold">Live</span>
+        {loading ? (
+          <Card className="p-8 text-center text-muted-foreground">טוען נתוני הורים...</Card>
+        ) : children.length === 0 ? (
+          <Card className="p-8 text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary-ink">
+                <User size={28} />
               </div>
             </div>
-            {isLoaded ? (
-              <div ref={mapContainerRef} style={{ height: "350px", width: "100%" }} />
-            ) : (
-              <div style={{ height: "350px" }} className="flex items-center justify-center bg-muted text-center px-4">
-                <div className="space-y-2">
-                  <p className="text-muted-foreground">טוען מפה...</p>
-                  {error && <p className="text-xs text-destructive leading-relaxed">{error}</p>}
-                </div>
-              </div>
-            )}
-            <div className="p-4 bg-muted/50 border-t border-border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-foreground text-sm">{mockChild.activeTask.name}</p>
-                  <p className="text-xs text-muted-foreground">אצל {mockChild.activeTask.taskerName}</p>
-                </div>
-                <div className="text-left">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock size={12} />{mockChild.activeTask.startTime} - {mockChild.activeTask.estimatedEnd}</p>
-                  <Badge variant="secondary" className="text-[10px] mt-1 rounded-lg font-bold">בביצוע</Badge>
-                </div>
-              </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-foreground">עדיין אין ילדים מקושרים</h2>
+              <p className="text-muted-foreground text-sm mt-2">
+                כדי להפעיל אזור הורים צריך ליצור רשומת קישור בטבלת <code>parent_links</code> בין ההורה לילד.
+              </p>
             </div>
-          </div>
-
-          <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-lg">
-            <div className="p-4 border-b border-border flex items-center gap-2">
-              <Bell size={18} className="text-primary-ink" />
-              <h2 className="font-extrabold text-foreground">התראות</h2>
-              <Badge variant="secondary" className="mr-auto rounded-lg text-xs font-bold">
-                {mockNotifications.filter(n => !n.read).length} חדשות
-              </Badge>
-            </div>
-            <div className="divide-y divide-border max-h-[450px] overflow-y-auto">
-              {mockNotifications.map((notif) => (
-                <div key={notif.id} className={`p-4 flex items-start gap-3 transition-colors ${!notif.read ? "bg-primary/5" : ""}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                    notif.type === "accepted" ? "bg-blue-100 text-blue-600" :
-                    notif.type === "started" ? "bg-amber-100 text-amber-600" :
-                    notif.type === "completed" ? "bg-green-100 text-green-600" :
-                    "bg-emerald-100 text-emerald-600"
-                  }`}>
-                    {notif.type === "accepted" ? <CheckCircle2 size={16} /> :
-                     notif.type === "started" ? <AlertCircle size={16} /> :
-                     notif.type === "completed" ? <CheckCircle2 size={16} /> :
-                     <DollarSignIcon />}
+            <Link to="/tasks">
+              <Button className="gradient-honey text-primary-foreground rounded-full font-bold">
+                חזרה למטלות
+              </Button>
+            </Link>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {children.map((child) => (
+              <Card key={child.userId} className="p-6 border border-border space-y-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full gradient-honey flex items-center justify-center text-primary-foreground">
+                    <User size={28} />
                   </div>
-                  <div className="flex-1">
-                    <p className={`text-sm ${!notif.read ? "font-bold text-foreground" : "text-muted-foreground"}`}>
-                      {notif.message}
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-foreground">{child.name}</h2>
+                    <p className="text-muted-foreground text-sm">
+                      {child.age ? `גיל ${child.age}` : "גיל לא עודכן"}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
                   </div>
-                  {!notif.read && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />}
                 </div>
-              ))}
-            </div>
+
+                {child.activeTask ? (
+                  <div className="grid lg:grid-cols-2 gap-4">
+                    <div className="bg-card rounded-3xl border border-border p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-4">
+                        <MapPin size={18} className="text-primary-ink" />
+                        <h3 className="font-extrabold text-foreground">מטלה פעילה</h3>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <p className="font-bold text-foreground">{child.activeTask.name}</p>
+                        <p className="text-muted-foreground">אצל {child.activeTask.taskerName}</p>
+                        {child.activeTask.location && <p className="text-muted-foreground">{child.activeTask.location}</p>}
+                        <p className="text-muted-foreground">
+                          {child.activeTask.scheduledDate ? formatDate(child.activeTask.scheduledDate) : "תאריך לא צוין"}
+                          {child.activeTask.scheduledTime ? `, ${formatTime(child.activeTask.scheduledTime)}` : ""}
+                        </p>
+                        <Badge variant="secondary" className="rounded-lg font-bold mt-2">
+                          {statusLabel(child.activeTask.status)}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="bg-card rounded-3xl border border-border p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-4">
+                        <AlertCircle size={18} className="text-primary-ink" />
+                        <h3 className="font-extrabold text-foreground">סטטוס מעקב</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        כרגע מוצגת המטלה הפעילה האחרונה של הילד. אפשר להרחיב בהמשך למיקום חי, היסטוריה מלאה והתראות push.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-border p-5 text-sm text-muted-foreground">
+                    אין כרגע מטלה פעילה לילד הזה.
+                  </div>
+                )}
+
+                <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm">
+                  <div className="p-4 border-b border-border flex items-center gap-2">
+                    <Bell size={18} className="text-primary-ink" />
+                    <h3 className="font-extrabold text-foreground">עדכונים אחרונים</h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {child.notifications.length === 0 ? (
+                      <div className="p-4 text-sm text-muted-foreground">אין עדכונים עדיין.</div>
+                    ) : (
+                      child.notifications.slice(0, 6).map((notif) => (
+                        <div key={notif.id} className={`p-4 flex items-start gap-3 ${!notif.read ? "bg-primary/5" : ""}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                            notif.type === "accepted"
+                              ? "bg-blue-100 text-blue-600"
+                              : notif.type === "completed"
+                              ? "bg-green-100 text-green-600"
+                              : notif.type === "rejected"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-amber-100 text-amber-600"
+                          }`}>
+                            {notif.type === "completed" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm ${!notif.read ? "font-bold text-foreground" : "text-muted-foreground"}`}>
+                              {notif.message}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 };
-
-const DollarSignIcon = () => <span className="text-sm">₪</span>;
 
 export default ParentalHub;

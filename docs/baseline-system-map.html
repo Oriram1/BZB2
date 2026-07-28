@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>מיפוי מערכת קיים ובדיקת מצב ראשונית</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8f7f3;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --accent: #b45309;
+        --accent-soft: #fff7ed;
+        --ok: #166534;
+        --partial: #92400e;
+        --bad: #b91c1c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+      }
+
+      .hero,
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 20px;
+      }
+
+      .card {
+        padding: 24px;
+        margin-top: 20px;
+      }
+
+      h1, h2 {
+        margin: 0 0 12px;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      h2 {
+        font-size: 22px;
+      }
+
+      p {
+        margin: 0 0 12px;
+      }
+
+      ul {
+        margin: 0;
+        padding-right: 18px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 10px;
+        text-align: right;
+        vertical-align: top;
+      }
+
+      th {
+        background: var(--accent-soft);
+        font-weight: 700;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .ok {
+        color: var(--ok);
+        background: #dcfce7;
+      }
+
+      .partial {
+        color: var(--partial);
+        background: #ffedd5;
+      }
+
+      .bad {
+        color: var(--bad);
+        background: #fee2e2;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      code {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.95em;
+      }
+
+      @media (max-width: 760px) {
+        .wrap {
+          padding: 20px 14px 40px;
+        }
+
+        h1 {
+          font-size: 26px;
+        }
+
+        table,
+        thead,
+        tbody,
+        th,
+        td,
+        tr {
+          display: block;
+        }
+
+        thead {
+          display: none;
+        }
+
+        tr {
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          margin-bottom: 12px;
+          overflow: hidden;
+          background: #fff;
+        }
+
+        td {
+          border: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        td:last-child {
+          border-bottom: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <h1>מיפוי מערכת קיים ובדיקת מצב ראשונית</h1>
+        <p class="muted">תאריך הבדיקה: 28.07.2026</p>
+        <p>
+          מטרת המסמך היא ליצור baseline ברור מול הלקוח לפני תחילת עבודת המיגרציה והייצוב.
+          המסמך מבוסס על מעבר על הקוד, הרצה מקומית של המערכת, ובדיקות בפועל בדפדפן מחשב ובתצוגת מובייל.
+        </p>
+        <p>
+          עדכון תיקונים ראשון בוצע בתאריך 28.07.2026 לאחר יצירת ה־baseline.
+          המסמך משמר גם את מצב הפתיחה וגם את מה שכבר תוקן בפועל.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>בסיס הבדיקה</h2>
+        <ul>
+          <li>סביבת בדיקה: הרצה מקומית של הפרויקט הקיים</li>
+          <li>בדיקת מחשב: דפדפן שולחני</li>
+          <li>בדיקת מובייל: תצוגת iPhone 13</li>
+          <li>תאריך הבדיקה: 28 ביולי 2026</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>משתמשי בדיקה שנפתחו</h2>
+        <p>המשתמשים נפתחו לצורך בדיקות baseline בלבד. מומלץ לא להשתמש בהם בפרודקשן.</p>
+        <ul>
+          <li>משתמש מציע מטלות: <code>busybee.tasker.1785219527863@example.com</code> | סיסמה: <code>Busybee123!</code></li>
+          <li>משתמש מבצע מטלות: <code>busybee.bee.1785219613656@example.com</code> | סיסמה: <code>Busybee123!</code></li>
+          <li>משתמש בדיקה חדש לאחר תיקון ההרשאות: <code>busybee.fixed2.1785220351963@example.com</code> | סיסמה: <code>Busybee123!</code></li>
+          <li>זוג משתמשי בדיקה לאימות מסלול מטלה מלא: <code>busybee.flow.tasker.1785221255401@example.com</code> ו־<code>busybee.flow.bee.1785221255401@example.com</code> | סיסמה: <code>Busybee123!</code></li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>מיפוי המערכת הקיימת</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>תהליך</th>
+              <th>סטטוס</th>
+              <th>הערה עסקית קצרה</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>הרשמה והתחברות</td><td><span class="badge partial">עובד חלקית</span></td><td>אפשר להירשם ולהתחבר בפועל, אך לאחר הכניסה יש חוסר עקביות בגישה למסכים מוגנים לפי סוג המשתמש</td></tr>
+            <tr><td>שחזור סיסמה</td><td><span class="badge partial">עובד חלקית</span></td><td>בקשת איפוס נשלחת, אך מסלול ההמשך באפליקציה אינו קיים</td></tr>
+            <tr><td>פרופיל וסוגי משתמשים</td><td><span class="badge partial">עובד חלקית</span></td><td>קיימים סוגי משתמשים <code>tasker</code> ו־<code>bee</code>, אבל מסך הפרופיל החי חסום בפועל; <code>parent</code> ו־<code>admin</code> אינם שלמים כמוצר</td></tr>
+            <tr><td>יצירת מטלה</td><td><span class="badge bad">לא עובד</span></td><td>משתמש מציע מטלות רואה שיש לו תפקיד מתאים, אבל בפועל נחסם ממסך יצירת מטלה</td></tr>
+            <tr><td>רשימת מטלות</td><td><span class="badge ok">עובד</span></td><td>הרשימה נטענת במחשב ובמובייל</td></tr>
+            <tr><td>תצוגת מפה</td><td><span class="badge partial">עובד חלקית</span></td><td>מעבר לתצוגת מפה קיים ופועל, אך לא בוצעה בדיקת עומק של כל התנהגות המפה והסינון</td></tr>
+            <tr><td>הגשת מועמדות למטלה</td><td><span class="badge ok">עובד</span></td><td>משתמש מבצע מטלות הצליח להגיש מועמדות ממסך הרשימה</td></tr>
+            <tr><td>ניהול המטלות האישיות</td><td><span class="badge bad">לא עובד</span></td><td>בגלל בעיית ההרשאות במסכים המוגנים, לא ניתן לאמת תהליך מלא של ניהול מטלות</td></tr>
+            <tr><td>צ׳אט</td><td><span class="badge partial">עובד חלקית</span></td><td>המסך קיים, אך לא ניתן היה לאמת זרימה מלאה מקצה לקצה כי תהליך קבלת מועמדות וניהול מטלה חסום</td></tr>
+            <tr><td>העלאת תמונות ואווטארים</td><td><span class="badge partial">עובד חלקית</span></td><td>קיים קוד להעלאת תמונות ואווטארים, אך הזרימות החיות חסומות חלקית בגלל בעיות גישה למסכים</td></tr>
+            <tr><td>אזור הורים</td><td><span class="badge partial">עובד חלקית</span></td><td>הורה יכול להירשם ולהיכנס למסך אמיתי, אבל נדרש קישור <code>parent_links</code> כדי לראות ילדים ונתונים</td></tr>
+            <tr><td>אזור מנהלים</td><td><span class="badge partial">עובד חלקית</span></td><td>קיים מסך בסיסי, אך אין זרימת הקצאת אדמין רגילה או ממשק ניהול שלם למוצר בטא</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>תיקונים שבוצעו בסבב הראשון</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>נושא</th>
+              <th>מה תוקן</th>
+              <th>תוצאה נוכחית</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>הרשאות למסכים מוגנים</td><td>שכבת ה־auth עודכנה כך שטעינת profile ו־roles לא תיתקע בתוך callback של שינוי session</td><td>משתמש חדש מסוג <code>tasker</code> מצליח להיכנס בפועל ל־<code>/create-task</code> ול־<code>/profile</code></td></tr>
+            <tr><td>יצירת role בהרשמה</td><td>תהליך ההרשמה עודכן כך ש־<code>app_role</code> נשמר גם במטא־דאטה של המשתמש, ונוספה בקרה על כשל בהכנסת <code>user_roles</code></td><td>משתמשים חדשים נרשמים עם role פעיל בצורה עקבית יותר</td></tr>
+            <tr><td>שחזור סיסמה</td><td>נוסף מסלול <code>reset-password</code> ומסך ייעודי לעדכון סיסמה חדשה</td><td>קישור שחזור הסיסמה כבר לא נופל למסלול חסר</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>אימות נוסף שבוצע אחרי התיקון</h2>
+        <ul>
+          <li>מציע מטלות חדש פרסם מטלה בהצלחה.</li>
+          <li>מבצע מטלות חדש ראה את המטלה ברשימה.</li>
+          <li>המבצע הגיש מועמדות בהצלחה.</li>
+          <li>מציע המטלה ראה את המועמד ב־<code>My Tasks</code>.</li>
+          <li>המציע קיבל את המועמד.</li>
+          <li>נפתחה שיחת צ׳אט חדשה בין שני הצדדים.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>סטטוס נוכחי אחרי סבב תיקון ראשון</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>תהליך</th>
+              <th>סטטוס נוכחי</th>
+              <th>הערה</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>הרשמה והתחברות</td><td><span class="badge ok">עובד</span></td><td>נבדק מחדש עם משתמש חדש לאחר תיקון</td></tr>
+            <tr><td>שחזור סיסמה</td><td><span class="badge partial">עובד חלקית</span></td><td>המסלול נוסף ותוקן, אך עדיין לא בוצעה בדיקת אימייל מלאה מקצה לקצה</td></tr>
+            <tr><td>פרופיל וסוגי משתמשים</td><td><span class="badge partial">עובד חלקית</span></td><td>מסך הפרופיל של משתמש חדש נפתח; ייתכן שמשתמשים ישנים עם דאטה חלקי ידרשו תיקון נקודתי</td></tr>
+            <tr><td>יצירת מטלה</td><td><span class="badge ok">עובד</span></td><td>נבדקה מחדש עם משתמש חדש ופרסום מטלה הושלם בהצלחה</td></tr>
+            <tr><td>רשימת מטלות</td><td><span class="badge ok">עובד</span></td><td>ללא שינוי</td></tr>
+            <tr><td>תצוגת מפה</td><td><span class="badge partial">עובד חלקית</span></td><td>ללא שינוי</td></tr>
+            <tr><td>הגשת מועמדות למטלה</td><td><span class="badge ok">עובד</span></td><td>ללא שינוי</td></tr>
+            <tr><td>ניהול המטלות האישיות</td><td><span class="badge ok">עובד</span></td><td>נבדק מחדש עם מועמד אמיתי והזרימה פעלה</td></tr>
+            <tr><td>צ׳אט</td><td><span class="badge ok">עובד</span></td><td>נבדק מחדש לאחר קבלת מועמד ונפתחה שיחה תקינה</td></tr>
+            <tr><td>העלאת תמונות ואווטארים</td><td><span class="badge partial">עובד חלקית</span></td><td>ללא שינוי</td></tr>
+            <tr><td>אזור הורים</td><td><span class="badge partial">עובד חלקית</span></td><td>מסך דמה הוחלף במסך אמיתי עם מצב ריק ברור וטעינת נתונים מטבלת <code>parent_links</code></td></tr>
+            <tr><td>אזור מנהלים</td><td><span class="badge partial">עובד חלקית</span></td><td>ללא שינוי</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>תקלות baseline</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>תקלה</th>
+              <th>חומרה</th>
+              <th>דרך שחזור</th>
+              <th>המסך או התהליך שנפגע</th>
+              <th>Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>משתמשים ישנים שנוצרו לפני תיקון ההרשאות עלולים להישאר ללא role פעיל או עם דאטה חלקי</td><td>בינונית</td><td>להתחבר עם משתמש בדיקה ישן ולראות שהמסכים המוגנים עדיין אינם נטענים כראוי</td><td>פרופיל, יצירת מטלה, ניהול מטלות</td><td>בתוך ההצעה</td></tr>
+            <tr><td>אזור הורים דורש עדיין מנגנון תפעולי לקישור הורה-ילד, ולכן בלי <code>parent_links</code> הוא יישאר ריק</td><td>בינונית</td><td>להירשם כהורה, להיכנס ל־<code>/parent</code>, ולראות הודעה שאין עדיין ילדים מקושרים</td><td>אזור הורים</td><td>בתוך ההצעה</td></tr>
+            <tr><td>פאנל מנהלים קיים רק חלקית ואין זרימת הקצאת אדמין רגילה מתוך המוצר</td><td>בינונית</td><td>לנסות להיכנס ל־<code>/admin</code> עם משתמש רגיל ולבדוק שהמסך חסום; בנוסף, אין תהליך עסקי ברור להגדרת משתמש אדמין</td><td>אזור מנהלים</td><td>עשוי לדרוש שינוי Scope אם נדרש ממשק ניהול מלא</td></tr>
+            <tr><td>תצוגת מפה קיימת, אבל לא בוצעה עדיין בדיקת עומק של התנהגות מלאה עם דאטה אמיתי ותהליכי קצה</td><td>בינונית</td><td>לעבור לרשימת מטלות, לעבור לתצוגת מפה, ולבדוק בהמשך תרחישים של סינון, מיקום ודאטה משתנה</td><td>תצוגת מפה</td><td>בתוך ההצעה</td></tr>
+            <tr><td>העלאת תמונות ואווטארים קיימת ברמת הקוד, אך הזרימה החיה לא אומתה מקצה לקצה בגלל חסימות גישה</td><td>בינונית</td><td>לנסות להגיע למסך פרופיל ולמסך יצירת מטלה, ולהיתקל בחסימות שמונעות בדיקה מלאה</td><td>תמונות ואווטארים</td><td>בתוך ההצעה</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>הערות חשובות ללקוח</h2>
+        <ul>
+          <li>חלק מבעיית ההרשאות שכבר זוהתה ב־baseline תוקן בסבב הראשון.</li>
+          <li>משתמשים ישנים שנוצרו לפני התיקון עשויים לדרוש תיקון נתונים נקודתי.</li>
+          <li>אזור הורים כבר לא מציג נתוני דמה, אבל עדיין דורש חיבורי parent-child אמיתיים כדי להיות שימושי.</li>
+          <li>אזור מנהלים עדיין לא נראה כמו חלק גמור של מוצר בטא מלא.</li>
+          <li>המערכת יודעת כעת לבצע בפועל גם את מסלול המטלה המרכזי: פרסום, מועמדות, קבלה ופתיחת צ׳אט.</li>
+          <li>לפני תחילת המיגרציה ל־Supabase, נכון לייצב קודם את שכבת ההרשאות והמסכים המוגנים, כדי למנוע בלבול בין בעיות קיימות לבין תקלות חדשות.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>מסקנה עסקית קצרה</h2>
+        <p>המערכת אינה במצב של "מוכן לבטא", אבל היא גם לא במצב של צורך מיידי בבנייה מחדש.</p>
+        <p>יש בה בסיס עובד שאפשר להמשיך ממנו, לצד כמה תקלות ליבה קיימות שכדאי לנעול כ־baseline כבר עכשיו במסגרת שלב הייצוב.</p>
+      </section>
+    </div>
+  </body>
+</html>

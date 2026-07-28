@@ -47,8 +47,11 @@ const Register = () => {
   const isPaidPlan = planId === "quarterly" || planId === "annual";
   const navigate = useNavigate();
   const isWorker = role === "worker" || role === "bee";
+  const isParent = role === "parent";
   const title = isWorker
     ? "הרשמה למבצעי מטלות 💪"
+    : isParent
+    ? "הרשמה להורים 🛡️"
     : isPaidPlan
     ? `הרשמה למנוי ${planLabels[planId]}`
     : "הרשמה למציעי מטלות 📋";
@@ -101,12 +104,13 @@ const Register = () => {
 
   const finishRegistration = async () => {
     setLoading(true);
+    const appRole = isWorker ? "bee" : isParent ? "parent" : "tasker";
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { first_name: form.firstName, last_name: form.lastName },
+        data: { first_name: form.firstName, last_name: form.lastName, app_role: appRole },
       },
     });
 
@@ -117,18 +121,27 @@ const Register = () => {
     }
 
     if (data.user) {
-      await supabase.from("profiles").update({
+      const { error: profileError } = await supabase.from("profiles").update({
         age: parseInt(form.age) || null,
         address: form.address,
         // Store a canonical 05XXXXXXXX form regardless of how it was typed.
         phone: normalizePhone(form.phone),
       }).eq("user_id", data.user.id);
 
-      const appRole = isWorker ? "bee" : "tasker";
-      await supabase.from("user_roles").insert({
+      const { error: roleError } = await supabase.from("user_roles").insert({
         user_id: data.user.id,
         role: appRole as "bee" | "tasker" | "parent",
       });
+
+      if (profileError) {
+        toast.error("החשבון נוצר, אבל פרטי הפרופיל לא נשמרו במלואם");
+      }
+
+      if (roleError && roleError.code !== "23505") {
+        toast.error("החשבון נוצר, אבל סוג המשתמש לא נשמר. כדאי לנסות להתחבר שוב.");
+        setLoading(false);
+        return;
+      }
     }
 
     setLoading(false);

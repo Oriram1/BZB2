@@ -33,6 +33,11 @@ const Auth = () => {
               הרשם לקבלת מטלות 💪
             </Button>
           </Link>
+          <Link to="/register/parent">
+            <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-primary/30 text-foreground hover:bg-primary/5 hover:scale-[1.02] transition-transform duration-300">
+              הרשם כהורה 🛡️
+            </Button>
+          </Link>
           <Link to="/tasks">
             <Button variant="ghost" className="w-full py-6 text-lg text-muted-foreground hover:text-foreground rounded-2xl">
               סיור כאורח 👀

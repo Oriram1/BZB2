@@ -9,6 +9,7 @@ import RoleGuard from "@/components/RoleGuard";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
 import CreateTask from "./pages/CreateTask";
 import TaskList from "./pages/TaskList";
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/register/:role" element={<Register />} />
                 <Route path="/create-task" element={<RoleGuard allowedRoles={["tasker"]}><CreateTask /></RoleGuard>} />
                 <Route path="/tasks" element={<TaskList />} />

@@ -23,6 +23,8 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
+type AppRole = "tasker" | "bee" | "parent" | "admin";
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
@@ -42,13 +44,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const getMetadataRole = (nextUser: User | null): AppRole | null => {
+    const role = nextUser?.user_metadata?.app_role;
+    if (role === "tasker" || role === "bee" || role === "parent" || role === "admin") {
+      return role;
+    }
+    return null;
+  };
+
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
       .single();
-    setProfile(data);
+    return data ?? null;
   };
 
   const fetchRoles = async (userId: string) => {
@@ -56,35 +66,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    setRoles(data?.map((r) => r.role) || []);
+    return data?.map((r) => r.role) || [];
+  };
+
+  const ensureUserRole = async (nextUser: User | null, currentRoles: string[]) => {
+    if (!nextUser || currentRoles.length > 0) return currentRoles;
+
+    const metadataRole = getMetadataRole(nextUser);
+    if (!metadataRole) return currentRoles;
+
+    const { error } = await supabase
+      .from("user_roles")
+      .insert({ user_id: nextUser.id, role: metadataRole });
+
+    if (error && error.code !== "23505") {
+      return [metadataRole];
+    }
+
+    const repairedRoles = await fetchRoles(nextUser.id);
+    return repairedRoles.length > 0 ? repairedRoles : [metadataRole];
+  };
+
+  const loadUserState = async (nextUser: User | null) => {
+    if (!nextUser) {
+      setProfile(null);
+      setRoles([]);
+      return;
+    }
+
+    const [nextProfile, nextRoles] = await Promise.all([
+      fetchProfile(nextUser.id),
+      fetchRoles(nextUser.id),
+    ]);
+
+    const resolvedRoles = await ensureUserRole(nextUser, nextRoles);
+
+    setProfile(nextProfile);
+    setRoles(resolvedRoles);
   };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
+        setLoading(true);
         setSession(session);
         setUser(session?.user ?? null);
-        if (session?.user) {
-          // Use setTimeout to avoid potential deadlocks with Supabase client
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-            fetchRoles(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRoles([]);
-        }
-        setLoading(false);
+
+        window.setTimeout(() => {
+          void loadUserState(session?.user ?? null).finally(() => {
+            setLoading(false);
+          });
+        }, 0);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setLoading(true);
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        fetchRoles(session.user.id);
-      }
+      await loadUserState(session?.user ?? null);
       setLoading(false);
     });
 
@@ -101,7 +141,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id);
+      const nextProfile = await fetchProfile(user.id);
+      setProfile(nextProfile);
     }
   };
 
