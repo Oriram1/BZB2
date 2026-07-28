@@ -60,11 +60,17 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage
+    const { data: signed } = await supabase.storage
       .from("avatars")
-      .getPublicUrl(path);
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
 
-    await persist(`${publicUrl}?t=${Date.now()}`);
+    if (!signed?.signedUrl) {
+      toast.error("שגיאה ביצירת קישור לתמונה");
+      setUploading(false);
+      return;
+    }
+
+    await persist(signed.signedUrl);
     setUploading(false);
   };
 
