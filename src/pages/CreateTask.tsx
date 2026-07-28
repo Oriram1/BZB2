@@ -96,8 +96,10 @@ const CreateTask = () => {
       toast.error("שגיאה בהעלאת התמונה");
       return null;
     }
-    const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
-    return urlData.publicUrl;
+    const { data: signed } = await supabase.storage
+      .from("task-images")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+    return signed?.signedUrl ?? null;
   };
 
   const canProceed = () => {
