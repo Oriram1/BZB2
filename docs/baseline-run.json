@@ -1,0 +1,31 @@
+{
+  "users": {
+    "tasker": {
+      "firstName": "איתי",
+      "lastName": "בדיקה",
+      "age": "32",
+      "address": "דיזנגוף 50 תל אביב",
+      "email": "busybee.tasker.1785219527863@example.com",
+      "phone": "0501234567",
+      "password": "Busybee123!"
+    },
+    "bee": {
+      "firstName": "נועה",
+      "lastName": "בדיקה",
+      "age": "16",
+      "address": "רוטשילד 10 תל אביב",
+      "email": "busybee.bee.1785219527863@example.com",
+      "phone": "0507654321",
+      "password": "Busybee123!"
+    }
+  },
+  "checks": [
+    {
+      "name": "register_tasker",
+      "status": "pass",
+      "details": "http://127.0.0.1:4173/tasks"
+    }
+  ],
+  "issues": [],
+  "fatal": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[role=\"radio\"]').first()\u001b[22m\n"
+}
