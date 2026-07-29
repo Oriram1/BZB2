@@ -14,15 +14,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   ArrowRight,
+  Ban,
   ChevronLeft,
   ClipboardList,
   Link as LinkIcon,
   Loader2,
   Shield,
   Trash2,
+  UserCheck,
   UserRoundSearch,
   Users,
 } from "lucide-react";
@@ -70,7 +82,27 @@ interface DrilldownItem {
   meta: string;
   detail: string;
   href: string;
+  email?: string;
+  blocked?: boolean;
+  manageable?: boolean;
 }
+
+interface AdminUserRow {
+  id: string;
+  displayName: string;
+  email: string;
+  age: number | null;
+  createdAt: string;
+  roles: string[];
+  blocked: boolean;
+}
+
+interface AdminUsersResponse {
+  users?: AdminUserRow[];
+  error?: string;
+}
+
+type UserAdminAction = "block" | "unblock" | "delete";
 
 const drilldownCopy: Record<DrilldownKind, { title: string; description: string }> = {
   users: {
@@ -102,6 +134,9 @@ const actionLabel: Record<string, string> = {
   reset_password: "איפוס סיסמה",
   link_parent_child: "קישור הורה לילד",
   unlink_parent_child: "הסרת קישור הורה־ילד",
+  block_user: "חסימת משתמש",
+  unblock_user: "הסרת חסימת משתמש",
+  delete_user: "מחיקת משתמש",
 };
 
 const fullName = (profile: Pick<ProfileOption, "first_name" | "last_name">) =>
@@ -132,6 +167,11 @@ export default function Admin() {
   const [drilldownItems, setDrilldownItems] = useState<DrilldownItem[]>([]);
   const [drilldownLoading, setDrilldownLoading] = useState(false);
   const [drilldownError, setDrilldownError] = useState(false);
+  const [pendingUserAction, setPendingUserAction] = useState<{
+    item: DrilldownItem;
+    action: UserAdminAction;
+  } | null>(null);
+  const [managingUser, setManagingUser] = useState(false);
 
   const isAdmin = roles.includes("admin");
 
@@ -281,20 +321,26 @@ export default function Admin() {
 
     try {
       if (kind === "users") {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("user_id, first_name, last_name, age, created_at")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
+        const { data, error } = await supabase.functions.invoke<AdminUsersResponse>(
+          "admin-manage-users",
+          { body: { action: "list" } },
+        );
+        if (error || data?.error) throw error ?? new Error(data?.error);
 
         setDrilldownItems(
-          (data ?? []).map((profile) => ({
-            id: profile.user_id,
-            title: fullName(profile) || "משתמש ללא שם",
-            meta: profile.age ? `גיל ${profile.age}` : "גיל לא צוין",
-            detail: `הצטרפות: ${formatDate(profile.created_at)}`,
-            href: `/profile/${profile.user_id}`,
+          (data?.users ?? []).map((adminUser) => ({
+            id: adminUser.id,
+            title: adminUser.displayName,
+            meta: adminUser.blocked
+              ? "חסום"
+              : adminUser.roles.length > 0
+                ? adminUser.roles.join(", ")
+                : "ללא תפקיד",
+            detail: `${adminUser.email || "ללא אימייל"} · הצטרפות: ${formatDate(adminUser.createdAt)}`,
+            href: `/profile/${adminUser.id}`,
+            email: adminUser.email,
+            blocked: adminUser.blocked,
+            manageable: !adminUser.roles.includes("admin"),
           })),
         );
         return;
@@ -368,6 +414,42 @@ export default function Admin() {
       setDrilldownError(true);
     } finally {
       setDrilldownLoading(false);
+    }
+  };
+
+  const manageUser = async () => {
+    if (!pendingUserAction) return;
+
+    setManagingUser(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
+        "admin-manage-users",
+        {
+          body: {
+            action: pendingUserAction.action,
+            userId: pendingUserAction.item.id,
+          },
+        },
+      );
+
+      if (error || !data?.ok) {
+        toast.error("הפעולה לא הושלמה");
+        return;
+      }
+
+      const successMessage =
+        pendingUserAction.action === "delete"
+          ? "המשתמש נמחק לצמיתות"
+          : pendingUserAction.action === "block"
+            ? "המשתמש נחסם"
+            : "חסימת המשתמש הוסרה";
+      toast.success(successMessage);
+      setPendingUserAction(null);
+      await openDrilldown("users");
+      await loadStats();
+      await loadAudit();
+    } finally {
+      setManagingUser(false);
     }
   };
 
@@ -800,10 +882,10 @@ export default function Admin() {
                 ) : (
                   <ul className="space-y-2">
                     {drilldownItems.map((item) => (
-                      <li key={item.id}>
+                      <li key={item.id} className="overflow-hidden rounded-xl border bg-card">
                         <button
                           type="button"
-                          className="group w-full rounded-xl border bg-card p-4 text-right outline-none transition-all hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-ring"
+                          className="group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                           onClick={() => {
                             setActiveDrilldown(null);
                             navigate(item.href);
@@ -823,6 +905,39 @@ export default function Admin() {
                             <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
                           </div>
                         </button>
+                        {activeDrilldown === "users" && item.id !== user?.id && item.manageable && (
+                          <div className="flex flex-wrap gap-2 border-t bg-muted/30 p-3">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="min-h-10 rounded-xl"
+                              onClick={() =>
+                                setPendingUserAction({
+                                  item,
+                                  action: item.blocked ? "unblock" : "block",
+                                })
+                              }
+                            >
+                              {item.blocked ? (
+                                <UserCheck className="h-4 w-4" />
+                              ) : (
+                                <Ban className="h-4 w-4" />
+                              )}
+                              {item.blocked ? "הסרת חסימה" : "חסימת משתמש"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              className="min-h-10 rounded-xl"
+                              onClick={() => setPendingUserAction({ item, action: "delete" })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              מחיקה לצמיתות
+                            </Button>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -832,6 +947,53 @@ export default function Admin() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={pendingUserAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !managingUser) setPendingUserAction(null);
+        }}
+      >
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader className="text-right sm:text-right">
+            <AlertDialogTitle>
+              {pendingUserAction?.action === "delete"
+                ? "מחיקת משתמש לצמיתות"
+                : pendingUserAction?.action === "block"
+                  ? "חסימת משתמש"
+                  : "הסרת חסימה"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingUserAction?.action === "delete"
+                ? `החשבון של ${pendingUserAction.item.title} וכל המידע המקושר אליו יימחקו ולא ניתן יהיה לשחזר אותם.`
+                : pendingUserAction?.action === "block"
+                  ? `${pendingUserAction?.item.title} לא יוכל להתחבר למערכת עד להסרת החסימה.`
+                  : `${pendingUserAction?.item.title} יוכל להתחבר שוב למערכת.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:space-x-0">
+            <AlertDialogCancel disabled={managingUser}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={managingUser}
+              onClick={(event) => {
+                event.preventDefault();
+                void manageUser();
+              }}
+              className={
+                pendingUserAction?.action === "delete"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : ""
+              }
+            >
+              {managingUser
+                ? "מבצע..."
+                : pendingUserAction?.action === "delete"
+                  ? "כן, למחוק לצמיתות"
+                  : "אישור"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -13,8 +13,9 @@ import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import {
   User, Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
-  Eye, Users, CheckCircle, Clock, BarChart3
+  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 
 interface TaskStats {
@@ -65,8 +66,43 @@ const Profile = () => {
 
   // Bee state
   const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0 });
+  const [familyCode, setFamilyCode] = useState<string | null>(null);
+  const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
+  const [creatingFamilyCode, setCreatingFamilyCode] = useState(false);
 
   const [loadingData, setLoadingData] = useState(true);
+
+  const createFamilyCode = async () => {
+    setCreatingFamilyCode(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        code?: string;
+        expiresAt?: string;
+        error?: string;
+      }>("create-family-link-code");
+
+      if (error || !data?.code || !data.expiresAt) {
+        toast.error("לא הצלחנו ליצור קוד. כדאי לנסות שוב.");
+        return;
+      }
+
+      setFamilyCode(data.code);
+      setFamilyCodeExpiresAt(data.expiresAt);
+      toast.success("נוצר קוד חדש להורה");
+    } finally {
+      setCreatingFamilyCode(false);
+    }
+  };
+
+  const copyFamilyCode = async () => {
+    if (!familyCode) return;
+    try {
+      await navigator.clipboard.writeText(familyCode);
+      toast.success("הקוד הועתק");
+    } catch {
+      toast.error("לא הצלחנו להעתיק את הקוד");
+    }
+  };
 
   const isTasker = roles.includes("tasker");
   const isBee = roles.includes("bee");
@@ -305,6 +341,65 @@ const Profile = () => {
           </CardContent>
         </Card>
 
+        {isBee && (
+          <Card className="overflow-hidden border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <KeyRound className="h-5 w-5 text-primary-ink" />
+                קישור להורה
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                יוצרים קוד זמני ושולחים אותו להורה. הקוד תקף ל־10 דקות ולשימוש אחד.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {familyCode ? (
+                <div className="rounded-2xl border bg-primary/5 p-5 text-center">
+                  <p className="mb-2 text-sm font-semibold text-muted-foreground">הקוד שלך</p>
+                  <div dir="ltr" className="text-4xl font-black tracking-[0.3em] tabular-nums">
+                    {familyCode}
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    בתוקף עד{" "}
+                    {familyCodeExpiresAt
+                      ? new Intl.DateTimeFormat("he-IL", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }).format(new Date(familyCodeExpiresAt))
+                      : ""}
+                  </p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <Button type="button" onClick={() => void copyFamilyCode()} className="min-h-11 rounded-xl font-bold">
+                      <Copy className="h-4 w-4" />
+                      העתקת הקוד
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void createFamilyCode()}
+                      disabled={creatingFamilyCode}
+                      className="min-h-11 rounded-xl font-bold"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${creatingFamilyCode ? "animate-spin" : ""}`} />
+                      קוד חדש
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => void createFamilyCode()}
+                  disabled={creatingFamilyCode}
+                  className="min-h-11 w-full rounded-xl font-bold"
+                >
+                  <KeyRound className="h-4 w-4" />
+                  {creatingFamilyCode ? "יוצר קוד..." : "יצירת קוד להורה"}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats */}
         {isTasker && (
           <>
@@ -398,7 +493,7 @@ const Profile = () => {
   );
 };
 
-function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
+function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: string | number; color: string }) {
   return (
     <Card className="border-border">
       <CardContent className="p-4 flex flex-col items-center text-center gap-1">

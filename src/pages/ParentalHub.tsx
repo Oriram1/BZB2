@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, Bell, CheckCircle2, MapPin, Shield, User } from "lucide-react";
+import { AlertCircle, Bell, CheckCircle2, KeyRound, MapPin, Shield, User } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatTime } from "@/lib/format";
+import { toast } from "sonner";
 
 type ChildSummary = {
   userId: string;
@@ -42,6 +45,9 @@ const ParentalHub = () => {
   const { user } = useAuth();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [familyCode, setFamilyCode] = useState("");
+  const [redeemingCode, setRedeemingCode] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -147,7 +153,40 @@ const ParentalHub = () => {
     };
 
     void load();
-  }, [user]);
+  }, [user, refreshKey]);
+
+  const redeemFamilyCode = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const code = familyCode.replace(/\D/g, "");
+    if (!/^\d{6}$/.test(code)) {
+      toast.error("צריך להזין קוד בן 6 ספרות");
+      return;
+    }
+
+    setRedeemingCode(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        ok?: boolean;
+        childName?: string;
+        error?: string;
+      }>("redeem-family-link-code", { body: { code } });
+
+      if (error || !data?.ok) {
+        const message =
+          data?.error === "too_many_attempts"
+            ? "היו יותר מדי ניסיונות. אפשר לנסות שוב בעוד 10 דקות."
+            : "הקוד שגוי או שפג תוקפו";
+        toast.error(message);
+        return;
+      }
+
+      toast.success(`${data.childName || "הילד"} נוסף לאזור ההורים`);
+      setFamilyCode("");
+      setRefreshKey((value) => value + 1);
+    } finally {
+      setRedeemingCode(false);
+    }
+  };
 
   const unreadCount = useMemo(
     () => children.reduce((sum, child) => sum + child.notifications.filter((item) => !item.read).length, 0),
@@ -178,6 +217,43 @@ const ParentalHub = () => {
           </div>
         </Card>
 
+        <Card className="border border-border p-6">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary-ink">
+              <KeyRound className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold text-foreground">קישור ילד באמצעות קוד</h2>
+              <p className="text-sm text-muted-foreground">
+                מבקשים מהילד ליצור קוד בפרופיל ומזינים אותו כאן בתוך 10 דקות.
+              </p>
+            </div>
+          </div>
+          <form onSubmit={redeemFamilyCode} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <Label htmlFor="family-code">קוד בן 6 ספרות</Label>
+              <Input
+                id="family-code"
+                value={familyCode}
+                onChange={(event) => setFamilyCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                dir="ltr"
+                maxLength={6}
+                placeholder="000000"
+                className="mt-1 h-12 text-center text-xl font-black tracking-[0.25em] tabular-nums"
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={redeemingCode || familyCode.length !== 6}
+              className="h-12 rounded-xl px-7 font-bold"
+            >
+              {redeemingCode ? "מקשר..." : "קישור הילד"}
+            </Button>
+          </form>
+        </Card>
+
         {loading ? (
           <Card className="p-8 text-center text-muted-foreground">טוען נתוני הורים...</Card>
         ) : children.length === 0 ? (
@@ -190,7 +266,7 @@ const ParentalHub = () => {
             <div>
               <h2 className="text-xl font-extrabold text-foreground">עדיין אין ילדים מקושרים</h2>
               <p className="text-muted-foreground text-sm mt-2">
-                כדי להפעיל אזור הורים צריך ליצור רשומת קישור בטבלת <code>parent_links</code> בין ההורה לילד.
+                בקשו מהילד ליצור קוד זמני בפרופיל והזינו אותו למעלה.
               </p>
             </div>
             <Link to="/tasks">
