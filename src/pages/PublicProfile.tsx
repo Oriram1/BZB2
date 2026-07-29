@@ -52,12 +52,8 @@ const PublicProfile = () => {
     const load = async () => {
       setLoading(true);
 
-      const [{ data: profileData }, { data: roleRows }, { data: taskRows }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("user_id, first_name, last_name, avatar_url, created_at")
-          .eq("user_id", userId)
-          .maybeSingle(),
+      const [{ data: profileRows }, { data: roleRows }, { data: taskRows }] = await Promise.all([
+        supabase.rpc("get_public_profile", { _user_id: userId }),
         supabase.from("user_roles").select("role").eq("user_id", userId),
         supabase
           .from("tasks")
@@ -65,6 +61,7 @@ const PublicProfile = () => {
           .eq("creator_id", userId)
           .order("created_at", { ascending: false }),
       ]);
+      const profileData = Array.isArray(profileRows) ? profileRows[0] : profileRows;
 
       if (cancelled) return;
       setProfile(profileData ?? null);
