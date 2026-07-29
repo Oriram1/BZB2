@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
             age: profile?.age ?? null,
             createdAt: authUser.created_at,
             roles: rolesById[authUser.id] ?? [],
+            emailConfirmed: Boolean(authUser.email_confirmed_at),
             blocked: authUser.banned_until
               ? new Date(authUser.banned_until).getTime() > Date.now()
               : false,
@@ -147,6 +148,50 @@ Deno.serve(async (req) => {
     if (targetUserId === adminUser.id) return json({ error: "cannot_manage_self" }, 400);
     if (await hasRole(admin, targetUserId, "admin")) {
       return json({ error: "cannot_manage_admin" }, 403);
+    }
+
+    if (action === "confirm_email") {
+      const { data: targetUserData, error: getUserError } =
+        await admin.auth.admin.getUserById(targetUserId);
+      if (getUserError || !targetUserData.user) {
+        return json({ error: "user_not_found" }, 404);
+      }
+
+      const targetUser = targetUserData.user;
+      const metadataRole = String(targetUser.user_metadata?.app_role ?? "");
+      const validRole =
+        metadataRole === "tasker" || metadataRole === "bee" || metadataRole === "parent"
+          ? metadataRole
+          : null;
+
+      const { error: confirmError } = await admin.auth.admin.updateUserById(targetUserId, {
+        email_confirm: true,
+      });
+
+      let roleError: { message: string } | null = null;
+      if (!confirmError && validRole) {
+        const { error } = await admin
+          .from("user_roles")
+          .upsert(
+            { user_id: targetUserId, role: validRole },
+            { onConflict: "user_id,role", ignoreDuplicates: true },
+          );
+        roleError = error;
+      }
+
+      const operationError = confirmError ?? roleError;
+      await admin.from("admin_audit_log").insert({
+        admin_user_id: adminUser.id,
+        action: "confirm_user_email",
+        target_user_id: targetUserId,
+        success: !operationError,
+        details: operationError
+          ? { error: operationError.message }
+          : { role_repaired: validRole },
+      });
+
+      if (operationError) return json({ error: "user_confirmation_failed" }, 500);
+      return json({ ok: true });
     }
 
     if (action === "block" || action === "unblock") {

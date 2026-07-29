@@ -33,6 +33,7 @@ import {
   ClipboardList,
   Link as LinkIcon,
   Loader2,
+  MailCheck,
   Shield,
   Trash2,
   UserCheck,
@@ -84,6 +85,7 @@ interface DrilldownItem {
   detail: string;
   href: string;
   email?: string;
+  emailConfirmed?: boolean;
   blocked?: boolean;
   manageable?: boolean;
 }
@@ -95,6 +97,7 @@ interface AdminUserRow {
   age: number | null;
   createdAt: string;
   roles: string[];
+  emailConfirmed: boolean;
   blocked: boolean;
 }
 
@@ -103,7 +106,7 @@ interface AdminUsersResponse {
   error?: string;
 }
 
-type UserAdminAction = "block" | "unblock" | "delete";
+type UserAdminAction = "block" | "unblock" | "delete" | "confirm_email";
 
 const drilldownCopy: Record<DrilldownKind, { title: string; description: string }> = {
   users: {
@@ -137,6 +140,7 @@ const actionLabel: Record<string, string> = {
   unlink_parent_child: "הסרת קישור הורה־ילד",
   block_user: "חסימת משתמש",
   unblock_user: "הסרת חסימת משתמש",
+  confirm_user_email: "אישור הרשמת משתמש",
   delete_user: "מחיקת משתמש",
 };
 
@@ -346,6 +350,7 @@ export default function Admin() {
             detail: `${adminUser.email || "ללא אימייל"} · הצטרפות: ${formatDate(adminUser.createdAt)}`,
             href: `/profile/${adminUser.id}`,
             email: adminUser.email,
+            emailConfirmed: adminUser.emailConfirmed,
             blocked: adminUser.blocked,
             manageable: !adminUser.roles.includes("admin"),
           })),
@@ -447,6 +452,8 @@ export default function Admin() {
       const successMessage =
         pendingUserAction.action === "delete"
           ? "המשתמש נמחק לצמיתות"
+          : pendingUserAction.action === "confirm_email"
+            ? "ההרשמה אושרה והמשתמש יכול להתחבר"
           : pendingUserAction.action === "block"
             ? "המשתמש נחסם"
             : "חסימת המשתמש הוסרה";
@@ -1049,12 +1056,41 @@ export default function Admin() {
                                 </span>
                               </div>
                               <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+                              {activeDrilldown === "users" && (
+                                <span
+                                  className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                                    item.emailConfirmed
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-amber-100 text-amber-900"
+                                  }`}
+                                >
+                                  {item.emailConfirmed
+                                    ? "אימייל מאושר"
+                                    : "ממתין לאישור אימייל"}
+                                </span>
+                              )}
                             </div>
                             <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
                           </div>
                         </button>
                         {activeDrilldown === "users" && item.id !== user?.id && item.manageable && (
                           <div className="flex flex-wrap gap-2 border-t bg-muted/30 p-3">
+                            {!item.emailConfirmed && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="min-h-10 rounded-xl"
+                                onClick={() =>
+                                  setPendingUserAction({
+                                    item,
+                                    action: "confirm_email",
+                                  })
+                                }
+                              >
+                                <MailCheck className="h-4 w-4" />
+                                אישור הרשמה
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               size="sm"
@@ -1107,6 +1143,8 @@ export default function Admin() {
             <AlertDialogTitle>
               {pendingUserAction?.action === "delete"
                 ? "מחיקת משתמש לצמיתות"
+                : pendingUserAction?.action === "confirm_email"
+                  ? "אישור הרשמת משתמש"
                 : pendingUserAction?.action === "block"
                   ? "חסימת משתמש"
                   : "הסרת חסימה"}
@@ -1114,6 +1152,8 @@ export default function Admin() {
             <AlertDialogDescription>
               {pendingUserAction?.action === "delete"
                 ? `החשבון של ${pendingUserAction.item.title} וכל המידע המקושר אליו יימחקו ולא ניתן יהיה לשחזר אותם.`
+                : pendingUserAction?.action === "confirm_email"
+                  ? `האימייל של ${pendingUserAction?.item.title} יסומן כמאושר, והמשתמש יוכל להתחבר למערכת ללא לחיצה על קישור האישור.`
                 : pendingUserAction?.action === "block"
                   ? `${pendingUserAction?.item.title} לא יוכל להתחבר למערכת עד להסרת החסימה.`
                   : `${pendingUserAction?.item.title} יוכל להתחבר שוב למערכת.`}
