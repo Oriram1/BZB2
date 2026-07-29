@@ -82,6 +82,54 @@ export type Database = {
           },
         ]
       }
+      family_link_attempts: {
+        Row: {
+          attempted_at: string
+          id: number
+          parent_user_id: string
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          id?: never
+          parent_user_id: string
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          id?: never
+          parent_user_id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
+      family_link_codes: {
+        Row: {
+          child_user_id: string
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          used_at: string | null
+        }
+        Insert: {
+          child_user_id: string
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+        }
+        Update: {
+          child_user_id?: string
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -322,6 +370,10 @@ export type Database = {
           last_name: string
           user_id: string
         }[]
+      }
+      redeem_family_link_code: {
+        Args: { _code_hash: string; _parent_user_id: string }
+        Returns: string
       }
     }
     Enums: {
