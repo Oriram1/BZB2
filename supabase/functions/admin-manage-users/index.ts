@@ -12,6 +12,36 @@ async function listAllUsers(admin: Awaited<ReturnType<typeof authenticatedClient
   return users;
 }
 
+type AdminClient = Awaited<ReturnType<typeof authenticatedClients>>["admin"];
+
+async function removeUserStorage(admin: AdminClient, userId: string) {
+  for (const bucket of ["avatars", "task-images"]) {
+    while (true) {
+      const { data: files, error: listError } = await admin.storage
+        .from(bucket)
+        .list(userId, { limit: 100 });
+      if (listError) throw listError;
+      if (!files || files.length === 0) break;
+
+      const paths = files
+        .filter((file) => file.id !== null)
+        .map((file) => `${userId}/${file.name}`);
+      if (paths.length > 0) {
+        const { error: removeError } = await admin.storage.from(bucket).remove(paths);
+        if (removeError) throw removeError;
+      }
+
+      if (files.length < 100 || paths.length === 0) break;
+    }
+  }
+}
+
+async function deleteUserCompletely(admin: AdminClient, userId: string) {
+  await removeUserStorage(admin, userId);
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) throw error;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -61,6 +91,57 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "delete_many") {
+      const requestedIds = Array.isArray(body.userIds)
+        ? body.userIds.map((value: unknown) => String(value))
+        : [];
+      const userIds = [...new Set(requestedIds)].filter((id) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      );
+
+      if (userIds.length === 0) return json({ error: "missing_user_ids" }, 400);
+      if (userIds.length > 100) return json({ error: "too_many_users" }, 400);
+      if (userIds.includes(adminUser.id)) return json({ error: "cannot_manage_self" }, 400);
+
+      const { data: protectedRoles } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .in("user_id", userIds)
+        .eq("role", "admin");
+      if ((protectedRoles ?? []).length > 0) {
+        return json({ error: "cannot_manage_admin" }, 403);
+      }
+
+      const deleted: string[] = [];
+      const failed: { userId: string; error: string }[] = [];
+
+      for (const userId of userIds) {
+        try {
+          await deleteUserCompletely(admin, userId);
+          deleted.push(userId);
+          await admin.from("admin_audit_log").insert({
+            admin_user_id: adminUser.id,
+            action: "delete_user",
+            target_user_id: userId,
+            success: true,
+            details: { source: "bulk_delete" },
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "user_delete_failed";
+          failed.push({ userId, error: message });
+          await admin.from("admin_audit_log").insert({
+            admin_user_id: adminUser.id,
+            action: "delete_user",
+            target_user_id: userId,
+            success: false,
+            details: { source: "bulk_delete", error: message },
+          });
+        }
+      }
+
+      return json({ ok: failed.length === 0, deleted, failed });
+    }
+
     const targetUserId = String(body.userId ?? "");
     if (!targetUserId) return json({ error: "missing_user_id" }, 400);
     if (targetUserId === adminUser.id) return json({ error: "cannot_manage_self" }, 400);
@@ -84,15 +165,20 @@ Deno.serve(async (req) => {
     }
 
     if (action === "delete") {
-      const { error } = await admin.auth.admin.deleteUser(targetUserId);
+      let deleteError: Error | null = null;
+      try {
+        await deleteUserCompletely(admin, targetUserId);
+      } catch (error) {
+        deleteError = error instanceof Error ? error : new Error("user_delete_failed");
+      }
       await admin.from("admin_audit_log").insert({
         admin_user_id: adminUser.id,
         action: "delete_user",
         target_user_id: targetUserId,
-        success: !error,
-        details: error ? { error: error.message } : null,
+        success: !deleteError,
+        details: deleteError ? { error: deleteError.message } : null,
       });
-      if (error) return json({ error: "user_delete_failed" }, 500);
+      if (deleteError) return json({ error: "user_delete_failed" }, 500);
       return json({ ok: true });
     }
 

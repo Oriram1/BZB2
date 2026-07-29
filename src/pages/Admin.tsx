@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -172,6 +173,10 @@ export default function Admin() {
     action: UserAdminAction;
   } | null>(null);
   const [managingUser, setManagingUser] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const lastSelectedUserIdRef = useRef<string | null>(null);
+  const checkboxShiftPressedRef = useRef(false);
 
   const isAdmin = roles.includes("admin");
 
@@ -316,6 +321,8 @@ export default function Admin() {
   const openDrilldown = async (kind: DrilldownKind) => {
     setActiveDrilldown(kind);
     setDrilldownItems([]);
+    setSelectedUserIds([]);
+    lastSelectedUserIdRef.current = null;
     setDrilldownError(false);
     setDrilldownLoading(true);
 
@@ -453,6 +460,67 @@ export default function Admin() {
     }
   };
 
+  const deleteSelectedUsers = async () => {
+    if (selectedUserIds.length === 0) return;
+
+    setManagingUser(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        ok?: boolean;
+        deleted?: string[];
+        failed?: { userId: string; error: string }[];
+        error?: string;
+      }>("admin-manage-users", {
+        body: { action: "delete_many", userIds: selectedUserIds },
+      });
+
+      const deletedCount = data?.deleted?.length ?? 0;
+      const failedCount = data?.failed?.length ?? 0;
+
+      if (error || deletedCount === 0) {
+        toast.error("המחיקה הקבוצתית לא הושלמה");
+        return;
+      }
+
+      if (failedCount > 0) {
+        toast.warning(`${deletedCount} משתמשים נמחקו, ${failedCount} לא נמחקו`);
+      } else {
+        toast.success(`${deletedCount} משתמשים וכל המידע שלהם נמחקו`);
+      }
+
+      setBulkDeleteOpen(false);
+      setSelectedUserIds([]);
+      await openDrilldown("users");
+      await loadStats();
+      await loadAudit();
+    } finally {
+      setManagingUser(false);
+    }
+  };
+
+  const updateUserSelection = (userId: string, selected: boolean, selectRange: boolean) => {
+    const anchorId = lastSelectedUserIdRef.current;
+    const anchorIndex = anchorId ? selectableUserIds.indexOf(anchorId) : -1;
+    const currentIndex = selectableUserIds.indexOf(userId);
+
+    setSelectedUserIds((current) => {
+      if (selectRange && anchorIndex >= 0 && currentIndex >= 0) {
+        const start = Math.min(anchorIndex, currentIndex);
+        const end = Math.max(anchorIndex, currentIndex);
+        const range = selectableUserIds.slice(start, end + 1);
+        return selected
+          ? [...new Set([...current, ...range])]
+          : current.filter((id) => !range.includes(id));
+      }
+
+      return selected
+        ? [...new Set([...current, userId])]
+        : current.filter((id) => id !== userId);
+    });
+
+    lastSelectedUserIdRef.current = userId;
+  };
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || newPassword.length < 6) {
@@ -564,6 +632,16 @@ export default function Admin() {
       setRemovingLinkId(null);
     }
   };
+
+  const selectableUserIds =
+    activeDrilldown === "users"
+      ? drilldownItems
+          .filter((item) => item.manageable && item.id !== user?.id)
+          .map((item) => item.id)
+      : [];
+  const allSelectableUsersSelected =
+    selectableUserIds.length > 0 &&
+    selectableUserIds.every((id) => selectedUserIds.includes(id));
 
   if (loading || !isAdmin) return null;
 
@@ -857,6 +935,45 @@ export default function Admin() {
                 </DialogDescription>
               </DialogHeader>
               <div className="max-h-[65dvh] overflow-y-auto p-4">
+                {activeDrilldown === "users" && !drilldownLoading && !drilldownError && (
+                  <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
+                    <div>
+                      <label className="flex min-h-8 cursor-pointer items-center gap-3 font-bold">
+                        <Checkbox
+                          checked={
+                            allSelectableUsersSelected
+                              ? true
+                              : selectedUserIds.length > 0
+                                ? "indeterminate"
+                                : false
+                          }
+                          onCheckedChange={(checked) => {
+                            setSelectedUserIds(checked === true ? selectableUserIds : []);
+                            lastSelectedUserIdRef.current =
+                              checked === true ? selectableUserIds.at(-1) ?? null : null;
+                          }}
+                          aria-label="בחירת כל המשתמשים הניתנים למחיקה"
+                        />
+                        {selectedUserIds.length > 0
+                          ? `${selectedUserIds.length} נבחרו`
+                          : "בחירת הכול"}
+                      </label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Shift + לחיצה מסמנים טווח
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={selectedUserIds.length === 0}
+                      className="min-h-11 rounded-xl font-bold"
+                      onClick={() => setBulkDeleteOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      מחיקת הנבחרים
+                    </Button>
+                  </div>
+                )}
                 {drilldownLoading ? (
                   <div className="space-y-3" aria-label="טוען נתונים">
                     {[0, 1, 2, 3].map((item) => (
@@ -882,11 +999,42 @@ export default function Admin() {
                 ) : (
                   <ul className="space-y-2">
                     {drilldownItems.map((item) => (
-                      <li key={item.id} className="overflow-hidden rounded-xl border bg-card">
+                      <li key={item.id} className="relative overflow-hidden rounded-xl border bg-card">
+                        {activeDrilldown === "users" && item.id !== user?.id && item.manageable && (
+                          <div className="absolute end-4 top-4 z-[1] flex h-8 w-8 items-center justify-center rounded-lg bg-background shadow-sm">
+                            <Checkbox
+                              checked={selectedUserIds.includes(item.id)}
+                              onClick={(event) => {
+                                checkboxShiftPressedRef.current = event.shiftKey;
+                              }}
+                              onCheckedChange={(checked) => {
+                                updateUserSelection(
+                                  item.id,
+                                  checked === true,
+                                  checkboxShiftPressedRef.current,
+                                );
+                                checkboxShiftPressedRef.current = false;
+                              }}
+                              aria-label={`בחירת ${item.title} למחיקה`}
+                            />
+                          </div>
+                        )}
                         <button
                           type="button"
-                          className="group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                          onClick={() => {
+                          className={`group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                            activeDrilldown === "users" && item.manageable ? "pe-16" : ""
+                          }`}
+                          onClick={(event) => {
+                            if (
+                              activeDrilldown === "users" &&
+                              item.manageable &&
+                              item.id !== user?.id &&
+                              event.shiftKey
+                            ) {
+                              event.preventDefault();
+                              updateUserSelection(item.id, true, true);
+                              return;
+                            }
                             setActiveDrilldown(null);
                             navigate(item.href);
                           }}
@@ -990,6 +1138,45 @@ export default function Admin() {
                 : pendingUserAction?.action === "delete"
                   ? "כן, למחוק לצמיתות"
                   : "אישור"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!managingUser) setBulkDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader className="text-right sm:text-right">
+            <AlertDialogTitle>
+              מחיקה לצמיתות של {selectedUserIds.length} משתמשים
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                הפעולה תמחק את החשבונות ואת כל המידע המקושר אליהם: פרופילים, מטלות,
+                מועמדויות, שיחות, הודעות, קישורי משפחה וקבצים שהועלו.
+              </span>
+              <span className="block font-bold text-destructive">
+                לא ניתן לשחזר את המידע לאחר המחיקה.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:space-x-0">
+            <AlertDialogCancel disabled={managingUser}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={managingUser || selectedUserIds.length === 0}
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteSelectedUsers();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {managingUser
+                ? "מוחק..."
+                : `כן, למחוק ${selectedUserIds.length} משתמשים`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
