@@ -313,7 +313,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_public_profile: {
+        Args: { _user_id: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          first_name: string
+          last_name: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "tasker" | "bee" | "parent" | "admin"
