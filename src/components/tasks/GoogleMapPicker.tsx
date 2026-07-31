@@ -19,27 +19,32 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleM
   const markerRef = useRef<google.maps.Marker | null>(null);
   const [locating, setLocating] = useState(false);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const onLocationSelectRef = useRef(onLocationSelect);
+  const onAddressFoundRef = useRef(onAddressFound);
 
-  const center = lat && lng ? { lat, lng } : defaultCenter;
+  const center = lat !== null && lng !== null ? { lat, lng } : defaultCenter;
+  const initialCenterRef = useRef(center);
+  onLocationSelectRef.current = onLocationSelect;
+  onAddressFoundRef.current = onAddressFound;
 
   const reverseGeocode = useCallback((latitude: number, longitude: number) => {
-    if (!onAddressFound) return;
+    if (!onAddressFoundRef.current) return;
     if (!geocoderRef.current) {
       if (!window.google) return;
       geocoderRef.current = new google.maps.Geocoder();
     }
     geocoderRef.current.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
       if (status === "OK" && results && results[0]) {
-        onAddressFound(results[0].formatted_address);
+        onAddressFoundRef.current?.(results[0].formatted_address);
       }
     });
-  }, [onAddressFound]);
+  }, []);
 
   useEffect(() => {
     if (!isLoaded || !containerRef.current || mapRef.current) return;
 
     const map = new google.maps.Map(containerRef.current, {
-      center,
+      center: initialCenterRef.current,
       zoom: 13,
       streetViewControl: false,
       mapTypeControl: false,
@@ -50,13 +55,13 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleM
       if (e.latLng) {
         const clat = e.latLng.lat();
         const clng = e.latLng.lng();
-        onLocationSelect(clat, clng);
+        onLocationSelectRef.current(clat, clng);
         reverseGeocode(clat, clng);
       }
     });
 
     mapRef.current = map;
-  }, [isLoaded]);
+  }, [isLoaded, reverseGeocode]);
 
   // Update marker when lat/lng changes
   useEffect(() => {
@@ -64,7 +69,7 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleM
     if (markerRef.current) {
       markerRef.current.setMap(null);
     }
-    if (lat && lng) {
+    if (lat !== null && lng !== null) {
       markerRef.current = new google.maps.Marker({
         position: { lat, lng },
         map: mapRef.current,
@@ -106,7 +111,7 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleM
 
   return (
     <div className="flex flex-col gap-2">
-      <div ref={containerRef} style={{ width: "100%", height: "250px", borderRadius: "1rem" }} />
+      <div ref={containerRef} data-testid="google-map-picker" className="h-[250px] w-full rounded-2xl bg-muted" />
 
       <Button
         type="button"
@@ -120,7 +125,7 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleM
         {locating ? "מאתר..." : "השתמש במיקום שלי"}
       </Button>
 
-      {lat && lng && (
+      {lat !== null && lng !== null && (
         <p className="text-xs text-muted-foreground">
           נ.צ: {lat.toFixed(5)}, {lng.toFixed(5)}
         </p>

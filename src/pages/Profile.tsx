@@ -18,7 +18,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { geocodeAddress } from "@/lib/geocodeAddress";
-import AddressMapPreview from "@/components/tasks/AddressMapPreview";
+import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 
 interface TaskStats {
   total: number;
@@ -344,7 +344,14 @@ const Profile = () => {
                   <Label className="text-xs text-muted-foreground">כתובת</Label>
                   <Input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} onBlur={handleAddressBlur} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleAddressBlur(); } }} />
                   {addressLoading && <p className="mt-1 text-xs text-muted-foreground">מאתר את הכתובת...</p>}
-                  {addressPosition && <div className="mt-3"><AddressMapPreview {...addressPosition} label={form.address} /></div>}
+                  <div className="mt-3">
+                    <GoogleMapPicker
+                      lat={addressPosition?.lat ?? null}
+                      lng={addressPosition?.lng ?? null}
+                      onLocationSelect={(lat, lng) => setAddressPosition({ lat, lng })}
+                      onAddressFound={(address) => setForm((current) => ({ ...current, address }))}
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
