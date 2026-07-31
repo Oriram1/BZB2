@@ -145,12 +145,8 @@ const Register = () => {
     }
 
     setLoading(false);
-    toast.success(
-      insurance
-        ? "ההרשמה בוצעה בהצלחה כולל ביטוח מטלות! 🛡️🎉"
-        : "ההרשמה בוצעה בהצלחה! 🎉"
-    );
-    navigate("/tasks");
+    toast.success("ההרשמה נוצרה! בדקו את האימייל ואשרו את החשבון כדי להתחבר 📧");
+    navigate("/login");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
