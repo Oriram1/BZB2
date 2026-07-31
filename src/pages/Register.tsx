@@ -73,6 +73,14 @@ const Register = () => {
     setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
   };
 
+  const handleAddressBlur = async () => {
+    if (!form.address.trim()) return;
+    const { data, error } = await supabase.functions.invoke("geocode-address", {
+      body: { address: form.address },
+    });
+    if (!error && data?.formattedAddress) updateField("address", data.formattedAddress);
+  };
+
   const minAge = isWorker ? 13 : 18;
 
   /** Every rule in one place. Returns a message per invalid field. */
@@ -218,7 +226,19 @@ const Register = () => {
           </div>
           <div>
             <Label htmlFor="address">כתובת</Label>
-            <Input id="address" value={form.address} onChange={(e) => updateField("address", e.target.value)} placeholder="רחוב, מספר ועיר" autoComplete="street-address" dir="auto" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.address} aria-describedby={errors.address ? "address-error" : undefined} />
+            <Input
+              id="address"
+              value={form.address}
+              onChange={(e) => updateField("address", e.target.value)}
+              onBlur={handleAddressBlur}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddressBlur(); } }}
+              placeholder="רחוב, מספר ועיר"
+              autoComplete="street-address"
+              dir="auto"
+              className="mt-1 rounded-2xl h-12"
+              aria-invalid={!!errors.address}
+              aria-describedby={errors.address ? "address-error" : undefined}
+            />
             <FieldError id="address" message={errors.address} />
           </div>
           <div>
