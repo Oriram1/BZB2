@@ -15,7 +15,7 @@ import { ShieldCheck } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { geocodeAddress } from "@/lib/geocodeAddress";
-import AddressMapPreview from "@/components/tasks/AddressMapPreview";
+import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -247,7 +247,14 @@ const Register = () => {
               aria-describedby={errors.address ? "address-error" : undefined}
             />
             {addressLoading && <p className="text-xs text-muted-foreground mt-1">מאתר את הכתובת...</p>}
-            {addressPosition && <div className="mt-3"><AddressMapPreview {...addressPosition} label={form.address} /></div>}
+            <div className="mt-3">
+              <GoogleMapPicker
+                lat={addressPosition?.lat ?? null}
+                lng={addressPosition?.lng ?? null}
+                onLocationSelect={(lat, lng) => setAddressPosition({ lat, lng })}
+                onAddressFound={(address) => updateField("address", address)}
+              />
+            </div>
             <FieldError id="address" message={errors.address} />
           </div>
           <div>

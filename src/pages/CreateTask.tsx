@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
-import AddressMapPreview from "@/components/tasks/AddressMapPreview";
+import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 
 const displayFormattedDate = (dateStr: string) => {
   if (!dateStr) return "";
@@ -59,7 +59,6 @@ const CreateTask = () => {
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
   const [selectedLng, setSelectedLng] = useState<number | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
-  const [locationPosition, setLocationPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -115,7 +114,6 @@ const CreateTask = () => {
       updateForm("location", formattedAddress.formattedAddress);
       setSelectedLat(formattedAddress.lat);
       setSelectedLng(formattedAddress.lng);
-      setLocationPosition({ lat: formattedAddress.lat, lng: formattedAddress.lng });
     }
     setLocationLoading(false);
   };
@@ -473,7 +471,17 @@ const CreateTask = () => {
                   className="rounded-2xl h-12 text-right text-base"
                 />
                 {locationLoading && <p className="text-xs text-muted-foreground mt-2">מאתר את הכתובת...</p>}
-                {locationPosition && <div className="mt-3"><AddressMapPreview {...locationPosition} label={form.location} /></div>}
+                <div className="mt-3">
+                  <GoogleMapPicker
+                    lat={selectedLat}
+                    lng={selectedLng}
+                    onLocationSelect={(lat, lng) => {
+                      setSelectedLat(lat);
+                      setSelectedLng(lng);
+                    }}
+                    onAddressFound={(address) => updateForm("location", address)}
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="expiry" className="text-right block mb-1 font-bold">תוקף הפרסום (שעות)</Label>
