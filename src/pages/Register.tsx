@@ -15,6 +15,7 @@ import { ShieldCheck } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { geocodeAddress } from "@/lib/geocodeAddress";
+import AddressMapPreview from "@/components/tasks/AddressMapPreview";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -68,6 +69,7 @@ const Register = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [addressLoading, setAddressLoading] = useState(false);
+  const [addressPosition, setAddressPosition] = useState<{ lat: number; lng: number } | null>(null);
 
   const updateField = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -79,7 +81,10 @@ const Register = () => {
     if (!form.address.trim()) return;
     setAddressLoading(true);
     const formattedAddress = await geocodeAddress(form.address);
-    if (formattedAddress) updateField("address", formattedAddress);
+    if (formattedAddress) {
+      updateField("address", formattedAddress.formattedAddress);
+      setAddressPosition({ lat: formattedAddress.lat, lng: formattedAddress.lng });
+    }
     setAddressLoading(false);
   };
 
@@ -242,6 +247,7 @@ const Register = () => {
               aria-describedby={errors.address ? "address-error" : undefined}
             />
             {addressLoading && <p className="text-xs text-muted-foreground mt-1">מאתר את הכתובת...</p>}
+            {addressPosition && <div className="mt-3"><AddressMapPreview {...addressPosition} label={form.address} /></div>}
             <FieldError id="address" message={errors.address} />
           </div>
           <div>

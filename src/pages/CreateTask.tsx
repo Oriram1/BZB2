@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
+import AddressMapPreview from "@/components/tasks/AddressMapPreview";
 
 const displayFormattedDate = (dateStr: string) => {
   if (!dateStr) return "";
@@ -53,6 +54,7 @@ const CreateTask = () => {
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
   const [selectedLng, setSelectedLng] = useState<number | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [locationPosition, setLocationPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -64,7 +66,12 @@ const CreateTask = () => {
     if (!form.location.trim()) return;
     setLocationLoading(true);
     const formattedAddress = await geocodeAddress(form.location);
-    if (formattedAddress) updateForm("location", formattedAddress);
+    if (formattedAddress) {
+      updateForm("location", formattedAddress.formattedAddress);
+      setSelectedLat(formattedAddress.lat);
+      setSelectedLng(formattedAddress.lng);
+      setLocationPosition({ lat: formattedAddress.lat, lng: formattedAddress.lng });
+    }
     setLocationLoading(false);
   };
 
@@ -333,6 +340,7 @@ const CreateTask = () => {
                   className="rounded-2xl h-12 text-right text-base"
                 />
                 {locationLoading && <p className="text-xs text-muted-foreground mt-2">מאתר את הכתובת...</p>}
+                {locationPosition && <div className="mt-3"><AddressMapPreview {...locationPosition} label={form.location} /></div>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
