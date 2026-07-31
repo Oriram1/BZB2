@@ -365,25 +365,6 @@ const CreateTask = () => {
           {step === 4 && (
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">מתי ואיפה?</h2>
-              <div>
-                <Label htmlFor="location" className="text-right block mb-1 font-bold">תאריך ושעה</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                  {/* existing date/time controls moved visually before address */}
-                </div>
-                <Label htmlFor="location" className="text-right block mb-1 font-bold">כתובת המטלה</Label>
-                <Input
-                  id="location"
-                  dir="rtl"
-                  value={form.location}
-                  onChange={(e) => updateForm("location", e.target.value)}
-                  onBlur={handleLocationBlur}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLocationBlur(); } }}
-                  placeholder="עיר, רחוב ומספר בית"
-                  className="rounded-2xl h-12 text-right text-base"
-                />
-                {locationLoading && <p className="text-xs text-muted-foreground mt-2">מאתר את הכתובת...</p>}
-                {locationPosition && <div className="mt-3"><AddressMapPreview {...locationPosition} label={form.location} /></div>}
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="date" className="text-right block mb-1 font-bold">תאריך</Label>
@@ -466,6 +447,21 @@ const CreateTask = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="location" className="text-right block mb-1 font-bold">כתובת המטלה</Label>
+                <Input
+                  id="location"
+                  dir="rtl"
+                  value={form.location}
+                  onChange={(e) => updateForm("location", e.target.value)}
+                  onBlur={handleLocationBlur}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleLocationBlur(); } }}
+                  placeholder="עיר, רחוב ומספר בית"
+                  className="rounded-2xl h-12 text-right text-base"
+                />
+                {locationLoading && <p className="text-xs text-muted-foreground mt-2">מאתר את הכתובת...</p>}
+                {locationPosition && <div className="mt-3"><AddressMapPreview {...locationPosition} label={form.location} /></div>}
               </div>
               <div>
                 <Label htmlFor="expiry" className="text-right block mb-1 font-bold">תוקף הפרסום (שעות)</Label>
