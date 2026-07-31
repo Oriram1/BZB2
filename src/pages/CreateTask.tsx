@@ -47,6 +47,7 @@ const CreateTask = () => {
   const [step, setStep] = useState(1);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingExit, setPendingExit] = useState<(() => void) | null>(null);
+  const allowNavigationRef = useRef(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -81,6 +82,23 @@ const CreateTask = () => {
     setPendingExit(() => exit);
     setShowExitDialog(true);
   };
+  useEffect(() => {
+    const originalPushState = window.history.pushState.bind(window.history);
+    window.history.pushState = ((state: unknown, title: string, url?: string | URL | null) => {
+      const target = url?.toString() ?? "";
+      if (hasDraftContent && !allowNavigationRef.current && target && target !== window.location.pathname) {
+        setPendingExit(() => () => {
+          allowNavigationRef.current = true;
+          originalPushState(state, title, url);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        });
+        setShowExitDialog(true);
+        return;
+      }
+      originalPushState(state, title, url);
+    }) as typeof window.history.pushState;
+    return () => { window.history.pushState = originalPushState; };
+  }, [hasDraftContent]);
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (hasDraftContent) { event.preventDefault(); event.returnValue = ""; }
@@ -650,8 +668,8 @@ const CreateTask = () => {
           </DialogHeader>
           <DialogFooter dir="rtl" className="flex-col gap-2 sm:flex-row-reverse sm:justify-start">
             <Button variant="outline" onClick={() => setShowExitDialog(false)}>להמשיך לערוך</Button>
-            <Button variant="outline" onClick={async () => { await saveDraft(); setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
-            <Button variant="destructive" onClick={() => { setShowExitDialog(false); pendingExit?.(); }}>יציאה בלי לשמור</Button>
+            <Button variant="outline" onClick={async () => { await saveDraft(); allowNavigationRef.current = true; setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
+            <Button variant="destructive" onClick={() => { allowNavigationRef.current = true; setShowExitDialog(false); pendingExit?.(); }}>יציאה בלי לשמור</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
