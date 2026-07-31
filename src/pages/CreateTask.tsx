@@ -666,7 +666,7 @@ const CreateTask = () => {
             <DialogTitle>לצאת מפרסום המטלה?</DialogTitle>
             <DialogDescription>כתבת פרטים. אפשר לשמור אותם כטיוטה ולהמשיך מאוחר יותר.</DialogDescription>
           </DialogHeader>
-          <DialogFooter dir="rtl" className="flex-col gap-2 sm:flex-row-reverse sm:justify-start">
+          <DialogFooter dir="rtl" className="flex-col gap-2 sm:flex-row sm:justify-start">
             <Button variant="outline" onClick={() => setShowExitDialog(false)}>להמשיך לערוך</Button>
             <Button variant="outline" onClick={async () => { await saveDraft(); allowNavigationRef.current = true; setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
             <Button variant="destructive" onClick={() => { allowNavigationRef.current = true; setShowExitDialog(false); pendingExit?.(); }}>יציאה בלי לשמור</Button>
