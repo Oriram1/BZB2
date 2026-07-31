@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Im
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
@@ -44,6 +45,9 @@ const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [pendingExit, setPendingExit] = useState<(() => void) | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
@@ -61,6 +65,35 @@ const CreateTask = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const hasDraftContent = Object.values(form).some(Boolean) || Boolean(imageFile);
+  const saveDraft = async () => {
+    if (!user || !hasDraftContent) return;
+    const payload = { form, step, selectedLat, selectedLng };
+    const query = draftId
+      ? supabase.from("task_drafts").update({ form_data: payload, current_step: step, updated_at: new Date().toISOString() }).eq("id", draftId)
+      : supabase.from("task_drafts").insert({ user_id: user.id, form_data: payload, current_step: step }).select("id").single();
+    const { data } = await query;
+    if (!draftId && data?.id) setDraftId(data.id);
+    toast.success("הטיוטה נשמרה");
+  };
+  useEffect(() => {
+    if (step > 1 && hasDraftContent) void saveDraft();
+    // Save when user advances step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+  const requestExit = (exit: () => void) => {
+    if (!hasDraftContent) { exit(); return; }
+    setPendingExit(() => exit);
+    setShowExitDialog(true);
+  };
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (hasDraftContent) { event.preventDefault(); event.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [hasDraftContent]);
 
   const handleLocationBlur = async () => {
     if (!form.location.trim()) return;
@@ -108,7 +141,11 @@ const CreateTask = () => {
       case 1: return !!form.category;
       case 2: return !!form.taskName && !!form.shortDesc;
       case 3: return !!form.payment;
-      case 4: return !!form.location && !!form.date && !!form.time;
+      case 4: {
+        const duration = Number(form.duration);
+        const validDuration = !form.duration || (form.durationUnit === "minutes" ? duration >= 5 && duration <= 1440 : duration >= 0.5 && duration <= 24);
+        return !!form.location && !!form.date && !!form.time && validDuration;
+      }
       default: return true;
     }
   };
@@ -160,11 +197,11 @@ const CreateTask = () => {
 
       <div className="relative z-10 w-full max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <Link to="/">
+            <Link to="/" onClick={(event) => { if (hasDraftContent) { event.preventDefault(); requestExit(() => navigate("/")); } }}>
             <BzbLogo className="w-12 h-12" animate />
           </Link>
           <h1 className="text-2xl font-bold text-foreground">פרסום מטלה חדשה</h1>
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full h-11 w-11" aria-label="חזרה למסך הקודם">
+          <Button variant="ghost" size="icon" onClick={() => requestExit(() => navigate(-1))} className="rounded-full h-11 w-11" aria-label="חזרה למסך הקודם">
             <ArrowRight size={22} />
           </Button>
         </div>
@@ -237,18 +274,19 @@ const CreateTask = () => {
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">פרטי המטלה</h2>
               <div>
-                <Label htmlFor="taskName" className="text-right block mb-1 font-bold">שם המשימה</Label>
+                <Label htmlFor="taskName" className="text-right block mb-1 font-bold">מה צריך לעשות?</Label>
                 <Input
                   id="taskName"
                   dir="rtl"
                   value={form.taskName}
                   onChange={(e) => updateForm("taskName", e.target.value)}
-                  placeholder="לדוגמה: ניקוי חלונות ויקרא"
+                  placeholder="לדוגמה: ניקוי חלונות בדירה"
                   className="rounded-2xl h-12 text-right text-base"
                 />
+                <p className="text-xs text-muted-foreground mt-1">כתבו בכמה מילים מה המבצע/ת יצטרך/ת לעשות.</p>
               </div>
               <div>
-                <Label htmlFor="shortDesc" className="text-right block mb-1 font-bold">תיאור קצר (עד 40 תווים)</Label>
+                <Label htmlFor="shortDesc" className="text-right block mb-1 font-bold">תיאור קצר (עד 120 תווים)</Label>
                 <Input
                   id="shortDesc"
                   dir="rtl"
@@ -256,9 +294,9 @@ const CreateTask = () => {
                   onChange={(e) => updateForm("shortDesc", e.target.value)}
                   placeholder="לדוגמה: ניקוי 4 חלונות גדולים בסלון"
                   className="rounded-2xl h-12 text-right text-base"
-                  maxLength={40}
+                  maxLength={120}
                 />
-                <p className="text-xs text-muted-foreground mt-1 text-left" dir="ltr">{form.shortDesc.length}/40</p>
+                <p className="text-xs text-muted-foreground mt-1 text-left" dir="ltr">{form.shortDesc.length}/120 · לדוגמה: ניקוי 4 חלונות גדולים בסלון</p>
               </div>
               <div>
                 <Label htmlFor="fullDesc" className="text-right block mb-1 font-bold">תיאור מפורט</Label>
@@ -267,7 +305,7 @@ const CreateTask = () => {
                   dir="rtl"
                   value={form.fullDesc}
                   onChange={(e) => updateForm("fullDesc", e.target.value)}
-                  placeholder="תאר את המשימה בפירוט, דרישות מיוחדות, ציוד נדרש וכו'..."
+                  placeholder="מומלץ לפרט: מה כולל הביצוע, דרישות מיוחדות, ציוד נדרש וכו'..."
                   className="rounded-2xl min-h-[120px] text-right text-base"
                 />
               </div>
@@ -326,9 +364,13 @@ const CreateTask = () => {
 
           {step === 4 && (
             <div className="flex flex-col gap-5">
-              <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">מיקום וזמן</h2>
+              <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">מתי ואיפה?</h2>
               <div>
-                <Label htmlFor="location" className="text-right block mb-1 font-bold">מיקום המטלה</Label>
+                <Label htmlFor="location" className="text-right block mb-1 font-bold">תאריך ושעה</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                  {/* existing date/time controls moved visually before address */}
+                </div>
+                <Label htmlFor="location" className="text-right block mb-1 font-bold">כתובת המטלה</Label>
                 <Input
                   id="location"
                   dir="rtl"
@@ -409,11 +451,12 @@ const CreateTask = () => {
                     inputMode="numeric"
                     dir="rtl"
                     value={form.duration}
-                    onChange={(e) => updateForm("duration", e.target.value)}
+                    onChange={(e) => updateForm("duration", e.target.value.replace(/[^0-9.]/g, ""))}
                     className="rounded-2xl h-12 flex-1 text-right text-base"
                     placeholder="1"
-                    min={1}
-                    step={1}
+                    min={form.durationUnit === "minutes" ? 5 : 0.5}
+                    max={form.durationUnit === "minutes" ? 1440 : 24}
+                    step={form.durationUnit === "minutes" ? 1 : 0.5}
                   />
                   <Select value={form.durationUnit} onValueChange={(v) => updateForm("durationUnit", v)}>
                     <SelectTrigger className="rounded-2xl h-12 w-32 text-right"><SelectValue /></SelectTrigger>
@@ -516,9 +559,9 @@ const CreateTask = () => {
                     <h3 className="font-extrabold text-foreground text-base">פרטים כלליים</h3>
                   </div>
                   <div className="space-y-4">
-                    <SummaryItem label="קטגוריה" value={categoryLabel(form.category)} />
-                    <SummaryItem label="שם המטלה" value={form.taskName} />
-                    <SummaryItem label="תיאור" value={form.shortDesc} />
+                    <SummaryItem label="קטגוריה" value={categoryLabel(form.category)} onEdit={() => setStep(1)} />
+                    <SummaryItem label="מה צריך לעשות?" value={form.taskName} onEdit={() => setStep(2)} />
+                    <SummaryItem label="תיאור" value={form.shortDesc} onEdit={() => setStep(2)} />
                   </div>
                 </div>
 
@@ -531,9 +574,9 @@ const CreateTask = () => {
                     <h3 className="font-extrabold text-foreground text-base">מיקום וזמנים</h3>
                   </div>
                   <div className="space-y-4">
-                    <SummaryItem label="כתובת" value={form.location} />
-                    <SummaryItem label="מתי?" value={`${formatDate(form.date)}${form.time ? `, ${formatTime(form.time)}` : ""}`} />
-                    <SummaryItem label="זמן משוער" value={form.duration ? `${form.duration} ${form.durationUnit === "minutes" ? "דקות" : "שעות"}` : "לא צוין"} />
+                    <SummaryItem label="כתובת" value={form.location} onEdit={() => setStep(4)} />
+                    <SummaryItem label="מתי?" value={`${formatDate(form.date)}${form.time ? `, ${formatTime(form.time)}` : ""}`} onEdit={() => setStep(4)} />
+                    <SummaryItem label="זמן משוער" value={formatDurationSummary(form.duration, form.durationUnit)} onEdit={() => setStep(4)} />
                   </div>
                 </div>
 
@@ -546,9 +589,9 @@ const CreateTask = () => {
                     <h3 className="font-extrabold text-foreground text-base">תשלום ועובדים</h3>
                   </div>
                   <div className="space-y-4">
-                    <SummaryItem label="תשלום מוצע" value={`${formatCurrency(Number(form.payment))} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} valueClassName="text-green-600 dark:text-green-400 font-black text-lg" />
-                    <SummaryItem label="עובדים דרושים" value={form.workers} />
-                    <SummaryItem label="תוקף מודעה" value={`${form.expiry} שעות`} />
+                    <SummaryItem label="תשלום מוצע" value={`${formatCurrency(Number(form.payment))} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} valueClassName="text-green-600 dark:text-green-400 font-black text-lg" onEdit={() => setStep(3)} />
+                    <SummaryItem label="עובדים דרושים" value={form.workers} onEdit={() => setStep(3)} />
+                    <SummaryItem label="תוקף מודעה" value={`${form.expiry} שעות`} onEdit={() => setStep(3)} />
                   </div>
                 </div>
 
@@ -562,7 +605,7 @@ const CreateTask = () => {
                       <h3 className="font-extrabold text-foreground text-base">תוספות</h3>
                     </div>
                     <div className="space-y-4">
-                      {form.notes && <SummaryItem label="הערות" value={form.notes} />}
+                      {form.notes && <SummaryItem label="הערות" value={form.notes} onEdit={() => setStep(5)} />}
                       {imagePreview && (
                         <div>
                           <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider block mb-1">תמונה שצורפה</span>
@@ -609,13 +652,33 @@ const CreateTask = () => {
           </div>
         </div>
       </div>
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent dir="rtl" className="text-right rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>לצאת מפרסום המטלה?</DialogTitle>
+            <DialogDescription>כתבת פרטים. אפשר לשמור אותם כטיוטה ולהמשיך מאוחר יותר.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button variant="outline" onClick={() => setShowExitDialog(false)}>להמשיך לערוך</Button>
+            <Button variant="outline" onClick={() => { void saveDraft(); setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
+            <Button variant="destructive" onClick={() => { setShowExitDialog(false); pendingExit?.(); }}>יציאה בלי לשמור</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-const SummaryItem = ({ label, value, valueClassName = "" }: { label: string; value: string; valueClassName?: string }) => (
+const formatDurationSummary = (value: string, unit: string) => {
+  if (!value) return "לא צוין";
+  const amount = Number(value);
+  if (unit === "minutes") return amount >= 60 && amount % 60 === 0 ? `${amount / 60} שעות (${amount} דקות)` : `${amount} דקות`;
+  return amount === 1 ? "שעה (60 דקות)" : `${amount} שעות (${Math.round(amount * 60)} דקות)`;
+};
+
+const SummaryItem = ({ label, value, valueClassName = "", onEdit }: { label: string; value: string; valueClassName?: string; onEdit?: () => void }) => (
   <div className="flex flex-col gap-0.5 text-start">
-    <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">{label}</span>
+    <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">{label}</span>{onEdit && <button type="button" onClick={onEdit} className="text-xs font-bold text-primary-ink underline">עריכה</button>}</div>
     <span className={`text-sm font-semibold text-foreground ${valueClassName}`}>{value || "—"}</span>
   </div>
 );
