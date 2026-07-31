@@ -75,13 +75,7 @@ const CreateTask = () => {
       : supabase.from("task_drafts").insert({ user_id: user.id, form_data: payload, current_step: step }).select("id").single();
     const { data } = await query;
     if (!draftId && data?.id) setDraftId(data.id);
-    toast.success("הטיוטה נשמרה");
   };
-  useEffect(() => {
-    if (step > 1 && hasDraftContent) void saveDraft();
-    // Save when user advances step.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
   const requestExit = (exit: () => void) => {
     if (!hasDraftContent) { exit(); return; }
     setPendingExit(() => exit);
@@ -656,7 +650,7 @@ const CreateTask = () => {
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-start">
             <Button variant="outline" onClick={() => setShowExitDialog(false)}>להמשיך לערוך</Button>
-            <Button variant="outline" onClick={() => { void saveDraft(); setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
+            <Button variant="outline" onClick={async () => { await saveDraft(); setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
             <Button variant="destructive" onClick={() => { setShowExitDialog(false); pendingExit?.(); }}>יציאה בלי לשמור</Button>
           </DialogFooter>
         </DialogContent>
