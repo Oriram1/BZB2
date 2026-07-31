@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { geocodeAddress } from "@/lib/geocodeAddress";
+import AddressMapPreview from "@/components/tasks/AddressMapPreview";
 
 interface TaskStats {
   total: number;
@@ -59,6 +61,19 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [form, setForm] = useState({ first_name: "", last_name: "", age: "", address: "", phone: "" });
+  const [addressPosition, setAddressPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [addressLoading, setAddressLoading] = useState(false);
+
+  const handleAddressBlur = async () => {
+    if (!form.address.trim()) return;
+    setAddressLoading(true);
+    const result = await geocodeAddress(form.address);
+    if (result) {
+      setForm((current) => ({ ...current, address: result.formattedAddress }));
+      setAddressPosition({ lat: result.lat, lng: result.lng });
+    }
+    setAddressLoading(false);
+  };
 
   // Tasker state
   const [taskerStats, setTaskerStats] = useState<TaskStats>({ total: 0, open: 0, inProgress: 0, completed: 0, cancelled: 0, totalApplicants: 0 });
@@ -327,7 +342,9 @@ const Profile = () => {
                 </div>
                 <div className="col-span-2">
                   <Label className="text-xs text-muted-foreground">כתובת</Label>
-                  <Input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} />
+                  <Input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} onBlur={handleAddressBlur} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleAddressBlur(); } }} />
+                  {addressLoading && <p className="mt-1 text-xs text-muted-foreground">מאתר את הכתובת...</p>}
+                  {addressPosition && <div className="mt-3"><AddressMapPreview {...addressPosition} label={form.address} /></div>}
                 </div>
               </div>
             ) : (
