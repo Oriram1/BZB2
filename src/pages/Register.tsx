@@ -12,6 +12,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { normalizePhone, isValidPhone } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldCheck } from "lucide-react";
+import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
+import { PasswordStrength } from "@/components/PasswordStrength";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -94,8 +96,7 @@ const Register = () => {
     else if (!isValidPhone(form.phone)) next.phone = "מספר הטלפון לא תקין. לדוגמה: 050-000-0000";
 
     if (!form.password) next.password = "חסרה סיסמה";
-    else if (form.password.length < 6)
-      next.password = `הסיסמה קצרה מדי — ${form.password.length} תווים מתוך 6 לפחות`;
+    else if (!isStrongPassword(form.password)) next.password = passwordRequirementsMessage;
 
     if (!agreed) next.terms = "כדי להמשיך צריך לאשר את תנאי השימוש";
 
@@ -236,20 +237,15 @@ const Register = () => {
               id="password"
               value={form.password}
               onChange={(e) => updateField("password", e.target.value)}
-              // Check as soon as the user leaves the field, not on every keystroke.
-              onBlur={() => {
-                if (form.password && form.password.length < 6) {
-                  setErrors((e) => ({ ...e, password: `הסיסמה קצרה מדי — ${form.password.length} תווים מתוך 6 לפחות` }));
-                }
-              }}
               autoComplete="new-password"
               className="mt-1 rounded-2xl h-12"
               aria-invalid={!!errors.password}
               aria-describedby={errors.password ? "password-error" : "password-hint"}
             />
+            <PasswordStrength password={form.password} />
             {errors.password
               ? <FieldError id="password" message={errors.password} />
-              : <p id="password-hint" className="text-xs text-muted-foreground mt-1">לפחות 6 תווים</p>}
+              : <p id="password-hint" className="text-xs text-muted-foreground mt-1">{passwordRequirementsMessage}</p>}
           </div>
 
           <div className="mt-2">

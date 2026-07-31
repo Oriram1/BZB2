@@ -6,6 +6,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
+import { PasswordStrength } from "@/components/PasswordStrength";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -39,8 +41,8 @@ const ResetPassword = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 6) {
-      toast.error("הסיסמה החדשה צריכה לכלול לפחות 6 תווים");
+    if (!isStrongPassword(password)) {
+      toast.error(passwordRequirementsMessage);
       return;
     }
 
@@ -98,6 +100,8 @@ const ResetPassword = () => {
                 autoComplete="new-password"
                 className="mt-1 rounded-2xl h-12"
               />
+              <PasswordStrength password={password} />
+              {!password && <p className="text-xs text-muted-foreground mt-1">{passwordRequirementsMessage}</p>}
             </div>
 
             <div>

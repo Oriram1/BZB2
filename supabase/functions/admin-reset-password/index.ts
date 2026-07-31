@@ -13,6 +13,10 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function isStrongPassword(password: string) {
+  return password.length >= 6 && /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -45,8 +49,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const identifier = String(body.identifier ?? "").trim();
     const newPassword = String(body.newPassword ?? "");
-    if (!identifier || newPassword.length < 6) {
-      return json({ error: "Identifier and password (min 6 chars) required" }, 400);
+    if (!identifier || !isStrongPassword(newPassword)) {
+      return json({ error: "Password must be at least 6 characters and include letters, numbers, and a special character" }, 400);
     }
 
     // Find target user — by email, or by profile first/last name

@@ -41,6 +41,7 @@ import {
   Users,
 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
+import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { formatDate, formatTime } from "@/lib/format";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -530,8 +531,8 @@ export default function Admin() {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier.trim() || newPassword.length < 6) {
-      toast.error("מלא אימייל/שם וסיסמה (לפחות 6 תווים)");
+    if (!identifier.trim() || !isStrongPassword(newPassword)) {
+      toast.error(identifier.trim() ? passwordRequirementsMessage : "מלא אימייל/שם וסיסמה");
       return;
     }
     setSubmitting(true);
