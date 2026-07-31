@@ -38,8 +38,8 @@ Deno.serve(async (request) => {
     const googleData = await googleResponse.json();
     const result = googleData.results?.[0];
     if (!result || googleData.status !== "OK") {
-      return new Response(JSON.stringify({ error: "Address not found" }), {
-        status: 404,
+      return new Response(JSON.stringify({ formattedAddress: null, lat: null, lng: null }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
