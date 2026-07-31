@@ -195,7 +195,7 @@ const CreateTask = () => {
             <BzbLogo className="w-12 h-12" animate />
           </Link>
           <h1 className="text-2xl font-bold text-foreground">פרסום מטלה חדשה</h1>
-          <Button variant="ghost" size="icon" onClick={() => requestExit(() => navigate(-1))} className="rounded-full h-11 w-11" aria-label="חזרה למסך הקודם">
+          <Button variant="ghost" size="icon" onClick={() => step > 1 ? setStep((current) => current - 1) : navigate(-1)} className="rounded-full h-11 w-11" aria-label={step > 1 ? "חזרה לשלב הקודם" : "חזרה למסך הקודם"}>
             <ArrowRight size={22} />
           </Button>
         </div>
@@ -643,12 +643,12 @@ const CreateTask = () => {
         </div>
       </div>
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-        <DialogContent dir="rtl" className="text-right rounded-3xl">
+        <DialogContent dir="rtl" lang="he" className="text-start rounded-3xl" style={{ direction: "rtl" }}>
           <DialogHeader>
             <DialogTitle>לצאת מפרסום המטלה?</DialogTitle>
             <DialogDescription>כתבת פרטים. אפשר לשמור אותם כטיוטה ולהמשיך מאוחר יותר.</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:justify-start">
+          <DialogFooter dir="rtl" className="flex-col gap-2 sm:flex-row-reverse sm:justify-start">
             <Button variant="outline" onClick={() => setShowExitDialog(false)}>להמשיך לערוך</Button>
             <Button variant="outline" onClick={async () => { await saveDraft(); setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
             <Button variant="destructive" onClick={() => { setShowExitDialog(false); pendingExit?.(); }}>יציאה בלי לשמור</Button>
