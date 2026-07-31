@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ShieldCheck } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { PasswordStrength } from "@/components/PasswordStrength";
+import { geocodeAddress } from "@/lib/geocodeAddress";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -66,6 +67,7 @@ const Register = () => {
     email: "", phone: "", password: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [addressLoading, setAddressLoading] = useState(false);
 
   const updateField = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -75,10 +77,10 @@ const Register = () => {
 
   const handleAddressBlur = async () => {
     if (!form.address.trim()) return;
-    const { data, error } = await supabase.functions.invoke("geocode-address", {
-      body: { address: form.address },
-    });
-    if (!error && data?.formattedAddress) updateField("address", data.formattedAddress);
+    setAddressLoading(true);
+    const formattedAddress = await geocodeAddress(form.address);
+    if (formattedAddress) updateField("address", formattedAddress);
+    setAddressLoading(false);
   };
 
   const minAge = isWorker ? 13 : 18;
@@ -239,6 +241,7 @@ const Register = () => {
               aria-invalid={!!errors.address}
               aria-describedby={errors.address ? "address-error" : undefined}
             />
+            {addressLoading && <p className="text-xs text-muted-foreground mt-1">מאתר את הכתובת...</p>}
             <FieldError id="address" message={errors.address} />
           </div>
           <div>

@@ -33,6 +33,10 @@ export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      setError("מפת Google Maps זמינה רק במסכים שמוגדר להם מפתח ציבורי.");
+      return;
+    }
     loadMaps()
       .then(() => setIsLoaded(true))
       .catch((err: unknown) => {

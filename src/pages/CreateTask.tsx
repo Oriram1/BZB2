@@ -16,12 +16,12 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
-import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
+import { geocodeAddress } from "@/lib/geocodeAddress";
 
 const displayFormattedDate = (dateStr: string) => {
   if (!dateStr) return "";
@@ -52,6 +52,7 @@ const CreateTask = () => {
   });
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
   const [selectedLng, setSelectedLng] = useState<number | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -59,19 +60,12 @@ const CreateTask = () => {
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  const handleLocationBlur = () => {
-    if (!form.location.trim() || !window.google) return;
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address: form.location, region: 'IL' }, (results, status) => {
-      if (status === "OK" && results && results[0]) {
-        const lat = results[0].geometry.location.lat();
-        const lng = results[0].geometry.location.lng();
-        setSelectedLat(lat);
-        setSelectedLng(lng);
-        // We update the form location so it shows the nicely formatted full address
-        updateForm("location", results[0].formatted_address);
-      }
-    });
+  const handleLocationBlur = async () => {
+    if (!form.location.trim()) return;
+    setLocationLoading(true);
+    const formattedAddress = await geocodeAddress(form.location);
+    if (formattedAddress) updateForm("location", formattedAddress);
+    setLocationLoading(false);
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,17 +332,7 @@ const CreateTask = () => {
                   placeholder="עיר, רחוב ומספר בית"
                   className="rounded-2xl h-12 text-right text-base"
                 />
-                <div className="mt-3">
-                  <GoogleMapPicker
-                    lat={selectedLat}
-                    lng={selectedLng}
-                    onLocationSelect={(lat, lng) => {
-                      setSelectedLat(lat);
-                      setSelectedLng(lng);
-                    }}
-                    onAddressFound={(address) => updateForm("location", address)}
-                  />
-                </div>
+                {locationLoading && <p className="text-xs text-muted-foreground mt-2">מאתר את הכתובת...</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
