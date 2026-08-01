@@ -153,7 +153,7 @@ select * from cron.job where jobname = 'parent-digest-hourly';
 | סודות Vault | ✅ נוצרו | `notify_dispatch_url`, `notify_dispatch_secret`, `parent_digest_url` |
 | Send Email Hook | ✅ הופעל | דרך Management API |
 | cron הדוח היומי | ✅ מתוזמן | `parent-digest-hourly`, כל שעה ב־:05 |
-| `VITE_VAPID_PUBLIC_KEY` ב־Vercel | ⚠️ חלקי | הוגדר ל־Production ול־Development. **Preview לא הוגדר** — ה־CLI דורש בחירת ענף אינטראקטיבית. להוסיף ידנית בדשבורד אם רוצים פוש בפריסות תצוגה מקדימה |
+| משתני סביבה ב־Vercel | ✅ הוגדרו | כל חמשת משתני `VITE_*` בשלוש הסביבות — Production, Preview, Development |
 | דומיין שולח | ❌ לא בוצע | עדיין `onboarding@resend.dev` |
 
 ### מה נבדק בפועל
@@ -166,6 +166,42 @@ select * from cron.job where jobname = 'parent-digest-hourly';
 
 - **פוש בפועל** — דורש מכשיר מותקן שנרשם. הצינור נבדק עד לנקודה שבה אין מנוי
 - **הדוח היומי** — ירוץ בפעם הראשונה בשעה שנבחרה. דורש הורה עם ילד מקושר ופעילות באותו יום
+
+---
+
+## 2.6 משתני סביבה — קריטי
+
+**כל משתני `VITE_*` חייבים להיות מוגדרים ב־Vercel, לא רק בקובץ `.env` המקומי.**
+
+`.env` היה בעבר מקובץ במעקב git, וה־build ב־Vercel שאב ממנו את משתני Supabase. ברגע שהקובץ הוצא מהמעקב (הריפו ציבורי — אסור שיכיל מפתחות), ה־build נשאר בלי המשתנים והאתר קרס עם:
+
+```
+Uncaught Error: supabaseUrl is required.
+```
+
+התיקון: להגדיר את המשתנים ב־Vercel בשלוש הסביבות. המצב הנוכחי:
+
+| משתנה | Production | Preview | Development |
+|---|---|---|---|
+| `VITE_SUPABASE_URL` | ✅ | ✅ | ✅ |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ | ✅ | ✅ |
+| `VITE_SUPABASE_PROJECT_ID` | ✅ | ✅ | ✅ |
+| `VITE_GOOGLE_MAPS_API_KEY` | ✅ | ✅ | ✅ |
+| `VITE_VAPID_PUBLIC_KEY` | ✅ | ✅ | ✅ |
+
+בדיקה מהירה:
+
+```bash
+vercel env ls | grep VITE_
+```
+
+**כשמוסיפים משתנה `VITE_*` חדש — להוסיף אותו ב־Vercel לשלוש הסביבות, אחרת הפריסה הבאה תישבר.** ה־CLI לא מצליח להוסיף ל־Preview בלי בחירת ענף אינטראקטיבית; דרך ה־API זה עובד:
+
+```bash
+curl -X POST "https://api.vercel.com/v10/projects/<projectId>/env?teamId=<orgId>&upsert=true" \
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"key":"VITE_X","value":"...","type":"encrypted","target":["preview"]}'
+```
 
 ---
 
