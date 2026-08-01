@@ -36,7 +36,7 @@ const steps = [
   { id: 1, label: "קטגוריה", icon: Tag },
   { id: 2, label: "פרטים", icon: FileText },
   { id: 3, label: "תשלום", icon: DollarSign },
-  { id: 4, label: "מיקום וזמן", icon: MapPin },
+  { id: 4, label: "תיאום", icon: MapPin },
   { id: 5, label: "תוספות", icon: Image },
   { id: 6, label: "סיכום", icon: Check },
 ];
