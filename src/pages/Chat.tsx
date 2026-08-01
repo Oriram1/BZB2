@@ -233,9 +233,12 @@ const Chat = () => {
   return (
     /* One screen, exactly: the height comes from the visible viewport and the
        bottom bar's strip is reserved with padding, so nothing here can push the
-       message box out of sight. Everything that grows scrolls internally. */
+       message box out of sight. Everything that grows scrolls internally.
+       Fixed and offset by --app-offset because iOS scrolls the document out from
+       under a focused field and never scrolls it back; anchored to the visible
+       viewport instead, the composer stays on screen while typing. */
     <div
-      className="flex h-[var(--app-height)] flex-col overflow-hidden bg-muted pb-[var(--bottom-nav-height)]"
+      className="fixed inset-x-0 top-[var(--app-offset)] flex h-[var(--app-height)] flex-col overflow-hidden bg-muted pb-[var(--bottom-nav-height)]"
       dir="rtl"
     >
       <PageHeader title="הודעות" className="shrink-0" />

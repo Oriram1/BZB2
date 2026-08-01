@@ -78,6 +78,10 @@
        The dvh fallback covers the first paint and browsers without
        visualViewport; see the hook for why 100vh is not usable here. */
     --app-height: 100dvh;
+    /* How far the visible viewport has been scrolled away from the document top
+       by the on-screen keyboard. Screens that fill the window pin themselves to
+       it; see useViewportHeight(). */
+    --app-offset: 0px;
     /* Height the fixed bottom tab bar occupies on mobile. */
     --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom));
   }
