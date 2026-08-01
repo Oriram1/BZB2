@@ -24,7 +24,8 @@ import {
 } from "@/lib/notificationCopy";
 import {
   currentSubscription,
-  iosNeedsInstall,
+  isIos,
+  needsInstall,
   pushConfigured,
   pushSupported,
   subscribeToPush,
@@ -144,8 +145,8 @@ const Settings = () => {
         toast.success("ההתראות הופעלו במכשיר הזה 🔔");
       } else if (result.reason === "denied") {
         toast.error("הדפדפן חסם את ההתראות. אפשר לאשר אותן בהגדרות האתר");
-      } else if (result.reason === "ios_install_required") {
-        toast.error("באייפון צריך קודם להוסיף את האפליקציה למסך הבית");
+      } else if (result.reason === "install_required") {
+        toast.error("צריך קודם להתקין את האפליקציה למסך הבית");
       } else if (result.reason === "not_configured") {
         toast.error("שירות ההתראות עוד לא מוגדר");
       } else {
@@ -155,7 +156,10 @@ const Settings = () => {
     setPushBusy(false);
   };
 
-  const showIosHint = iosNeedsInstall();
+  // Push is an installed-app feature. In a browser tab we explain how to
+  // install rather than firing a permission prompt that would likely be denied
+  // — and a denied prompt is not something the app can ask for a second time.
+  const showInstallHint = needsInstall();
   const pushUnavailable = !pushSupported() || !pushConfigured();
 
   return (
@@ -172,15 +176,19 @@ const Settings = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {showIosHint ? (
+            {showInstallHint ? (
               <div className="rounded-2xl bg-accent/20 border border-border p-4 text-sm leading-relaxed">
                 <p className="font-bold mb-1 flex items-center gap-1.5">
                   <Share size={15} />
-                  באייפון צריך שלב אחד קודם
+                  צריך קודם להתקין את האפליקציה
                 </p>
                 <p className="text-muted-foreground">
-                  כדי לקבל התראות באייפון, צריך להוסיף את BZB למסך הבית: לוחצים על כפתור השיתוף
-                  בספארי, בוחרים "הוספה למסך הבית", ואז פותחים את האפליקציה משם ומפעילים כאן התראות.
+                  {isIos()
+                    ? 'כדי לקבל התראות באייפון, מוסיפים את BZB למסך הבית: לוחצים על כפתור השיתוף בספארי, בוחרים "הוספה למסך הבית", ואז פותחים את האפליקציה משם וחוזרים למסך הזה.'
+                    : 'התראות זמינות רק כשהאפליקציה מותקנת. מתקינים אותה מסרגל הכתובות של הדפדפן (אייקון ההתקנה) או מתפריט הדפדפן, ואז פותחים את האפליקציה וחוזרים למסך הזה.'}
+                </p>
+                <p className="text-muted-foreground mt-2">
+                  עד אז, ההתראות ימשיכו להגיע במייל ובפעמון שבראש המסך.
                 </p>
               </div>
             ) : pushUnavailable ? (
