@@ -1,1 +1,15 @@
 project_id = "nrqgoaxraywprlbyzrso"
+
+# Auth calls this hook server-side, with a Standard Webhooks signature instead
+# of a user JWT — so JWT verification has to be off or every send would 401.
+[functions.send-auth-email]
+verify_jwt = false
+
+# Invoked by pg_net from a database trigger, authenticated by a shared secret
+# header rather than a user JWT.
+[functions.notify-dispatch]
+verify_jwt = false
+
+# Invoked by pg_cron on the hour, same shared-secret authentication.
+[functions.send-parent-digest]
+verify_jwt = false

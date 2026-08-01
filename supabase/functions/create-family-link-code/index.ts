@@ -1,4 +1,6 @@
 import { authenticatedClients, corsHeaders, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { sendEmail } from "../_shared/email.ts";
+import { emailContent } from "../_shared/notificationCopy.ts";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 
@@ -15,6 +17,12 @@ Deno.serve(async (req) => {
   try {
     const { user, admin } = await authenticatedClients(req);
     if (!(await hasRole(admin, user.id, "bee"))) return json({ error: "bee_only" }, 403);
+
+    const body = await req.json().catch(() => ({}));
+    const parentEmail = String(body.parentEmail ?? "").trim().toLowerCase();
+    if (parentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
+      return json({ error: "invalid_email" }, 400);
+    }
 
     await admin
       .from("family_link_codes")
@@ -37,7 +45,40 @@ Deno.serve(async (req) => {
         expires_at: expiresAt,
       });
 
-      if (!error) return json({ code: displayCode, expiresAt });
+      if (!error) {
+        // Only one unused code exists per child at a time, which caps how often
+        // this path can be used to send mail to an arbitrary address.
+        let emailed = false;
+        if (parentEmail) {
+          const { data: profile } = await admin
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          const childName = profile
+            ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()
+            : "";
+
+          try {
+            await sendEmail({
+              to: parentEmail,
+              tag: "family_link_code",
+              content: emailContent({
+                id: "family-link",
+                event_type: "family_link_code",
+                data: { code: displayCode, child_name: childName || "הילד/ה שלך" },
+                link: "/parent",
+              }),
+            });
+            emailed = true;
+          } catch {
+            // The code is valid regardless — the child can still read it aloud.
+            emailed = false;
+          }
+        }
+        return json({ code: displayCode, expiresAt, emailed });
+      }
       if (error.code !== "23505") return json({ error: "code_creation_failed" }, 500);
     }
 

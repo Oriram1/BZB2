@@ -165,6 +165,161 @@ export type Database = {
           },
         ]
       }
+      notification_deliveries: {
+        Row: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          error: string | null
+          id: string
+          notification_id: string
+          status: Database["public"]["Enums"]["delivery_status"]
+          user_id: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          notification_id: string
+          status: Database["public"]["Enums"]["delivery_status"]
+          user_id: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          notification_id?: string
+          status?: Database["public"]["Enums"]["delivery_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          email_enabled: boolean
+          event_type: Database["public"]["Enums"]["notification_event"]
+          id: string
+          push_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          email_enabled?: boolean
+          event_type: Database["public"]["Enums"]["notification_event"]
+          id?: string
+          push_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          email_enabled?: boolean
+          event_type?: Database["public"]["Enums"]["notification_event"]
+          id?: string
+          push_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          digest_hour: number
+          quiet_hours_enabled: boolean
+          quiet_hours_end: number
+          quiet_hours_start: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          digest_hour?: number
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: number
+          quiet_hours_start?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          digest_hour?: number
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: number
+          quiet_hours_start?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json
+          event_type: Database["public"]["Enums"]["notification_event"]
+          id: string
+          link: string | null
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          event_type: Database["public"]["Enums"]["notification_event"]
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          event_type?: Database["public"]["Enums"]["notification_event"]
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_seen_at: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_seen_at?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_seen_at?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       parent_links: {
         Row: {
           child_user_id: string
@@ -194,6 +349,7 @@ export type Database = {
           created_at: string
           first_name: string
           id: string
+          last_active_at: string | null
           last_name: string
           phone: string | null
           updated_at: string
@@ -206,6 +362,7 @@ export type Database = {
           created_at?: string
           first_name?: string
           id?: string
+          last_active_at?: string | null
           last_name?: string
           phone?: string | null
           updated_at?: string
@@ -218,6 +375,7 @@ export type Database = {
           created_at?: string
           first_name?: string
           id?: string
+          last_active_at?: string | null
           last_name?: string
           phone?: string | null
           updated_at?: string
@@ -379,6 +537,16 @@ export type Database = {
     Enums: {
       app_role: "tasker" | "bee" | "parent" | "admin"
       application_status: "pending" | "accepted" | "rejected"
+      delivery_status: "sent" | "failed" | "skipped"
+      notification_channel: "email" | "push"
+      notification_event:
+        | "application_received"
+        | "application_decided"
+        | "message_received"
+        | "task_completed"
+        | "parent_child_accepted"
+        | "parent_digest"
+        | "family_link_code"
       payment_type: "task" | "hour"
       task_category:
         | "housework"

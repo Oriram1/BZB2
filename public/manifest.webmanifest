@@ -1,0 +1,23 @@
+{
+  "name": "BZB — מטלות ועבודות לנוער",
+  "short_name": "BZB",
+  "description": "מפרסמים מטלה, בני נוער מהאזור מבצעים אותה. ההורים עוקבים בזמן אמת.",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/tasks",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F5F4",
+  "theme_color": "#FF791A",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "מטלות פתוחות", "url": "/tasks" },
+    { "name": "הצ׳אט שלי", "url": "/chat" },
+    { "name": "הגדרות התראות", "url": "/settings" }
+  ]
+}

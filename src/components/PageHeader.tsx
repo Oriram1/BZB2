@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import BzbLogo from "@/components/BzbLogo";
 import { Button } from "@/components/ui/button";
 import { NavDrawerTrigger } from "@/components/MobileNav";
+import NotificationBell from "@/components/NotificationBell";
 import { useRegisterHeader } from "@/components/NavDrawerContext";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +81,10 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
 
         {/* Trailing edge (left in Hebrew) is for page actions, not navigation. */}
         {action && <div className="hidden md:block shrink-0">{action}</div>}
+
+        {/* The bell stays visible on mobile too: it is the only notification
+            channel that reaches every user regardless of email or push. */}
+        <NotificationBell />
       </div>
     </header>
   );

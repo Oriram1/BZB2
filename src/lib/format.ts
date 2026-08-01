@@ -100,6 +100,28 @@ export function distanceKm(
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/** "לפני 5 דקות" / "אתמול". For notification feeds, where exact times add noise. */
+export function formatRelativeTime(value?: string | Date | null): string {
+  if (!value) return EMPTY;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+
+  const seconds = Math.round((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "עכשיו";
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return minutes === 1 ? "לפני דקה" : `לפני ${minutes} דקות`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return hours === 1 ? "לפני שעה" : `לפני ${hours} שעות`;
+
+  const days = Math.round(hours / 24);
+  if (days === 1) return "אתמול";
+  if (days < 7) return `לפני ${days} ימים`;
+
+  return formatDate(date);
+}
+
 /** 2.3456 -> "2.3". Distances under 1 km are shown in metres. */
 export function formatDistance(km?: number | null): string {
   if (km === null || km === undefined || Number.isNaN(km)) return EMPTY;

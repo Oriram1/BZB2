@@ -1,4 +1,4 @@
-import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, MessageCircle, UserCircle } from "lucide-react";
+import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, MessageCircle, UserCircle, Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -22,5 +22,6 @@ export const navItems: NavItem[] = [
   { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true, requiredRoles: ["tasker", "bee"] },
   { label: "הפרופיל שלי", shortLabel: "פרופיל", to: "/profile", icon: UserCircle, authOnly: true, requiredRoles: ["tasker", "bee"] },
   { label: "לוח הורים", shortLabel: "הורים", to: "/parent", icon: Shield, authOnly: true, requiredRoles: ["parent"] },
+  { label: "הגדרות התראות", shortLabel: "התראות", to: "/settings", icon: Bell, authOnly: true },
   { label: "מנויים", to: "/pricing", icon: CreditCard, bold: true },
 ];

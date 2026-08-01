@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import {
   User, Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
-  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw
+  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw, Mail
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
@@ -84,17 +84,20 @@ const Profile = () => {
   const [familyCode, setFamilyCode] = useState<string | null>(null);
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
   const [creatingFamilyCode, setCreatingFamilyCode] = useState(false);
+  const [parentEmail, setParentEmail] = useState("");
 
   const [loadingData, setLoadingData] = useState(true);
 
-  const createFamilyCode = async () => {
+  /** `parentEmail` mails the code as well, for a parent who isn't in the room. */
+  const createFamilyCode = async (parentEmail?: string) => {
     setCreatingFamilyCode(true);
     try {
       const { data, error } = await supabase.functions.invoke<{
         code?: string;
         expiresAt?: string;
+        emailed?: boolean;
         error?: string;
-      }>("create-family-link-code");
+      }>("create-family-link-code", parentEmail ? { body: { parentEmail } } : undefined);
 
       if (error || !data?.code || !data.expiresAt) {
         toast.error("לא הצלחנו ליצור קוד. כדאי לנסות שוב.");
@@ -103,7 +106,17 @@ const Profile = () => {
 
       setFamilyCode(data.code);
       setFamilyCodeExpiresAt(data.expiresAt);
-      toast.success("נוצר קוד חדש להורה");
+
+      if (parentEmail) {
+        setParentEmail("");
+        toast[data.emailed ? "success" : "warning"](
+          data.emailed
+            ? "הקוד נשלח למייל של ההורה 📧"
+            : "נוצר קוד, אבל שליחת המייל נכשלה. אפשר להקריא את הקוד",
+        );
+      } else {
+        toast.success("נוצר קוד חדש להורה");
+      }
     } finally {
       setCreatingFamilyCode(false);
     }
@@ -420,6 +433,34 @@ const Profile = () => {
                   {creatingFamilyCode ? "יוצר קוד..." : "יצירת קוד להורה"}
                 </Button>
               )}
+
+              {/* For when the parent isn't standing next to the phone. */}
+              <div className="mt-4 border-t border-border pt-4">
+                <Label htmlFor="parent-email" className="text-sm font-semibold">
+                  או שלחו את הקוד למייל של ההורה
+                </Label>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="parent-email"
+                    type="email"
+                    dir="ltr"
+                    value={parentEmail}
+                    onChange={(e) => setParentEmail(e.target.value)}
+                    placeholder="parent@example.com"
+                    className="h-11 rounded-xl"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={creatingFamilyCode || !parentEmail.trim()}
+                    onClick={() => void createFamilyCode(parentEmail.trim())}
+                    className="min-h-11 rounded-xl font-bold shrink-0"
+                  >
+                    <Mail className="h-4 w-4" />
+                    שליחה במייל
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

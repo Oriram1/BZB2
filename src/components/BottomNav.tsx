@@ -8,7 +8,7 @@ import { navItems } from "@/components/navItems";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Order the items appear in the bottom bar (most important first). */
-const tabOrder = ["/", "/tasks", "/create-task", "/my-tasks", "/parent", "/chat", "/profile", "/pricing", "/auth"];
+const tabOrder = ["/", "/tasks", "/create-task", "/my-tasks", "/parent", "/chat", "/profile", "/settings", "/pricing", "/auth"];
 
 const MAX_SLOTS = 5;
 

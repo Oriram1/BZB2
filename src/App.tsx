@@ -24,9 +24,13 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
+import Settings from "./pages/Settings";
+import ParentReport from "./pages/ParentReport";
 import { MobileNav, FloatingNavTrigger } from "./components/MobileNav";
 import { BottomNav } from "./components/BottomNav";
 import { NavDrawerProvider } from "./components/NavDrawerContext";
+import PresenceTracker from "./components/PresenceTracker";
+import InstallPrompt from "./components/InstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +44,7 @@ const App = () => (
           <BrowserRouter>
           <NavDrawerProvider>
             <MobileNav />
+            <PresenceTracker />
             <div className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
               <Routes>
                 <Route path="/" element={<Landing />} />
@@ -53,6 +58,8 @@ const App = () => (
                 <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker"]}><MyTasks /></RoleGuard>} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
+                <Route path="/parent/report/:date" element={<RoleGuard allowedRoles={["parent"]}><ParentReport /></RoleGuard>} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/chat" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Chat /></RoleGuard>} />
                 <Route path="/profile" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Profile /></RoleGuard>} />
                 {/* Public profile of another user, linked from a task listing. Open to guests. */}
@@ -63,6 +70,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
+            <InstallPrompt />
             <BottomNav />
             <FloatingNavTrigger />
           </NavDrawerProvider>
