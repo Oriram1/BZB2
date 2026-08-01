@@ -46,12 +46,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-start px-4 pt-4 md:justify-center md:pt-0 relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen px-4 pt-1 md:flex md:items-center md:justify-center md:pt-0 relative overflow-hidden" dir="rtl">
       <div className="absolute inset-0 bg-muted" />
       <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-20 right-20 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
 
-      <div className="relative z-10 w-full max-w-md glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in">
+      <div className="relative z-10 mx-auto w-full max-w-md glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in">
         <div className="flex flex-col items-center mb-8">
           <Link to="/">
             <BzbLogo className="w-20 h-20 mb-4" animate />
