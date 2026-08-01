@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.15"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -132,6 +157,9 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_duration: number | null
+          attachment_path: string | null
+          attachment_type: string | null
           content: string
           conversation_id: string
           created_at: string
@@ -140,7 +168,10 @@ export type Database = {
           sender_id: string
         }
         Insert: {
-          content: string
+          attachment_duration?: number | null
+          attachment_path?: string | null
+          attachment_type?: string | null
+          content?: string
           conversation_id: string
           created_at?: string
           id?: string
@@ -148,6 +179,9 @@ export type Database = {
           sender_id: string
         }
         Update: {
+          attachment_duration?: number | null
+          attachment_path?: string | null
+          attachment_type?: string | null
           content?: string
           conversation_id?: string
           created_at?: string
@@ -287,39 +321,6 @@ export type Database = {
         }
         Relationships: []
       }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string
-          endpoint: string
-          id: string
-          last_seen_at: string
-          p256dh: string
-          user_agent: string | null
-          user_id: string
-        }
-        Insert: {
-          auth: string
-          created_at?: string
-          endpoint: string
-          id?: string
-          last_seen_at?: string
-          p256dh: string
-          user_agent?: string | null
-          user_id: string
-        }
-        Update: {
-          auth?: string
-          created_at?: string
-          endpoint?: string
-          id?: string
-          last_seen_at?: string
-          p256dh?: string
-          user_agent?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       parent_links: {
         Row: {
           child_user_id: string
@@ -379,6 +380,39 @@ export type Database = {
           last_name?: string
           phone?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_seen_at: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_seen_at?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_seen_at?: string
+          p256dh?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
@@ -450,6 +484,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_drafts: {
+        Row: {
+          created_at: string
+          current_step: number
+          form_data: Json
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_step?: number
+          form_data?: Json
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_step?: number
+          form_data?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {
@@ -549,6 +610,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      enqueue_notification: {
+        Args: {
+          _data: Json
+          _event: Database["public"]["Enums"]["notification_event"]
+          _link: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       ensure_accepted_task_conversation: {
         Args: { _applicant_id: string; _task_id: string }
         Returns: string
@@ -567,10 +637,15 @@ export type Database = {
         Args: { _user_id: string }
         Returns: number
       }
+      is_chat_media_participant: {
+        Args: { object_name: string }
+        Returns: boolean
+      }
       redeem_family_link_code: {
         Args: { _code_hash: string; _parent_user_id: string }
         Returns: string
       }
+      run_parent_digest: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "tasker" | "bee" | "parent" | "admin"
@@ -725,10 +800,24 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["tasker", "bee", "parent", "admin"],
       application_status: ["pending", "accepted", "rejected"],
+      delivery_status: ["sent", "failed", "skipped"],
+      notification_channel: ["email", "push"],
+      notification_event: [
+        "application_received",
+        "application_decided",
+        "message_received",
+        "task_completed",
+        "parent_child_accepted",
+        "parent_digest",
+        "family_link_code",
+      ],
       payment_type: ["task", "hour"],
       task_category: [
         "housework",

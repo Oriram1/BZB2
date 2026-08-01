@@ -72,6 +72,32 @@
     @apply border-border;
   }
 
+  :root {
+    /* Real visible height of the window, kept current by useViewportHeight().
+       The dvh fallback covers the first paint and browsers without
+       visualViewport; see the hook for why 100vh is not usable here. */
+    --app-height: 100dvh;
+    /* Height the fixed bottom tab bar occupies on mobile. */
+    --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    :root {
+      /* Desktop navigates through the side drawer — no bottom bar to dodge. */
+      --bottom-nav-height: 0px;
+    }
+  }
+
+  /* The on-screen keyboard covers the tab bar, so hide it rather than leave a
+     dead strip between the keyboard and whatever the user is typing into. */
+  html[data-keyboard="open"] .app-bottom-nav {
+    display: none;
+  }
+
+  html[data-keyboard="open"] {
+    --bottom-nav-height: 0px;
+  }
+
   body {
     @apply bg-background text-foreground font-heebo;
     /* Hebrew glyphs are denser than Latin and need more leading. Tracking must

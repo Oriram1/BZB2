@@ -1,12 +1,20 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Send, ArrowRight, Phone, MoreVertical } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ArrowRight, Camera, Mic, Phone, MoreVertical } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import ChatComposer, { type OutgoingMessage } from "@/components/chat/ChatComposer";
+import VoiceNoteBubble from "@/components/chat/VoiceNoteBubble";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useViewportHeight } from "@/hooks/useViewportHeight";
+
+const MEDIA_BUCKET = "chat-media";
+/** Signed URLs are re-minted on every visit, so an hour is plenty. */
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 interface Conversation {
   id: string;
@@ -25,23 +33,37 @@ interface Message {
   sender_id: string;
   content: string;
   created_at: string;
+  attachment_path: string | null;
+  attachment_type: "image" | "audio" | null;
+  attachment_duration: number | null;
 }
+
+/** What a conversation row shows when the last message was a photo or a voice note. */
+const previewOf = (message: { content: string; attachment_type: string | null }) => {
+  if (message.content) return message.content;
+  if (message.attachment_type === "image") return "📷 תמונה";
+  if (message.attachment_type === "audio") return "🎤 הודעה קולית";
+  return "";
+};
 
 const Chat = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedConversation = searchParams.get("conversation");
-  const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
+  const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // The chat is the one screen that must fit the device exactly instead of
+  // scrolling as a document — see the hook for what `100vh` gets wrong here.
+  useViewportHeight();
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
   // Load conversations
@@ -73,7 +95,7 @@ const Chat = () => {
 
         const { data: lastMsg } = await supabase
           .from("messages")
-          .select("content, created_at")
+          .select("content, created_at, attachment_type")
           .eq("conversation_id", c.id)
           .order("created_at", { ascending: false })
           .limit(1);
@@ -92,7 +114,7 @@ const Chat = () => {
           task_id: c.task_id,
           otherName: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "משתמש",
           taskName,
-          lastMessage: lastMsg?.[0]?.content || "",
+          lastMessage: lastMsg?.[0] ? previewOf(lastMsg[0]) : "",
           lastTime: lastMsg?.[0]?.created_at
             ? new Date(lastMsg[0].created_at).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
             : "",
@@ -119,7 +141,7 @@ const Chat = () => {
         .select("*")
         .eq("conversation_id", activeChat)
         .order("created_at", { ascending: true });
-      setMessages(data || []);
+      setMessages((data as Message[]) || []);
     };
     fetchMessages();
 
@@ -139,21 +161,65 @@ const Chat = () => {
     return () => { supabase.removeChannel(channel); };
   }, [activeChat]);
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !user || !activeChat) return;
-    await supabase.from("messages").insert({
+  // Attachments live in a private bucket, so each one needs a signed URL. They
+  // are minted in one batch per render pass rather than one request per bubble.
+  useEffect(() => {
+    const missing = messages
+      .map((message) => message.attachment_path)
+      .filter((path): path is string => Boolean(path) && !mediaUrls[path as string]);
+
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    supabase.storage
+      .from(MEDIA_BUCKET)
+      .createSignedUrls(missing, SIGNED_URL_TTL_SECONDS)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setMediaUrls((prev) => {
+          const next = { ...prev };
+          for (const entry of data) {
+            if (entry.path && entry.signedUrl) next[entry.path] = entry.signedUrl;
+          }
+          return next;
+        });
+      });
+
+    return () => { cancelled = true; };
+  }, [messages, mediaUrls]);
+
+  const sendMessage = async ({ text, file, kind, duration }: OutgoingMessage) => {
+    if (!user || !activeChat) return;
+
+    let attachmentPath: string | null = null;
+    if (file && kind) {
+      // The conversation id is the first path segment — that is what the storage
+      // policy checks to decide who may read the file.
+      const extension = file.name.split(".").pop() || (kind === "image" ? "jpg" : "webm");
+      const path = `${activeChat}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from(MEDIA_BUCKET)
+        .upload(path, file, { contentType: file.type || undefined });
+      if (uploadError) throw uploadError;
+      attachmentPath = path;
+    }
+
+    const { error } = await supabase.from("messages").insert({
       conversation_id: activeChat,
       sender_id: user.id,
-      content: newMessage,
+      content: text,
+      attachment_path: attachmentPath,
+      attachment_type: attachmentPath ? kind ?? null : null,
+      attachment_duration: kind === "audio" ? duration ?? null : null,
     });
-    setNewMessage("");
+    if (error) throw error;
   };
 
   const activeConv = conversations.find((c) => c.id === activeChat);
 
   if (!user) {
     return (
-      <div className="h-screen flex items-center justify-center bg-muted" dir="rtl">
+      <div className="flex h-[var(--app-height)] items-center justify-center bg-muted" dir="rtl">
         <div className="text-center">
           <p className="text-xl font-bold text-foreground mb-4">יש להתחבר כדי לצפות בהודעות</p>
           <Link to="/login">
@@ -165,16 +231,22 @@ const Chat = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-muted" dir="rtl">
-      <PageHeader title="הודעות" />
+    /* One screen, exactly: the height comes from the visible viewport and the
+       bottom bar's strip is reserved with padding, so nothing here can push the
+       message box out of sight. Everything that grows scrolls internally. */
+    <div
+      className="flex h-[var(--app-height)] flex-col overflow-hidden bg-muted pb-[var(--bottom-nav-height)]"
+      dir="rtl"
+    >
+      <PageHeader title="הודעות" className="shrink-0" />
 
-      <div className="flex flex-1 overflow-hidden max-w-6xl mx-auto w-full">
+      <div className="mx-auto flex w-full min-h-0 max-w-6xl flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className={`${showSidebar ? "flex" : "hidden"} md:flex flex-col w-full md:w-80 border-l border-border bg-card`}>
-          <div className="p-3 border-b border-border">
+        <div className={`${showSidebar ? "flex" : "hidden"} md:flex min-h-0 w-full flex-col border-l border-border bg-card md:w-72 lg:w-80`}>
+          <div className="shrink-0 border-b border-border p-3">
             <Input placeholder="חפש שיחה..." className="rounded-2xl h-10 text-sm" />
           </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-border">
+          <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain">
             {conversations.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm">
                 אין שיחות עדיין
@@ -209,25 +281,27 @@ const Chat = () => {
         </div>
 
         {/* Chat area */}
-        <div className={`${!showSidebar ? "flex" : "hidden"} md:flex flex-col flex-1 bg-card`}>
+        <div className={`${!showSidebar ? "flex" : "hidden"} md:flex min-h-0 flex-1 flex-col bg-card`}>
           {activeConv ? (
             <>
-              <div className="p-3 border-b border-border flex items-center gap-3">
-                <button onClick={() => setShowSidebar(true)} className="md:hidden">
+              <div className="flex shrink-0 items-center gap-3 border-b border-border p-2.5 sm:p-3">
+                <button onClick={() => setShowSidebar(true)} className="md:hidden" aria-label="חזרה לרשימת השיחות">
                   <ArrowRight size={20} className="text-foreground" />
                 </button>
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-lg">👤</div>
-                <div className="flex-1">
-                  <p className="font-bold text-foreground text-sm">{activeConv.otherName}</p>
-                  <p className="text-[10px] text-muted-foreground">מטלה: {activeConv.taskName}</p>
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-lg shrink-0">👤</div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-foreground text-sm">{activeConv.otherName}</p>
+                  {activeConv.taskName && (
+                    <p className="truncate text-[10px] text-muted-foreground">מטלה: {activeConv.taskName}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button size="icon" variant="ghost" className="rounded-full w-8 h-8"><Phone size={16} /></Button>
-                  <Button size="icon" variant="ghost" className="rounded-full w-8 h-8"><MoreVertical size={16} /></Button>
+                  <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" aria-label="שיחת טלפון"><Phone size={16} /></Button>
+                  <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" aria-label="אפשרויות נוספות"><MoreVertical size={16} /></Button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 sm:p-4" style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='%23f59e0b' stroke-width='0.3' opacity='0.05'/%3E%3C/svg%3E")`,
               }}>
                 <div className="text-center">
@@ -235,42 +309,61 @@ const Chat = () => {
                     השיחה נפתחה לאחר קבלה למטלה
                   </Badge>
                 </div>
-                {messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.sender_id === user.id ? "justify-start" : "justify-end"}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                      msg.sender_id === user.id
-                        ? "gradient-honey text-primary-foreground rounded-bl-md"
-                        : "bg-muted text-foreground rounded-br-md"
-                    }`}>
-                      <p className="text-sm">{msg.content}</p>
-                      <p className={`text-[10px] mt-1 ${msg.sender_id === user.id ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                        {new Date(msg.created_at).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
-                      </p>
+                {messages.map((msg) => {
+                  const outgoing = msg.sender_id === user.id;
+                  const mediaUrl = msg.attachment_path ? mediaUrls[msg.attachment_path] : undefined;
+
+                  return (
+                    <div key={msg.id} className={`flex ${outgoing ? "justify-start" : "justify-end"}`}>
+                      <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-2.5 py-2 sm:px-4 sm:py-2.5 ${
+                        outgoing
+                          ? "gradient-honey text-primary-foreground rounded-bl-md"
+                          : "bg-muted text-foreground rounded-br-md"
+                      }`}>
+                        {msg.attachment_type === "image" && (
+                          <button
+                            type="button"
+                            onClick={() => mediaUrl && setLightbox(mediaUrl)}
+                            className="mb-1 block w-full"
+                            aria-label="הגדלת התמונה"
+                          >
+                            {mediaUrl ? (
+                              <img
+                                src={mediaUrl}
+                                alt={msg.content || "תמונה בצ׳אט"}
+                                loading="lazy"
+                                className="max-h-64 w-full rounded-xl object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-32 w-48 max-w-full items-center justify-center rounded-xl bg-foreground/10">
+                                <Camera size={22} className="opacity-60" aria-hidden="true" />
+                              </div>
+                            )}
+                          </button>
+                        )}
+
+                        {msg.attachment_type === "audio" && (
+                          <VoiceNoteBubble src={mediaUrl} duration={msg.attachment_duration} outgoing={outgoing} />
+                        )}
+
+                        {msg.content && (
+                          <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
+                        )}
+
+                        <p className={`text-[10px] mt-1 flex items-center gap-1 ${outgoing ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                          {msg.attachment_type === "audio" && !msg.content && (
+                            <Mic size={10} aria-hidden="true" />
+                          )}
+                          {new Date(msg.created_at).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="p-3 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                    placeholder="הקלד הודעה..."
-                    className="rounded-2xl h-11 flex-1"
-                  />
-                  <Button
-                    onClick={sendMessage}
-                    disabled={!newMessage.trim()}
-                    size="icon"
-                    className="gradient-honey text-primary-foreground rounded-full w-11 h-11 border-none hover:scale-105 transition-transform shrink-0"
-                  >
-                    <Send size={18} />
-                  </Button>
-                </div>
-              </div>
+              <ChatComposer onSend={sendMessage} />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -279,6 +372,14 @@ const Chat = () => {
           )}
         </div>
       </div>
+
+      <Dialog open={Boolean(lightbox)} onOpenChange={(open) => !open && setLightbox(null)}>
+        <DialogContent className="max-w-[95vw] border-none bg-transparent p-0 shadow-none sm:max-w-3xl">
+          {lightbox && (
+            <img src={lightbox} alt="תמונה בצ׳אט" className="max-h-[85dvh] w-full rounded-xl object-contain" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

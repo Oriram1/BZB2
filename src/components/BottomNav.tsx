@@ -49,7 +49,7 @@ export function BottomNav() {
     <>
       <nav
         dir="rtl"
-        className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-background/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]"
+        className="app-bottom-nav fixed bottom-0 inset-x-0 z-40 md:hidden bg-background/95 backdrop-blur-lg border-t border-border pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="flex items-stretch">
           {tabs.map((item) => {
