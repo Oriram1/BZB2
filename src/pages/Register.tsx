@@ -189,6 +189,16 @@ const Register = () => {
     }
 
     setLoading(false);
+
+    // Email confirmation is currently off, so signUp returns a live session and
+    // the user is already signed in. Branch on the session rather than assuming:
+    // when confirmation is turned back on, this same code sends them to log in.
+    if (data.session) {
+      toast.success("ברוכים הבאים ל־BZB! 🐝");
+      navigate("/tasks");
+      return;
+    }
+
     toast.success("ההרשמה נוצרה! בדקו את האימייל ואשרו את החשבון כדי להתחבר 📧");
     navigate("/login");
   };
