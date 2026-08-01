@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Share, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { isIos, isStandalone } from "@/lib/push";
 
 const DISMISS_KEY = "bzb.install-prompt.dismissed";
@@ -18,11 +19,12 @@ type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<u
  */
 const InstallPrompt = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [deferred, setDeferred] = useState<InstallEvent | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!user || isStandalone()) return;
+    if (!isMobile || !user || isStandalone()) return;
     if (localStorage.getItem(DISMISS_KEY)) return;
 
     if (isIos()) {
@@ -40,7 +42,7 @@ const InstallPrompt = () => {
 
     window.addEventListener("beforeinstallprompt", onPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
-  }, [user]);
+  }, [isMobile, user]);
 
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, "1");
@@ -55,7 +57,7 @@ const InstallPrompt = () => {
     dismiss();
   };
 
-  if (!visible) return null;
+  if (!isMobile || !visible) return null;
 
   return (
     <div
