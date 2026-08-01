@@ -1,14 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import type { Task } from "./TaskCard";
 import { useGoogleMaps } from "./GoogleMapsProvider";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
   const { isLoaded, error } = useGoogleMaps();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isOwnTask = !!selected && !!user && selected.creatorId === user.id;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -83,14 +88,30 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
               <p className="text-sm text-muted-foreground">{selected.shortDesc}</p>
               <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><DollarSign size={12} />₪{selected.payment}/{selected.paymentType === "hour" ? "שעה" : "משימה"}</span>
-                <span className="flex items-center gap-1"><MapPin size={12} />{selected.distance} ק״מ</span>
+                {selected.distance !== undefined && (
+                  <span className="flex items-center gap-1"><MapPin size={12} />{selected.distance.toFixed(2)} ק״מ</span>
+                )}
                 <span className="flex items-center gap-1"><Calendar size={12} />{selected.date}</span>
                 <span className="flex items-center gap-1"><Clock size={12} />{selected.time}</span>
               </div>
             </div>
-            <Button size="sm" className="gradient-honey text-primary-foreground rounded-full border-none font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300">
-              אני מעוניין/ת 🐝
-            </Button>
+            {isOwnTask ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300"
+                onClick={() => selected.dbId && navigate(`/task/${selected.dbId}`)}
+              >
+                לפרטי המודעה
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="gradient-honey text-primary-foreground rounded-full border-none font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300"
+              >
+                אני מעוניין/ת 🐝
+              </Button>
+            )}
           </div>
         </div>
       )}

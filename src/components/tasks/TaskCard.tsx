@@ -28,6 +28,7 @@ interface Task {
   lng: number;
   /** Undefined when the user's location is unknown — never a placeholder value. */
   distance?: number;
+  creatorId?: string;
 }
 
 const TaskCard = ({ task, index }: { task: Task; index: number }) => {

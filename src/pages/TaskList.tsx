@@ -58,6 +58,7 @@ const TaskList = () => {
           status: t.status,
           lat: t.latitude || 32.0753,
           lng: t.longitude || 34.7754,
+          creatorId: t.creator_id,
         }));
         setTasks(mapped);
       }
