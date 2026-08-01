@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -43,6 +43,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Who we have already resolved profile and roles for. */
+  const settledUserIdRef = useRef<string | null>(null);
 
   const getMetadataRole = (nextUser: User | null): AppRole | null => {
     const role = nextUser?.user_metadata?.app_role;
@@ -108,12 +110,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setLoading(true);
+        const nextUser = session?.user ?? null;
         setSession(session);
-        setUser(session?.user ?? null);
+
+        // Supabase re-fires this for the same signed-in user on every token
+        // refresh (roughly hourly) and when a tab regains focus. Profile and
+        // roles cannot have changed, but going through the loading state again
+        // would blank every guarded page — RoleGuard renders null while loading
+        // — and remount it with fresh state. That is what threw the chat back
+        // to the conversation list in the middle of a conversation.
+        if (nextUser && settledUserIdRef.current === nextUser.id) {
+          // Keep the existing object so consumers holding `user` in a
+          // dependency array do not refetch over a token we merely renewed.
+          setUser((current) => current ?? nextUser);
+          return;
+        }
+
+        setUser(nextUser);
+        setLoading(true);
 
         window.setTimeout(() => {
-          void loadUserState(session?.user ?? null).finally(() => {
+          void loadUserState(nextUser).finally(() => {
+            settledUserIdRef.current = nextUser?.id ?? null;
             setLoading(false);
           });
         }, 0);
@@ -121,10 +139,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const nextUser = session?.user ?? null;
       setLoading(true);
       setSession(session);
-      setUser(session?.user ?? null);
-      await loadUserState(session?.user ?? null);
+      setUser(nextUser);
+      await loadUserState(nextUser);
+      settledUserIdRef.current = nextUser?.id ?? null;
       setLoading(false);
     });
 
@@ -133,6 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    settledUserIdRef.current = null;
     setUser(null);
     setSession(null);
     setProfile(null);
