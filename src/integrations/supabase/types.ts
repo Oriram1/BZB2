@@ -383,6 +383,36 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_install_prompt_preferences: {
+        Row: {
+          created_at: string
+          dismiss_count: number
+          installed_at: string | null
+          next_prompt_at: string | null
+          permanently_dismissed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismiss_count?: number
+          installed_at?: string | null
+          next_prompt_at?: string | null
+          permanently_dismissed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dismiss_count?: number
+          installed_at?: string | null
+          next_prompt_at?: string | null
+          permanently_dismissed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_applications: {
         Row: {
           applicant_id: string

@@ -1,13 +1,43 @@
 import { useEffect, useState } from "react";
 import { Share, X, Download } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isIos, isStandalone } from "@/lib/push";
+import { supabase } from "@/integrations/supabase/client";
 
-const DISMISS_KEY = "bzb.install-prompt.dismissed";
+const FIRST_REMINDER_DAYS = 7;
+const SECOND_REMINDER_DAYS = 30;
 
-type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<unknown> };
+type InstallEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+type PromptPreference = {
+  dismiss_count: number;
+  next_prompt_at: string | null;
+  permanently_dismissed: boolean;
+  installed_at: string | null;
+};
+
+const fallbackKey = (userId: string) => `bzb.install-prompt:${userId}`;
+
+const getFallbackPreference = (userId: string): PromptPreference | null => {
+  try {
+    const value = localStorage.getItem(fallbackKey(userId));
+    return value ? JSON.parse(value) as PromptPreference : null;
+  } catch {
+    return null;
+  }
+};
+
+const canShowPrompt = (preference: PromptPreference | null) => {
+  if (!preference) return true;
+  if (preference.installed_at || preference.permanently_dismissed) return false;
+  return !preference.next_prompt_at || new Date(preference.next_prompt_at).getTime() <= Date.now();
+};
 
 /**
  * Nudges signed-in users to install the app.
@@ -19,45 +49,97 @@ type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<u
  */
 const InstallPrompt = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [deferred, setDeferred] = useState<InstallEvent | null>(null);
+  const [preference, setPreference] = useState<PromptPreference | null>(null);
+  const [eligible, setEligible] = useState(false);
   const [visible, setVisible] = useState(false);
+  const isEligibleScreen = location.pathname !== "/";
 
   useEffect(() => {
-    if (!isMobile || !user || isStandalone()) return;
-    if (localStorage.getItem(DISMISS_KEY)) return;
-
-    if (isIos()) {
-      setVisible(true);
-      return;
-    }
+    if (!isMobile || !user || !isEligibleScreen || isStandalone()) return;
 
     const onPrompt = (event: Event) => {
-      // Holding the event lets us show our own banner instead of Chrome's,
-      // which we can place where it does not cover the bottom nav.
       event.preventDefault();
       setDeferred(event as InstallEvent);
-      setVisible(true);
     };
 
     window.addEventListener("beforeinstallprompt", onPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
-  }, [isMobile, user]);
+  }, [isEligibleScreen, isMobile, user]);
 
-  const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, "1");
+  useEffect(() => {
+    if (!isMobile || !user || !isEligibleScreen || isStandalone()) {
+      setEligible(false);
+      setVisible(false);
+      return;
+    }
+
+    let cancelled = false;
+    void supabase
+      .from("pwa_install_prompt_preferences")
+      .select("dismiss_count, next_prompt_at, permanently_dismissed, installed_at")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const resolved = error ? getFallbackPreference(user.id) : data;
+        setPreference(resolved);
+        setEligible(canShowPrompt(resolved));
+      });
+
+    return () => { cancelled = true; };
+  }, [isEligibleScreen, isMobile, user]);
+
+  useEffect(() => {
+    setVisible(eligible && (isIos() || Boolean(deferred)));
+  }, [deferred, eligible]);
+
+  const dismiss = async () => {
+    if (!user) return;
+    const dismissCount = Math.min((preference?.dismiss_count ?? 0) + 1, 3);
+    const permanentlyDismissed = dismissCount >= 3;
+    const reminderDays = dismissCount === 1 ? FIRST_REMINDER_DAYS : SECOND_REMINDER_DAYS;
+    const nextPromptAt = permanentlyDismissed
+      ? null
+      : new Date(Date.now() + reminderDays * 24 * 60 * 60 * 1000).toISOString();
+    const nextPreference: PromptPreference = {
+      dismiss_count: dismissCount,
+      next_prompt_at: nextPromptAt,
+      permanently_dismissed: permanentlyDismissed,
+      installed_at: preference?.installed_at ?? null,
+    };
+
+    localStorage.setItem(fallbackKey(user.id), JSON.stringify(nextPreference));
+    setPreference(nextPreference);
+    setEligible(false);
     setVisible(false);
+    await supabase.from("pwa_install_prompt_preferences").upsert({
+      user_id: user.id,
+      ...nextPreference,
+    });
   };
 
   const install = async () => {
-    if (!deferred) return;
+    if (!deferred || !user) return;
     await deferred.prompt();
-    await deferred.userChoice;
+    const choice = await deferred.userChoice;
     setDeferred(null);
-    dismiss();
+    setVisible(false);
+    if (choice.outcome !== "accepted") return;
+
+    const installedAt = new Date().toISOString();
+    await supabase.from("pwa_install_prompt_preferences").upsert({
+      user_id: user.id,
+      dismiss_count: preference?.dismiss_count ?? 0,
+      next_prompt_at: null,
+      permanently_dismissed: false,
+      installed_at: installedAt,
+    });
   };
 
-  if (!isMobile || !visible) return null;
+  if (!isMobile || !user || !isEligibleScreen || !visible) return null;
 
   return (
     <div
@@ -93,7 +175,7 @@ const InstallPrompt = () => {
 
         <button
           type="button"
-          onClick={dismiss}
+          onClick={() => { void dismiss(); }}
           aria-label="סגירת ההצעה"
           className="shrink-0 w-8 h-8 rounded-full hover:bg-accent/40 flex items-center justify-center text-muted-foreground"
         >

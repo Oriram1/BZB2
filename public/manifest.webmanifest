@@ -4,7 +4,7 @@
   "description": "מפרסמים מטלה, בני נוער מהאזור מבצעים אותה. ההורים עוקבים בזמן אמת.",
   "lang": "he",
   "dir": "rtl",
-  "start_url": "/tasks",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
