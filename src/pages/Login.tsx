@@ -23,7 +23,8 @@ const Login = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("התחברתם בהצלחה! 🎉");
+      // No success toast: landing on the tasks screen already says it worked,
+      // and the toast covered the top of that screen on a phone.
       navigate("/tasks");
     }
   };
