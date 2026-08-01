@@ -84,18 +84,20 @@ const NotificationBell = () => {
                       type="button"
                       onClick={() => open(item.id, item.link, unread)}
                       className={cn(
-                        "w-full text-right px-4 py-3 hover:bg-accent/40 transition-colors flex gap-3",
+                        "w-full text-right px-4 py-3 hover:bg-accent/40 transition-colors",
                         unread && "bg-accent/20",
                       )}
                     >
-                      <span aria-hidden="true" className="text-lg leading-none pt-0.5">{line.emoji}</span>
-                      <span className="flex-1 min-w-0">
-                        <span className="flex items-center gap-2">
+                      <span className="flex flex-row-reverse items-center justify-end gap-2" dir="ltr">
+                        <span aria-hidden="true" className="text-lg leading-none">{line.emoji}</span>
+                        <span dir="rtl">
                           <span className={cn("text-sm text-foreground", unread ? "font-extrabold" : "font-bold")}>
                             {line.title}
                           </span>
-                          {unread && <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-hidden="true" />}
                         </span>
+                        {unread && <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-hidden="true" />}
+                      </span>
+                      <span className="block min-w-0" dir="rtl">
                         <span className="block text-sm text-muted-foreground truncate">{line.body}</span>
                         <span className="block text-xs text-muted-foreground/80 mt-0.5">
                           {formatRelativeTime(item.created_at)}
