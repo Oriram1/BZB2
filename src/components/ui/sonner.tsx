@@ -9,7 +9,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="light"
       dir="rtl"
-      className="toaster group"
+      // font-heebo: sonner ships its own system-font stack on the toaster root,
+      // so without this toasts would be the one thing on the site not in Heebo.
+      className="toaster group font-heebo"
       toastOptions={{
         classNames: {
           toast:

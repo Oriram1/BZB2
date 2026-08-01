@@ -116,7 +116,7 @@ export function VoiceNoteBubble({ src, duration, outgoing }: VoiceNoteBubbleProp
         />
         <p
           className={cn(
-            "mt-1 font-mono text-[10px] tabular-nums",
+            "mt-1 text-[10px] tabular-nums",
             outgoing ? "text-primary-foreground/80" : "text-muted-foreground",
           )}
           dir="ltr"

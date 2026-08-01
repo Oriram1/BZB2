@@ -231,7 +231,7 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
 
           <div className="flex flex-1 items-center gap-2 rounded-full bg-muted px-4 py-2.5">
             <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-destructive" aria-hidden="true" />
-            <span className="font-mono text-sm tabular-nums text-foreground" dir="ltr">
+            <span className="text-sm tabular-nums text-foreground" dir="ltr">
               {formatDuration(elapsed)}
             </span>
             <span className="truncate text-xs text-muted-foreground">מקליט הודעה קולית…</span>

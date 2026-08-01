@@ -13,10 +13,13 @@ export default {
       },
     },
     extend: {
+      /* One typeface, no exceptions: serif and mono are overridden too, so a stray
+         font-mono/font-serif class anywhere cannot pull in a second family. */
       fontFamily: {
         sans: ["Heebo", "sans-serif"],
         heebo: ["Heebo", "sans-serif"],
-        rubik: ["Rubik", "sans-serif"],
+        serif: ["Heebo", "sans-serif"],
+        mono: ["Heebo", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

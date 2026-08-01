@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@300;400;500;600;700;800;900&display=swap');
+/* Heebo is the single typeface of the site; it is loaded once from index.html,
+   with preconnect, so no @import blocks the stylesheet here. */
 
 @tailwind base;
 @tailwind components;
@@ -104,6 +105,19 @@
        stay at 0 — expanded tracking breaks Hebrew word shapes. */
     line-height: 1.55;
     letter-spacing: 0;
+  }
+
+  /* Heebo everywhere, no exceptions: form controls and native widgets do not
+     inherit the body font on their own, and anything rendered into a portal
+     outside #root still lands under html. */
+  html,
+  input,
+  textarea,
+  select,
+  button,
+  optgroup,
+  option {
+    font-family: "Heebo", sans-serif;
   }
 
   /* iOS zooms the whole page when a focused form control is smaller than 16px. */
