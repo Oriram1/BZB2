@@ -137,6 +137,9 @@ export function normalizePhone(input: string): string {
   const digits = input.replace(/[\s\-()]/g, "");
   if (digits.startsWith("+972")) return "0" + digits.slice(4);
   if (digits.startsWith("972")) return "0" + digits.slice(3);
+  // People routinely drop the leading zero ("502032767"). Nine digits starting
+  // with 5 can only be an Israeli mobile, so complete it instead of rejecting.
+  if (/^5\d{8}$/.test(digits)) return "0" + digits;
   return digits;
 }
 

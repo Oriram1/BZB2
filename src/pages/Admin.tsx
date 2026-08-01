@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
-import { formatDate, formatTime } from "@/lib/format";
+import { formatDate, formatPhone, formatTime } from "@/lib/format";
 import type { Json } from "@/integrations/supabase/types";
 
 interface AuditRow {
@@ -108,6 +108,19 @@ interface AdminUsersResponse {
 }
 
 type UserAdminAction = "block" | "unblock" | "delete" | "confirm_email";
+
+/**
+ * Accounts sharing one phone number.
+ *
+ * Sharing is allowed on purpose — a parent and child, or two siblings, may use
+ * one phone — so registration only warns. This view is the counterweight: it
+ * surfaces every shared number so an admin can tell a family apart from one
+ * person farming duplicate accounts.
+ */
+interface DuplicatePhoneGroup {
+  phone: string;
+  accounts: DrilldownItem[];
+}
 
 const drilldownCopy: Record<DrilldownKind, { title: string; description: string }> = {
   users: {
@@ -179,6 +192,9 @@ export default function Admin() {
   } | null>(null);
   const [managingUser, setManagingUser] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [duplicatePhones, setDuplicatePhones] = useState<DuplicatePhoneGroup[]>([]);
+  const [duplicatesLoading, setDuplicatesLoading] = useState(false);
+  const [duplicatesError, setDuplicatesError] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const lastSelectedUserIdRef = useRef<string | null>(null);
   const checkboxShiftPressedRef = useRef(false);
@@ -291,8 +307,9 @@ export default function Admin() {
       void loadAudit();
       void loadLinks();
       void loadStats();
+      void loadDuplicatePhones();
     }
-  }, [isAdmin]);
+  }, [isAdmin, loadDuplicatePhones]);
 
   const searchProfiles = async (
     query: string,
@@ -322,6 +339,67 @@ export default function Admin() {
 
     setter(data ?? []);
   };
+
+  const loadDuplicatePhones = useCallback(async () => {
+    setDuplicatesLoading(true);
+    setDuplicatesError(false);
+    try {
+      const [{ data: profiles, error: profilesError }, { data: adminData, error: adminError }] =
+        await Promise.all([
+          supabase.from("profiles").select("user_id, phone").not("phone", "is", null).neq("phone", ""),
+          supabase.functions.invoke<AdminUsersResponse>("admin-manage-users", {
+            body: { action: "list" },
+          }),
+        ]);
+
+      if (profilesError || adminError || adminData?.error) throw profilesError ?? adminError;
+
+      const usersById = new Map((adminData?.users ?? []).map((row) => [row.id, row]));
+
+      const byPhone = new Map<string, string[]>();
+      for (const profile of profiles ?? []) {
+        const phone = (profile.phone ?? "").trim();
+        if (!phone) continue;
+        byPhone.set(phone, [...(byPhone.get(phone) ?? []), profile.user_id]);
+      }
+
+      const groups: DuplicatePhoneGroup[] = [];
+      for (const [phone, userIds] of byPhone) {
+        if (userIds.length < 2) continue;
+
+        const accounts = userIds
+          .map((userId) => usersById.get(userId))
+          .filter((row): row is AdminUserRow => Boolean(row))
+          .map((row) => ({
+            id: row.id,
+            title: row.displayName,
+            meta: row.blocked
+              ? "חסום"
+              : row.roles.length > 0
+                ? row.roles.join(", ")
+                : "ללא תפקיד",
+            detail: `${row.email || "ללא אימייל"} · הצטרפות: ${formatDate(row.createdAt)}`,
+            href: `/profile/${row.id}`,
+            email: row.email,
+            emailConfirmed: row.emailConfirmed,
+            blocked: row.blocked,
+            manageable: !row.roles.includes("admin"),
+          }));
+
+        // A profile whose auth user is gone leaves a stale row; without this
+        // the group could show a single account and read as a false positive.
+        if (accounts.length > 1) groups.push({ phone, accounts });
+      }
+
+      groups.sort((a, b) => b.accounts.length - a.accounts.length);
+      setDuplicatePhones(groups);
+    } catch {
+      setDuplicatesError(true);
+      setDuplicatePhones([]);
+    } finally {
+      setDuplicatesLoading(false);
+    }
+  }, []);
 
   const openDrilldown = async (kind: DrilldownKind) => {
     setActiveDrilldown(kind);
@@ -460,9 +538,10 @@ export default function Admin() {
             : "חסימת המשתמש הוסרה";
       toast.success(successMessage);
       setPendingUserAction(null);
-      await openDrilldown("users");
+      if (activeDrilldown === "users") await openDrilldown("users");
       await loadStats();
       await loadAudit();
+      await loadDuplicatePhones();
     } finally {
       setManagingUser(false);
     }
@@ -681,6 +760,102 @@ export default function Admin() {
             <StatCard label="מטלות בתהליך" value={stats.activeTasks} loading={statsLoading} icon={Loader2} onClick={() => void openDrilldown("activeTasks")} />
             <StatCard label="קישורי משפחה" value={stats.parentLinks} loading={statsLoading} icon={LinkIcon} onClick={() => void openDrilldown("parentLinks")} />
           </div>
+        </section>
+
+        <section aria-labelledby="duplicates-title">
+          <div className="mb-3">
+            <h2 id="duplicates-title" className="text-lg font-extrabold">מספרי טלפון משותפים</h2>
+            <p className="text-sm text-muted-foreground">
+              חשבונות שנרשמו עם אותו מספר. שיתוף בין הורה לילד או בין אחים הוא תקין —
+              ריבוי חשבונות של אותו אדם הוא לא.
+            </p>
+          </div>
+
+          <Card className="p-5 border-border/80 shadow-sm">
+            {duplicatesLoading ? (
+              <div className="space-y-3">
+                {[0, 1].map((index) => <Skeleton key={index} className="h-24 w-full rounded-2xl" />)}
+              </div>
+            ) : duplicatesError ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">לא הצלחתי לטעון את הרשימה.</p>
+                <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => void loadDuplicatePhones()}>
+                  נסה שוב
+                </Button>
+              </div>
+            ) : duplicatePhones.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                אין כרגע מספרים משותפים 🎉
+              </p>
+            ) : (
+              <ul className="space-y-4">
+                {duplicatePhones.map((group) => (
+                  <li key={group.phone} className="rounded-2xl border border-border/80 overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-2.5">
+                      <span dir="ltr" className="font-bold tabular-nums">{formatPhone(group.phone)}</span>
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {group.accounts.length} חשבונות
+                      </span>
+                    </div>
+
+                    <ul className="divide-y divide-border">
+                      {group.accounts.map((account) => (
+                        <li key={account.id} className="px-4 py-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-bold">
+                                {account.title}
+                                {account.blocked && (
+                                  <span className="mr-2 rounded-lg bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive">
+                                    חסום
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-sm text-muted-foreground break-all">{account.detail}</p>
+                            </div>
+
+                            {account.manageable && account.id !== user?.id ? (
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="min-h-10 rounded-xl"
+                                  onClick={() =>
+                                    setPendingUserAction({
+                                      item: account,
+                                      action: account.blocked ? "unblock" : "block",
+                                    })
+                                  }
+                                >
+                                  {account.blocked ? <UserCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                  {account.blocked ? "הסרת חסימה" : "חסימה"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="destructive"
+                                  className="min-h-10 rounded-xl"
+                                  onClick={() => setPendingUserAction({ item: account, action: "delete" })}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  מחיקה
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {account.id === user?.id ? "זה אתה" : "חשבון אדמין"}
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </section>
 
         <section aria-labelledby="actions-title">

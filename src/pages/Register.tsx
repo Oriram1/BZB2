@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { normalizePhone, isValidPhone } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, AlertTriangle } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { geocodeAddress } from "@/lib/geocodeAddress";
@@ -70,6 +70,34 @@ const Register = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressPosition, setAddressPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [phoneTaken, setPhoneTaken] = useState(false);
+
+  /**
+   * A shared number is legitimate here — a parent and child, or two siblings
+   * using one phone — so this warns and lets the user through rather than
+   * blocking. Admins get a screen listing the shared numbers to spot abuse.
+   */
+  useEffect(() => {
+    const phone = normalizePhone(form.phone);
+    if (!isValidPhone(phone)) {
+      setPhoneTaken(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const { count } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("phone", phone);
+      if (!cancelled) setPhoneTaken((count ?? 0) > 0);
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [form.phone]);
 
   const updateField = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -266,6 +294,12 @@ const Register = () => {
             <Label htmlFor="phone">טלפון</Label>
             <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className="mt-1 rounded-2xl h-12" dir="ltr" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} />
             <FieldError id="phone" message={errors.phone} />
+            {phoneTaken && !errors.phone && (
+              <p className="mt-1.5 flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-500">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span>המספר הזה כבר רשום במערכת. אפשר להמשיך — אבל אם זו טעות, כדאי לתקן עכשיו.</span>
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
