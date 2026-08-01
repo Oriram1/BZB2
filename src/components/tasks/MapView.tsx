@@ -18,11 +18,16 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
 
+  /** Only tasks that actually carry coordinates can be put on a map. */
+  const located = tasks.filter(
+    (t): t is Task & { lat: number; lng: number } => t.lat !== null && t.lng !== null,
+  );
+
   const center =
-    tasks.length > 0
+    located.length > 0
       ? {
-          lat: tasks.reduce((s, t) => s + t.lat, 0) / tasks.length,
-          lng: tasks.reduce((s, t) => s + t.lng, 0) / tasks.length,
+          lat: located.reduce((s, t) => s + t.lat, 0) / located.length,
+          lng: located.reduce((s, t) => s + t.lng, 0) / located.length,
         }
       : { lat: 32.08, lng: 34.78 };
 
@@ -46,7 +51,7 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    tasks.forEach((task) => {
+    located.forEach((task) => {
       const marker = new google.maps.Marker({
         position: { lat: task.lat, lng: task.lng },
         map,
@@ -57,9 +62,9 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
       markersRef.current.push(marker);
     });
 
-    if (tasks.length > 0) {
+    if (located.length > 0) {
       const bounds = new google.maps.LatLngBounds();
-      tasks.forEach((t) => bounds.extend({ lat: t.lat, lng: t.lng }));
+      located.forEach((t) => bounds.extend({ lat: t.lat, lng: t.lng }));
       map.fitBounds(bounds, 50);
     }
   }, [tasks, selectedTask, isLoaded]);

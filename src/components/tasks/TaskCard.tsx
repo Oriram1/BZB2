@@ -24,8 +24,9 @@ interface Task {
   duration: number;
   workers: number;
   status: string;
-  lat: number;
-  lng: number;
+  /** Null when the task was published without a location — never a stand-in value. */
+  lat: number | null;
+  lng: number | null;
   /** Undefined when the user's location is unknown — never a placeholder value. */
   distance?: number;
   creatorId?: string;
