@@ -78,11 +78,16 @@ const NotificationBell = () => {
               {items.map((item) => {
                 const line = notificationLine(item);
                 const unread = !item.read_at;
+                const taskId = typeof item.data.task_id === "string" ? item.data.task_id : null;
+                const applicationId = typeof item.data.application_id === "string" ? item.data.application_id : null;
+                const targetLink = item.event_type === "application_received" && taskId && applicationId
+                  ? `/my-tasks?tab=applications&task=${encodeURIComponent(taskId)}&application=${encodeURIComponent(applicationId)}`
+                  : item.link;
                 return (
                   <li key={item.id}>
                     <button
                       type="button"
-                      onClick={() => open(item.id, item.link, unread)}
+                      onClick={() => open(item.id, targetLink, unread)}
                       className={cn(
                         "w-full text-right px-4 py-3 hover:bg-accent/40 transition-colors",
                         unread && "bg-accent/20",

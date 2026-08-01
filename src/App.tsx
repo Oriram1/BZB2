@@ -55,7 +55,7 @@ const App = () => (
                 <Route path="/create-task" element={<RoleGuard allowedRoles={["tasker"]}><CreateTask /></RoleGuard>} />
                 <Route path="/tasks" element={<TaskList />} />
                 <Route path="/task/:id" element={<TaskDetail />} />
-                <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker"]}><MyTasks /></RoleGuard>} />
+                <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker", "bee"]}><MyTasks /></RoleGuard>} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
                 <Route path="/parent/report/:date" element={<RoleGuard allowedRoles={["parent"]}><ParentReport /></RoleGuard>} />

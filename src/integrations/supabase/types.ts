@@ -549,6 +549,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_accepted_task_conversation: {
+        Args: { _applicant_id: string; _task_id: string }
+        Returns: string
+      }
       get_public_profile: {
         Args: { _user_id: string }
         Returns: {
@@ -558,6 +562,10 @@ export type Database = {
           last_name: string
           user_id: string
         }[]
+      }
+      get_worker_completed_task_count: {
+        Args: { _user_id: string }
+        Returns: number
       }
       redeem_family_link_code: {
         Args: { _code_hash: string; _parent_user_id: string }

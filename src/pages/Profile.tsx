@@ -256,19 +256,6 @@ const Profile = () => {
     setSaving(false);
   };
 
-  const handleApplicationStatus = async (applicationId: string, status: "accepted" | "rejected") => {
-    const { error } = await supabase
-      .from("task_applications")
-      .update({ status })
-      .eq("id", applicationId);
-    if (error) {
-      toast.error("שגיאה בעדכון הסטטוס");
-    } else {
-      toast.success(status === "accepted" ? "המועמד התקבל! ✓" : "המועמד נדחה");
-      await loadTaskerData();
-    }
-  };
-
   if (authLoading) {
     return <div className="min-h-screen bg-muted flex items-center justify-center"><p className="text-muted-foreground">טוען...</p></div>;
   }
@@ -510,31 +497,14 @@ const Profile = () => {
 
                       {task.applications.filter(a => a.status === "pending").length > 0 && (
                         <div className="border-t border-border pt-3 mt-2 space-y-2">
-                          <p className="text-xs font-bold text-foreground">ממתינים לאישור:</p>
-                          {task.applications.filter(a => a.status === "pending").map(app => (
-                            <div key={app.id} className="flex items-center justify-between bg-card rounded-xl p-2.5">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="w-8 h-8">
-                                  <AvatarImage src={app.profile?.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${app.applicant_id}`} />
-                                  <AvatarFallback>👤</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <span className="text-sm font-bold text-foreground">
-                                    {app.profile ? `${app.profile.first_name} ${app.profile.last_name}` : "משתמש"}
-                                  </span>
-                                  {app.profile?.age && <span className="text-xs text-muted-foreground mr-2">גיל {app.profile.age}</span>}
-                                </div>
-                              </div>
-                              <div className="flex gap-1.5">
-                                <Button size="sm" onClick={() => handleApplicationStatus(app.id, "accepted")} className="gradient-honey text-primary-foreground rounded-full border-none text-xs h-7 px-3 font-bold">
-                                  קבל ✓
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => handleApplicationStatus(app.id, "rejected")} className="rounded-full text-xs h-7 px-3 font-semibold">
-                                  דחה
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                          <p className="text-xs font-bold text-foreground">
+                            {task.applications.filter(a => a.status === "pending").length} מועמדויות ממתינות
+                          </p>
+                          <Link to={`/my-tasks?tab=applications&task=${task.id}`}>
+                            <Button size="sm" className="w-full rounded-full gradient-honey text-primary-foreground font-bold">
+                              לניהול המועמדויות
+                            </Button>
+                          </Link>
                         </div>
                       )}
                     </div>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,8 @@ interface Message {
 const Chat = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedConversation = searchParams.get("conversation");
   const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
@@ -98,10 +100,15 @@ const Chat = () => {
         });
       }
       setConversations(convs);
-      if (convs.length > 0 && !activeChat) setActiveChat(convs[0].id);
+      if (requestedConversation && convs.some((conversation) => conversation.id === requestedConversation)) {
+        setActiveChat(requestedConversation);
+        setShowSidebar(false);
+      } else if (convs.length > 0) {
+        setActiveChat((current) => current ?? convs[0].id);
+      }
     };
     fetchConversations();
-  }, [user]);
+  }, [requestedConversation, user]);
 
   // Load messages for active chat
   useEffect(() => {
