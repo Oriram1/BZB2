@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect, type ReactNode } from "react";
+import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GoogleMapsProvider } from "@/components/tasks/GoogleMapsProvider";
 import RoleGuard from "@/components/RoleGuard";
@@ -55,6 +55,29 @@ const RouteViewport = ({ children }: { children: ReactNode }) => {
   );
 };
 
+/**
+ * A new screen starts at the top.
+ *
+ * The browser keeps the window scroll across a client-side navigation, so
+ * tapping a card halfway down the task list used to drop you halfway down the
+ * next screen. Back and forward are left alone on purpose: the browser restores
+ * their scroll position, and returning to a list at the spot you left it is
+ * exactly what people expect.
+ */
+const ScrollToTop = () => {
+  const { pathname, hash } = useLocation();
+  const navigationType = useNavigationType();
+
+  useEffect(() => {
+    if (navigationType === "POP") return;
+    // An anchor link asked for a specific place on the page; honour it.
+    if (hash) return;
+    window.scrollTo(0, 0);
+  }, [pathname, hash, navigationType]);
+
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -64,6 +87,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
           <NavDrawerProvider>
+            <ScrollToTop />
             <MobileNav />
             <PresenceTracker />
             <RouteViewport>
