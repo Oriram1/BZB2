@@ -98,33 +98,37 @@ const TaskList = () => {
         }
       />
 
-      <div className="max-w-5xl mx-auto py-8 px-4 relative z-10">
-        <div className="flex items-center justify-between mb-6 animate-fade-in">
-          <h1 className="text-3xl font-bold text-foreground">מטלות זמינות</h1>
-          <div className="flex items-center gap-1 bg-card rounded-2xl p-1 border border-border shadow-sm" role="group" aria-label="תצוגה">
+      <div className="max-w-5xl mx-auto py-5 px-4 relative z-10">
+        {/* Icon-only toggle: two states with familiar icons need no labels, and the
+            narrow control keeps the title on one line down to 320px. */}
+        <div className="flex items-center justify-between gap-3 mb-4 animate-fade-in">
+          <h1 className="text-2xl font-bold text-foreground">מטלות זמינות</h1>
+          <div className="flex items-center gap-1 bg-card rounded-2xl p-1 border border-border shadow-sm shrink-0" role="group" aria-label="תצוגה">
             <button
               onClick={() => setViewMode("list")}
               aria-pressed={viewMode === "list"}
-              className={`flex items-center gap-1.5 min-h-11 px-4 py-2 rounded-xl text-sm font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              aria-label="תצוגת רשימה"
+              title="רשימה"
+              className={`flex items-center justify-center h-11 w-11 rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "list"
                   ? "gradient-honey text-primary-foreground shadow-honey"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <List size={16} />
-              רשימה
+              <List size={18} />
             </button>
             <button
               onClick={() => setViewMode("map")}
               aria-pressed={viewMode === "map"}
-              className={`flex items-center gap-1.5 min-h-11 px-4 py-2 rounded-xl text-sm font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              aria-label="תצוגת מפה"
+              title="מפה"
+              className={`flex items-center justify-center h-11 w-11 rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "map"
                   ? "gradient-honey text-primary-foreground shadow-honey"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Map size={16} />
-              מפה
+              <Map size={18} />
             </button>
           </div>
         </div>
