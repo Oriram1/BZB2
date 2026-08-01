@@ -151,15 +151,51 @@ select * from cron.job where jobname = 'parent-digest-hourly';
 | `create-family-link-code` | ✅ נפרסה מחדש | עם שליחת קוד במייל |
 | סודות Supabase | ✅ הוגדרו | VAPID (זוג מפתחות), `NOTIFY_DISPATCH_SECRET`, `SEND_EMAIL_HOOK_SECRET`, `PUBLIC_SITE_URL`. `RESEND_API_KEY` כבר היה קיים |
 | סודות Vault | ✅ נוצרו | `notify_dispatch_url`, `notify_dispatch_secret`, `parent_digest_url` |
-| Send Email Hook | ✅ הופעל | דרך Management API |
+| Send Email Hook | ⛔ **מושבת בכוונה** | נפרס ומוכן, אבל **אסור להפעיל לפני דומיין מאומת**. ראו האזהרה למטה |
 | cron הדוח היומי | ✅ מתוזמן | `parent-digest-hourly`, כל שעה ב־:05 |
 | משתני סביבה ב־Vercel | ✅ הוגדרו | כל חמשת משתני `VITE_*` בשלוש הסביבות — Production, Preview, Development |
 | דומיין שולח | ❌ לא בוצע | עדיין `onboarding@resend.dev` |
 
+### ⛔ אזהרה: אין להפעיל את ה־Send Email Hook לפני דומיין מאומת
+
+ה־hook הופעל ב־1 באוגוסט והשבית את ההרשמה לכל המשתמשים. הסיבה:
+
+**Resend במצב בדיקה (`onboarding@resend.dev`) שולח רק לכתובת של בעל חשבון ה־Resend.** כל נמען אחר נדחה. כשה־hook פעיל, Supabase Auth תלוי בו לגמרי — הוא מחזיר 500, וההרשמה נכשלת:
+
+```
+{"code":500,"error_code":"unexpected_failure",
+ "msg":"Unexpected status code returned from hook: 500"}
+```
+
+מה שהסתיר את זה בבדיקות: כל בדיקות המייל הראשונות נשלחו ל־itayk93@gmail.com — שהיא בדיוק כתובת בעל החשבון, הכתובת היחידה שעובדת. הבדיקה נראתה ירוקה בזמן שהמערכת הייתה שבורה לכל השאר.
+
+**הלקח:** בדיקת מייל חייבת לכלול נמען שאינו בעל החשבון, אחרת היא לא מוכיחה כלום.
+
+ההרשמה עובדת כרגע כי ה־hook כבוי — Supabase שולח את מיילי האימות במנגנון המובנה שלו (תבנית ברירת מחדל באנגלית). זה מכוער אבל עובד לכולם.
+
+**סדר ההפעלה הנכון, כשיהיה דומיין:**
+
+1. לאמת דומיין ב־Resend (SPF, DKIM, DMARC)
+2. `supabase secrets set RESEND_FROM_EMAIL="BZB <noreply@your-domain.co.il>"`
+3. **לבדוק שליחה לכתובת שאינה בעל החשבון** — קריטי
+4. רק אז להפעיל את ה־hook:
+
+```bash
+curl -X PATCH "https://api.supabase.com/v1/projects/nrqgoaxraywprlbyzrso/config/auth" \
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"hook_send_email_enabled": true}'
+```
+
+5. **מיד אחרי — לנסות הרשמה עם כתובת זרה.** אם מתקבל 500, לכבות מיד את ה־hook
+
+הסוד והכתובת של ה־hook נשמרו בהגדרות, אז ההפעלה היא שינוי של דגל אחד.
+
+> **הערה על התראות המערכת:** הן לא מושפעות. `notify-dispatch` שולח ישירות דרך Resend בלי לעבור ב־Auth, ולכן הן ממשיכות לעבוד — אבל **גם הן יגיעו רק ל־itayk93@gmail.com** עד שיהיה דומיין. שליחה לכל נמען אחר תירשם ב־`notification_deliveries` כ־`email / failed`.
+
 ### מה נבדק בפועל
 
 - **שרשרת ההתראות** — הוכנסה שורת בדיקה ל־`notifications`; הטריגר הפעיל את `pg_net`, המפיץ רץ, והמייל נשלח והגיע. `notification_deliveries` רשם `email=sent` ו־`push=skipped/no_devices` (נכון — אין מכשיר רשום)
-- **מיילי אימות** — בקשת איפוס סיסמה הפיקה מייל עם הנושא "איפוס הסיסמה שלכם ב־BZB". לפני ההפעלה הנושא היה "Reset your password" — ההוכחה שה־hook תפס
+- **מיילי אימות דרך ה־hook** — עבד לכתובת בעל חשבון Resend בלבד. נכשל לכל נמען אחר, ולכן ה־hook כובה. ראו האזהרה למעלה
 - **אתחול הפונקציות** — כל שלוש הפונקציות המוגנות מחזירות 401 לבקשה לא חתומה, כלומר הן עולות והייבוא של `standardwebhooks` ו־`web-push` נפתר
 
 ### מה לא נבדק
