@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, List, SlidersHorizontal, SearchX, Plus } from "lucide-react";
+import { Map, List, MapPin, ChevronDown, SearchX, Plus } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
@@ -17,6 +17,8 @@ const TaskList = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [maxDistance, setMaxDistance] = useState(10);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  /** The distance slider starts collapsed: the current value is enough until the user wants to change it. */
+  const [distanceOpen, setDistanceOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   /** null until the browser hands us a position; distance stays hidden until then. */
@@ -127,52 +129,69 @@ const TaskList = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="glass rounded-3xl p-6 border border-border mb-6 flex flex-col md:flex-row gap-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+        {/* Filters: one scrolling row of categories, distance folded away behind its current value. */}
+        <div className="glass rounded-3xl border border-border mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          {/* A single row that scrolls sideways instead of wrapping into three fixed rows. */}
+          <div
+            className="flex gap-2 overflow-x-auto px-4 pt-4 pb-4"
+            role="group"
+            aria-label="קטגוריה"
+          >
+            {categoryFilters.map((c) => {
+              const Icon = c.icon;
+              const isSelected = selectedCategory === c.value;
+              return (
+                <button
+                  key={c.value}
+                  onClick={() => setSelectedCategory(c.value)}
+                  aria-pressed={isSelected}
+                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap min-h-11 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-300 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                    isSelected
+                      ? "gradient-honey text-primary-foreground border-transparent shadow-honey"
+                      : "bg-card text-foreground border-border hover:border-primary"
+                  }`}
+                >
+                  <Icon size={14} />
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Only offer a distance filter when we can actually measure distance. */}
           {userPos && (
-            <div className="flex-1">
-              <label htmlFor="distance-filter" className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
-                <SlidersHorizontal size={14} />
-                מרחק (ק״מ): <span className="text-primary-ink font-extrabold tabular">{maxDistance}</span>
-              </label>
-              <input
-                id="distance-filter"
-                type="range"
-                min={1}
-                max={50}
-                value={maxDistance}
-                onChange={(e) => setMaxDistance(Number(e.target.value))}
-                className="w-full h-11 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
-              />
+            <div className="border-t border-border">
+              <button
+                type="button"
+                onClick={() => setDistanceOpen((open) => !open)}
+                aria-expanded={distanceOpen}
+                aria-controls="distance-filter-panel"
+                className="w-full flex items-center justify-between gap-2 min-h-11 px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-b-3xl"
+              >
+                <span className="flex items-center gap-1.5">
+                  <MapPin size={14} className="shrink-0" aria-hidden="true" />
+                  מרחק: עד <span className="tabular text-foreground">{maxDistance}</span> ק״מ
+                </span>
+                <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${distanceOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+              </button>
+              {distanceOpen && (
+                <div id="distance-filter-panel" className="px-4 pb-4">
+                  <label htmlFor="distance-filter" className="sr-only">
+                    מרחק מרבי בקילומטרים
+                  </label>
+                  <input
+                    id="distance-filter"
+                    type="range"
+                    min={1}
+                    max={50}
+                    value={maxDistance}
+                    onChange={(e) => setMaxDistance(Number(e.target.value))}
+                    className="w-full h-11 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+                  />
+                </div>
+              )}
             </div>
           )}
-          <div className="flex-1">
-            <span id="category-filter-label" className="text-sm font-bold text-muted-foreground mb-2 block">
-              קטגוריה
-            </span>
-            <div className="flex flex-wrap gap-2" role="group" aria-labelledby="category-filter-label">
-              {categoryFilters.map((c) => {
-                const Icon = c.icon;
-                const isSelected = selectedCategory === c.value;
-                return (
-                  <button
-                    key={c.value}
-                    onClick={() => setSelectedCategory(c.value)}
-                    aria-pressed={isSelected}
-                    className={`flex items-center gap-1.5 min-h-11 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-300 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                      isSelected
-                        ? "gradient-honey text-primary-foreground border-transparent shadow-honey"
-                        : "bg-card text-foreground border-border hover:border-primary"
-                    }`}
-                  >
-                    <Icon size={14} />
-                    {c.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* Content */}

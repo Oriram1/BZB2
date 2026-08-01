@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Users, MapPin, Calendar, Clock, Hourglass } from "lucide-react";
+import { Users, MapPin, Calendar, Clock, Hourglass, type LucideIcon } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import { formatCurrency, formatDate, formatTime, formatDuration, formatDistance } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,18 @@ interface Task {
   distance?: number;
   creatorId?: string;
 }
+
+/**
+ * One field of the card grid. Same icon size, same order (icon then value) and the
+ * same alignment every time, so the eye learns a single pattern and scans it fast.
+ */
+const Field = ({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) => (
+  <div className="flex items-center gap-1.5 min-w-0">
+    <Icon size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+    <span className="sr-only">{label}: </span>
+    <span className="tabular truncate">{value}</span>
+  </div>
+);
 
 const TaskCard = ({ task, index }: { task: Task; index: number }) => {
   const { user, roles } = useAuth();
@@ -88,7 +100,7 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
       }}
     >
       <div className="absolute inset-0 gradient-honey opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500" />
-      <div className="flex items-start gap-3 mb-3 relative">
+      <div className="flex items-start gap-3 relative">
         <CategoryIcon category={task.category} className="shrink-0 group-hover:scale-110 transition-transform duration-300" />
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-lg text-foreground">{task.name}</h3>
@@ -98,56 +110,37 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
           {task.categoryLabel}
         </Badge>
       </div>
-      <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground mt-4">
-        <div className="flex items-center gap-1.5">
-          <DollarSign size={14} className="text-primary-ink shrink-0" aria-hidden="true" />
-          <span className="tabular">{formatCurrency(task.payment)}</span>
-          <span>/ {task.paymentType === "hour" ? "שעה" : "משימה"}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Users size={14} className="text-primary-ink shrink-0" aria-hidden="true" />
-          {task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`}
-        </div>
+      {/* Fixed field order — the optional distance sits last so nothing shifts when it is missing. */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground mt-4 pt-4 border-t border-border relative">
+        <Field icon={Calendar} label="תאריך" value={formatDate(task.date)} />
+        <Field icon={Clock} label="שעה" value={formatTime(task.time)} />
+        <Field icon={Hourglass} label="משך" value={formatDuration(task.duration)} />
+        <Field
+          icon={Users}
+          label="עובדים"
+          value={task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`}
+        />
         {/* Distance only renders when it was actually measured. */}
         {task.distance !== undefined && (
-          <div className="flex items-center gap-1.5">
-            <MapPin size={14} className="text-primary-ink shrink-0" aria-hidden="true" />
-            <span className="tabular">{formatDistance(task.distance)}</span>
-          </div>
+          <Field icon={MapPin} label="מרחק" value={formatDistance(task.distance)} />
         )}
-        <div className="flex items-center gap-1.5">
-          <Calendar size={14} className="text-primary-ink shrink-0" aria-hidden="true" />
-          <span className="tabular">{formatDate(task.date)}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Clock size={14} className="text-primary-ink shrink-0" aria-hidden="true" />
-          <span className="tabular">{formatTime(task.time)}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Hourglass size={14} className="text-primary-ink shrink-0" aria-hidden="true" />
-          {formatDuration(task.duration)}
-        </div>
       </div>
-      {user && (
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border relative">
-          {isBee && (
-            <Badge className="bg-trust text-trust-foreground border-none rounded-xl font-bold">
-              פתוחה להצעות
-            </Badge>
-          )}
-          {!isBee && <div />}
-          {isBee && (
-            <Button
-              size="sm"
-              disabled={applying}
-              onClick={(e) => { e.stopPropagation(); handleApply(); }}
-              className="gradient-honey text-primary-foreground rounded-full border-none min-h-11 active:scale-95 transition-transform duration-200 font-bold"
-            >
-              {applying ? "שולח..." : "להגיש מועמדות"}
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-border relative">
+        <p className="text-xl font-bold text-foreground tabular">
+          {formatCurrency(task.payment)}
+          <span className="text-sm font-bold text-muted-foreground"> / {task.paymentType === "hour" ? "שעה" : "משימה"}</span>
+        </p>
+        {user && isBee && (
+          <Button
+            size="sm"
+            disabled={applying}
+            onClick={(e) => { e.stopPropagation(); handleApply(); }}
+            className="gradient-honey text-primary-foreground rounded-full border-none min-h-11 active:scale-95 transition-transform duration-200 font-bold shrink-0"
+          >
+            {applying ? "שולח..." : "להגיש מועמדות"}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
