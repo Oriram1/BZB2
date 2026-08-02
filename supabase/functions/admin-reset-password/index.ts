@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     if (identifier.includes("@")) {
       // search auth users by email
       let page = 1;
-      while (page <= 20 && !targetUserId) {
+      while (!targetUserId) {
         const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
         if (error) break;
         const match = data.users.find(

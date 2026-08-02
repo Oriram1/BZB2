@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context hooks are intentionally colocated with their provider. */
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 type NavDrawerValue = {

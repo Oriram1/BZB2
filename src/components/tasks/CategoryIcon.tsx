@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- the icon registry is part of this component's public API. */
 import { Home, Wrench, BookOpen, Baby, PawPrint, Leaf, Package, type LucideIcon } from "lucide-react";
 
 const categoryIconMap: Record<string, LucideIcon> = {

@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { NotificationRow } from "@/lib/notificationCopy";
-
-const PAGE_SIZE = 30;
+import { fetchAllPages } from "@/lib/fetchAllPages";
 
 /**
  * The in-app notification feed.
@@ -23,12 +22,12 @@ export function useNotifications() {
       setLoading(false);
       return;
     }
-    const { data } = await supabase
+    const { data } = await fetchAllPages((from, to) => supabase
       .from("notifications")
       .select("id, event_type, data, link, read_at, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+      .range(from, to));
 
     setItems((data ?? []) as NotificationRow[]);
     setLoading(false);
@@ -46,7 +45,7 @@ export function useNotifications() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        (payload) => setItems((prev) => [payload.new as NotificationRow, ...prev].slice(0, PAGE_SIZE)),
+        (payload) => setItems((prev) => [payload.new as NotificationRow, ...prev]),
       )
       .subscribe();
 

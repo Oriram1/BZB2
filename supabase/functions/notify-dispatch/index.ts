@@ -62,14 +62,21 @@ async function chatEmailAllowed(
     .eq("user_id", userId)
     .maybeSingle();
 
-  const { data: siblings } = await admin
-    .from("notifications")
-    .select("id, read_at, created_at")
-    .eq("user_id", userId)
-    .eq("event_type", "message_received")
-    .eq("data->>conversation_id", conversationId)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const siblings: { id: string; read_at: string | null; created_at: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin
+      .from("notifications")
+      .select("id, read_at, created_at")
+      .eq("user_id", userId)
+      .eq("event_type", "message_received")
+      .eq("data->>conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .range(from, from + 999);
+    if (error) throw error;
+    const page = (data ?? []) as { id: string; read_at: string | null; created_at: string }[];
+    siblings.push(...page);
+    if (page.length < 1000) break;
+  }
 
   const unreadCount = (siblings ?? []).filter((row) => !row.read_at).length || 1;
 

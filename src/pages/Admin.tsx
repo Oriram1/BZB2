@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -215,11 +216,11 @@ export default function Admin() {
   }, [user, isAdmin, loading, navigate]);
 
   const loadAudit = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await fetchAllPages((from, to) => supabase
       .from("admin_audit_log")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(10);
+      .range(from, to));
 
     if (error) {
       toast.error("לא הצלחתי לטעון את הפעילות האחרונה");
@@ -230,11 +231,11 @@ export default function Admin() {
   };
 
   const loadLinks = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await fetchAllPages((from, to) => supabase
       .from("parent_links")
       .select("id, parent_user_id, child_user_id, created_at")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .range(from, to));
 
     if (error) {
       toast.error("לא הצלחתי לטעון קישורי הורה־ילד");
@@ -302,15 +303,6 @@ export default function Admin() {
     setStatsLoading(false);
   };
 
-  useEffect(() => {
-    if (isAdmin) {
-      void loadAudit();
-      void loadLinks();
-      void loadStats();
-      void loadDuplicatePhones();
-    }
-  }, [isAdmin, loadDuplicatePhones]);
-
   const searchProfiles = async (
     query: string,
     setter: (rows: ProfileOption[]) => void,
@@ -324,11 +316,11 @@ export default function Admin() {
 
     setSearching(true);
     const safeTerm = trimmed.replace(/[%_,]/g, "");
-    const { data, error } = await supabase
+    const { data, error } = await fetchAllPages((from, to) => supabase
       .from("profiles")
       .select("user_id, first_name, last_name, age")
       .or(`first_name.ilike.%${safeTerm}%,last_name.ilike.%${safeTerm}%`)
-      .limit(8);
+      .range(from, to));
 
     setSearching(false);
 
@@ -400,6 +392,15 @@ export default function Admin() {
       setDuplicatesLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (isAdmin) {
+      void loadAudit();
+      void loadLinks();
+      void loadStats();
+      void loadDuplicatePhones();
+    }
+  }, [isAdmin, loadDuplicatePhones]);
 
   const openDrilldown = async (kind: DrilldownKind) => {
     setActiveDrilldown(kind);

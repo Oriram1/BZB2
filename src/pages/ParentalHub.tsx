@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { formatDate, formatTime } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -76,12 +77,12 @@ const ParentalHub = () => {
 
       for (const childId of childIds) {
         const profile = profiles?.find((item) => item.user_id === childId);
-        const { data: apps } = await supabase
+        const { data: apps } = await fetchAllPages((from, to) => supabase
           .from("task_applications")
           .select("id, status, created_at, task_id")
           .eq("applicant_id", childId)
           .order("created_at", { ascending: false })
-          .limit(10);
+          .range(from, to));
 
         let activeTask: ChildSummary["activeTask"] = null;
         const notifications: ChildSummary["notifications"] = [];
@@ -337,7 +338,7 @@ const ParentalHub = () => {
                     {child.notifications.length === 0 ? (
                       <div className="p-4 text-sm text-muted-foreground">אין עדכונים עדיין.</div>
                     ) : (
-                      child.notifications.slice(0, 6).map((notif) => (
+                      child.notifications.map((notif) => (
                         <div key={notif.id} className={`p-4 flex items-start gap-3 ${!notif.read ? "bg-primary/5" : ""}`}>
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
                             notif.type === "accepted"

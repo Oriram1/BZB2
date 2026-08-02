@@ -37,17 +37,24 @@ async function heldMessages(
   userId: string,
   since: Date,
 ): Promise<HeldNotification[]> {
-  const { data: notifications } = await admin
-    .from("notifications")
-    .select("id, data")
-    .eq("user_id", userId)
-    .eq("event_type", "message_received")
-    .is("read_at", null)
-    .gte("created_at", since.toISOString())
-    .order("created_at", { ascending: true })
-    .limit(200);
+  const notifications: { id: string; data: Record<string, unknown> }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin
+      .from("notifications")
+      .select("id, data")
+      .eq("user_id", userId)
+      .eq("event_type", "message_received")
+      .is("read_at", null)
+      .gte("created_at", since.toISOString())
+      .order("created_at", { ascending: true })
+      .range(from, from + 999);
+    if (error) throw error;
+    const page = (data ?? []) as { id: string; data: Record<string, unknown> }[];
+    notifications.push(...page);
+    if (page.length < 1000) break;
+  }
 
-  if (!notifications?.length) return [];
+  if (!notifications.length) return [];
 
   const { data: deliveries } = await admin
     .from("notification_deliveries")

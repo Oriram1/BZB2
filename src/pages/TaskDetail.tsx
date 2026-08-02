@@ -139,7 +139,7 @@ const TaskDetail = () => {
       setLoading(false);
     };
     fetchTask();
-  }, [id, user]);
+  }, [id, user, navigate]);
 
   const handleApply = async () => {
     if (!user || !isBee) {

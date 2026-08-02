@@ -157,6 +157,8 @@ const Profile = () => {
       setLoadingData(false);
     };
     load();
+  // Loaders are local workflow functions; rerun only when auth or role state changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isTasker, isBee]);
 
   const loadTaskerData = async () => {

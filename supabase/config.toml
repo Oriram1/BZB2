@@ -13,3 +13,20 @@ verify_jwt = false
 # Invoked by pg_cron on the hour, same shared-secret authentication.
 [functions.send-parent-digest]
 verify_jwt = false
+
+# All other functions use Supabase JWT verification at the gateway. Keep this
+# explicit so a future config change cannot silently make user endpoints
+# public. The three exceptions above are machine-to-machine integrations and
+# must authenticate with their own webhook/shared-secret checks.
+[functions.admin-manage-users]
+verify_jwt = true
+[functions.admin-reset-password]
+verify_jwt = true
+[functions.create-family-link-code]
+verify_jwt = true
+[functions.geocode-address]
+verify_jwt = true
+[functions.push-subscribe]
+verify_jwt = true
+[functions.redeem-family-link-code]
+verify_jwt = true

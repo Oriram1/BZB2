@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
@@ -19,17 +19,22 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
   const markersRef = useRef<google.maps.Marker[]>([]);
 
   /** Only tasks that actually carry coordinates can be put on a map. */
-  const located = tasks.filter(
-    (t): t is Task & { lat: number; lng: number } => t.lat !== null && t.lng !== null,
+  const located = useMemo(
+    () => tasks.filter(
+      (t): t is Task & { lat: number; lng: number } => t.lat !== null && t.lng !== null,
+    ),
+    [tasks],
   );
 
-  const center =
-    located.length > 0
+  const center = useMemo(
+    () => located.length > 0
       ? {
           lat: located.reduce((s, t) => s + t.lat, 0) / located.length,
           lng: located.reduce((s, t) => s + t.lng, 0) / located.length,
         }
-      : { lat: 32.08, lng: 34.78 };
+      : { lat: 32.08, lng: 34.78 },
+    [located],
+  );
 
   useEffect(() => {
     if (!isLoaded || !containerRef.current || mapRef.current) return;
@@ -41,7 +46,7 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
       mapTypeControl: false,
       fullscreenControl: false,
     });
-  }, [isLoaded]);
+  }, [center, isLoaded]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -67,7 +72,7 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
       located.forEach((t) => bounds.extend({ lat: t.lat, lng: t.lng }));
       map.fitBounds(bounds, 50);
     }
-  }, [tasks, selectedTask, isLoaded]);
+  }, [isLoaded, located]);
 
   if (!isLoaded) {
     return (

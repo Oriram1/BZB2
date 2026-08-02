@@ -3,7 +3,7 @@ import type { User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
 async function listAllUsers(admin: Awaited<ReturnType<typeof authenticatedClients>>["admin"]) {
   const users: User[] = [];
-  for (let page = 1; page <= 50; page += 1) {
+  for (let page = 1; ; page += 1) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
     if (error) throw error;
     users.push(...data.users);

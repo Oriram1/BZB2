@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context hook and provider form one public API. */
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,12 +82,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .from("user_roles")
       .insert({ user_id: nextUser.id, role: metadataRole });
 
-    if (error && error.code !== "23505") {
-      return [metadataRole];
-    }
+    // Never treat client metadata as an authority. If the database rejected
+    // the repair, the user has no verified role until the next successful
+    // reload. Metadata is only an input for the signup repair path.
+    if (error && error.code !== "23505") return currentRoles;
 
     const repairedRoles = await fetchRoles(nextUser.id);
-    return repairedRoles.length > 0 ? repairedRoles : [metadataRole];
+    return repairedRoles;
   };
 
   const loadUserState = async (nextUser: User | null) => {
@@ -149,6 +151,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
+  // The subscription is intentionally installed once for the provider.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signOut = async () => {

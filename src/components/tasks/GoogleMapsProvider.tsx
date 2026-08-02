@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- provider and consumer are one integration boundary. */
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
