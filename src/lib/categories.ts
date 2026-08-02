@@ -29,6 +29,3 @@ export const categoryFilters: Category[] = [
 
 export const categoryLabel = (value: string): string =>
   categories.find((c) => c.value === value)?.label ?? "אחר";
-
-export const categoryIcon = (value: string): LucideIcon =>
-  categories.find((c) => c.value === value)?.icon ?? Package;
