@@ -22,7 +22,9 @@ const BRAND = {
 
 export type EmailAction = { label: string; url: string };
 
-export type EmailCard = { title: string; lines: string[] };
+/** `url` turns the card title into a link — used by digests that summarise
+ *  several separate things, each with its own destination. */
+export type EmailCard = { title: string; lines: string[]; url?: string };
 
 export type EmailContent = {
   subject: string;
@@ -103,7 +105,11 @@ function renderCards(cards: EmailCard[]) {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bzb-inset" style="background:${BRAND.page};border:1px solid ${BRAND.border};border-radius:16px">
         <tr>
           <td style="padding:16px 18px;text-align:right">
-            <div class="bzb-text" style="font-size:16px;font-weight:bold;color:${BRAND.text};padding-bottom:6px">${escapeHtml(card.title)}</div>
+            <div class="bzb-text" style="font-size:16px;font-weight:bold;color:${BRAND.text};padding-bottom:6px">${
+              card.url
+                ? `<a href="${escapeHtml(card.url)}" style="color:${BRAND.linkInk};text-decoration:underline">${escapeHtml(card.title)}</a>`
+                : escapeHtml(card.title)
+            }</div>
             ${card.lines
               .map(
                 (line) =>
@@ -231,7 +237,9 @@ export function renderEmail(content: EmailContent): { html: string; text: string
   for (const bullet of content.bullets ?? []) textParts.push(`- ${bullet}`);
   if (content.bullets?.length) textParts.push("");
   for (const card of content.cards ?? []) {
-    textParts.push(card.title, ...card.lines.map((line) => `  ${line}`), "");
+    textParts.push(card.title, ...card.lines.map((line) => `  ${line}`));
+    if (card.url) textParts.push(`  ${card.url}`);
+    textParts.push("");
   }
   if (content.code) textParts.push(`הקוד שלך: ${content.code}`, "");
   if (content.action) textParts.push(`${content.action.label}: ${content.action.url}`, "");

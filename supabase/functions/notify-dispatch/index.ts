@@ -14,8 +14,7 @@ import {
   type NotificationRow,
 } from "../_shared/notificationCopy.ts";
 import { pushConfigured, sendPush } from "../_shared/push.ts";
-
-const TIME_ZONE = "Asia/Jerusalem";
+import { inQuietWindow, israelHour, resolveQuietHours } from "../_shared/quietHours.ts";
 /** Don't email someone who was looking at the app this recently. */
 const ACTIVE_WINDOW_MINUTES = 10;
 /** At most one chat email per conversation per hour. */
@@ -26,19 +25,6 @@ function json(body: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
-}
-
-function hourInIsrael() {
-  return Number(
-    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hour12: false, timeZone: TIME_ZONE })
-      .format(new Date()),
-  );
-}
-
-/** Quiet hours wrap midnight (22 → 7), so the comparison has two shapes. */
-function inQuietHours(start: number, end: number) {
-  const hour = hourInIsrael();
-  return start <= end ? hour >= start && hour < end : hour >= start || hour < end;
 }
 
 async function logDelivery(
@@ -165,41 +151,56 @@ Deno.serve(async (req) => {
     .eq("user_id", userId)
     .maybeSingle();
 
-  let emailEnabled = preference?.email_enabled ?? defaults.email;
+  const emailEnabled = preference?.email_enabled ?? defaults.email;
   const pushEnabled = preference?.push_enabled ?? defaults.push;
 
-  if (row.event_type === "message_received" && emailEnabled) {
-    const { allowed, unreadCount } = await chatEmailAllowed(admin, row, userId);
-    row.data.unread_count = unreadCount;
-    if (!allowed) {
-      emailEnabled = false;
-      await logDelivery(admin, notificationId, userId, "email", "skipped", "batched");
+  const quiet = resolveQuietHours(settings ?? null);
+  const isQuiet = quiet.enabled && inQuietWindow(israelHour(new Date()), quiet.start, quiet.end);
+
+  // One variable, one write. The previous shape logged "batched" and then
+  // immediately overwrote it with "disabled" via the same upsert key, which is
+  // why every skipped email in the log claims the wrong reason.
+  let emailSkipReason: string | null = emailEnabled ? null : "disabled";
+
+  if (!emailSkipReason && row.event_type === "message_received") {
+    // Chat is the one event quiet hours withhold on both channels: it is never
+    // urgent, and it is the only event this digest collects. Everything else
+    // keeps its email, because family_link_code expires in ten minutes and a
+    // code delivered at 07:00 is a dead code.
+    if (isQuiet) {
+      emailSkipReason = "quiet_hours";
+    } else {
+      const { allowed, unreadCount } = await chatEmailAllowed(admin, row, userId);
+      row.data.unread_count = unreadCount;
+      if (!allowed) emailSkipReason = "batched";
     }
   }
 
   // ---- Email --------------------------------------------------------------
-  if (emailEnabled && !alreadyHandled.has("email")) {
-    const { data: userResult } = await admin.auth.admin.getUserById(userId);
-    const address = userResult?.user?.email;
-    if (!address) {
-      await logDelivery(admin, notificationId, userId, "email", "skipped", "no_address");
+  if (!alreadyHandled.has("email")) {
+    if (emailSkipReason) {
+      await logDelivery(admin, notificationId, userId, "email", "skipped", emailSkipReason);
     } else {
-      try {
-        await sendEmail({ to: address, content: emailContent(row), tag: row.event_type });
-        await logDelivery(admin, notificationId, userId, "email", "sent");
-      } catch (error) {
-        await logDelivery(
-          admin,
-          notificationId,
-          userId,
-          "email",
-          "failed",
-          error instanceof Error ? error.message : "unknown",
-        );
+      const { data: userResult } = await admin.auth.admin.getUserById(userId);
+      const address = userResult?.user?.email;
+      if (!address) {
+        await logDelivery(admin, notificationId, userId, "email", "skipped", "no_address");
+      } else {
+        try {
+          await sendEmail({ to: address, content: emailContent(row), tag: row.event_type });
+          await logDelivery(admin, notificationId, userId, "email", "sent");
+        } catch (error) {
+          await logDelivery(
+            admin,
+            notificationId,
+            userId,
+            "email",
+            "failed",
+            error instanceof Error ? error.message : "unknown",
+          );
+        }
       }
     }
-  } else if (!emailEnabled && !alreadyHandled.has("email")) {
-    await logDelivery(admin, notificationId, userId, "email", "skipped", "disabled");
   }
 
   // ---- Push ---------------------------------------------------------------
@@ -208,12 +209,10 @@ Deno.serve(async (req) => {
       await logDelivery(admin, notificationId, userId, "push", "skipped", "disabled");
     } else if (!pushConfigured()) {
       await logDelivery(admin, notificationId, userId, "push", "skipped", "not_configured");
-    } else if (
-      settings?.quiet_hours_enabled &&
-      inQuietHours(settings.quiet_hours_start ?? 22, settings.quiet_hours_end ?? 7)
-    ) {
-      // The notification is still in the bell and the email still went out;
-      // only the buzz is withheld.
+    } else if (isQuiet) {
+      // The notification is still in the bell. For chat this is what the
+      // morning digest later collects; for everything else the email already
+      // went out and only the buzz is withheld.
       await logDelivery(admin, notificationId, userId, "push", "skipped", "quiet_hours");
     } else {
       const { data: subscriptions } = await admin

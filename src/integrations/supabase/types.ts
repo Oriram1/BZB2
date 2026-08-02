@@ -660,6 +660,7 @@ export type Database = {
         | "parent_child_accepted"
         | "parent_digest"
         | "family_link_code"
+        | "quiet_hours_digest"
       payment_type: "task" | "hour"
       task_category:
         | "housework"
@@ -817,6 +818,7 @@ export const Constants = {
         "parent_child_accepted",
         "parent_digest",
         "family_link_code",
+        "quiet_hours_digest",
       ],
       payment_type: ["task", "hour"],
       task_category: [

@@ -14,7 +14,8 @@ export type NotificationEvent =
   | "task_completed"
   | "parent_child_accepted"
   | "parent_digest"
-  | "family_link_code";
+  | "family_link_code"
+  | "quiet_hours_digest";
 
 export type AppRole = "tasker" | "bee" | "parent";
 
@@ -86,6 +87,15 @@ export function notificationLine(row: NotificationRow): { title: string; body: s
     case "family_link_code":
       return { emoji: "🔗", title: "קוד קישור משפחתי", body: "נשלח קוד לחיבור החשבון" };
 
+    case "quiet_hours_digest": {
+      const total = Number(data.total) || 0;
+      return {
+        emoji: "🌙",
+        title: total === 1 ? "הודעה אחת חדשה" : `${total} הודעות חדשות`,
+        body: "הגיעו בזמן שההתראות היו מושתקות",
+      };
+    }
+
     default:
       return { emoji: "🔔", title: "התראה", body: "" };
   }
@@ -100,6 +110,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   parent_child_accepted: { email: true, push: true },
   parent_digest: { email: true, push: true },
   family_link_code: { email: true, push: false },
+  quiet_hours_digest: { email: true, push: true },
 };
 
 /**

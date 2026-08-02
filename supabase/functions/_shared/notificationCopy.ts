@@ -13,7 +13,8 @@ export type NotificationEvent =
   | "task_completed"
   | "parent_child_accepted"
   | "parent_digest"
-  | "family_link_code";
+  | "family_link_code"
+  | "quiet_hours_digest";
 
 export type NotificationRow = {
   id: string;
@@ -161,6 +162,23 @@ export function emailContent(row: NotificationRow): EmailContent {
         manageUrl,
       };
     }
+
+    case "quiet_hours_digest": {
+      const total = Number(data.total) || 0;
+      const headline = total === 1 ? "הודעה אחת חדשה" : `${total} הודעות חדשות`;
+      const cards = Array.isArray(data.cards)
+        ? (data.cards as { title: string; lines: string[]; url?: string }[])
+        : [];
+      return {
+        subject: `${headline} שהגיעו בזמן השקט 🌙`,
+        preheader: "סיכום ההודעות שהגיעו בזמן שהתראות היו מושתקות",
+        heading: `בזמן השקט הגיעו ${headline}`,
+        paragraphs: ["השתקנו את ההתראות בלילה כדי לא להעיר אותך. הנה מה שחיכה:"],
+        cards,
+        action: { label: "פתיחת הצ׳אט", url },
+        manageUrl,
+      };
+    }
   }
 }
 
@@ -233,6 +251,16 @@ export function pushPayload(row: NotificationRow): PushPayload {
         url,
         tag: "family-link",
       };
+
+    case "quiet_hours_digest": {
+      const total = Number(data.total) || 0;
+      return {
+        title: total === 1 ? "הודעה אחת חדשה 🌙" : `היו ${total} הודעות חדשות 🌙`,
+        body: "הגיעו בזמן שההתראות היו מושתקות",
+        url,
+        tag: `quiet-digest-${str(data.date)}`,
+      };
+    }
   }
 }
 
@@ -249,4 +277,5 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   parent_child_accepted: { email: true, push: true },
   parent_digest: { email: true, push: true },
   family_link_code: { email: true, push: false },
+  quiet_hours_digest: { email: true, push: true },
 };
