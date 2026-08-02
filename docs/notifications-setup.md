@@ -7,7 +7,12 @@
 > ההתקנה בוצעה במלואה ב־1 באוגוסט 2026 על פרויקט `nrqgoaxraywprlbyzrso`, ונבדקה מקצה לקצה:
 > מיילי התראות ומיילי אימות נשלחים בפועל ומגיעים לתיבה.
 >
-> **הדבר היחיד שנשאר: דומיין שולח.** ראו סעיף 6.
+> **דומיין שולח — בוצע (2 באוגוסט 2026).** `bzb-web.com` מאומת ב־Resend,
+> `RESEND_FROM_EMAIL="BZB <noreply@bzb-web.com>"`, ונבדקה שליחה בפועל לשתי כתובות
+> שאחת מהן אינה בעל חשבון ה־Resend — שתיהן התקבלו. הבדיקה רצה דרך
+> `email-selftest` (ראו סעיף 4.1).
+>
+> **מה שנשאר: להפעיל את ה־Send Email Hook.** התנאי המקדים התקיים; ראו סעיף 2.5.
 
 הקוד כולו נמצא ב־main. סעיפים 2–3 מתעדים את מה שכבר בוצע — הם דרושים רק להקמת סביבה חדשה או לשחזור.
 
@@ -154,7 +159,7 @@ select * from cron.job where jobname = 'parent-digest-hourly';
 | Send Email Hook | ⛔ **מושבת בכוונה** | נפרס ומוכן, אבל **אסור להפעיל לפני דומיין מאומת**. ראו האזהרה למטה |
 | cron הדוח היומי | ✅ מתוזמן | `parent-digest-hourly`, כל שעה ב־:05 |
 | משתני סביבה ב־Vercel | ✅ הוגדרו | כל חמשת משתני `VITE_*` בשלוש הסביבות — Production, Preview, Development |
-| דומיין שולח | ❌ לא בוצע | עדיין `onboarding@resend.dev` |
+| דומיין שולח | ✅ בוצע (2 באוגוסט) | `bzb-web.com` מאומת; `RESEND_FROM_EMAIL="BZB <noreply@bzb-web.com>"`. נבדק בשליחה לכתובת שאינה בעל החשבון |
 
 ### ⛔ אזהרה: אין להפעיל את ה־Send Email Hook לפני דומיין מאומת
 
@@ -291,9 +296,36 @@ select name from vault.secrets;
 
 ---
 
+## 4.1 בדיקת שליחה — `email-selftest`
+
+פונקציה תפעולית שמדווחת על הגדרות השולח ועל מצב האימות של הדומיין ב־Resend,
+ואם ביקשת — שולחת את התבנית האמיתית לנמענים שתציין. מוגנת בסוד משותף
+(`EMAIL_SELFTEST_SECRET`), בדיוק כמו שאר הפונקציות הלא־אינטראקטיביות.
+
+בדיקת הגדרות בלבד, בלי לשלוח כלום:
+
+```bash
+curl -s -X POST "$SUPABASE_URL/functions/v1/email-selftest" \
+  -H "x-selftest-secret: $EMAIL_SELFTEST_SECRET" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+שליחה בפועל — **תמיד עם נמען אחד לפחות שאינו בעל חשבון ה־Resend**:
+
+```bash
+curl -s -X POST "$SUPABASE_URL/functions/v1/email-selftest" \
+  -H "x-selftest-secret: $EMAIL_SELFTEST_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"to":["someone@example.com","other@example.com"]}'
+```
+
+התשובה מחזירה `config.sandboxSender` (האם עדיין `resend.dev`),
+`config.sender.status` (`verified` או לא), ולכל נמען `ok` ומזהה ההודעה ב־Resend.
+
+---
+
 ## 5. מגבלות ידועות
 
-- **`onboarding@resend.dev`** — לפיתוח בלבד, חובה להחליף לפני ייצור
 - **100 מיילים ביום** במסלול החינמי של Resend. הקיבוץ מקטין את הצריכה משמעותית, אבל צריך לעקוב
 - **פוש דורש התקנה למסך הבית** — המייל והפעמון הם הערוצים העיקריים, הפוש תוספת
 - **מגבלת קצב על מיילי אימות** — Supabase חוסם בקשות איפוס סיסמה תכופות מאותה כתובת (429). מגבלה של Supabase, לא של הקוד

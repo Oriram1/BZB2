@@ -22,6 +22,7 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshUserState: () => Promise<void>;
 }
 
 type AppRole = "tasker" | "bee" | "parent" | "admin";
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
+  refreshUserState: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -171,8 +173,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshUserState = async () => {
+    await loadUserState(user);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, roles, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, roles, loading, signOut, refreshProfile, refreshUserState }}>
       {children}
     </AuthContext.Provider>
   );

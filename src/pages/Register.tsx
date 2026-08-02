@@ -16,6 +16,9 @@ import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
+import { useAuth } from "@/contexts/AuthContext";
+import { getRoleHomePath } from "@/lib/roleNavigation";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -50,8 +53,14 @@ const Register = () => {
   const planId = searchParams.get("plan") || "";
   const isPaidPlan = planId === "quarterly" || planId === "annual";
   const navigate = useNavigate();
+  const { user, roles, refreshUserState } = useAuth();
+  const isGoogleSignup =
+    user?.app_metadata.provider === "google" ||
+    user?.identities?.some((identity) => identity.provider === "google") === true;
   const isWorker = role === "worker" || role === "bee";
   const isParent = role === "parent";
+  const requestedRole = isWorker ? "bee" : isParent ? "parent" : "tasker";
+  const existingRole = roles[0];
   const title = isWorker
     ? "הרשמה למבצעי מטלות 💪"
     : isParent
@@ -71,6 +80,20 @@ const Register = () => {
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressPosition, setAddressPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [phoneTaken, setPhoneTaken] = useState(false);
+  const [switchingRole, setSwitchingRole] = useState(false);
+
+  const roleLabel = (value: string) => ({ tasker: "מציע מטלות", bee: "מבצע מטלות", parent: "הורה" }[value] || value);
+
+  useEffect(() => {
+    if (!isGoogleSignup || !user) return;
+    const metadata = user.user_metadata;
+    setForm((current) => ({
+      ...current,
+      email: current.email || user.email || "",
+      firstName: current.firstName || metadata.full_name?.split(" ")[0] || metadata.name?.split(" ")[0] || "",
+      lastName: current.lastName || metadata.full_name?.split(" ").slice(1).join(" ") || "",
+    }));
+  }, [isGoogleSignup, user]);
 
   /**
    * A shared number is legitimate here — a parent and child, or two siblings
@@ -98,6 +121,43 @@ const Register = () => {
       window.clearTimeout(timer);
     };
   }, [form.phone]);
+
+  if (user && existingRole && existingRole !== requestedRole) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4" dir="rtl">
+        <section className="w-full max-w-md rounded-3xl border border-border bg-background p-8 text-center shadow-xl">
+          <BzbLogo className="mx-auto mb-5 h-20 w-20" />
+          <h1 className="text-2xl font-extrabold text-foreground">החשבון כבר רשום</h1>
+          <p className="mt-4 text-muted-foreground">
+            החשבון הזה רשום כ־{roleLabel(existingRole)}. האם לעבור ל־{roleLabel(requestedRole)}?
+          </p>
+          <div className="mt-7 flex gap-3">
+            <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => navigate(getRoleHomePath(existingRole), { replace: true })}>
+              להישאר
+            </Button>
+            <Button
+              className="flex-1 rounded-2xl gradient-honey text-primary-foreground"
+              disabled={switchingRole}
+              onClick={async () => {
+                setSwitchingRole(true);
+                const { error } = await supabase.rpc("switch_my_role", { target_role: requestedRole });
+                setSwitchingRole(false);
+                if (error) {
+                  toast.error("לא ניתן להחליף תפקיד כרגע");
+                  return;
+                }
+                await refreshUserState();
+                toast.success(`עברתם לתפקיד ${roleLabel(requestedRole)}`);
+                navigate(getRoleHomePath(requestedRole), { replace: true });
+              }}
+            >
+              {switchingRole ? "מחליפים..." : "כן, לעבור"}
+            </Button>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   const updateField = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -138,8 +198,10 @@ const Register = () => {
     if (!form.phone.trim()) next.phone = "חסר מספר טלפון";
     else if (!isValidPhone(form.phone)) next.phone = "מספר הטלפון לא תקין. לדוגמה: 050-000-0000";
 
-    if (!form.password) next.password = "חסרה סיסמה";
-    else if (!isStrongPassword(form.password)) next.password = passwordRequirementsMessage;
+    if (!isGoogleSignup) {
+      if (!form.password) next.password = "חסרה סיסמה";
+      else if (!isStrongPassword(form.password)) next.password = passwordRequirementsMessage;
+    }
 
     if (!agreed) next.terms = "כדי להמשיך צריך לאשר את תנאי השימוש";
 
@@ -149,14 +211,22 @@ const Register = () => {
   const finishRegistration = async () => {
     setLoading(true);
     const appRole = isWorker ? "bee" : isParent ? "parent" : "tasker";
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { first_name: form.firstName, last_name: form.lastName, app_role: appRole },
-      },
-    });
+    let data: { user: typeof user; session: unknown };
+    let error: { message: string } | null = null;
+    if (isGoogleSignup && user) {
+      data = { user, session: null };
+    } else {
+      const signup = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { first_name: form.firstName, last_name: form.lastName, app_role: appRole },
+        },
+      });
+      data = signup.data;
+      error = signup.error;
+    }
 
     if (error) {
       toast.error(hebrewAuthError(error.message));
@@ -165,6 +235,11 @@ const Register = () => {
     }
 
     if (data.user) {
+      if (isGoogleSignup) {
+        await supabase.auth.updateUser({
+          data: { first_name: form.firstName, last_name: form.lastName, app_role: appRole },
+        });
+      }
       const { error: profileError } = await supabase.from("profiles").update({
         age: parseInt(form.age) || null,
         address: form.address,
@@ -193,9 +268,15 @@ const Register = () => {
     // Email confirmation is currently off, so signUp returns a live session and
     // the user is already signed in. Branch on the session rather than assuming:
     // when confirmation is turned back on, this same code sends them to log in.
+    if (isGoogleSignup) {
+      toast.success("ברוכים הבאים ל־BZB! 🐝");
+      navigate(getRoleHomePath(appRole), { replace: true });
+      return;
+    }
+
     if (data.session) {
       toast.success("ברוכים הבאים ל־BZB! 🐝");
-      navigate("/tasks");
+      navigate(getRoleHomePath(appRole), { replace: true });
       return;
     }
 
@@ -246,6 +327,8 @@ const Register = () => {
           <span className="text-muted-foreground text-sm font-medium">הרשמה עם אימייל</span>
           <div className="flex-1 h-px bg-border" />
         </div>
+
+        {!isGoogleSignup && <div className="mb-6"><GoogleAuthButton role={isWorker ? "bee" : isParent ? "parent" : "tasker"} /></div>}
 
         {/* noValidate: the browser's own check blocks submit and shows an English
             tooltip, which meant our Hebrew messages never ran. Validation is ours. */}

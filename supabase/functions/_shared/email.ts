@@ -288,4 +288,9 @@ export async function sendEmail(options: {
     const detail = await response.text().catch(() => "");
     throw new Error(`email_send_failed:${response.status}:${detail.slice(0, 200)}`);
   }
+
+  // Resend's message id — the handle you need to look a send up in their
+  // dashboard when someone reports a mail that never arrived.
+  const body = await response.json().catch(() => null) as { id?: string } | null;
+  return { id: body?.id ?? null };
 }

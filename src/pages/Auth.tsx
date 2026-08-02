@@ -1,8 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import BzbLogo from "@/components/BzbLogo";
 
 const Auth = () => {
+  const [searchParams] = useSearchParams();
+  const isGoogleOnboarding = searchParams.get("google") === "1";
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" dir="rtl">
       {/* Animated background */}
@@ -15,6 +18,7 @@ const Auth = () => {
           <BzbLogo className="w-24 h-24 mb-4 animate-float" />
           <h1 className="text-3xl font-extrabold text-foreground">ברוכים הבאים</h1>
           <p className="text-muted-foreground mt-1 font-medium">Busy Bee 🐝</p>
+          {isGoogleOnboarding && <p className="text-primary-ink mt-3 text-sm font-bold">החשבון מוכן. בחרו איך להשתמש ב־BZB:</p>}
         </div>
 
         <div className="flex flex-col gap-3">

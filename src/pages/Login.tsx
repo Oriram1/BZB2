@@ -7,6 +7,7 @@ import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -60,7 +61,9 @@ const Login = () => {
           <h1 className="text-2xl font-extrabold text-foreground">כניסה</h1>
         </div>
 
-        <div className="flex items-center gap-3 mb-6">
+        <GoogleAuthButton />
+
+        <div className="flex items-center gap-3 my-6">
           <div className="flex-1 h-px bg-border" />
           <span className="text-muted-foreground text-sm font-medium">כניסה עם אימייל</span>
           <div className="flex-1 h-px bg-border" />

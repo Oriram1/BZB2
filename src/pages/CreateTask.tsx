@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,6 @@ import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Im
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
@@ -45,10 +44,6 @@ const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [showExitDialog, setShowExitDialog] = useState(false);
-  const [pendingExit, setPendingExit] = useState<(() => void) | null>(null);
-  const allowNavigationRef = useRef(false);
-  const [draftId, setDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
@@ -65,46 +60,6 @@ const CreateTask = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
-
-  const hasDraftContent = Object.values(form).some(Boolean) || Boolean(imageFile);
-  const saveDraft = async () => {
-    if (!user || !hasDraftContent) return;
-    const payload = { form, step, selectedLat, selectedLng };
-    const query = draftId
-      ? supabase.from("task_drafts").update({ form_data: payload, current_step: step, updated_at: new Date().toISOString() }).eq("id", draftId)
-      : supabase.from("task_drafts").insert({ user_id: user.id, form_data: payload, current_step: step }).select("id").single();
-    const { data } = await query;
-    if (!draftId && data?.id) setDraftId(data.id);
-  };
-  const requestExit = (exit: () => void) => {
-    if (!hasDraftContent) { exit(); return; }
-    setPendingExit(() => exit);
-    setShowExitDialog(true);
-  };
-  useEffect(() => {
-    const originalPushState = window.history.pushState.bind(window.history);
-    window.history.pushState = ((state: unknown, title: string, url?: string | URL | null) => {
-      const target = url?.toString() ?? "";
-      if (hasDraftContent && !allowNavigationRef.current && target && target !== window.location.pathname) {
-        setPendingExit(() => () => {
-          allowNavigationRef.current = true;
-          originalPushState(state, title, url);
-          window.dispatchEvent(new PopStateEvent("popstate"));
-        });
-        setShowExitDialog(true);
-        return;
-      }
-      originalPushState(state, title, url);
-    }) as typeof window.history.pushState;
-    return () => { window.history.pushState = originalPushState; };
-  }, [hasDraftContent]);
-  useEffect(() => {
-    const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (hasDraftContent) { event.preventDefault(); event.returnValue = ""; }
-    };
-    window.addEventListener("beforeunload", beforeUnload);
-    return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, [hasDraftContent]);
 
   const handleLocationBlur = async () => {
     if (!form.location.trim()) return;
@@ -660,19 +615,6 @@ const CreateTask = () => {
           </div>
         </div>
       </div>
-      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-        <DialogContent dir="rtl" lang="he" className="text-start rounded-3xl" style={{ direction: "rtl" }}>
-          <DialogHeader>
-            <DialogTitle>לצאת מפרסום המטלה?</DialogTitle>
-            <DialogDescription>כתבת פרטים. אפשר לשמור אותם כטיוטה ולהמשיך מאוחר יותר.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter dir="rtl" className="flex-col gap-2 sm:flex-row sm:justify-start">
-            <Button variant="outline" onClick={() => setShowExitDialog(false)}>להמשיך לערוך</Button>
-            <Button variant="outline" onClick={async () => { await saveDraft(); allowNavigationRef.current = true; setShowExitDialog(false); pendingExit?.(); }}>שמירה כטיוטה ויציאה</Button>
-            <Button variant="destructive" onClick={() => { allowNavigationRef.current = true; setShowExitDialog(false); pendingExit?.(); }}>יציאה בלי לשמור</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

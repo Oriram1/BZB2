@@ -89,6 +89,7 @@ export function MobileNav() {
         aria-modal="true"
         aria-label="תפריט ניווט"
         aria-hidden={!open}
+        inert={!open ? "" : undefined}
         className={cn(
           // Logical inset: start-0 is the right edge in Hebrew, the left edge if
           // the app is ever switched to LTR. border-e faces the page content.
