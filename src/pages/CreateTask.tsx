@@ -10,12 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Link, useNavigate } from "react-router-dom";
-import BzbLogo from "@/components/BzbLogo";
+import { useNavigate } from "react-router-dom";
+import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, Calendar as CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -200,21 +200,13 @@ const CreateTask = () => {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8 relative overflow-hidden" dir="rtl">
+    <div className="min-h-screen relative overflow-hidden" dir="rtl">
+      <PageHeader title="פרסום מטלה חדשה" />
       <div className="absolute inset-0 bg-muted" />
       <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
 
-      <div className="relative z-10 w-full max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-            <Link to="/" onClick={(event) => { if (hasDraftContent) { event.preventDefault(); requestExit(() => navigate("/")); } }}>
-            <BzbLogo className="w-12 h-12" animate />
-          </Link>
-          <h1 className="text-2xl font-bold text-foreground">פרסום מטלה חדשה</h1>
-          <Button variant="ghost" size="icon" onClick={() => step > 1 ? setStep((current) => current - 1) : navigate(-1)} className="rounded-full h-11 w-11" aria-label={step > 1 ? "חזרה לשלב הקודם" : "חזרה למסך הקודם"}>
-            <ArrowRight size={22} />
-          </Button>
-        </div>
+      <div className="relative z-10 w-full max-w-2xl mx-auto py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8">
 
         {/* Progress Steps */}
         <div className="flex items-center justify-between mb-8 px-1 sm:px-2 overflow-x-auto py-2" role="region" aria-label="שלבי התקדמות">
