@@ -13,9 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,13 +21,6 @@ import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
-
-const displayFormattedDate = (dateStr: string) => {
-  if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-");
-  if (y && m && d) return `${d}/${m}/${y}`;
-  return dateStr;
-};
 
 const steps = [
   { id: 1, label: "קטגוריה", icon: Tag },
@@ -58,6 +49,8 @@ const CreateTask = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const today = new Date();
+  const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -150,7 +143,7 @@ const CreateTask = () => {
       toast.error("שגיאה בפרסום המטלה: " + error.message);
     } else {
       toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
-      navigate("/my-tasks");
+      navigate("/my-tasks?tab=published");
     }
   };
 
@@ -325,59 +318,31 @@ const CreateTask = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="date" className="text-right block mb-1 font-bold">תאריך</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full h-12 rounded-2xl justify-between text-right font-medium text-base px-4 border-input bg-background hover:bg-accent/50 focus:ring-2 focus:ring-ring"
-                      >
-                        <span className={form.date ? "text-foreground font-semibold" : "text-muted-foreground"}>
-                          {form.date ? displayFormattedDate(form.date) : "בחירת תאריך (DD/MM/YYYY)"}
-                        </span>
-                        <CalendarIcon size={20} className="text-muted-foreground shrink-0 ms-2" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-2xl shadow-glow border-border" align="start" dir="rtl">
-                      <Calendar
-                        mode="single"
-                        selected={form.date ? new Date(form.date) : undefined}
-                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                        onSelect={(d) => {
-                          if (d) {
-                            const year = d.getFullYear();
-                            const month = String(d.getMonth() + 1).padStart(2, "0");
-                            const day = String(d.getDate()).padStart(2, "0");
-                            updateForm("date", `${year}-${month}-${day}`);
-                          } else {
-                            updateForm("date", "");
-                          }
-                        }}
-                        dir="rtl"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Input
+                    id="date"
+                    type="date"
+                    dir="ltr"
+                    min={minimumDate}
+                    value={form.date}
+                    onChange={(event) => updateForm("date", event.target.value)}
+                    aria-describedby="date-hint"
+                    className="h-12 rounded-2xl px-4 text-base font-medium"
+                  />
+                  <p id="date-hint" className="mt-1 text-xs text-muted-foreground">אפשר להקליד תאריך או לבחור מלוח השנה.</p>
                 </div>
                 <div>
                   <Label htmlFor="time" className="text-right block mb-1 font-bold">שעה</Label>
-                  <Select value={form.time} onValueChange={(v) => updateForm("time", v)}>
-                    <SelectTrigger className="rounded-2xl h-12 text-right text-base px-4 justify-between">
-                      <SelectValue placeholder="בחירת שעה (HH:MM)" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60" dir="rtl">
-                      {Array.from({ length: 32 }).map((_, i) => {
-                        const totalMinutes = 7 * 60 + i * 30; // 07:00 to 22:30
-                        const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
-                        const mins = String(totalMinutes % 60).padStart(2, "0");
-                        const timeVal = `${hours}:${mins}`;
-                        return (
-                          <SelectItem key={timeVal} value={timeVal}>
-                            {timeVal}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="time"
+                    type="time"
+                    dir="ltr"
+                    step={60}
+                    value={form.time}
+                    onChange={(event) => updateForm("time", event.target.value)}
+                    aria-describedby="time-hint"
+                    className="h-12 rounded-2xl px-4 text-base font-medium"
+                  />
+                  <p id="time-hint" className="mt-1 text-xs text-muted-foreground">אפשר להקליד שעה בפורמט HH:MM או להשתמש בבורר השעה.</p>
                 </div>
               </div>
               <div>
