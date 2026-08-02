@@ -20,7 +20,7 @@ export function NavDrawerTrigger({ floating = false }: { floating?: boolean }) {
     <button
       onClick={() => setOpen(true)}
       className={cn(
-        "hidden md:flex items-center justify-center h-11 w-11 rounded-xl transition-colors",
+        "flex items-center justify-center h-11 w-11 rounded-xl transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         floating
           ? "fixed top-4 start-4 z-40 bg-primary text-primary-foreground shadow-lg hover:brightness-105"

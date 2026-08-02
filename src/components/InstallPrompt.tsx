@@ -144,7 +144,7 @@ const InstallPrompt = () => {
   return (
     <div
       dir="rtl"
-      className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4 inset-x-4 z-40 max-w-md mx-auto bg-card border border-border shadow-xl rounded-2xl p-4 animate-slide-up"
+      className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] inset-x-4 z-40 max-w-md mx-auto bg-card border border-border shadow-xl rounded-2xl p-4 animate-slide-up"
     >
       <div className="flex items-start gap-3">
         <span className="text-2xl leading-none shrink-0" aria-hidden="true">🐝</span>

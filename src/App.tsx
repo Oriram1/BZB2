@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
+
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GoogleMapsProvider } from "@/components/tasks/GoogleMapsProvider";
 import RoleGuard from "@/components/RoleGuard";
@@ -28,32 +29,15 @@ import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import ParentReport from "./pages/ParentReport";
 import { MobileNav, FloatingNavTrigger } from "./components/MobileNav";
-import { BottomNav } from "./components/BottomNav";
 import { NavDrawerProvider } from "./components/NavDrawerContext";
 import PresenceTracker from "./components/PresenceTracker";
 import InstallPrompt from "./components/InstallPrompt";
 
 const queryClient = new QueryClient();
 
-/** Routes that size themselves to the viewport and scroll internally. */
-const SELF_SIZED_ROUTES = ["/chat"];
-
-/**
- * Most pages are documents: they scroll, and they need bottom padding so the
- * fixed tab bar does not sit on top of the last card. A chat is not a document
- * — it fills the screen exactly once and scrolls inside — and that padding is
- * what pushed its message box below the fold, so those routes opt out.
- */
-const RouteViewport = ({ children }: { children: ReactNode }) => {
-  const { pathname } = useLocation();
-  const selfSized = SELF_SIZED_ROUTES.includes(pathname);
-
-  return (
-    <div className={selfSized ? undefined : "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"}>
-      {children}
-    </div>
-  );
-};
+const RouteViewport = ({ children }: { children: ReactNode }) => (
+  <div>{children}</div>
+);
 
 /**
  * A new screen starts at the top.
@@ -116,7 +100,6 @@ const App = () => (
               </Routes>
             </RouteViewport>
             <InstallPrompt />
-            <BottomNav />
             <FloatingNavTrigger />
           </NavDrawerProvider>
           </BrowserRouter>
