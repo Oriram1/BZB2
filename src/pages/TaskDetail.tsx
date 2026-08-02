@@ -93,8 +93,9 @@ const TaskDetail = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("tasks")
-        .select("*")
-        .eq("id", id)
+      .select("*")
+      .eq("id", id)
+      .is("archived_at", null)
         .single();
 
       if (error || !data) {
@@ -173,8 +174,7 @@ const TaskDetail = () => {
   const handleDeleteTask = async () => {
     if (!task || !user || !isOwner) return;
     setLoading(true);
-    await supabase.from("task_applications").delete().eq("task_id", task.id);
-    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+    const { error } = await supabase.rpc("archive_task", { _task_id: task.id, _user_id: user.id });
     setLoading(false);
     if (error) {
       toast.error("שגיאה במחיקת המטלה: " + error.message);

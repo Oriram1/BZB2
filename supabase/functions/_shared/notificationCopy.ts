@@ -14,7 +14,8 @@ export type NotificationEvent =
   | "parent_child_accepted"
   | "parent_digest"
   | "family_link_code"
-  | "quiet_hours_digest";
+  | "quiet_hours_digest"
+  | "task_cancelled";
 
 export type NotificationRow = {
   id: string;
@@ -179,6 +180,22 @@ export function emailContent(row: NotificationRow): EmailContent {
         manageUrl,
       };
     }
+
+    case "task_cancelled": {
+      const task = str(data.task_name, "המטלה");
+      const canceller = str(data.canceller_name, "מפרסם המטלה");
+      return {
+        subject: `המטלה "${task}" בוטלה`,
+        preheader: `${canceller} ביטל/ה את המטלה`,
+        heading: "המטלה בוטלה",
+        paragraphs: [
+          `${canceller} ביטל/ה את המטלה "${task}".`,
+          "אפשר לחפש מטלות חדשות בכל עת.",
+        ],
+        action: { label: "למטלות פתוחות", url: `${base}/tasks` },
+        manageUrl,
+      };
+    }
   }
 }
 
@@ -261,6 +278,14 @@ export function pushPayload(row: NotificationRow): PushPayload {
         tag: `quiet-digest-${str(data.date)}`,
       };
     }
+
+    case "task_cancelled":
+      return {
+        title: "המטלה בוטלה ❌",
+        body: `"${str(data.task_name, "המטלה")}" בוטלה על ידי ${str(data.canceller_name, "המפרסם")}`,
+        url,
+        tag: `cancelled-${str(data.task_id)}`,
+      };
   }
 }
 
@@ -278,4 +303,5 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   parent_digest: { email: true, push: true },
   family_link_code: { email: true, push: false },
   quiet_hours_digest: { email: true, push: true },
+  task_cancelled: { email: true, push: true },
 };

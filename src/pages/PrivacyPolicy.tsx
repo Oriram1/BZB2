@@ -15,7 +15,7 @@ const PrivacyPolicy = () => {
         </button>
 
         <h1 className="text-3xl font-extrabold text-foreground mb-2">מדיניות פרטיות</h1>
-        <p className="text-muted-foreground mb-8">עדכון אחרון: מרץ 2026</p>
+        <p className="text-muted-foreground mb-8">עדכון אחרון: אוגוסט 2026</p>
 
         <div className="prose prose-sm max-w-none text-foreground space-y-6 leading-relaxed">
           <p>
@@ -52,6 +52,11 @@ const PrivacyPolicy = () => {
           <h2 className="text-xl font-bold text-foreground mt-8">5. זכויות המשתמש ואבטחת מידע</h2>
           <p>
             החברה נוקטת באמצעי אבטחה טכנולוגיים וארגוניים מחמירים למניעת גישה בלתי מורשית למידע. זכותך לפנות אלינו בכל עת בבקשה לעיין במידע השמור עליך, לתקנו, או לבקש את מחיקתו (בכפוף לחובות שמירת מידע על פי דין), באמצעות פנייה לשירות הלקוחות שלנו.
+          </p>
+
+          <h2 className="text-xl font-bold text-foreground mt-8">6. שמירת מידע וארכיון</h2>
+          <p>
+            כאשר משתמש מוחק תוכן באפליקציה (מטלות, מועמדויות וכד׳), המידע אינו נמחק באופן מיידי מהמערכת אלא מועבר לארכיון פנימי. מידע זה אינו מוצג באפליקציה ואינו נגיש למשתמשים, אך נשמר בשרתי החברה לצורך עמידה בדרישות חוקיות, פתרון סכסוכים ואכיפת תנאי השימוש. תוכל/י לבקש מחיקה מוחלטת של המידע שלך מהארכיון בכל עת באמצעות פנייה לשירות הלקוחות.
           </p>
         </div>
       </div>

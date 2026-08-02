@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, Eye, MessageCircle, Plus, Star, Trash2, UserRound, X } from "lucide-react";
+import { Check, Eye, MessageCircle, Plus, Star, UserRound, X } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -262,16 +261,76 @@ const MyTasks = () => {
     }
   };
 
-  const deleteTask = async (task: PublishedTask) => {
-    await supabase.from("task_applications").delete().eq("task_id", task.id);
-    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+  const [confirmTask, setConfirmTask] = useState<PublishedTask | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; id: string } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent, taskId: string) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, id: taskId };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent, task: PublishedTask) => {
+    if (!touchStartRef.current || touchStartRef.current.id !== task.id) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+    if (dx > 80 && dy < 50) {
+      setConfirmTask(task);
+    }
+    touchStartRef.current = null;
+  };
+
+  const cancelTask = async (task: PublishedTask) => {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status: "cancelled" })
+      .eq("id", task.id);
+    if (error) {
+      toast.error("לא הצלחנו לבטל את המטלה");
+      return;
+    }
+
+    const { data: accepted } = await supabase
+      .from("task_applications")
+      .select("applicant_id")
+      .eq("task_id", task.id)
+      .eq("status", "accepted");
+
+    const profile = await supabase
+      .from("profiles")
+      .select("first_name, last_name")
+      .eq("user_id", user!.id)
+      .single();
+
+    const cancellerName = profile.data
+      ? `${profile.data.first_name} ${profile.data.last_name}`.trim()
+      : "מפרסם המטלה";
+
+    for (const app of accepted?.data ?? []) {
+      await supabase.from("notifications").insert({
+        user_id: app.applicant_id,
+        event_type: "task_cancelled",
+        data: { task_name: task.name, task_id: task.id, canceller_name: cancellerName },
+        link: "/tasks",
+      });
+    }
+
+    setPublishedTasks((current) =>
+      current.map((t) => (t.id === task.id ? { ...t, status: "cancelled" } : t)),
+    );
+    toast.success("המטלה בוטלה");
+  };
+
+  const archiveTask = async (task: PublishedTask) => {
+    const { error } = await supabase.rpc("archive_task", { _task_id: task.id, _user_id: user!.id });
     if (error) {
       toast.error("לא הצלחנו למחוק את המטלה");
       return;
     }
-    setPublishedTasks((current) => current.filter((item) => item.id !== task.id));
-    setApplications((current) => current.filter((item) => item.taskId !== task.id));
-    toast.success("המטלה נמחקה");
+
+    setPublishedTasks((current) => current.filter((t) => t.id !== task.id));
+    setApplications((current) => current.filter((a) => a.taskId !== task.id));
+    toast.success("המטלה הועברה לארכיון");
   };
 
   if (!user) return null;
@@ -399,7 +458,12 @@ const MyTasks = () => {
                   <Link to="/create-task"><Button className="mt-4 rounded-full gradient-honey text-primary-foreground">פרסום מטלה</Button></Link>
                 </div>
               ) : publishedTasks.map((task) => (
-                <article key={task.id} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+                <article
+                  key={task.id}
+                  className="rounded-3xl border border-border bg-card p-5 shadow-sm touch-pan-y"
+                  onTouchStart={(e) => handleTouchStart(e, task.id)}
+                  onTouchEnd={(e) => handleTouchEnd(e, task)}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <Link to={`/task/${task.id}`} className="min-w-0 flex-1">
                       <h2 className="font-extrabold text-lg truncate">{task.name}</h2>
@@ -411,21 +475,26 @@ const MyTasks = () => {
                     <span className="text-sm text-muted-foreground inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>
                     <div className="flex items-center gap-2">
                       <Link to={`/task/${task.id}`}><Button variant="outline" size="sm" className="rounded-full font-bold">לפרטי המטלה</Button></Link>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="rounded-full text-destructive" aria-label={`מחיקת ${task.name}`}><Trash2 size={16} /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent dir="rtl">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>למחוק את המטלה?</AlertDialogTitle>
-                            <AlertDialogDescription>המטלה וכל המועמדויות שלה יימחקו לצמיתות.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-full">ביטול</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteTask(task)} className="rounded-full bg-destructive text-destructive-foreground">מחיקה</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      {task.status !== "cancelled" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmTask(task)}
+                          className="rounded-full text-destructive font-bold"
+                        >
+                          ביטול / מחיקה
+                        </Button>
+                      )}
+                      {task.status === "cancelled" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmTask(task)}
+                          className="rounded-full text-destructive font-bold"
+                        >
+                          מחיקה
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </article>
@@ -475,6 +544,36 @@ const MyTasks = () => {
             </TabsContent>
           )}
         </Tabs>
+
+        <AlertDialog open={!!confirmTask} onOpenChange={(open) => !open && setConfirmTask(null)}>
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>מה לעשות עם &ldquo;{confirmTask?.name}&rdquo;?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmTask?.status !== "cancelled"
+                  ? "ביטול משנה את הסטטוס ומתריע למועמדים שהתקבלו. מחיקה מעבירה לארכיון ומסירה מהאתר."
+                  : "המטלה כבר בוטלה. מחיקה מעבירה לארכיון ומסירה מהאתר."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+              <AlertDialogCancel className="rounded-full">חזרה</AlertDialogCancel>
+              {confirmTask?.status !== "cancelled" && (
+                <AlertDialogAction
+                  onClick={() => { if (confirmTask) cancelTask(confirmTask); setConfirmTask(null); }}
+                  className="rounded-full bg-amber-600 text-white hover:bg-amber-700"
+                >
+                  ביטול המטלה
+                </AlertDialogAction>
+              )}
+              <AlertDialogAction
+                onClick={() => { if (confirmTask) archiveTask(confirmTask); setConfirmTask(null); }}
+                className="rounded-full bg-destructive text-destructive-foreground"
+              >
+                מחיקה (ארכיון)
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

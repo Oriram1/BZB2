@@ -15,7 +15,8 @@ export type NotificationEvent =
   | "parent_child_accepted"
   | "parent_digest"
   | "family_link_code"
-  | "quiet_hours_digest";
+  | "quiet_hours_digest"
+  | "task_cancelled";
 
 export type AppRole = "tasker" | "bee" | "parent";
 
@@ -96,6 +97,13 @@ export function notificationLine(row: NotificationRow): { title: string; body: s
       };
     }
 
+    case "task_cancelled":
+      return {
+        emoji: "❌",
+        title: "מטלה בוטלה",
+        body: `"${text(data.task_name, "המטלה")}" בוטלה על ידי ${text(data.canceller_name, "המפרסם")}`,
+      };
+
     default:
       return { emoji: "🔔", title: "התראה", body: "" };
   }
@@ -111,6 +119,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   parent_digest: { email: true, push: true },
   family_link_code: { email: true, push: false },
   quiet_hours_digest: { email: true, push: true },
+  task_cancelled: { email: true, push: true },
 };
 
 /**
@@ -159,6 +168,12 @@ export const SETTINGS_ROWS: {
     label: "דוח יומי",
     description: "סיכום יומי של פעילות הילדים שלכם",
     roles: ["parent"],
+  },
+  {
+    event: "task_cancelled",
+    label: "מטלה שהתקבלתי אליה בוטלה",
+    description: "כשבעל המטלה מבטל מטלה שכבר התקבלתם אליה",
+    roles: ["bee"],
   },
 ];
 
