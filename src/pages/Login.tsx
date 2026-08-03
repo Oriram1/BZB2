@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
+import { logUserActivity } from "@/lib/activityLog";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ const Login = () => {
     if (error) {
       toast.error(error.message);
     } else {
+      const { data: signedIn } = await supabase.auth.getUser();
+      logUserActivity(signedIn.user?.id, "login", { details: { method: "password" } });
       // No success toast: landing on the tasks screen already says it worked,
       // and the toast covered the top of that screen on a phone.
       navigate("/tasks");

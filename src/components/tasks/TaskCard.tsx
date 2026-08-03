@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { logUserActivity } from "@/lib/activityLog";
 
 interface Task {
   id: number;
@@ -80,6 +81,11 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
         toast.error("לא הצלחנו לשלוח את המועמדות. כדאי לנסות שוב בעוד רגע");
       }
     } else {
+      logUserActivity(user.id, "application_submitted", {
+        entityType: "task",
+        entityId: task.dbId,
+        details: { taskName: task.name },
+      });
       toast.success("המועמדות נשלחה");
     }
   };

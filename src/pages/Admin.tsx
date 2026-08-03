@@ -46,6 +46,7 @@ import {
 import { PasswordInput } from "@/components/ui/password-input";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { formatDate, formatPhone, formatTime } from "@/lib/format";
+import { categoryLabel } from "@/lib/categories";
 import type { Json } from "@/integrations/supabase/types";
 
 interface AuditRow {
@@ -55,6 +56,16 @@ interface AuditRow {
   target_user_id: string | null;
   target_identifier: string | null;
   success: boolean;
+  details: Json | null;
+  created_at: string;
+}
+
+interface ActivityRow {
+  id: string;
+  user_id: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
   details: Json | null;
   created_at: string;
 }
@@ -147,6 +158,37 @@ const actionLabel: Record<string, string> = {
   delete_user: "מחיקת משתמש",
 };
 
+/** Same idea as actionLabel, for the actions ordinary users take. */
+const userActionLabel: Record<string, string> = {
+  login: "התחברות",
+  logout: "התנתקות",
+  signup: "הרשמה",
+  task_created: "פרסום מטלה",
+  task_cancelled: "ביטול מטלה",
+  task_deleted: "מחיקת מטלה",
+  application_submitted: "הגשת מועמדות",
+  application_accepted: "אישור מועמדות",
+  application_rejected: "דחיית מועמדות",
+  profile_updated: "עדכון פרופיל",
+  role_switched: "החלפת תפקיד",
+};
+
+/**
+ * Details are free-form jsonb, so render only the handful of keys we actually
+ * write. Anything unexpected is skipped rather than dumped as raw JSON.
+ */
+const activityDetail = (details: Json | null): string | null => {
+  if (!details || typeof details !== "object" || Array.isArray(details)) return null;
+  const record = details as Record<string, Json>;
+  const parts: string[] = [];
+  if (typeof record.name === "string") parts.push(record.name);
+  if (typeof record.taskName === "string") parts.push(record.taskName);
+  if (typeof record.category === "string") parts.push(categoryLabel(record.category));
+  if (typeof record.role === "string") parts.push(roleLabels[record.role] ?? record.role);
+  if (typeof record.method === "string") parts.push(record.method === "google" ? "Google" : "סיסמה");
+  return parts.length > 0 ? parts.join(" · ") : null;
+};
+
 const fullName = (profile: Pick<ProfileOption, "first_name" | "last_name">) =>
   `${profile.first_name} ${profile.last_name}`.trim();
 
@@ -229,7 +271,7 @@ function Timestamp({ value }: { value: string }) {
   );
 }
 
-const TAB_VALUES = ["overview", "users", "family", "log"] as const;
+const TAB_VALUES = ["overview", "users", "family", "activity", "log"] as const;
 
 export default function Admin() {
   const { user, roles, loading } = useAuth();
@@ -254,6 +296,8 @@ export default function Admin() {
   const [newPassword, setNewPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [audit, setAudit] = useState<AuditRow[]>([]);
+  const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
   const [parentQuery, setParentQuery] = useState("");
   const [childQuery, setChildQuery] = useState("");
   const [parentResults, setParentResults] = useState<ProfileOption[]>([]);
@@ -317,6 +361,49 @@ export default function Admin() {
     }
 
     setAudit(data ?? []);
+  };
+
+  /**
+   * Activity rows carry only a user id; names come from `profiles`, which the
+   * screen already caches by id for the family tab. Fetch the missing ones in
+   * one round trip rather than one per row.
+   */
+  const loadActivity = async () => {
+    setActivityLoading(true);
+    const { data, error } = await fetchAllPages((from, to) => supabase
+      .from("user_activity_log")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, to));
+
+    if (error) {
+      setActivityLoading(false);
+      toast.error("לא הצלחתי לטעון את פעילות המשתמשים");
+      return;
+    }
+
+    const rows = data ?? [];
+    setActivity(rows);
+
+    const missingIds = Array.from(new Set(rows.map((row) => row.user_id)))
+      .filter((id) => !profilesById[id]);
+
+    if (missingIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, first_name, last_name, age")
+        .in("user_id", missingIds);
+
+      if (profiles) {
+        setProfilesById((current) => {
+          const next = { ...current };
+          for (const profile of profiles) next[profile.user_id] = profile;
+          return next;
+        });
+      }
+    }
+
+    setActivityLoading(false);
   };
 
   const loadLinks = async () => {
@@ -509,6 +596,7 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) {
       void loadAudit();
+      void loadActivity();
       void loadLinks();
       void loadStats();
       void loadDuplicatePhones();
@@ -820,12 +908,13 @@ export default function Admin() {
 
       <main className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-4 rounded-xl p-1">
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-5 rounded-xl p-1">
             {[
               { value: "overview", label: "סקירה" },
               { value: "users", label: "משתמשים" },
               { value: "family", label: "משפחה" },
-              { value: "log", label: "לוג" },
+              { value: "activity", label: "פעילות" },
+              { value: "log", label: "לוג אדמין" },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -1384,12 +1473,63 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
+          {/* ─── User Activity Tab ─── */}
+          <TabsContent value="activity" className="space-y-6">
+            <Card className="p-5 border-border/80 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-extrabold text-lg">פעילות משתמשים</h2>
+                  <p className="text-sm text-muted-foreground">
+                    פעולות שבוצעו על ידי משתמשי המערכת
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl"
+                  disabled={activityLoading}
+                  onClick={() => void loadActivity()}
+                >
+                  <RefreshCw className={activityLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+                  רענון
+                </Button>
+              </div>
+              {activityLoading && activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">טוען...</p>
+              ) : activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">אין רשומות עדיין</p>
+              ) : (
+                <ul className="space-y-2">
+                  {activity.map((row) => {
+                    const detail = activityDetail(row.details);
+                    return (
+                      <li
+                        key={row.id}
+                        className="text-sm border rounded-md p-3 flex flex-col gap-1"
+                      >
+                        <span className="font-bold">
+                          {userActionLabel[row.action] ?? row.action}
+                        </span>
+                        <div className="text-muted-foreground">
+                          משתמש: <PersonRef profile={profilesById[row.user_id]} userId={row.user_id} />
+                        </div>
+                        {detail && <div className="text-muted-foreground">{detail}</div>}
+                        <Timestamp value={row.created_at} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+          </TabsContent>
+
           {/* ─── Log Tab ─── */}
           <TabsContent value="log" className="space-y-6">
             <Card className="p-5 border-border/80 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-extrabold text-lg">פעילות אחרונה</h2>
+                  <h2 className="font-extrabold text-lg">פעולות מנהלים</h2>
                   <p className="text-sm text-muted-foreground">פעולות שבוצעו על ידי מנהלי המערכת</p>
                 </div>
                 <Button

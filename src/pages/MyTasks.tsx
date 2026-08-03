@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureAcceptedTaskConversation } from "@/lib/taskConversations";
+import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
 
 type ApplicationStatus = "pending" | "accepted" | "rejected";
@@ -232,6 +233,12 @@ const MyTasks = () => {
       return;
     }
 
+    logUserActivity(user?.id, status === "accepted" ? "application_accepted" : "application_rejected", {
+      entityType: "task_application",
+      entityId: application.id,
+      details: { taskId: application.taskId, applicantId: application.applicantId },
+    });
+
     setApplications((current) => current.map((item) => item.id === application.id ? { ...item, status } : item));
 
     if (status === "rejected") {
@@ -318,6 +325,7 @@ const MyTasks = () => {
     setPublishedTasks((current) =>
       current.map((t) => (t.id === task.id ? { ...t, status: "cancelled" } : t)),
     );
+    logUserActivity(user?.id, "task_cancelled", { entityType: "task", entityId: task.id, details: { name: task.name } });
     toast.success("המטלה בוטלה");
   };
 
@@ -330,6 +338,7 @@ const MyTasks = () => {
 
     setPublishedTasks((current) => current.filter((t) => t.id !== task.id));
     setApplications((current) => current.filter((a) => a.taskId !== task.id));
+    logUserActivity(user!.id, "task_deleted", { entityType: "task", entityId: task.id, details: { name: task.name } });
     toast.success("המטלה הועברה לארכיון");
   };
 

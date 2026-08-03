@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { logUserActivity } from "@/lib/activityLog";
 
 interface Profile {
   id: string;
@@ -158,6 +159,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    // Logged before the sign-out: the RLS insert policy needs a live session.
+    logUserActivity(user?.id, "logout");
     await supabase.auth.signOut();
     settledUserIdRef.current = null;
     setUser(null);

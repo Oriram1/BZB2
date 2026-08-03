@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { supabase } from "@/integrations/supabase/client";
+import { logUserActivity } from "@/lib/activityLog";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
@@ -252,6 +253,7 @@ const Profile = () => {
     if (error) {
       toast.error("שגיאה בשמירת הפרופיל");
     } else {
+      logUserActivity(user.id, "profile_updated", { entityType: "profile", entityId: user.id });
       toast.success("הפרופיל עודכן בהצלחה!");
       setEditing(false);
     }

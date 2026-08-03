@@ -21,7 +21,9 @@ WHERE auth_user.id = profile.user_id
 -- Parent-child links may now be created only by the one-time-code flow or an admin.
 DROP POLICY IF EXISTS "Parents can create links" ON public.parent_links;
 
-CREATE TABLE public.family_link_codes (
+-- 20260729052743 creates these same two tables, so a fresh replay hit 42P07 here.
+-- Written idempotently: the end state is identical either way.
+CREATE TABLE IF NOT EXISTS public.family_link_codes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   child_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   code_hash text NOT NULL UNIQUE,
@@ -30,7 +32,7 @@ CREATE TABLE public.family_link_codes (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX family_link_codes_child_active_idx
+CREATE INDEX IF NOT EXISTS family_link_codes_child_active_idx
   ON public.family_link_codes (child_user_id, expires_at DESC)
   WHERE used_at IS NULL;
 
@@ -38,14 +40,14 @@ ALTER TABLE public.family_link_codes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.family_link_codes FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.family_link_codes TO service_role;
 
-CREATE TABLE public.family_link_attempts (
+CREATE TABLE IF NOT EXISTS public.family_link_attempts (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   parent_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   attempted_at timestamptz NOT NULL DEFAULT now(),
   success boolean NOT NULL DEFAULT false
 );
 
-CREATE INDEX family_link_attempts_parent_time_idx
+CREATE INDEX IF NOT EXISTS family_link_attempts_parent_time_idx
   ON public.family_link_attempts (parent_user_id, attempted_at DESC);
 
 ALTER TABLE public.family_link_attempts ENABLE ROW LEVEL SECURITY;

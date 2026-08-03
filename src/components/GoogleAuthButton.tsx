@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { logUserActivity } from "@/lib/activityLog";
 import { getRoleHomePath } from "@/lib/roleNavigation";
 
 interface GoogleAuthButtonProps {
@@ -97,6 +98,8 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
                   toast.error("לא ניתן להחליף תפקיד כרגע");
                   return;
                 }
+                const { data: current } = await supabase.auth.getUser();
+                logUserActivity(current.user?.id, "role_switched", { details: { role: switchPrompt.target } });
                 await refreshUserState();
                 const targetRole = switchPrompt.target;
                 setSwitchPrompt(null);

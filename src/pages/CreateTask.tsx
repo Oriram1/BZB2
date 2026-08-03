@@ -21,6 +21,7 @@ import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
+import { logUserActivity } from "@/lib/activityLog";
 
 const steps = [
   { id: 1, label: "קטגוריה", icon: Tag },
@@ -119,7 +120,7 @@ const CreateTask = () => {
     if (imageFile) {
       imageUrl = await uploadImage();
     }
-    const { error } = await supabase.from("tasks").insert({
+    const { data: created, error } = await supabase.from("tasks").insert({
       creator_id: user.id,
       category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
       name: form.taskName,
@@ -137,11 +138,16 @@ const CreateTask = () => {
       expiry_hours: parseInt(form.expiry) || 24,
       notes: form.notes || null,
       image_url: imageUrl,
-    });
+    }).select("id").maybeSingle();
     setLoading(false);
     if (error) {
       toast.error("שגיאה בפרסום המטלה: " + error.message);
     } else {
+      logUserActivity(user.id, "task_created", {
+        entityType: "task",
+        entityId: created?.id ?? null,
+        details: { name: form.taskName, category: form.category },
+      });
       toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
       navigate("/my-tasks?tab=published");
     }

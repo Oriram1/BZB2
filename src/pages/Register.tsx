@@ -19,6 +19,7 @@ import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRoleHomePath } from "@/lib/roleNavigation";
+import { logUserActivity } from "@/lib/activityLog";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -146,6 +147,7 @@ const Register = () => {
                   toast.error("לא ניתן להחליף תפקיד כרגע");
                   return;
                 }
+                logUserActivity(user?.id, "role_switched", { details: { role: requestedRole } });
                 await refreshUserState();
                 toast.success(`עברתם לתפקיד ${roleLabel(requestedRole)}`);
                 navigate(getRoleHomePath(requestedRole), { replace: true });
@@ -255,6 +257,10 @@ const Register = () => {
       if (profileError) {
         toast.error("החשבון נוצר, אבל פרטי הפרופיל לא נשמרו במלואם");
       }
+
+      logUserActivity(data.user.id, "signup", {
+        details: { role: appRole, method: isGoogleSignup ? "google" : "password" },
+      });
 
       if (roleError && roleError.code !== "23505") {
         toast.error("החשבון נוצר, אבל סוג המשתמש לא נשמר. כדאי לנסות להתחבר שוב.");

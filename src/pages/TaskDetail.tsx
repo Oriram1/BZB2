@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDate, formatTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
+import { logUserActivity } from "@/lib/activityLog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -165,6 +166,11 @@ const TaskDetail = () => {
         toast.error("שגיאה בהגשת המועמדות");
       }
     } else {
+      logUserActivity(user.id, "application_submitted", {
+        entityType: "task",
+        entityId: task.id,
+        details: { taskName: task.name },
+      });
       toast.success("המועמדות נשלחה! 🐝");
       setAlreadyApplied(true);
     }
@@ -179,6 +185,11 @@ const TaskDetail = () => {
     if (error) {
       toast.error("שגיאה במחיקת המטלה: " + error.message);
     } else {
+      logUserActivity(user.id, "task_deleted", {
+        entityType: "task",
+        entityId: task.id,
+        details: { name: task.name },
+      });
       toast.success("המטלה נמחקה בהצלחה 🗑️");
       navigate("/my-tasks");
     }
