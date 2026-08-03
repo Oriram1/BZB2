@@ -635,7 +635,21 @@ export default function Admin() {
     }
   };
 
-  const selectableUserIds = usersList
+  const filteredUsers = usersFilter.trim()
+    ? usersList.filter(
+        (item) =>
+          item.title.includes(usersFilter) ||
+          (item.email ?? "").toLowerCase().includes(usersFilter.toLowerCase()),
+      )
+    : usersList;
+
+  /*
+   * Derived from the *filtered* list on purpose. A range has to mean the rows
+   * the admin can actually see — anchoring it to the full list would let a
+   * shift-click while searching sweep up accounts that are off screen, and the
+   * only thing waiting at the end of this selection is a permanent delete.
+   */
+  const selectableUserIds = filteredUsers
     .filter((item) => item.manageable && item.id !== user?.id)
     .map((item) => item.id);
 
@@ -777,14 +791,6 @@ export default function Admin() {
       setRemovingLinkId(null);
     }
   };
-
-  const filteredUsers = usersFilter.trim()
-    ? usersList.filter(
-        (item) =>
-          item.title.includes(usersFilter) ||
-          (item.email ?? "").toLowerCase().includes(usersFilter.toLowerCase()),
-      )
-    : usersList;
 
   if (loading || !isAdmin) return null;
 
@@ -947,7 +953,20 @@ export default function Admin() {
                                Hebrew); the chevron owns the logical end. */
                             <label
                               className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center self-stretch"
-                              onClick={(event) => {
+                              /*
+                               * Radix fires onCheckedChange from its own click
+                               * handler on the checkbox, which runs before the
+                               * event bubbles up to this label — a plain onClick
+                               * here would always report the *previous* click's
+                               * shift state. Capture phase runs first, so the
+                               * flag is set before the toggle reads it.
+                               * pointerdown covers the mouse, keydown the
+                               * Space/Enter path, where no pointer event fires.
+                               */
+                              onPointerDownCapture={(event) => {
+                                checkboxShiftPressedRef.current = event.shiftKey;
+                              }}
+                              onKeyDownCapture={(event) => {
                                 checkboxShiftPressedRef.current = event.shiftKey;
                               }}
                             >
