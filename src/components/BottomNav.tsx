@@ -7,8 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { navItems } from "@/components/navItems";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-/** Order the items appear in the bottom bar (most important first). */
-const tabOrder = ["/", "/tasks", "/create-task", "/my-tasks", "/parent", "/chat", "/profile", "/settings", "/pricing", "/auth"];
+/**
+ * Order the items appear in the bottom bar (most important first). Every path
+ * in navItems must be listed: `indexOf` returns -1 for anything missing, which
+ * would sort it ahead of the home tab.
+ */
+const tabOrder = ["/", "/tasks", "/create-task", "/my-tasks", "/parent", "/chat", "/profile", "/settings", "/pricing", "/admin", "/auth"];
 
 const MAX_SLOTS = 5;
 

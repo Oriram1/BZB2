@@ -1,4 +1,4 @@
-import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, MessageCircle, UserCircle, Bell } from "lucide-react";
+import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, ShieldCheck, MessageCircle, UserCircle, Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -24,4 +24,7 @@ export const navItems: NavItem[] = [
   { label: "לוח הורים", shortLabel: "הורים", to: "/parent", icon: Shield, authOnly: true, requiredRoles: ["parent"] },
   { label: "הגדרות התראות", shortLabel: "התראות", to: "/settings", icon: Bell, authOnly: true },
   { label: "מנויים", to: "/pricing", icon: CreditCard, bold: true },
+  /* Admin and parent are mutually exclusive roles, so the two shields never
+     appear in the same menu. */
+  { label: "ניהול המערכת", shortLabel: "ניהול", to: "/admin", icon: ShieldCheck, authOnly: true, requiredRoles: ["admin"] },
 ];
