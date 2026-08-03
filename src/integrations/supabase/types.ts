@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_audit_log: {
@@ -69,6 +44,33 @@ export type Database = {
           success?: boolean
           target_identifier?: string | null
           target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      archived_records: {
+        Row: {
+          archived_at: string
+          archived_by: string | null
+          id: string
+          record_data: Json
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          archived_at?: string
+          archived_by?: string | null
+          id?: string
+          record_data: Json
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          archived_at?: string
+          archived_by?: string | null
+          id?: string
+          record_data?: Json
+          record_id?: string
+          table_name?: string
         }
         Relationships: []
       }
@@ -450,6 +452,7 @@ export type Database = {
       task_applications: {
         Row: {
           applicant_id: string
+          archived_at: string | null
           created_at: string
           id: string
           message: string | null
@@ -459,6 +462,7 @@ export type Database = {
         }
         Insert: {
           applicant_id: string
+          archived_at?: string | null
           created_at?: string
           id?: string
           message?: string | null
@@ -468,6 +472,7 @@ export type Database = {
         }
         Update: {
           applicant_id?: string
+          archived_at?: string | null
           created_at?: string
           id?: string
           message?: string | null
@@ -514,6 +519,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          archived_at: string | null
           category: Database["public"]["Enums"]["task_category"]
           created_at: string
           creator_id: string
@@ -538,6 +544,7 @@ export type Database = {
           workers_needed: number
         }
         Insert: {
+          archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
           created_at?: string
           creator_id: string
@@ -562,6 +569,7 @@ export type Database = {
           workers_needed?: number
         }
         Update: {
+          archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
           created_at?: string
           creator_id?: string
@@ -640,6 +648,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_archive_task: { Args: { _task_id: string }; Returns: undefined }
+      archive_record: {
+        Args: {
+          _record_data: Json
+          _record_id: string
+          _table: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      archive_task: {
+        Args: { _task_id: string; _user_id: string }
+        Returns: undefined
+      }
       enqueue_notification: {
         Args: {
           _data: Json
@@ -676,6 +698,11 @@ export type Database = {
         Returns: string
       }
       run_parent_digest: { Args: never; Returns: undefined }
+      run_quiet_digest: { Args: never; Returns: undefined }
+      switch_my_role: {
+        Args: { target_role: Database["public"]["Enums"]["app_role"] }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
       app_role: "tasker" | "bee" | "parent" | "admin"
@@ -691,6 +718,7 @@ export type Database = {
         | "parent_digest"
         | "family_link_code"
         | "quiet_hours_digest"
+        | "task_cancelled"
       payment_type: "task" | "hour"
       task_category:
         | "housework"
@@ -831,9 +859,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["tasker", "bee", "parent", "admin"],
@@ -849,6 +874,7 @@ export const Constants = {
         "parent_digest",
         "family_link_code",
         "quiet_hours_digest",
+        "task_cancelled",
       ],
       payment_type: ["task", "hour"],
       task_category: [

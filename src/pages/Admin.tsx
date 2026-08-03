@@ -156,6 +156,7 @@ const actionLabel: Record<string, string> = {
   unblock_user: "הסרת חסימת משתמש",
   confirm_user_email: "אישור הרשמת משתמש",
   delete_user: "מחיקת משתמש",
+  admin_deleted_task: "מחיקת מטלה",
 };
 
 /** Same idea as actionLabel, for the actions ordinary users take. */
@@ -321,6 +322,8 @@ export default function Admin() {
     action: UserAdminAction;
   } | null>(null);
   const [managingUser, setManagingUser] = useState(false);
+  const [pendingTaskDeletion, setPendingTaskDeletion] = useState<DrilldownItem | null>(null);
+  const [deletingTask, setDeletingTask] = useState(false);
   const [usersList, setUsersList] = useState<DrilldownItem[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState(false);
@@ -643,6 +646,33 @@ export default function Admin() {
       setDrilldownError(true);
     } finally {
       setDrilldownLoading(false);
+    }
+  };
+
+  /**
+   * Deleting someone else's task is an admin-screen power only. The task's own
+   * page stays owner-only, so this goes through a separate RPC that checks for
+   * the admin role instead of task ownership, and audits every call.
+   */
+  const deleteTaskAsAdmin = async () => {
+    if (!pendingTaskDeletion || !activeDrilldown) return;
+
+    setDeletingTask(true);
+    try {
+      const { error } = await supabase.rpc("admin_archive_task", { _task_id: pendingTaskDeletion.id });
+
+      if (error) {
+        toast.error("מחיקת המטלה נכשלה");
+        return;
+      }
+
+      toast.success("המטלה נמחקה");
+      setPendingTaskDeletion(null);
+      await openDrilldown(activeDrilldown);
+      await loadStats();
+      await loadAudit();
+    } finally {
+      setDeletingTask(false);
     }
   };
 
@@ -1666,10 +1696,10 @@ export default function Admin() {
                 ) : (
                   <ul className="space-y-2">
                     {drilldownItems.map((item) => (
-                      <li key={item.id} className="relative overflow-hidden rounded-xl border bg-card">
+                      <li key={item.id} className="relative flex items-stretch overflow-hidden rounded-xl border bg-card">
                         <button
                           type="button"
-                          className="group w-full p-4 text-start outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                          className="group min-w-0 flex-1 p-4 text-start outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                           onClick={() => {
                             setActiveDrilldown(null);
                             navigate(item.href);
@@ -1693,6 +1723,18 @@ export default function Admin() {
                             <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
                           </div>
                         </button>
+                        <div className="flex items-center border-s px-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setPendingTaskDeletion(item)}
+                            aria-label={`מחיקת המטלה ${item.title}`}
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -1702,6 +1744,35 @@ export default function Admin() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={pendingTaskDeletion !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingTask) setPendingTaskDeletion(null);
+        }}
+      >
+        <AlertDialogContent className="text-start" dir="rtl">
+          <AlertDialogHeader className="text-start sm:text-start">
+            <AlertDialogTitle>מחיקת מטלה</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`המטלה "${pendingTaskDeletion?.title}" והמועמדויות שהוגשו אליה יימחקו. הפעולה תירשם ביומן האדמין.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:space-x-0">
+            <AlertDialogCancel disabled={deletingTask}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingTask}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteTaskAsAdmin();
+              }}
+            >
+              {deletingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : "מחק מטלה"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={pendingUserAction !== null}
