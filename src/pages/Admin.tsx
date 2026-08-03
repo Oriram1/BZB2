@@ -456,11 +456,16 @@ export default function Admin() {
 
     const [usersResult, openTasksResult, activeTasksResult, linksResult] = await Promise.all([
       supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "open"),
       supabase
         .from("tasks")
         .select("id", { count: "exact", head: true })
-        .in("status", ["accepted", "in_progress"]),
+        .eq("status", "open")
+        .is("archived_at", null),
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["accepted", "in_progress"])
+        .is("archived_at", null),
       supabase.from("parent_links").select("id", { count: "exact", head: true }),
     ]);
 
@@ -617,6 +622,7 @@ export default function Admin() {
       let query = supabase
         .from("tasks")
         .select("id, name, status, location, created_at")
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
 
       query =

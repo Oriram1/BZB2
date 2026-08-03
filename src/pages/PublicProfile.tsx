@@ -59,6 +59,7 @@ const PublicProfile = () => {
           .from("tasks")
           .select("id, name, short_desc, category, payment, payment_type, status")
           .eq("creator_id", userId)
+          .is("archived_at", null)
           .order("created_at", { ascending: false }),
       ]);
       const profileData = Array.isArray(profileRows) ? profileRows[0] : profileRows;

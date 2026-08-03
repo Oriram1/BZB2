@@ -118,13 +118,25 @@ const TaskDetail = () => {
         }
       }
 
-      // Fetch creator profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, avatar_url, user_id")
-        .eq("user_id", data.creator_id)
-        .single();
-      if (profile) setCreator(profile);
+      // Read the publisher through get_public_profile, not the profiles table.
+      // RLS deliberately hides a profile from anyone with no relationship to it,
+      // and a visitor browsing a task has none — so the direct read returned
+      // nothing and the card fell back to "משתמש Busy Bee" for every task. The
+      // RPC is the sanctioned way across that boundary: it is SECURITY DEFINER
+      // and returns only the columns that are safe to show publicly.
+      //
+      // The card renders either way. A missing profile costs the name, not the
+      // whole "who posted this" section.
+      const { data: publicProfile } = await supabase.rpc("get_public_profile", {
+        _user_id: data.creator_id,
+      });
+      const profile = Array.isArray(publicProfile) ? publicProfile[0] : publicProfile;
+      setCreator({
+        first_name: profile?.first_name ?? "",
+        last_name: profile?.last_name ?? "",
+        avatar_url: profile?.avatar_url ?? null,
+        user_id: data.creator_id,
+      });
 
       // Check if user already applied
       if (user) {
@@ -133,6 +145,7 @@ const TaskDetail = () => {
           .select("id")
           .eq("task_id", id)
           .eq("applicant_id", user.id)
+          .is("archived_at", null)
           .maybeSingle();
         if (app) setAlreadyApplied(true);
       }
@@ -416,7 +429,7 @@ const TaskDetail = () => {
               <div className="min-w-0">
                 <span className="text-xs text-muted-foreground block font-medium">פורסם על ידי</span>
                 <span className="font-bold text-foreground text-sm truncate block">
-                  {creator.first_name} {creator.last_name}
+                  {`${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() || "משתמש Busy Bee"}
                 </span>
               </div>
             </div>

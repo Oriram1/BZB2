@@ -115,6 +115,7 @@ const MyTasks = () => {
           .from("tasks")
           .select("id, name, short_desc, views_count, status")
           .eq("creator_id", user.id)
+          .is("archived_at", null)
           .order("created_at", { ascending: false });
 
         if (taskError) {
@@ -127,7 +128,8 @@ const MyTasks = () => {
               const { data: applicationRows } = await supabase
                 .from("task_applications")
                 .select("id, status, applicant_id")
-                .eq("task_id", task.id);
+                .eq("task_id", task.id)
+                .is("archived_at", null);
 
               return Promise.all(
                 (applicationRows ?? []).map(async (application) => {
@@ -165,7 +167,8 @@ const MyTasks = () => {
         const { data: ownApplications } = await supabase
           .from("task_applications")
           .select("id, status, task_id")
-          .eq("applicant_id", user.id);
+          .eq("applicant_id", user.id)
+          .is("archived_at", null);
 
         const taskGroups = await Promise.all(
           (ownApplications ?? []).map(async (application) => {
@@ -173,7 +176,8 @@ const MyTasks = () => {
               .from("tasks")
               .select("id, name, short_desc, status, scheduled_date, scheduled_time, location")
               .eq("id", application.task_id)
-              .single();
+              .is("archived_at", null)
+              .maybeSingle();
 
             if (!task) return null;
             return {
@@ -225,7 +229,8 @@ const MyTasks = () => {
     const { error } = await supabase
       .from("task_applications")
       .update({ status })
-      .eq("id", application.id);
+      .eq("id", application.id)
+      .is("archived_at", null);
 
     if (error) {
       toast.error("לא הצלחנו לעדכן את המועמדות");
@@ -291,7 +296,8 @@ const MyTasks = () => {
     const { error } = await supabase
       .from("tasks")
       .update({ status: "cancelled" })
-      .eq("id", task.id);
+      .eq("id", task.id)
+      .is("archived_at", null);
     if (error) {
       toast.error("לא הצלחנו לבטל את המטלה");
       return;
@@ -301,7 +307,8 @@ const MyTasks = () => {
       .from("task_applications")
       .select("applicant_id")
       .eq("task_id", task.id)
-      .eq("status", "accepted");
+      .eq("status", "accepted")
+      .is("archived_at", null);
 
     const profile = await supabase
       .from("profiles")

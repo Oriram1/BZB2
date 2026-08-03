@@ -81,6 +81,7 @@ const ParentalHub = () => {
           .from("task_applications")
           .select("id, status, created_at, task_id")
           .eq("applicant_id", childId)
+          .is("archived_at", null)
           .order("created_at", { ascending: false })
           .range(from, to));
 
@@ -92,19 +93,22 @@ const ParentalHub = () => {
             .from("tasks")
             .select("id, name, status, scheduled_date, scheduled_time, location, creator_id")
             .eq("id", app.task_id)
+            .is("archived_at", null)
             .maybeSingle();
 
           if (!task) continue;
 
-          const { data: taskerProfile } = await supabase
-            .from("profiles")
-            .select("first_name, last_name")
-            .eq("user_id", task.creator_id)
-            .maybeSingle();
+          // Through the RPC, not the table: a parent is related to their child,
+          // not to whoever published the task, so RLS hides that profile from
+          // the direct read and the name came back empty every time.
+          const { data: taskerRows } = await supabase.rpc("get_public_profile", {
+            _user_id: task.creator_id,
+          });
+          const taskerProfile = Array.isArray(taskerRows) ? taskerRows[0] : taskerRows;
 
-          const taskerName = taskerProfile
-            ? `${taskerProfile.first_name} ${taskerProfile.last_name}`.trim()
-            : "מציע מטלה";
+          const taskerName =
+            `${taskerProfile?.first_name ?? ""} ${taskerProfile?.last_name ?? ""}`.trim() ||
+            "מציע מטלה";
 
           if (!activeTask && (app.status === "accepted" || task.status === "in_progress")) {
             activeTask = {
