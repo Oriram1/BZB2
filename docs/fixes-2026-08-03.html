@@ -765,7 +765,7 @@
     <div class="bug-header">
       <div class="bug-number">11</div>
       <div class="bug-title-area">
-        <div class="bug-title">מיילים פנו לכולם ב־"הגיש/ה"</div>
+        <div class="bug-title">מיילים, פוש והתראות בתוך האפליקציה פנו לכולם ב־"הגיש/ה"</div>
         <span class="status status--redesign">תוקן — פיצ'ר חדש</span>
       </div>
     </div>
@@ -773,6 +773,17 @@
       <div class="section-label">מה הייתה הבעיה</div>
       <p>
         עברית מטה פעלים ושמות לפי מין, וכל הודעה שהאפליקציה שלחה חצתה את ההבדל בלוכסן. זה נקרא כמו מכתב טפסים — ולשם שהאפליקציה כבר יודעת, זה היה נמנע.
+      </p>
+      <p>
+        זה נגע ב<strong>שלושת</strong> הערוצים, לא רק במייל:
+      </p>
+      <ul>
+        <li><strong>מייל</strong> — <span class="code-ref">emailContent()</span></li>
+        <li><strong>פוש</strong> — <span class="code-ref">pushPayload()</span></li>
+        <li><strong>התראות בתוך האפליקציה</strong> — <span class="code-ref">notificationLine()</span>, השורות מתחת לפעמון</li>
+      </ul>
+      <p>
+        שלושתם מקבלים עכשיו את צורת הנמען כפרמטר. <span class="code-ref">notify-dispatch</span> קורא את מגדר הנמען פעם אחת ומעביר למייל ולפוש; הפעמון מעביר את מגדר המשתמש המחובר.
       </p>
 
       <div class="section-label">ההפרדה שמחזיקה את זה</div>
@@ -791,7 +802,7 @@
       <ul>
         <li><span class="code-ref">profiles.gender</span> — enum. קיימים הוסבו ל־<span class="code-ref">male</span>, חדשים נשאלים בהרשמה.</li>
         <li>מילון אחד עם 16 פעלים ושמות × 3 צורות, ממוראר לצד Deno.</li>
-        <li>3 טריגרים צורבים מגדר־נושא, <span class="code-ref">notify-dispatch</span> קורא מגדר־נמען פעם אחת.</li>
+        <li>3 טריגרים צורבים מגדר־נושא לפיילואד ההתראה.</li>
         <li>בורר 3 אפשרויות בהרשמה ובעריכת פרופיל.</li>
       </ul>
 
@@ -815,7 +826,8 @@
           <li><span class="code-ref">src/lib/gender.ts</span> &middot; <span class="code-ref">_shared/gender.ts</span><span class="tag tag--new">חדש</span></li>
           <li><span class="code-ref">20260803170000_profile_gender.sql</span><span class="tag tag--new">חדש</span></li>
           <li><span class="code-ref">20260803171000_notification_subject_gender.sql</span><span class="tag tag--new">חדש</span></li>
-          <li>שני קבצי <span class="code-ref">notificationCopy.ts</span> &middot; 4 edge functions &middot; <span class="code-ref">Register.tsx</span> &middot; <span class="code-ref">Profile.tsx</span></li>
+          <li>שני קבצי <span class="code-ref">notificationCopy.ts</span> — מייל+פוש בשרת, פעמון בלקוח</li>
+          <li><span class="code-ref">NotificationBell.tsx</span> &middot; 4 edge functions &middot; <span class="code-ref">Register.tsx</span> &middot; <span class="code-ref">Profile.tsx</span></li>
         </ul>
       </div>
     </div>
