@@ -179,6 +179,17 @@ const Register = () => {
     setAddressLoading(false);
   };
 
+  const resolveAddressBeforeSubmit = async () => {
+    if (!form.address.trim() || addressPosition) return addressPosition;
+    setAddressLoading(true);
+    const result = await geocodeAddress(form.address);
+    setAddressLoading(false);
+    if (!result) return null;
+    updateField("address", result.formattedAddress);
+    setAddressPosition({ lat: result.lat, lng: result.lng });
+    return { lat: result.lat, lng: result.lng };
+  };
+
   const minAge = isWorker ? 13 : 18;
 
   /** Every rule in one place. Returns a message per invalid field. */
@@ -194,7 +205,7 @@ const Register = () => {
 
     if (!form.gender) next.gender = "צריך לבחור אחת מהאפשרויות";
 
-    if (!form.address.trim()) next.address = "חסרה כתובת";
+    if (!form.address.trim() && !addressPosition) next.address = "בחרו מיקום במפה או הזינו כתובת";
 
     if (!form.email.trim()) next.email = "חסרה כתובת אימייל";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim()))
@@ -213,7 +224,7 @@ const Register = () => {
     return next;
   };
 
-  const finishRegistration = async () => {
+  const finishRegistration = async (resolvedPosition = addressPosition) => {
     setLoading(true);
     const appRole = isWorker ? "bee" : isParent ? "parent" : "tasker";
     let data: { user: typeof user; session: unknown };
@@ -247,7 +258,9 @@ const Register = () => {
       }
       const { error: profileError } = await supabase.from("profiles").update({
         age: parseInt(form.age) || null,
-        address: form.address,
+        address: form.address || null,
+        latitude: resolvedPosition?.lat ?? null,
+        longitude: resolvedPosition?.lng ?? null,
         gender: (form.gender || "unspecified") as Gender,
         // Store a canonical 05XXXXXXXX form regardless of how it was typed.
         phone: normalizePhone(form.phone),
@@ -297,6 +310,10 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Resolve a typed address even when the user submits without blurring it.
+    // A map pick is already authoritative and does not need another lookup.
+    const resolvedPosition = await resolveAddressBeforeSubmit();
+
     const found = validate();
     setErrors(found);
 
@@ -315,7 +332,7 @@ const Register = () => {
       setShowInsurancePopup(true);
       return;
     }
-    await finishRegistration();
+    await finishRegistration(resolvedPosition);
   };
 
   return (
@@ -346,12 +363,12 @@ const Register = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="firstName">שם פרטי</Label>
-              <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} autoComplete="given-name" dir="auto" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} />
+              <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} autoComplete="given-name" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} />
               <FieldError id="firstName" message={errors.firstName} />
             </div>
             <div>
               <Label htmlFor="lastName">שם משפחה</Label>
-              <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} autoComplete="family-name" dir="auto" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} />
+              <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} autoComplete="family-name" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} />
               <FieldError id="lastName" message={errors.lastName} />
             </div>
           </div>
@@ -395,9 +412,8 @@ const Register = () => {
               onChange={(e) => updateField("address", e.target.value)}
               onBlur={handleAddressBlur}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddressBlur(); } }}
-              placeholder="רחוב, מספר ועיר"
+              placeholder="אפשר להזין כתובת או לבחור נקודה במפה"
               autoComplete="street-address"
-              dir="auto"
               className="mt-1 rounded-2xl h-12"
               aria-invalid={!!errors.address}
               aria-describedby={errors.address ? "address-error" : undefined}
