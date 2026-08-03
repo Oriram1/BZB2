@@ -50,6 +50,9 @@ JWT → user → role → capability → resource scope → פעולה
 
 ## 5. RLS ומסד הנתונים
 
+> המדיניות בפועל, טבלה-אחר-טבלה, נמצאת ב־[rls-and-data-access.md](./rls-and-data-access.md).
+> חובה לקרוא לפני שאילתה על `profiles`, `tasks` או `task_applications`.
+
 RLS חייב להיות deny-by-default ולכלול `USING` ו־`WITH CHECK` במקום המתאים. יש להגן גם על שדות מערכתיים:
 
 - מזהי בעלות.
