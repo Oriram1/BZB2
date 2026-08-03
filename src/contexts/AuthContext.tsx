@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logUserActivity } from "@/lib/activityLog";
+import { notifyParentsOfSignIn } from "@/lib/parentNotify";
+import type { Gender } from "@/lib/gender";
 
 interface Profile {
   id: string;
@@ -13,6 +15,7 @@ interface Profile {
   address: string | null;
   phone: string | null;
   avatar_url: string | null;
+  gender: Gender;
 }
 
 interface AuthContextType {
@@ -67,16 +70,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return data ?? null;
   };
 
+  /**
+   * Reports whether the read itself failed, which is not the same as the user
+   * having no roles. Collapsing the two made a failed fetch look like a brand
+   * new account and sent the signup repair below at an account that already had
+   * a role — which the database then rejected, as it should.
+   */
   const fetchRoles = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    return data?.map((r) => r.role) || [];
+    return { roles: data?.map((r) => r.role) ?? [], failed: Boolean(error) };
   };
 
-  const ensureUserRole = async (nextUser: User | null, currentRoles: string[]) => {
-    if (!nextUser || currentRoles.length > 0) return currentRoles;
+  const ensureUserRole = async (nextUser: User | null, currentRoles: string[], rolesFailed: boolean) => {
+    // Only repair when the database actually answered "no roles". After a failed
+    // read we know nothing, and guessing writes.
+    if (!nextUser || rolesFailed || currentRoles.length > 0) return currentRoles;
 
     const metadataRole = getMetadataRole(nextUser);
     if (!metadataRole) return currentRoles;
@@ -90,8 +101,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // reload. Metadata is only an input for the signup repair path.
     if (error && error.code !== "23505") return currentRoles;
 
-    const repairedRoles = await fetchRoles(nextUser.id);
-    return repairedRoles;
+    const repaired = await fetchRoles(nextUser.id);
+    return repaired.roles;
   };
 
   const loadUserState = async (nextUser: User | null) => {
@@ -101,12 +112,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const [nextProfile, nextRoles] = await Promise.all([
+    let [nextProfile, nextRoles] = await Promise.all([
       fetchProfile(nextUser.id),
       fetchRoles(nextUser.id),
     ]);
 
-    const resolvedRoles = await ensureUserRole(nextUser, nextRoles);
+    // Supabase notifies subscribers from inside signInWithIdToken, before the
+    // new session has finished being stored, so the first read after a sign-in
+    // can go out unauthenticated and come back 401. The session is there a tick
+    // later; one retry turns that race into a non-event.
+    if (nextRoles.failed) {
+      await new Promise((settle) => window.setTimeout(settle, 250));
+      [nextProfile, nextRoles] = await Promise.all([
+        fetchProfile(nextUser.id),
+        fetchRoles(nextUser.id),
+      ]);
+    }
+
+    const resolvedRoles = await ensureUserRole(nextUser, nextRoles.roles, nextRoles.failed);
 
     setProfile(nextProfile);
     setRoles(resolvedRoles);
@@ -114,9 +137,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         const nextUser = session?.user ?? null;
         setSession(session);
+
+        // A real sign-in only — not a token refresh, and not the INITIAL_SESSION
+        // that fires on every page load with a session already in storage.
+        // Parents of a child account are told; the server decides who qualifies
+        // and throttles the mail, so this stays a plain fire-and-forget.
+        if (event === "SIGNED_IN" && nextUser && settledUserIdRef.current !== nextUser.id) {
+          notifyParentsOfSignIn();
+        }
 
         // Supabase re-fires this for the same signed-in user on every token
         // refresh (roughly hourly) and when a tab regains focus. Profile and
