@@ -61,7 +61,7 @@
 
 ```bash
 supabase secrets set RESEND_API_KEY=re_xxx
-supabase secrets set PUBLIC_SITE_URL=https://bzb-2.vercel.app
+supabase secrets set PUBLIC_SITE_URL=https://bzb-web.com
 ```
 
 ⚠️ **ברירת המחדל היא `onboarding@resend.dev` — לפיתוח בלבד.** לפני עלייה לייצור:
@@ -161,6 +161,36 @@ select * from cron.job where jobname = 'parent-digest-hourly';
 | סודות Vault | ✅ נוצרו | `notify_dispatch_url`, `notify_dispatch_secret`, `parent_digest_url` |
 | Send Email Hook | ✅ פעיל (3 באוגוסט) | הופעל אחרי שהדומיין אומת. נבדק על `recover` ועל הרשמה חדשה — 200 בשניהם |
 | `mailer_autoconfirm` | ✅ כובה (3 באוגוסט) | הרשמה חדשה מחייבת אישור במייל; המייל יוצא ממותג בעברית דרך ה־hook |
+| `uri_allow_list` | ✅ תוקן (3 באוגוסט) | ראו האזהרה על יעדי הפניה למטה |
+| `PUBLIC_SITE_URL` | ✅ עודכן (3 באוגוסט) | `https://bzb-2.vercel.app` → `https://bzb-web.com` |
+
+### ⛔ יעדי הפניה חייבים להיות ברשימת ההיתר, כולל wildcard
+
+מיד אחרי הפעלת ה־hook, קישור איפוס הסיסמה הוביל לעמוד הראשי במקום למסך בחירת
+הסיסמה. הסיבה לא הייתה ה־hook: `uri_allow_list` הכיל עבור דומיין הפרודקשן רק
+`https://bzb-web.com/auth/callback` — נתיב בודד, בלי `/**`. דפוסי wildcard היו
+קיימים רק לכתובות Vercel ול־localhost.
+
+`src/pages/Login.tsx` שולח `redirectTo: ${window.location.origin}/reset-password`.
+יעד שאינו תואם לרשימה **לא מייצר שגיאה** — Supabase פשוט מתעלם ממנו ומפנה
+ל־`site_url`, כלומר לשורש האתר. הכשל שקט לגמרי, ונראה כאילו המייל שבור.
+
+הרשימה מכילה עכשיו `https://bzb-web.com/**` ו־`https://www.bzb-web.com/**`.
+שתי הווריאציות דרושות: `site_url` הוא בלי `www`, אבל האתר מוגש גם מ־`www`,
+ו־`window.location.origin` מחזיר את מה שבשורת הכתובת.
+
+אימות בלי לחכות למייל — לייצר קישור ולבדוק לאן ה־`verify` מפנה:
+
+```bash
+curl -s -X POST "$SUPABASE_URL/auth/v1/admin/generate_link" \
+  -H "apikey: $SERVICE_ROLE" -H "Authorization: Bearer $SERVICE_ROLE" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"recovery","email":"you@example.com","redirect_to":"https://bzb-web.com/reset-password"}'
+# ואז: curl -s -o /dev/null -D - "<action_link>" | grep -i '^location:'
+```
+
+צריך לחזור `location: https://bzb-web.com/reset-password#access_token=…&type=recovery`.
+אם חוזר שורש האתר — היעד לא ברשימה.
 | cron הדוח היומי | ✅ מתוזמן | `parent-digest-hourly`, כל שעה ב־:05 |
 | משתני סביבה ב־Vercel | ✅ הוגדרו | כל חמשת משתני `VITE_*` בשלוש הסביבות — Production, Preview, Development |
 | דומיין שולח | ✅ בוצע (2 באוגוסט) | `bzb-web.com` מאומת; `RESEND_FROM_EMAIL="BZB <noreply@bzb-web.com>"`. נבדק בשליחה לכתובת שאינה בעל החשבון |

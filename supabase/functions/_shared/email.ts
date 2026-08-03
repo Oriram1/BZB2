@@ -54,7 +54,7 @@ export function escapeHtml(value: string) {
 }
 
 export function siteUrl() {
-  return (Deno.env.get("PUBLIC_SITE_URL") ?? "https://bzb-2.vercel.app").replace(/\/$/, "");
+  return (Deno.env.get("PUBLIC_SITE_URL") ?? "https://bzb-web.com").replace(/\/$/, "");
 }
 
 /**
