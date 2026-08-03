@@ -34,3 +34,7 @@ verify_jwt = true
 verify_jwt = true
 [functions.redeem-family-link-code]
 verify_jwt = true
+[functions.add-parent-contact]
+verify_jwt = true
+[functions.notify-parent-signin]
+verify_jwt = true
