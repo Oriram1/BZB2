@@ -1,0 +1,877 @@
+<title>דוח תיקונים — Busy Bee</title>
+<style>
+  :root {
+    --bg: #FFFBF5;
+    --surface: #FFF3E0;
+    --card: #FFFFFF;
+    --border: #E8D5B8;
+    --text: #2D1B00;
+    --text-secondary: #6B5A45;
+    --amber: #D4860A;
+    --amber-light: #FFF0D4;
+    --red: #B83220;
+    --red-light: #FDEAE7;
+    --green: #2E7D32;
+    --green-light: #E8F5E9;
+    --blue: #1565A0;
+    --blue-light: #E3F0FA;
+    --grey: #7B7060;
+    --grey-light: #F0ECE4;
+    --code-bg: #F5EDE0;
+    --shadow: 0 1px 3px rgba(45,27,0,.08);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1A1410;
+    --surface: #251E16;
+    --card: #2D251C;
+    --border: #453A2D;
+    --text: #F0E6D8;
+    --text-secondary: #A89880;
+    --amber: #F0A830;
+    --amber-light: #3D2E10;
+    --red: #E05545;
+    --red-light: #3A1A15;
+    --green: #5CB85F;
+    --green-light: #1A2E1A;
+    --blue: #5AA9E0;
+    --blue-light: #12283A;
+    --grey: #908575;
+    --grey-light: #332D24;
+    --code-bg: #332B20;
+    --shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1A1410;
+      --surface: #251E16;
+      --card: #2D251C;
+      --border: #453A2D;
+      --text: #F0E6D8;
+      --text-secondary: #A89880;
+      --amber: #F0A830;
+      --amber-light: #3D2E10;
+      --red: #E05545;
+      --red-light: #3A1A15;
+      --green: #5CB85F;
+      --green-light: #1A2E1A;
+      --blue: #5AA9E0;
+      --blue-light: #12283A;
+      --grey: #908575;
+      --grey-light: #332D24;
+      --code-bg: #332B20;
+      --shadow: 0 1px 3px rgba(0,0,0,.3);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.7;
+    direction: rtl;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  header {
+    text-align: center;
+    padding: 2rem 0 1.25rem;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+
+  header .logo { font-size: 2rem; margin-bottom: .25rem; }
+
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+
+  header .subtitle {
+    color: var(--text-secondary);
+    font-size: .9rem;
+    margin-top: .35rem;
+  }
+
+  .banner {
+    background: var(--green-light);
+    border: 1px solid var(--green);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .banner strong { color: var(--green); font-size: 1.05rem; }
+
+  .banner p {
+    font-size: .87rem;
+    color: var(--text-secondary);
+    margin-top: .3rem;
+  }
+
+  .bug-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+
+  .bug-header {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    margin-bottom: 1rem;
+  }
+
+  .bug-number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--green-light);
+    color: var(--green);
+    font-weight: 800;
+    font-size: .85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .bug-title-area { flex: 1; min-width: 0; }
+
+  .bug-title { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+
+  .status {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .2rem .6rem;
+    border-radius: 6px;
+    margin-top: .35rem;
+    letter-spacing: .02em;
+  }
+
+  .status--fixed { background: var(--green-light); color: var(--green); }
+  .status--redesign { background: var(--blue-light); color: var(--blue); }
+
+  .section-label {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-secondary);
+    margin-bottom: .3rem;
+    margin-top: 1rem;
+  }
+
+  .section-label:first-of-type { margin-top: 0; }
+
+  .bug-body p {
+    font-size: .92rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+
+  .bug-body ul {
+    margin: .4rem 1.25rem 0 0;
+    padding: 0;
+  }
+
+  .bug-body li {
+    font-size: .92rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: .3rem;
+  }
+
+  .code-ref {
+    display: inline;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: .8rem;
+    background: var(--code-bg);
+    padding: .15rem .4rem;
+    border-radius: 4px;
+    direction: ltr;
+    unicode-bidi: embed;
+    color: var(--amber);
+    white-space: nowrap;
+  }
+
+  .fix-box {
+    background: var(--green-light);
+    border-radius: 8px;
+    padding: .85rem 1rem;
+    margin-top: .85rem;
+    border-right: 3px solid var(--green);
+  }
+
+  .fix-box .fix-label {
+    font-size: .72rem;
+    font-weight: 800;
+    color: var(--green);
+    letter-spacing: .04em;
+    display: block;
+    margin-bottom: .25rem;
+  }
+
+  .fix-box p, .fix-box li { font-size: .88rem; color: var(--text); }
+
+  .fix-box ul { margin: .3rem 1.25rem 0 0; }
+
+  .note-box {
+    background: var(--amber-light);
+    border-radius: 8px;
+    padding: .85rem 1rem;
+    margin-top: .85rem;
+    border-right: 3px solid var(--amber);
+  }
+
+  .note-box .fix-label {
+    font-size: .72rem;
+    font-weight: 800;
+    color: var(--amber);
+    letter-spacing: .04em;
+    display: block;
+    margin-bottom: .25rem;
+  }
+
+  .note-box p { font-size: .88rem; color: var(--text); }
+
+  .files {
+    margin-top: .85rem;
+    padding-top: .75rem;
+    border-top: 1px dashed var(--border);
+  }
+
+  .files .section-label { margin-top: 0; }
+
+  .files ul { margin: 0; padding: 0; list-style: none; }
+
+  .files li {
+    font-size: .82rem;
+    margin-bottom: .25rem;
+    color: var(--text-secondary);
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: .65rem;
+    font-weight: 700;
+    padding: .1rem .4rem;
+    border-radius: 4px;
+    background: var(--grey-light);
+    color: var(--grey);
+    margin-inline-start: .35rem;
+  }
+
+  .tag--new { background: var(--green-light); color: var(--green); }
+
+  .summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .summary h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: .85rem; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: .75rem;
+  }
+
+  .summary-item {
+    text-align: center;
+    padding: .75rem;
+    background: var(--card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .summary-item .count {
+    font-size: 1.5rem;
+    font-weight: 800;
+    display: block;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-item .label {
+    font-size: .75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .count--green { color: var(--green); }
+  .count--amber { color: var(--amber); }
+  .count--blue { color: var(--blue); }
+
+  .checks {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .checks p { font-size: .87rem; color: var(--text-secondary); margin-bottom: .2rem; }
+
+  .todo {
+    background: var(--amber-light);
+    border: 1px solid var(--amber);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.25rem;
+  }
+
+  .todo h2 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; color: var(--amber); }
+
+  .todo li { font-size: .88rem; color: var(--text); margin-bottom: .35rem; line-height: 1.7; }
+
+  .todo ul { margin: 0 1.25rem 0 0; }
+
+  footer {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: .8rem;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo">🐝</div>
+    <h1>דוח תיקונים — Busy Bee</h1>
+    <p class="subtitle">3 באוגוסט 2026 &middot; 11 תקלות טופלו &middot; נפרס לייצור</p>
+  </header>
+
+  <div class="banner">
+    <strong>✅ 6 התקלות שדווחו + 5 שהתגלו תוך כדי</strong>
+    <p>27 בדיקות עוברות, בנייה נקייה. מוזג ל־main, 4 מיגרציות ו־13 פונקציות נפרסו לייצור.</p>
+  </div>
+
+  <!-- Bug 1 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">1</div>
+      <div class="bug-title-area">
+        <div class="bug-title">מתוך הפרופיל לא ניתן לגשת למטלות</div>
+        <span class="status status--fixed">תוקן</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        הבעיה הופיעה בשני מקומות נפרדים, ובסבב הראשון תיקנתי רק אחד מהם:
+      </p>
+      <ul>
+        <li>
+          אצל <strong>מבצע מטלות (Bee)</strong> — הוצגו בפרופיל רק 4 מספרים בלי שום קישור. אפשר היה לראות שיש 5 הגשות, אבל לא איך להגיע אליהן.
+        </li>
+        <li>
+          אצל <strong>מציע מטלות (Tasker)</strong> — ברשימת "המטלות שלי", כל כרטיס מטלה הציג שם, תיאור, צפיות ותשלום, אבל <strong>בלי שום דרך להיכנס לדף המטלה</strong>. הכפתור היחיד בכרטיס הופיע רק כשהיו מועמדויות ממתינות — כך שמטלה בלי נרשמים הייתה מבוי סתום מוחלט.
+        </li>
+      </ul>
+
+      <div class="section-label">מה תוקן</div>
+      <ul>
+        <li>כל כרטיס מטלה אצל ה־Tasker קיבל כפתור <strong>"לפרטי המטלה"</strong> שמופיע תמיד, וגם שם המטלה עצמו הפך לקישור.</li>
+        <li>כרטיסי הסטטיסטיקה — אצל ה־Bee <em>וגם</em> אצל ה־Tasker — הפכו ללחיצים ומובילים לדף הרלוונטי.</li>
+        <li>אצל ה־Bee נוסף כרטיס "המטלות שלי" עם 3 כפתורים: המועמדויות שלי, מטלות שאני מבצע, וחיפוש מטלות.</li>
+      </ul>
+
+      <div class="fix-box">
+        <span class="fix-label">התוצאה</span>
+        <p>מספר שאי אפשר לפעול לפיו הוא מבוי סתום. עכשיו לכל מטלה יש דרך כניסה שלא תלויה בשאלה אם יש לה נרשמים.</p>
+      </div>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul>
+          <li><span class="code-ref">src/pages/Profile.tsx</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 2 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">2</div>
+      <div class="bug-title-area">
+        <div class="bug-title">"בואו נתחיל" שולח לבחירת מנוי במקום למסך התחברות</div>
+        <span class="status status--fixed">תוקן</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        הכפתור הראשי בדף הנחיתה שלח ישירות לדף המחירים. משתמש חדש נחת על טבלת מחירים לפני שבכלל הבין מה האפליקציה עושה.
+      </p>
+      <p>
+        אותה תקלה הופיעה גם בתוך מסך ההרשמה: "הרשם כמציע מטלות" הוביל גם הוא למחירים במקום לטופס ההרשמה.
+      </p>
+
+      <div class="section-label">מה תוקן</div>
+      <ul>
+        <li>"בואו נתחיל" מוביל עכשיו ל־<span class="code-ref">/auth</span> — מסך הבחירה בין כניסה להרשמה.</li>
+        <li>"הרשם כמציע מטלות" מוביל ל־<span class="code-ref">/register/tasker</span>.</li>
+      </ul>
+
+      <div class="fix-box">
+        <span class="fix-label">אומת בדפדפן</span>
+        <p>הקישורים נבדקו בפועל בדף החי: <span class="code-ref">href="/auth"</span> ו־<span class="code-ref">href="/register/tasker"</span>.</p>
+      </div>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul>
+          <li><span class="code-ref">src/pages/Landing.tsx</span></li>
+          <li><span class="code-ref">src/pages/Auth.tsx</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 3 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">3</div>
+      <div class="bug-title-area">
+        <div class="bug-title">הורה נאלץ להירשם במקום לקבל הודעה כשהילד מתחבר</div>
+        <span class="status status--redesign">תוקן — פיצ'ר חדש</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        כדי לעקוב אחרי הילד, ההורה היה חייב לפתוח חשבון מלא, ואז לקבל קוד מהילד ולממש אותו. חשבון היה תנאי כניסה — גם להורה שרק רוצה לדעת שהילד משתמש באפליקציה.
+      </p>
+
+      <div class="section-label">מה נבנה</div>
+      <ul>
+        <li>טבלה חדשה <span class="code-ref">parent_contacts</span> — כתובת מייל של הורה שמקושרת לילד, <strong>בלי חשבון מאחוריה</strong>.</li>
+        <li>הילד מוסיף את המייל של ההורה מהפרופיל. ההורה מקבל מייל "אתם מחוברים" מיד.</li>
+        <li>כשהילד מתחבר — ההורה מקבל עדכון במייל. מוגבל לעדכון אחד ליום לכל כתובת, כדי שלא יהיה ספאם.</li>
+        <li>"הרשם כהורה" הוסר ממסך ההרשמה, והוחלף בהסבר קצר שאין צורך להירשם.</li>
+        <li>מסלול הקוד הישן נשאר, לטובת הורה שכן רוצה חשבון ומרכז הורים מלא.</li>
+      </ul>
+
+      <div class="section-label">אבטחה</div>
+      <ul>
+        <li>עד 3 כתובות לילד — אחרת הטבלה הופכת לשרת דיוור פתוח.</li>
+        <li>הילד יכול להוסיף ולהסיר בלבד, ולא לערוך. שדה ההשהיה (<span class="code-ref">last_notified_at</span>) לא נגיש ללקוח כלל, כדי שאי אפשר יהיה לאפס אותו ולהציף את ההורה.</li>
+        <li>שליחת המיילים כולה בצד שרת. הלקוח לעולם לא שולח מייל בעצמו.</li>
+      </ul>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו / נוספו</div>
+        <ul>
+          <li><span class="code-ref">supabase/migrations/20260803160000_parent_contacts_without_accounts.sql</span><span class="tag tag--new">חדש</span></li>
+          <li><span class="code-ref">supabase/functions/add-parent-contact/index.ts</span><span class="tag tag--new">חדש</span></li>
+          <li><span class="code-ref">supabase/functions/notify-parent-signin/index.ts</span><span class="tag tag--new">חדש</span></li>
+          <li><span class="code-ref">src/lib/parentNotify.ts</span><span class="tag tag--new">חדש</span></li>
+          <li><span class="code-ref">src/pages/Auth.tsx</span></li>
+          <li><span class="code-ref">src/pages/Profile.tsx</span></li>
+          <li><span class="code-ref">src/contexts/AuthContext.tsx</span></li>
+          <li><span class="code-ref">supabase/functions/_shared/notificationCopy.ts</span></li>
+          <li><span class="code-ref">supabase/config.toml</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 4 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">4</div>
+      <div class="bug-title-area">
+        <div class="bug-title">פרסום מטלה חדשה לא עובד</div>
+        <span class="status status--fixed">תוקן — נמצא השורש</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        זו הייתה התקלה המעניינת. הטופס מבקש "תיאור קצר (עד 120 תווים)", מגביל את השדה ל־120 ומציג מונה חי של <span class="code-ref">n/120</span>.
+      </p>
+      <p>
+        אבל בבסיס הנתונים, מאז המיגרציה הראשונה, עמודת <span class="code-ref">short_desc</span> הוגבלה ל־<strong>40 תווים בלבד</strong>.
+      </p>
+      <p>
+        כלומר: <strong>כל תיאור באורך 41 עד 120 תווים עבר את הטופס, הגיע לשרת, ונדחה.</strong> המשתמש ראה שגיאת Postgres גולמית והמטלה לא נוצרה. מי שכתב תיאור קצר במיוחד — הצליח. זו הסיבה שזה נראה אקראי.
+      </p>
+
+      <div class="section-label">מה תוקן</div>
+      <ul>
+        <li>מיגרציה שמרחיבה את המגבלה ל־120, כדי שתתאים למה שהטופס מבטיח.</li>
+        <li>נוספה בדיקה בצד הלקוח, כך שלא ניתן להתקדם עם תיאור ארוך מדי.</li>
+        <li>שגיאות Postgres הוחלפו בהודעות בעברית: "התיאור הקצר ארוך מדי — עד 120 תווים" במקום שם של constraint.</li>
+      </ul>
+
+      <div class="note-box">
+        <span class="fix-label">שים לב</span>
+        <p>
+          בחרתי להרחיב את בסיס הנתונים ל־120 ולא לצמצם את הטופס ל־40, כי הטופס הוא מה שהובטח למשתמש. אם אתה מעדיף דווקא תיאורים קצרים של 40 תווים — תגיד לי ואהפוך את הכיוון.
+        </p>
+      </div>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו / נוספו</div>
+        <ul>
+          <li><span class="code-ref">supabase/migrations/20260803150000_widen_task_short_desc.sql</span><span class="tag tag--new">חדש</span></li>
+          <li><span class="code-ref">src/pages/CreateTask.tsx</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 5 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">5</div>
+      <div class="bug-title-area">
+        <div class="bug-title">כפתור "פרסם מטלה" גדול מדי ולא פרופורציונלי</div>
+        <span class="status status--fixed">תוקן</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        כפתור הפרסום היה מוגדר עם טקסט מוגדל (<span class="code-ref">text-lg</span>) ו־padding רחב יותר מכפתורי הניווט שלידו, אז הוא נראה חורג ביחס אליהם.
+      </p>
+
+      <div class="section-label">מה תוקן</div>
+      <p>
+        הוסר <span class="code-ref">text-lg</span>, ה־padding הושווה ל־<span class="code-ref">px-7</span> ונוסף <span class="code-ref">min-w-[110px]</span> — בדיוק כמו כפתור "הבא". הכפתור עדיין בולט דרך הצבע והמשקל, בלי לשבור את השורה.
+      </p>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul>
+          <li><span class="code-ref">src/pages/CreateTask.tsx</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 6 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">6</div>
+      <div class="bug-title-area">
+        <div class="bug-title">שם מציע המטלה לא מופיע בדף המטלה</div>
+        <span class="status status--fixed">תוקן</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        הקוד שלף את פרופיל המפרסם עם <span class="code-ref">.single()</span>, שנכשל אם אין רשומה. וההצגה הייתה מותנית — אם השליפה לא החזירה כלום, <strong>כל כרטיס "פורסם על ידי" נעלם</strong>, כולל התמונה וכפתור המעבר לפרופיל.
+      </p>
+      <p>
+        כלומר פרופיל חסר או שם ריק לא גרם לשם חסר — הוא גרם לכך שאי אפשר לדעת בכלל מי פרסם.
+      </p>
+
+      <div class="section-label">מה תוקן</div>
+      <ul>
+        <li>מעבר ל־<span class="code-ref">.maybeSingle()</span> — פרופיל חסר הוא מצב תקין, לא שגיאה.</li>
+        <li>הכרטיס מוצג תמיד. למטלה תמיד יש מפרסם.</li>
+        <li>שם ריק נופל בחזרה ל־"משתמש Busy Bee" במקום להישאר ריק.</li>
+      </ul>
+
+      <div class="fix-box">
+        <span class="fix-label">התוצאה</span>
+        <p>פרופיל חסר עולה עכשיו את השם בלבד — לא את כל הסעיף של "מי פרסם את זה".</p>
+      </div>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul>
+          <li><span class="code-ref">src/pages/TaskDetail.tsx</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 7 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">7</div>
+      <div class="bug-title-area">
+        <div class="bug-title">מטלות מחוקות הוצגו כאילו הן קיימות</div>
+        <span class="status status--fixed">תוקן — התגלה תוך כדי</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">איך זה התגלה</div>
+      <p>
+        אחרי שהוספתי את כפתור "לפרטי המטלה", לחיצה עליו החזירה <strong>"המטלה לא נמצאה"</strong>. בדקתי את שתי המטלות ישירות מול בסיס הנתונים:
+      </p>
+      <ul>
+        <li><span class="code-ref">9d830fb3…</span> — <span class="code-ref">archived_at</span> מוגדר ל־2 באוגוסט. <strong>המטלה מחוקה.</strong></li>
+        <li><span class="code-ref">297f7448…</span> — <span class="code-ref">archived_at</span> ריק. תקינה.</li>
+      </ul>
+
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        מחיקה באפליקציה הזו היא <em>ארכוב</em>: השורה לא נמחקת, רק מסומנת ב־<span class="code-ref">archived_at</span>. אבל רק 2 מסכים מתוך 9 סיננו את זה.
+      </p>
+      <p>
+        התוצאה: הפרופיל הציג מטלה מחוקה, ודף המטלה — שכן סינן — סירב לפתוח אותה. גם המספרים היו שגויים: "סה״כ מטלות 2" ו"פתוחות 2", כשבפועל יש רק אחת.
+      </p>
+      <p>
+        ב־<span class="code-ref">task_applications</span> המצב היה גרוע יותר: <strong>אף שאילתה לא סיננה</strong>, למרות שהמחיקה מארכבת גם אותן.
+      </p>
+
+      <div class="section-label">מה תוקן</div>
+      <ul>
+        <li>17 שאילתות ב־7 קבצים קיבלו <span class="code-ref">.is("archived_at", null)</span> — כולל הפרופיל, המטלות שלי, פרופיל ציבורי, מרכז ההורים ומסך האדמין.</li>
+        <li>גם מסלולי הכתיבה — ביטול מטלה ואישור מועמדות — כדי שלא יפעלו על רשומה מחוקה.</li>
+        <li>נוספה בדיקת invariant שנכשלת אם שאילתה עתידית תשכח את הסינון.</li>
+      </ul>
+
+      <div class="fix-box">
+        <span class="fix-label">התוצאה</span>
+        <p>המטלה המחוקה תיעלם מהרשימה אחרי רענון, והמונים ירדו ל־1. הבדיקה החדשה מונעת חזרה של אותה סחיפה.</p>
+      </div>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul>
+          <li><span class="code-ref">src/pages/Profile.tsx</span> &middot; <span class="code-ref">MyTasks.tsx</span> &middot; <span class="code-ref">Admin.tsx</span></li>
+          <li><span class="code-ref">PublicProfile.tsx</span> &middot; <span class="code-ref">ParentalHub.tsx</span> &middot; <span class="code-ref">TaskDetail.tsx</span></li>
+          <li><span class="code-ref">src/architecture-invariants.test.ts</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Bug 8 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">8</div>
+      <div class="bug-title-area">
+        <div class="bug-title">התחברות Google נכשלה על nonce</div>
+        <span class="status status--fixed">תוקן</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        <span class="code-ref">Passed nonce and nonce in id_token should either both exist or not</span> ו־400 על החלפת האסימון.
+      </p>
+      <p>
+        FedCM מייצר nonce משלו ומכניס אותו ל־id_token. לכן <strong>לא לשלוח nonce היא לא הבחירה הנייטרלית שהיא נראית</strong> — האסימון הכיל אחד, הבקשה לא, והאימות נפל.
+      </p>
+
+      <div class="section-label">מה תוקן</div>
+      <p>
+        nonce גולמי נשלח ל־Supabase, וה־SHA-256 שלו ל־Google. זה הצימוד ש־Supabase מאמת.
+      </p>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul><li><span class="code-ref">src/lib/googleAuth.ts</span></li></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 9 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">9</div>
+      <div class="bug-title-area">
+        <div class="bug-title">401 ואז 400 על user_roles אחרי התחברות</div>
+        <span class="status status--fixed">תוקן</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">שרשרת הכשל</div>
+      <p>
+        Supabase מודיע למנויים מתוך <span class="code-ref">signInWithIdToken</span>, לפני שה־session נשמר. הקריאה הראשונה יצאה בלי טוקן וחזרה 401.
+      </p>
+      <p>
+        <span class="code-ref">fetchRoles</span> בלע את השגיאה והחזיר רשימה ריקה. זה נקרא כ"חשבון חדש", ונשלח תיקון הרשמה לחשבון <strong>שכבר היה לו תפקיד</strong> — וה־trigger דחה, נכון, ב־<span class="code-ref">one_role_per_user</span>.
+      </p>
+
+      <div class="fix-box">
+        <span class="fix-label">התיקון</span>
+        <p>קריאה שנכשלה מובחנת עכשיו מקריאה ריקה, ומנוסה שוב במקום לפעול לפיה. אין יותר כתיבה על סמך ניחוש.</p>
+      </div>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul><li><span class="code-ref">src/contexts/AuthContext.tsx</span></li></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 10 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">10</div>
+      <div class="bug-title-area">
+        <div class="bug-title">שם המפרסם לא הופיע בדף המטלה — הסיבה האמיתית</div>
+        <span class="status status--fixed">תוקן</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה שתקלה 6 פספסה</div>
+      <p>
+        תקלה 6 הוסיפה fallback, אבל השם עדיין לא הופיע. הסיבה עמוקה יותר: <strong>RLS על <span class="code-ref">profiles</span> מרשה קריאה רק אם יש לך קשר לבעלים</strong> — פרופיל שלך, אדמין, ילד מקושר, בן־שיח, או יחסי מועמדות.
+      </p>
+      <p>
+        לגולש שרואה מטלה אין אף אחד מהם. השליפה חזרה ריקה.
+      </p>
+
+      <div class="note-box">
+        <span class="fix-label">העיקרון שגרם לזה</span>
+        <p>
+          קריאה שנחסמת ב־RLS <strong>לא זורקת שגיאה — היא מחזירה אפס שורות</strong>, בדיוק כאילו השורה לא קיימת. אין 403 ואין error. זה מה שהסתיר את התקלה.
+        </p>
+      </div>
+
+      <div class="section-label">מה תוקן</div>
+      <p>
+        מעבר ל־<span class="code-ref">get_public_profile</span> — RPC עם SECURITY DEFINER שמחזיר רק עמודות ציבוריות. אותה תקלה נמצאה ותוקנה גם ב־<span class="code-ref">ParentalHub</span>, שם להורה אין קשר למפרסם.
+      </p>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו</div>
+        <ul>
+          <li><span class="code-ref">src/pages/TaskDetail.tsx</span> &middot; <span class="code-ref">ParentalHub.tsx</span></li>
+          <li><span class="code-ref">docs/rls-and-data-access.md</span><span class="tag tag--new">חדש</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bug 11 -->
+  <div class="bug-card">
+    <div class="bug-header">
+      <div class="bug-number">11</div>
+      <div class="bug-title-area">
+        <div class="bug-title">מיילים פנו לכולם ב־"הגיש/ה"</div>
+        <span class="status status--redesign">תוקן — פיצ'ר חדש</span>
+      </div>
+    </div>
+    <div class="bug-body">
+      <div class="section-label">מה הייתה הבעיה</div>
+      <p>
+        עברית מטה פעלים ושמות לפי מין, וכל הודעה שהאפליקציה שלחה חצתה את ההבדל בלוכסן. זה נקרא כמו מכתב טפסים — ולשם שהאפליקציה כבר יודעת, זה היה נמנע.
+      </p>
+
+      <div class="section-label">ההפרדה שמחזיקה את זה</div>
+      <p>
+        בכל הודעה מופיעים <strong>שני אנשים</strong>, והם נפתרים ממקורות שונים:
+      </p>
+      <ul>
+        <li><strong>נמען</strong> — "תקבל / תקבלי / תקבלו". מגיע מהפרופיל שלו.</li>
+        <li><strong>נושא</strong> — "הגיש / הגישה / הגישו". נצרב לפיילואד ההתראה בזמן האירוע, ע"י אותו SELECT שכבר צרב את השם.</li>
+      </ul>
+      <p>
+        הורה ללא חשבון מנוסח ברבים — וזה גם מה שמקבל מי שבחר לא לציין.
+      </p>
+
+      <div class="section-label">מה נבנה</div>
+      <ul>
+        <li><span class="code-ref">profiles.gender</span> — enum. קיימים הוסבו ל־<span class="code-ref">male</span>, חדשים נשאלים בהרשמה.</li>
+        <li>מילון אחד עם 16 פעלים ושמות × 3 צורות, ממוראר לצד Deno.</li>
+        <li>3 טריגרים צורבים מגדר־נושא, <span class="code-ref">notify-dispatch</span> קורא מגדר־נמען פעם אחת.</li>
+        <li>בורר 3 אפשרויות בהרשמה ובעריכת פרופיל.</li>
+      </ul>
+
+      <div class="fix-box">
+        <span class="fix-label">איך זה נראה עכשיו</span>
+        <p>
+          "איתי קרקסון <strong>ביקש</strong> שתקבלו עדכונים על הפעילות <strong>שלו</strong>" — הילד בזכר כי ידוע, ההורה ברבים כי אין לו חשבון.
+        </p>
+      </div>
+
+      <div class="note-box">
+        <span class="fix-label">לוכסן נשאר במקום אחד</span>
+        <p>
+          כשבאמת לא ידוע מי — למשל "הילד/ה שלך" בלי פרופיל. זו כל הנקודה: לוכסן מסמן חוסר ידיעה אמיתי, לא עצלות.
+        </p>
+      </div>
+
+      <div class="files">
+        <div class="section-label">קבצים ששונו / נוספו</div>
+        <ul>
+          <li><span class="code-ref">src/lib/gender.ts</span> &middot; <span class="code-ref">_shared/gender.ts</span><span class="tag tag--new">חדש</span></li>
+          <li><span class="code-ref">20260803170000_profile_gender.sql</span><span class="tag tag--new">חדש</span></li>
+          <li><span class="code-ref">20260803171000_notification_subject_gender.sql</span><span class="tag tag--new">חדש</span></li>
+          <li>שני קבצי <span class="code-ref">notificationCopy.ts</span> &middot; 4 edge functions &middot; <span class="code-ref">Register.tsx</span> &middot; <span class="code-ref">Profile.tsx</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary">
+    <h2>סיכום</h2>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <span class="count count--green">11</span>
+        <span class="label">תקלות תוקנו</span>
+      </div>
+      <div class="summary-item">
+        <span class="count count--blue">9</span>
+        <span class="label">commits</span>
+      </div>
+      <div class="summary-item">
+        <span class="count count--amber">4</span>
+        <span class="label">מיגרציות</span>
+      </div>
+      <div class="summary-item">
+        <span class="count count--green">27</span>
+        <span class="label">בדיקות עוברות</span>
+      </div>
+    </div>
+
+    <div class="checks">
+      <p>✅ <strong>בנייה:</strong> <span class="code-ref">npm run build</span> — עוברת</p>
+      <p>✅ <strong>בדיקות:</strong> <span class="code-ref">npm test</span> — 27 מתוך 27 (כולל 5 invariants חדשים)</p>
+      <p>✅ <strong>Lint:</strong> נקי בכל הקבצים ששונו</p>
+      <p>✅ <strong>דפדפן:</strong> תקלות 2 ו־3 אומתו בדף החי, בלי שגיאות בקונסול</p>
+      <p>✅ <strong>גיט:</strong> 9 commits, מוזג ונדחף ל־<span class="code-ref">main</span></p>
+      <p>✅ <strong>ייצור:</strong> 4 מיגרציות רצו, 13 edge functions נפרסו</p>
+    </div>
+  </div>
+
+  <div class="todo">
+    <h2>⚠️ מה עדיין פתוח</h2>
+    <ul>
+      <li>
+        <strong>אווטאר הדבורה שבור</strong> — <span class="code-ref">AvatarPicker</span> שומר את ה־URL שוויט מייצר, שכולל content hash. בייצור זה עובד; בשרת פיתוח הנתיב לא קיים, וכל בילד שמשנה את ה־hash ימחק את האווטאר של כל המשתמשים בלי דרך לשחזר. צריך לשמור מזהה יציב ולפתור אותו ב־render.
+      </li>
+      <li>
+        <strong>בדיקת "טלפון תפוס" לא עובדת</strong> — <span class="code-ref">Register.tsx:115</span> סופר שורות ש־RLS מסתיר, ולכן תמיד מחזיר 0. אותה משפחה כמו תקלה 10. צריך RPC.
+      </li>
+      <li>
+        <strong>Google <span class="code-ref">origin is not allowed</span></strong> — <span class="code-ref">http://localhost:8080</span> חסר ב־Authorized JavaScript origins. לא בקוד, בקונסולה של Google Cloud.
+      </li>
+      <li>
+        <strong>3 שגיאות TypeScript</strong> ב־<span class="code-ref">MobileNav.tsx</span> וב־<span class="code-ref">MyTasks.tsx</span>, קיימות מלפני העבודה הזו. הבנייה עוברת כי <span class="code-ref">vite build</span> לא מריצה בדיקת טיפוסים.
+      </li>
+    </ul>
+  </div>
+
+  <footer>
+    Busy Bee &middot; דוח תיקונים &middot; 2026-08-03
+  </footer>
+</div>

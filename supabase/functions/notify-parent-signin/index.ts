@@ -65,13 +65,23 @@ Deno.serve(async (req) => {
         });
         // Stamped only on success, so a failed send is retried next sign-in
         // instead of being silently swallowed for a day.
-        await admin
+        const { error: stampError } = await admin
           .from("parent_contacts")
           .update({ last_notified_at: new Date().toISOString() })
           .eq("id", contact.id);
+        if (stampError) {
+          console.error("parent_notification_stamp_failed", {
+            contactId: contact.id,
+            error: stampError.message,
+          });
+        }
         notified += 1;
-      } catch {
+      } catch (error) {
         // One bad address must not stop the rest.
+        console.error("parent_notification_send_failed", {
+          contactId: contact.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
