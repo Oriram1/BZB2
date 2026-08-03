@@ -517,6 +517,35 @@ export type Database = {
         }
         Relationships: []
       }
+      task_views: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          viewer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          viewer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_views_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           archived_at: string | null
@@ -693,6 +722,7 @@ export type Database = {
         Args: { object_name: string }
         Returns: boolean
       }
+      record_task_view: { Args: { _task_id: string }; Returns: number }
       redeem_family_link_code: {
         Args: { _code_hash: string; _parent_user_id: string }
         Returns: string

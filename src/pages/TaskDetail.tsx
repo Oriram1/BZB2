@@ -106,15 +106,15 @@ const TaskDetail = () => {
       }
       setTask(data);
 
-      // Increment view count
-      if (!user || data.creator_id !== user.id) {
-        try {
-          await supabase
-            .from("tasks")
-            .update({ views_count: (data.views_count || 0) + 1 })
-            .eq("id", id);
-        } catch (e) {
-          // Ignore view increment failure
+      // Counting happens server-side: one view per person, never the creator's
+      // own, and repeat visits do not add up. Failure is silent — a missed
+      // count is not worth interrupting the page for.
+      if (user && data.creator_id !== user.id) {
+        const { data: viewCount, error: viewError } = await supabase.rpc("record_task_view", {
+          _task_id: id,
+        });
+        if (!viewError && typeof viewCount === "number") {
+          setTask((current) => (current && current.id === id ? { ...current, views_count: viewCount } : current));
         }
       }
 
