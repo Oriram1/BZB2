@@ -23,6 +23,9 @@ import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { logUserActivity } from "@/lib/activityLog";
 
+/** Kept in step with the tasks_short_desc_length constraint on public.tasks. */
+const SHORT_DESC_MAX = 120;
+
 const steps = [
   { id: 1, label: "קטגוריה", icon: Tag },
   { id: 2, label: "פרטים", icon: FileText },
@@ -98,7 +101,7 @@ const CreateTask = () => {
   const canProceed = () => {
     switch (step) {
       case 1: return !!form.category;
-      case 2: return !!form.taskName && !!form.shortDesc;
+      case 2: return !!form.taskName && !!form.shortDesc && form.shortDesc.length <= SHORT_DESC_MAX;
       case 3: return !!form.payment;
       case 4: {
         const duration = Number(form.duration);
@@ -141,7 +144,7 @@ const CreateTask = () => {
     }).select("id").maybeSingle();
     setLoading(false);
     if (error) {
-      toast.error("שגיאה בפרסום המטלה: " + error.message);
+      toast.error(publishErrorMessage(error));
     } else {
       logUserActivity(user.id, "task_created", {
         entityType: "task",
@@ -578,7 +581,7 @@ const CreateTask = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="gradient-honey text-primary-foreground rounded-full px-8 h-12 border-none font-extrabold hover:scale-105 transition-transform text-lg"
+                className="gradient-honey text-primary-foreground rounded-full px-7 h-12 border-none font-extrabold min-w-[110px] hover:scale-105 transition-transform"
               >
                 {loading ? "מפרסם..." : "פרסם מטלה 🐝"}
               </Button>
@@ -588,6 +591,21 @@ const CreateTask = () => {
       </div>
     </div>
   );
+};
+
+/**
+ * Postgres speaks in constraint names. Say what the person can actually do
+ * about it instead, and keep the raw message only for the cases we have not
+ * met yet.
+ */
+const publishErrorMessage = (error: { message: string; code?: string }) => {
+  if (error.code === "23514" || error.message.includes("short_desc")) {
+    return `התיאור הקצר ארוך מדי — עד ${SHORT_DESC_MAX} תווים.`;
+  }
+  if (error.code === "42501") {
+    return "רק משתמש מסוג מציע מטלות יכול לפרסם מטלה.";
+  }
+  return "שגיאה בפרסום המטלה: " + error.message;
 };
 
 const formatDurationSummary = (value: string, unit: string) => {
