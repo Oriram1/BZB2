@@ -718,7 +718,7 @@ export default function Admin() {
 
       <main className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 w-full grid grid-cols-4 h-12 rounded-xl">
+          <TabsList dir="rtl" className="mb-6 w-full grid grid-cols-4 h-12 rounded-xl">
             <TabsTrigger value="overview" className="rounded-lg font-bold text-sm">סקירה</TabsTrigger>
             <TabsTrigger value="users" className="rounded-lg font-bold text-sm">משתמשים</TabsTrigger>
             <TabsTrigger value="family" className="rounded-lg font-bold text-sm">משפחה</TabsTrigger>
