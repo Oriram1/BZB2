@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ import {
   Link as LinkIcon,
   Loader2,
   MailCheck,
+  RefreshCw,
   Shield,
   Trash2,
   UserCheck,
@@ -78,7 +80,7 @@ interface DashboardStats {
   parentLinks: number;
 }
 
-type DrilldownKind = "users" | "openTasks" | "activeTasks" | "parentLinks";
+type DrilldownKind = "openTasks" | "activeTasks";
 
 interface DrilldownItem {
   id: string;
@@ -110,24 +112,12 @@ interface AdminUsersResponse {
 
 type UserAdminAction = "block" | "unblock" | "delete" | "confirm_email";
 
-/**
- * Accounts sharing one phone number.
- *
- * Sharing is allowed on purpose — a parent and child, or two siblings, may use
- * one phone — so registration only warns. This view is the counterweight: it
- * surfaces every shared number so an admin can tell a family apart from one
- * person farming duplicate accounts.
- */
 interface DuplicatePhoneGroup {
   phone: string;
   accounts: DrilldownItem[];
 }
 
 const drilldownCopy: Record<DrilldownKind, { title: string; description: string }> = {
-  users: {
-    title: "כל המשתמשים",
-    description: "המשתמשים הרשומים במערכת",
-  },
   openTasks: {
     title: "מטלות פתוחות",
     description: "מטלות שממתינות לביצוע",
@@ -135,10 +125,6 @@ const drilldownCopy: Record<DrilldownKind, { title: string; description: string 
   activeTasks: {
     title: "מטלות בתהליך",
     description: "מטלות שאושרו או נמצאות בביצוע",
-  },
-  parentLinks: {
-    title: "קישורי משפחה",
-    description: "הקשרים הפעילים בין הורים לילדים",
   },
 };
 
@@ -165,6 +151,7 @@ const fullName = (profile: Pick<ProfileOption, "first_name" | "last_name">) =>
 export default function Admin() {
   const { user, roles, loading } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("overview");
   const [identifier, setIdentifier] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -192,6 +179,10 @@ export default function Admin() {
     action: UserAdminAction;
   } | null>(null);
   const [managingUser, setManagingUser] = useState(false);
+  const [usersList, setUsersList] = useState<DrilldownItem[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState(false);
+  const [usersFilter, setUsersFilter] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [duplicatePhones, setDuplicatePhones] = useState<DuplicatePhoneGroup[]>([]);
   const [duplicatesLoading, setDuplicatesLoading] = useState(false);
@@ -303,6 +294,40 @@ export default function Admin() {
     setStatsLoading(false);
   };
 
+  const loadUsersList = async () => {
+    setUsersLoading(true);
+    setUsersError(false);
+    try {
+      const { data, error } = await supabase.functions.invoke<AdminUsersResponse>(
+        "admin-manage-users",
+        { body: { action: "list" } },
+      );
+      if (error || data?.error) throw error ?? new Error(data?.error);
+
+      setUsersList(
+        (data?.users ?? []).map((adminUser) => ({
+          id: adminUser.id,
+          title: adminUser.displayName,
+          meta: adminUser.blocked
+            ? "חסום"
+            : adminUser.roles.length > 0
+              ? adminUser.roles.join(", ")
+              : "ללא תפקיד",
+          detail: `${adminUser.email || "ללא אימייל"} · הצטרפות: ${formatDate(adminUser.createdAt)}`,
+          href: `/profile/${adminUser.id}`,
+          email: adminUser.email,
+          emailConfirmed: adminUser.emailConfirmed,
+          blocked: adminUser.blocked,
+          manageable: !adminUser.roles.includes("admin"),
+        })),
+      );
+    } catch {
+      setUsersError(true);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   const searchProfiles = async (
     query: string,
     setter: (rows: ProfileOption[]) => void,
@@ -378,8 +403,6 @@ export default function Admin() {
             manageable: !row.roles.includes("admin"),
           }));
 
-        // A profile whose auth user is gone leaves a stale row; without this
-        // the group could show a single account and read as a false positive.
         if (accounts.length > 1) groups.push({ phone, accounts });
       }
 
@@ -399,107 +422,42 @@ export default function Admin() {
       void loadLinks();
       void loadStats();
       void loadDuplicatePhones();
+      void loadUsersList();
     }
   }, [isAdmin, loadDuplicatePhones]);
 
   const openDrilldown = async (kind: DrilldownKind) => {
     setActiveDrilldown(kind);
     setDrilldownItems([]);
-    setSelectedUserIds([]);
-    lastSelectedUserIdRef.current = null;
     setDrilldownError(false);
     setDrilldownLoading(true);
 
     try {
-      if (kind === "users") {
-        const { data, error } = await supabase.functions.invoke<AdminUsersResponse>(
-          "admin-manage-users",
-          { body: { action: "list" } },
-        );
-        if (error || data?.error) throw error ?? new Error(data?.error);
-
-        setDrilldownItems(
-          (data?.users ?? []).map((adminUser) => ({
-            id: adminUser.id,
-            title: adminUser.displayName,
-            meta: adminUser.blocked
-              ? "חסום"
-              : adminUser.roles.length > 0
-                ? adminUser.roles.join(", ")
-                : "ללא תפקיד",
-            detail: `${adminUser.email || "ללא אימייל"} · הצטרפות: ${formatDate(adminUser.createdAt)}`,
-            href: `/profile/${adminUser.id}`,
-            email: adminUser.email,
-            emailConfirmed: adminUser.emailConfirmed,
-            blocked: adminUser.blocked,
-            manageable: !adminUser.roles.includes("admin"),
-          })),
-        );
-        return;
-      }
-
-      if (kind === "openTasks" || kind === "activeTasks") {
-        let query = supabase
-          .from("tasks")
-          .select("id, name, status, location, created_at")
-          .order("created_at", { ascending: false });
-
-        query =
-          kind === "openTasks"
-            ? query.eq("status", "open")
-            : query.in("status", ["accepted", "in_progress"]);
-
-        const { data, error } = await query;
-        if (error) throw error;
-
-        setDrilldownItems(
-          (data ?? []).map((task) => ({
-            id: task.id,
-            title: task.name,
-            meta:
-              task.status === "open"
-                ? "פתוחה"
-                : task.status === "accepted"
-                  ? "אושרה"
-                  : "בתהליך",
-            detail: `${task.location || "ללא מיקום"} · ${formatDate(task.created_at)}`,
-            href: `/task/${task.id}`,
-          })),
-        );
-        return;
-      }
-
-      const { data: linkRows, error: linksError } = await supabase
-        .from("parent_links")
-        .select("id, parent_user_id, child_user_id, created_at")
+      let query = supabase
+        .from("tasks")
+        .select("id, name, status, location, created_at")
         .order("created_at", { ascending: false });
 
-      if (linksError) throw linksError;
+      query =
+        kind === "openTasks"
+          ? query.eq("status", "open")
+          : query.in("status", ["accepted", "in_progress"]);
 
-      const ids = Array.from(
-        new Set((linkRows ?? []).flatMap((link) => [link.parent_user_id, link.child_user_id])),
-      );
-      const { data: profileRows, error: profilesError } = ids.length
-        ? await supabase
-            .from("profiles")
-            .select("user_id, first_name, last_name, age")
-            .in("user_id", ids)
-        : { data: [], error: null };
-
-      if (profilesError) throw profilesError;
-
-      const namesById = (profileRows ?? []).reduce<Record<string, string>>((acc, profile) => {
-        acc[profile.user_id] = fullName(profile);
-        return acc;
-      }, {});
+      const { data, error } = await query;
+      if (error) throw error;
 
       setDrilldownItems(
-        (linkRows ?? []).map((link) => ({
-          id: link.id,
-          title: namesById[link.parent_user_id] || "הורה ללא שם",
-          meta: `ילד: ${namesById[link.child_user_id] || "ללא שם"}`,
-          detail: `נוצר בתאריך ${formatDate(link.created_at)}`,
-          href: `/profile/${link.child_user_id}`,
+        (data ?? []).map((task) => ({
+          id: task.id,
+          title: task.name,
+          meta:
+            task.status === "open"
+              ? "פתוחה"
+              : task.status === "accepted"
+                ? "אושרה"
+                : "בתהליך",
+          detail: `${task.location || "ללא מיקום"} · ${formatDate(task.created_at)}`,
+          href: `/task/${task.id}`,
         })),
       );
     } catch {
@@ -539,7 +497,7 @@ export default function Admin() {
             : "חסימת המשתמש הוסרה";
       toast.success(successMessage);
       setPendingUserAction(null);
-      if (activeDrilldown === "users") await openDrilldown("users");
+      await loadUsersList();
       await loadStats();
       await loadAudit();
       await loadDuplicatePhones();
@@ -578,13 +536,21 @@ export default function Admin() {
 
       setBulkDeleteOpen(false);
       setSelectedUserIds([]);
-      await openDrilldown("users");
+      await loadUsersList();
       await loadStats();
       await loadAudit();
     } finally {
       setManagingUser(false);
     }
   };
+
+  const selectableUserIds = usersList
+    .filter((item) => item.manageable && item.id !== user?.id)
+    .map((item) => item.id);
+
+  const allSelectableUsersSelected =
+    selectableUserIds.length > 0 &&
+    selectableUserIds.every((id) => selectedUserIds.includes(id));
 
   const updateUserSelection = (userId: string, selected: boolean, selectRange: boolean) => {
     const anchorId = lastSelectedUserIdRef.current;
@@ -721,15 +687,13 @@ export default function Admin() {
     }
   };
 
-  const selectableUserIds =
-    activeDrilldown === "users"
-      ? drilldownItems
-          .filter((item) => item.manageable && item.id !== user?.id)
-          .map((item) => item.id)
-      : [];
-  const allSelectableUsersSelected =
-    selectableUserIds.length > 0 &&
-    selectableUserIds.every((id) => selectedUserIds.includes(id));
+  const filteredUsers = usersFilter.trim()
+    ? usersList.filter(
+        (item) =>
+          item.title.includes(usersFilter) ||
+          (item.email ?? "").toLowerCase().includes(usersFilter.toLowerCase()),
+      )
+    : usersList;
 
   if (loading || !isAdmin) return null;
 
@@ -752,352 +716,597 @@ export default function Admin() {
         </div>
       </header>
 
-      <main className="relative z-[1] max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <section aria-labelledby="overview-title">
-          <h2 id="overview-title" className="mb-3 text-lg font-extrabold">תמונת מצב</h2>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="משתמשים" value={stats.users} loading={statsLoading} icon={Users} onClick={() => void openDrilldown("users")} />
-            <StatCard label="מטלות פתוחות" value={stats.openTasks} loading={statsLoading} icon={ClipboardList} onClick={() => void openDrilldown("openTasks")} />
-            <StatCard label="מטלות בתהליך" value={stats.activeTasks} loading={statsLoading} icon={Loader2} onClick={() => void openDrilldown("activeTasks")} />
-            <StatCard label="קישורי משפחה" value={stats.parentLinks} loading={statsLoading} icon={LinkIcon} onClick={() => void openDrilldown("parentLinks")} />
-          </div>
-        </section>
+      <main className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6 w-full grid grid-cols-4 h-12 rounded-xl">
+            <TabsTrigger value="overview" className="rounded-lg font-bold text-sm">סקירה</TabsTrigger>
+            <TabsTrigger value="users" className="rounded-lg font-bold text-sm">משתמשים</TabsTrigger>
+            <TabsTrigger value="family" className="rounded-lg font-bold text-sm">משפחה</TabsTrigger>
+            <TabsTrigger value="log" className="rounded-lg font-bold text-sm">לוג</TabsTrigger>
+          </TabsList>
 
-        <section aria-labelledby="duplicates-title">
-          <div className="mb-3">
-            <h2 id="duplicates-title" className="text-lg font-extrabold">מספרי טלפון משותפים</h2>
-            <p className="text-sm text-muted-foreground">
-              חשבונות שנרשמו עם אותו מספר. שיתוף בין הורה לילד או בין אחים הוא תקין —
-              ריבוי חשבונות של אותו אדם הוא לא.
-            </p>
-          </div>
-
-          <Card className="p-5 border-border/80 shadow-sm">
-            {duplicatesLoading ? (
-              <div className="space-y-3">
-                {[0, 1].map((index) => <Skeleton key={index} className="h-24 w-full rounded-2xl" />)}
+          {/* ─── Overview Tab ─── */}
+          <TabsContent value="overview" className="space-y-6">
+            <section aria-labelledby="overview-title">
+              <h2 id="overview-title" className="mb-3 text-lg font-extrabold">תמונת מצב</h2>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <StatCard label="משתמשים" value={stats.users} loading={statsLoading} icon={Users} onClick={() => setActiveTab("users")} />
+                <StatCard label="מטלות פתוחות" value={stats.openTasks} loading={statsLoading} icon={ClipboardList} onClick={() => void openDrilldown("openTasks")} />
+                <StatCard label="מטלות בתהליך" value={stats.activeTasks} loading={statsLoading} icon={Loader2} onClick={() => void openDrilldown("activeTasks")} />
+                <StatCard label="קישורי משפחה" value={stats.parentLinks} loading={statsLoading} icon={LinkIcon} onClick={() => setActiveTab("family")} />
               </div>
-            ) : duplicatesError ? (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">לא הצלחתי לטעון את הרשימה.</p>
-                <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => void loadDuplicatePhones()}>
-                  נסה שוב
+            </section>
+          </TabsContent>
+
+          {/* ─── Users Tab ─── */}
+          <TabsContent value="users" className="space-y-6">
+            <section>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-extrabold">כל המשתמשים</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {usersList.length > 0 && `${usersList.length} משתמשים רשומים`}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl"
+                  disabled={usersLoading}
+                  onClick={() => void loadUsersList()}
+                >
+                  <RefreshCw className={`h-4 w-4 ${usersLoading ? "animate-spin" : ""}`} />
+                  רענון
                 </Button>
               </div>
-            ) : duplicatePhones.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                אין כרגע מספרים משותפים 🎉
-              </p>
-            ) : (
-              <ul className="space-y-4">
-                {duplicatePhones.map((group) => (
-                  <li key={group.phone} className="rounded-2xl border border-border/80 overflow-hidden">
-                    <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-2.5">
-                      <span dir="ltr" className="font-bold tabular-nums">{formatPhone(group.phone)}</span>
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        {group.accounts.length} חשבונות
-                      </span>
-                    </div>
 
-                    <ul className="divide-y divide-border">
-                      {group.accounts.map((account) => (
-                        <li key={account.id} className="px-4 py-3">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="font-bold">
-                                {account.title}
-                                {account.blocked && (
-                                  <span className="mr-2 rounded-lg bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive">
-                                    חסום
+              <div className="mb-3">
+                <Input
+                  placeholder="חיפוש לפי שם או אימייל..."
+                  value={usersFilter}
+                  onChange={(e) => setUsersFilter(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {!usersLoading && !usersError && filteredUsers.length > 0 && (
+                <div className="sticky top-[61px] z-10 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
+                  <div>
+                    <label className="flex min-h-8 cursor-pointer items-center gap-3 font-bold">
+                      <Checkbox
+                        checked={
+                          allSelectableUsersSelected
+                            ? true
+                            : selectedUserIds.length > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={(checked) => {
+                          setSelectedUserIds(checked === true ? selectableUserIds : []);
+                          lastSelectedUserIdRef.current =
+                            checked === true ? selectableUserIds.at(-1) ?? null : null;
+                        }}
+                        aria-label="בחירת כל המשתמשים הניתנים למחיקה"
+                      />
+                      {selectedUserIds.length > 0
+                        ? `${selectedUserIds.length} נבחרו`
+                        : "בחירת הכול"}
+                    </label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Shift + לחיצה מסמנים טווח
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={selectedUserIds.length === 0}
+                    className="min-h-11 rounded-xl font-bold"
+                    onClick={() => setBulkDeleteOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    מחיקת {selectedUserIds.length} נבחרים
+                  </Button>
+                </div>
+              )}
+
+              {usersLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2, 3].map((item) => (
+                    <Skeleton key={item} className="h-20 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : usersError ? (
+                <Card className="p-8 text-center border-destructive/30 bg-destructive/5">
+                  <p className="font-bold">לא הצלחנו לטעון את רשימת המשתמשים</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 min-h-11 rounded-xl"
+                    onClick={() => void loadUsersList()}
+                  >
+                    נסו שוב
+                  </Button>
+                </Card>
+              ) : filteredUsers.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground">
+                    {usersFilter.trim() ? "לא נמצאו משתמשים תואמים" : "אין משתמשים להצגה"}
+                  </p>
+                </Card>
+              ) : (
+                <ul className="space-y-2">
+                  {filteredUsers.map((item) => (
+                    <li key={item.id} className="relative overflow-hidden rounded-xl border bg-card">
+                      {item.id !== user?.id && item.manageable && (
+                        <div className="absolute end-4 top-4 z-[1] flex h-8 w-8 items-center justify-center rounded-lg bg-background shadow-sm">
+                          <Checkbox
+                            checked={selectedUserIds.includes(item.id)}
+                            onClick={(event) => {
+                              checkboxShiftPressedRef.current = event.shiftKey;
+                            }}
+                            onCheckedChange={(checked) => {
+                              updateUserSelection(
+                                item.id,
+                                checked === true,
+                                checkboxShiftPressedRef.current,
+                              );
+                              checkboxShiftPressedRef.current = false;
+                            }}
+                            aria-label={`בחירת ${item.title} למחיקה`}
+                          />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className={`group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                          item.manageable ? "pe-16" : ""
+                        }`}
+                        onClick={(event) => {
+                          if (
+                            item.manageable &&
+                            item.id !== user?.id &&
+                            event.shiftKey
+                          ) {
+                            event.preventDefault();
+                            updateUserSelection(item.id, true, true);
+                            return;
+                          }
+                          navigate(item.href);
+                        }}
+                        aria-label={`מעבר אל ${item.title}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <span className="font-extrabold">{item.title}</span>
+                              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary-ink">
+                                {item.meta}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+                            <span
+                              className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                                item.emailConfirmed
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-amber-100 text-amber-900"
+                              }`}
+                            >
+                              {item.emailConfirmed
+                                ? "אימייל מאושר"
+                                : "ממתין לאישור אימייל"}
+                            </span>
+                          </div>
+                          <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
+                        </div>
+                      </button>
+                      {item.id !== user?.id && item.manageable && (
+                        <div className="flex flex-wrap gap-2 border-t bg-muted/30 p-3">
+                          {!item.emailConfirmed && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="min-h-10 rounded-xl"
+                              onClick={() =>
+                                setPendingUserAction({
+                                  item,
+                                  action: "confirm_email",
+                                })
+                              }
+                            >
+                              <MailCheck className="h-4 w-4" />
+                              אישור הרשמה
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="min-h-10 rounded-xl"
+                            onClick={() =>
+                              setPendingUserAction({
+                                item,
+                                action: item.blocked ? "unblock" : "block",
+                              })
+                            }
+                          >
+                            {item.blocked ? (
+                              <UserCheck className="h-4 w-4" />
+                            ) : (
+                              <Ban className="h-4 w-4" />
+                            )}
+                            {item.blocked ? "הסרת חסימה" : "חסימת משתמש"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            className="min-h-10 rounded-xl"
+                            onClick={() => setPendingUserAction({ item, action: "delete" })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            מחיקה לצמיתות
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section aria-labelledby="duplicates-title">
+              <div className="mb-3">
+                <h2 id="duplicates-title" className="text-lg font-extrabold">מספרי טלפון משותפים</h2>
+                <p className="text-sm text-muted-foreground">
+                  חשבונות שנרשמו עם אותו מספר. שיתוף בין הורה לילד או בין אחים הוא תקין —
+                  ריבוי חשבונות של אותו אדם הוא לא.
+                </p>
+              </div>
+
+              <Card className="p-5 border-border/80 shadow-sm">
+                {duplicatesLoading ? (
+                  <div className="space-y-3">
+                    {[0, 1].map((index) => <Skeleton key={index} className="h-24 w-full rounded-2xl" />)}
+                  </div>
+                ) : duplicatesError ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">לא הצלחתי לטעון את הרשימה.</p>
+                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => void loadDuplicatePhones()}>
+                      נסה שוב
+                    </Button>
+                  </div>
+                ) : duplicatePhones.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    אין כרגע מספרים משותפים
+                  </p>
+                ) : (
+                  <ul className="space-y-4">
+                    {duplicatePhones.map((group) => (
+                      <li key={group.phone} className="rounded-2xl border border-border/80 overflow-hidden">
+                        <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-2.5">
+                          <span dir="ltr" className="font-bold tabular-nums">{formatPhone(group.phone)}</span>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {group.accounts.length} חשבונות
+                          </span>
+                        </div>
+
+                        <ul className="divide-y divide-border">
+                          {group.accounts.map((account) => (
+                            <li key={account.id} className="px-4 py-3">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="font-bold">
+                                    {account.title}
+                                    {account.blocked && (
+                                      <span className="mr-2 rounded-lg bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive">
+                                        חסום
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground break-all">{account.detail}</p>
+                                </div>
+
+                                {account.manageable && account.id !== user?.id ? (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="min-h-10 rounded-xl"
+                                      onClick={() =>
+                                        setPendingUserAction({
+                                          item: account,
+                                          action: account.blocked ? "unblock" : "block",
+                                        })
+                                      }
+                                    >
+                                      {account.blocked ? <UserCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                      {account.blocked ? "הסרת חסימה" : "חסימה"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="destructive"
+                                      className="min-h-10 rounded-xl"
+                                      onClick={() => setPendingUserAction({ item: account, action: "delete" })}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      מחיקה
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    {account.id === user?.id ? "זה אתה" : "חשבון אדמין"}
                                   </span>
                                 )}
-                              </p>
-                              <p className="text-sm text-muted-foreground break-all">{account.detail}</p>
-                            </div>
-
-                            {account.manageable && account.id !== user?.id ? (
-                              <div className="flex gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className="min-h-10 rounded-xl"
-                                  onClick={() =>
-                                    setPendingUserAction({
-                                      item: account,
-                                      action: account.blocked ? "unblock" : "block",
-                                    })
-                                  }
-                                >
-                                  {account.blocked ? <UserCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                                  {account.blocked ? "הסרת חסימה" : "חסימה"}
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="destructive"
-                                  className="min-h-10 rounded-xl"
-                                  onClick={() => setPendingUserAction({ item: account, action: "delete" })}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  מחיקה
-                                </Button>
                               </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                {account.id === user?.id ? "זה אתה" : "חשבון אדמין"}
-                              </span>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </section>
-
-        <section aria-labelledby="actions-title">
-          <div className="mb-3">
-            <h2 id="actions-title" className="text-lg font-extrabold">פעולות אדמין</h2>
-            <p className="text-sm text-muted-foreground">שתי הפעולות השימושיות לניהול היומיומי</p>
-          </div>
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Card className="p-5 space-y-4 border-border/80 shadow-sm">
-          <div>
-            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink">
-              <Users className="h-5 w-5" />
-            </div>
-            <h3 className="font-extrabold text-lg">ניהול משתמש</h3>
-            <p className="text-sm text-muted-foreground">איפוס סיסמה לפי אימייל או שם</p>
-          </div>
-          <form onSubmit={handleReset} className="space-y-3">
-            <div>
-              <Label htmlFor="identifier">אימייל או שם משתמש</Label>
-              <Input
-                id="identifier"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="user@example.com או 'אליה'"
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <Label htmlFor="newPassword">סיסמה חדשה</Label>
-              <PasswordInput
-                id="newPassword"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="לפחות 6 תווים"
-                autoComplete="new-password"
-              />
-            </div>
-            <Button type="submit" disabled={submitting} className="w-full min-h-11 rounded-xl font-bold">
-              {submitting ? "מאפס..." : "אפס סיסמה"}
-            </Button>
-          </form>
-        </Card>
-
-        <Card className="p-5 space-y-4 border-border/80 shadow-sm">
-          <div>
-            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink">
-              <LinkIcon className="h-5 w-5" />
-            </div>
-            <h3 className="font-extrabold text-lg">ניהול משפחה</h3>
-            <p className="text-sm text-muted-foreground">קישור הורה לילד לצורך אזור ההורים</p>
-          </div>
-
-          <form onSubmit={handleCreateLink} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="parentQuery">חיפוש הורה</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="parentQuery"
-                    value={parentQuery}
-                    onChange={(e) => setParentQuery(e.target.value)}
-                    placeholder="שם פרטי או שם משפחה"
-                    autoComplete="off"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void searchProfiles(parentQuery, setParentResults, setSearchingParent)}
-                    disabled={searchingParent}
-                    aria-label="חיפוש הורה"
-                    className="min-h-11 min-w-11"
-                  >
-                    <UserRoundSearch className="h-4 w-4" />
-                  </Button>
-                </div>
-                {selectedParent && (
-                  <div className="text-sm rounded-md border bg-muted px-3 py-2">
-                    נבחר הורה: {fullName(selectedParent)} {selectedParent.age ? `· גיל ${selectedParent.age}` : ""}
-                  </div>
-                )}
-                {parentResults.length > 0 && (
-                  <div className="space-y-2">
-                    {parentResults.map((profile) => (
-                      <button
-                        key={profile.user_id}
-                        type="button"
-                        className="w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted"
-                        onClick={() => {
-                          setSelectedParent(profile);
-                          setParentResults([]);
-                          setParentQuery(fullName(profile));
-                        }}
-                      >
-                        <div className="font-medium">{fullName(profile)}</div>
-                        <div className="text-xs text-muted-foreground">{profile.user_id}</div>
-                      </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
+              </Card>
+            </section>
+
+            <section>
+              <Card className="p-5 space-y-4 border-border/80 shadow-sm">
+                <div>
+                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-extrabold text-lg">איפוס סיסמה</h3>
+                  <p className="text-sm text-muted-foreground">איפוס סיסמה לפי אימייל או שם</p>
+                </div>
+                <form onSubmit={handleReset} className="space-y-3">
+                  <div>
+                    <Label htmlFor="identifier">אימייל או שם משתמש</Label>
+                    <Input
+                      id="identifier"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder="user@example.com או 'אליה'"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newPassword">סיסמה חדשה</Label>
+                    <PasswordInput
+                      id="newPassword"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="לפחות 6 תווים"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <Button type="submit" disabled={submitting} className="w-full min-h-11 rounded-xl font-bold">
+                    {submitting ? "מאפס..." : "אפס סיסמה"}
+                  </Button>
+                </form>
+              </Card>
+            </section>
+          </TabsContent>
+
+          {/* ─── Family Tab ─── */}
+          <TabsContent value="family" className="space-y-6">
+            <Card className="p-5 space-y-4 border-border/80 shadow-sm">
+              <div>
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink">
+                  <LinkIcon className="h-5 w-5" />
+                </div>
+                <h3 className="font-extrabold text-lg">ניהול משפחה</h3>
+                <p className="text-sm text-muted-foreground">קישור הורה לילד לצורך אזור ההורים</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="childQuery">חיפוש ילד</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="childQuery"
-                    value={childQuery}
-                    onChange={(e) => setChildQuery(e.target.value)}
-                    placeholder="שם פרטי או שם משפחה"
-                    autoComplete="off"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void searchProfiles(childQuery, setChildResults, setSearchingChild)}
-                    disabled={searchingChild}
-                    aria-label="חיפוש ילד"
-                    className="min-h-11 min-w-11"
-                  >
-                    <UserRoundSearch className="h-4 w-4" />
-                  </Button>
-                </div>
-                {selectedChild && (
-                  <div className="text-sm rounded-md border bg-muted px-3 py-2">
-                    נבחר ילד: {fullName(selectedChild)} {selectedChild.age ? `· גיל ${selectedChild.age}` : ""}
-                  </div>
-                )}
-                {childResults.length > 0 && (
+              <form onSubmit={handleCreateLink} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    {childResults.map((profile) => (
-                      <button
-                        key={profile.user_id}
+                    <Label htmlFor="parentQuery">חיפוש הורה</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="parentQuery"
+                        value={parentQuery}
+                        onChange={(e) => setParentQuery(e.target.value)}
+                        placeholder="שם פרטי או שם משפחה"
+                        autoComplete="off"
+                      />
+                      <Button
                         type="button"
-                        className="w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted"
-                        onClick={() => {
-                          setSelectedChild(profile);
-                          setChildResults([]);
-                          setChildQuery(fullName(profile));
-                        }}
+                        variant="outline"
+                        onClick={() => void searchProfiles(parentQuery, setParentResults, setSearchingParent)}
+                        disabled={searchingParent}
+                        aria-label="חיפוש הורה"
+                        className="min-h-11 min-w-11"
                       >
-                        <div className="font-medium">{fullName(profile)}</div>
-                        <div className="text-xs text-muted-foreground">{profile.user_id}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Button type="submit" disabled={linkSubmitting} className="w-full min-h-11 rounded-xl font-bold">
-              <LinkIcon className="h-4 w-4" />
-              {linkSubmitting ? "יוצר קישור..." : "צור קישור הורה־ילד"}
-            </Button>
-          </form>
-        </Card>
-          </div>
-        </section>
-
-        <Card className="p-5 border-border/80 shadow-sm">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-extrabold text-lg">קישורי משפחה</h2>
-              <p className="text-sm text-muted-foreground">הקישורים האחרונים שנוצרו</p>
-            </div>
-            <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold tabular-nums">{links.length}</span>
-          </div>
-          {links.length === 0 ? (
-            <p className="text-sm text-muted-foreground">אין קישורים עדיין</p>
-          ) : (
-            <ul className="space-y-2">
-              {links.map((link) => {
-                const parent = profilesById[link.parent_user_id];
-                const child = profilesById[link.child_user_id];
-
-                return (
-                  <li key={link.id} className="border rounded-md p-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div className="text-sm">
-                      <div className="font-medium">
-                        {parent ? fullName(parent) : link.parent_user_id} ← הורה
-                      </div>
-                      <div>
-                        {child ? fullName(child) : link.child_user_id} ← ילד
-                      </div>
-                      <div className="text-xs text-muted-foreground tabular mt-1">
-                        {formatDate(link.created_at)} {formatTime(new Date(link.created_at))}
-                      </div>
+                        <UserRoundSearch className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleDeleteLink(link)}
-                      disabled={removingLinkId === link.id}
-                      className="min-h-11"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {removingLinkId === link.id ? "מסיר..." : "הסר קישור"}
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Card>
+                    {selectedParent && (
+                      <div className="text-sm rounded-md border bg-muted px-3 py-2">
+                        נבחר הורה: {fullName(selectedParent)} {selectedParent.age ? `· גיל ${selectedParent.age}` : ""}
+                      </div>
+                    )}
+                    {parentResults.length > 0 && (
+                      <div className="space-y-2">
+                        {parentResults.map((profile) => (
+                          <button
+                            key={profile.user_id}
+                            type="button"
+                            className="w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted"
+                            onClick={() => {
+                              setSelectedParent(profile);
+                              setParentResults([]);
+                              setParentQuery(fullName(profile));
+                            }}
+                          >
+                            <div className="font-medium">{fullName(profile)}</div>
+                            <div className="text-xs text-muted-foreground">{profile.user_id}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-        <Card className="p-5 border-border/80 shadow-sm">
-          <h2 className="font-extrabold text-lg">פעילות אחרונה</h2>
-          <p className="mb-3 text-sm text-muted-foreground">פעולות שבוצעו על ידי מנהלי המערכת</p>
-          {audit.length === 0 ? (
-            <p className="text-sm text-muted-foreground">אין רשומות עדיין</p>
-          ) : (
-            <ul className="space-y-2">
-              {audit.map((row) => (
-                <li
-                  key={row.id}
-                  className="text-sm border rounded-md p-3 flex flex-col gap-1"
+                  <div className="space-y-2">
+                    <Label htmlFor="childQuery">חיפוש ילד</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="childQuery"
+                        value={childQuery}
+                        onChange={(e) => setChildQuery(e.target.value)}
+                        placeholder="שם פרטי או שם משפחה"
+                        autoComplete="off"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void searchProfiles(childQuery, setChildResults, setSearchingChild)}
+                        disabled={searchingChild}
+                        aria-label="חיפוש ילד"
+                        className="min-h-11 min-w-11"
+                      >
+                        <UserRoundSearch className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {selectedChild && (
+                      <div className="text-sm rounded-md border bg-muted px-3 py-2">
+                        נבחר ילד: {fullName(selectedChild)} {selectedChild.age ? `· גיל ${selectedChild.age}` : ""}
+                      </div>
+                    )}
+                    {childResults.length > 0 && (
+                      <div className="space-y-2">
+                        {childResults.map((profile) => (
+                          <button
+                            key={profile.user_id}
+                            type="button"
+                            className="w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted"
+                            onClick={() => {
+                              setSelectedChild(profile);
+                              setChildResults([]);
+                              setChildQuery(fullName(profile));
+                            }}
+                          >
+                            <div className="font-medium">{fullName(profile)}</div>
+                            <div className="text-xs text-muted-foreground">{profile.user_id}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={linkSubmitting} className="w-full min-h-11 rounded-xl font-bold">
+                  <LinkIcon className="h-4 w-4" />
+                  {linkSubmitting ? "יוצר קישור..." : "צור קישור הורה־ילד"}
+                </Button>
+              </form>
+            </Card>
+
+            <Card className="p-5 border-border/80 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-extrabold text-lg">קישורי משפחה</h2>
+                  <p className="text-sm text-muted-foreground">הקישורים האחרונים שנוצרו</p>
+                </div>
+                <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold tabular-nums">{links.length}</span>
+              </div>
+              {links.length === 0 ? (
+                <p className="text-sm text-muted-foreground">אין קישורים עדיין</p>
+              ) : (
+                <ul className="space-y-2">
+                  {links.map((link) => {
+                    const parent = profilesById[link.parent_user_id];
+                    const child = profilesById[link.child_user_id];
+
+                    return (
+                      <li key={link.id} className="border rounded-md p-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div className="text-sm">
+                          <div className="font-medium">
+                            {parent ? fullName(parent) : link.parent_user_id} ← הורה
+                          </div>
+                          <div>
+                            {child ? fullName(child) : link.child_user_id} ← ילד
+                          </div>
+                          <div className="text-xs text-muted-foreground tabular mt-1">
+                            {formatDate(link.created_at)} {formatTime(new Date(link.created_at))}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void handleDeleteLink(link)}
+                          disabled={removingLinkId === link.id}
+                          className="min-h-11"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {removingLinkId === link.id ? "מסיר..." : "הסר קישור"}
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* ─── Log Tab ─── */}
+          <TabsContent value="log" className="space-y-6">
+            <Card className="p-5 border-border/80 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-extrabold text-lg">פעילות אחרונה</h2>
+                  <p className="text-sm text-muted-foreground">פעולות שבוצעו על ידי מנהלי המערכת</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => void loadAudit()}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold">{actionLabel[row.action] ?? row.action}</span>
-                    <span
-                      className={
-                        row.success
-                          ? "text-green-600 text-xs"
-                          : "text-red-600 text-xs"
-                      }
+                  <RefreshCw className="h-4 w-4" />
+                  רענון
+                </Button>
+              </div>
+              {audit.length === 0 ? (
+                <p className="text-sm text-muted-foreground">אין רשומות עדיין</p>
+              ) : (
+                <ul className="space-y-2">
+                  {audit.map((row) => (
+                    <li
+                      key={row.id}
+                      className="text-sm border rounded-md p-3 flex flex-col gap-1"
                     >
-                      {row.success ? "הצלחה" : "כשל"}
-                    </span>
-                  </div>
-                  <div className="text-muted-foreground">
-                    יעד: {row.target_identifier ?? row.target_user_id ?? "—"}
-                  </div>
-                  <div className="text-xs text-muted-foreground tabular">
-                    {formatDate(row.created_at)} {formatTime(new Date(row.created_at))}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{actionLabel[row.action] ?? row.action}</span>
+                        <span
+                          className={
+                            row.success
+                              ? "text-green-600 text-xs"
+                              : "text-red-600 text-xs"
+                          }
+                        >
+                          {row.success ? "הצלחה" : "כשל"}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        יעד: {row.target_identifier ?? row.target_user_id ?? "—"}
+                      </div>
+                      <div className="text-xs text-muted-foreground tabular">
+                        {formatDate(row.created_at)} {formatTime(new Date(row.created_at))}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
 
+      {/* Tasks drilldown dialog */}
       <Dialog
         open={activeDrilldown !== null}
         onOpenChange={(open) => {
@@ -1119,45 +1328,6 @@ export default function Admin() {
                 </DialogDescription>
               </DialogHeader>
               <div className="max-h-[65dvh] overflow-y-auto p-4">
-                {activeDrilldown === "users" && !drilldownLoading && !drilldownError && (
-                  <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
-                    <div>
-                      <label className="flex min-h-8 cursor-pointer items-center gap-3 font-bold">
-                        <Checkbox
-                          checked={
-                            allSelectableUsersSelected
-                              ? true
-                              : selectedUserIds.length > 0
-                                ? "indeterminate"
-                                : false
-                          }
-                          onCheckedChange={(checked) => {
-                            setSelectedUserIds(checked === true ? selectableUserIds : []);
-                            lastSelectedUserIdRef.current =
-                              checked === true ? selectableUserIds.at(-1) ?? null : null;
-                          }}
-                          aria-label="בחירת כל המשתמשים הניתנים למחיקה"
-                        />
-                        {selectedUserIds.length > 0
-                          ? `${selectedUserIds.length} נבחרו`
-                          : "בחירת הכול"}
-                      </label>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Shift + לחיצה מסמנים טווח
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      disabled={selectedUserIds.length === 0}
-                      className="min-h-11 rounded-xl font-bold"
-                      onClick={() => setBulkDeleteOpen(true)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      מחיקת הנבחרים
-                    </Button>
-                  </div>
-                )}
                 {drilldownLoading ? (
                   <div className="space-y-3" aria-label="טוען נתונים">
                     {[0, 1, 2, 3].map((item) => (
@@ -1184,41 +1354,10 @@ export default function Admin() {
                   <ul className="space-y-2">
                     {drilldownItems.map((item) => (
                       <li key={item.id} className="relative overflow-hidden rounded-xl border bg-card">
-                        {activeDrilldown === "users" && item.id !== user?.id && item.manageable && (
-                          <div className="absolute end-4 top-4 z-[1] flex h-8 w-8 items-center justify-center rounded-lg bg-background shadow-sm">
-                            <Checkbox
-                              checked={selectedUserIds.includes(item.id)}
-                              onClick={(event) => {
-                                checkboxShiftPressedRef.current = event.shiftKey;
-                              }}
-                              onCheckedChange={(checked) => {
-                                updateUserSelection(
-                                  item.id,
-                                  checked === true,
-                                  checkboxShiftPressedRef.current,
-                                );
-                                checkboxShiftPressedRef.current = false;
-                              }}
-                              aria-label={`בחירת ${item.title} למחיקה`}
-                            />
-                          </div>
-                        )}
                         <button
                           type="button"
-                          className={`group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
-                            activeDrilldown === "users" && item.manageable ? "pe-16" : ""
-                          }`}
-                          onClick={(event) => {
-                            if (
-                              activeDrilldown === "users" &&
-                              item.manageable &&
-                              item.id !== user?.id &&
-                              event.shiftKey
-                            ) {
-                              event.preventDefault();
-                              updateUserSelection(item.id, true, true);
-                              return;
-                            }
+                          className="group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                          onClick={() => {
                             setActiveDrilldown(null);
                             navigate(item.href);
                           }}
@@ -1233,72 +1372,10 @@ export default function Admin() {
                                 </span>
                               </div>
                               <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
-                              {activeDrilldown === "users" && (
-                                <span
-                                  className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
-                                    item.emailConfirmed
-                                      ? "bg-emerald-100 text-emerald-800"
-                                      : "bg-amber-100 text-amber-900"
-                                  }`}
-                                >
-                                  {item.emailConfirmed
-                                    ? "אימייל מאושר"
-                                    : "ממתין לאישור אימייל"}
-                                </span>
-                              )}
                             </div>
                             <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
                           </div>
                         </button>
-                        {activeDrilldown === "users" && item.id !== user?.id && item.manageable && (
-                          <div className="flex flex-wrap gap-2 border-t bg-muted/30 p-3">
-                            {!item.emailConfirmed && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="min-h-10 rounded-xl"
-                                onClick={() =>
-                                  setPendingUserAction({
-                                    item,
-                                    action: "confirm_email",
-                                  })
-                                }
-                              >
-                                <MailCheck className="h-4 w-4" />
-                                אישור הרשמה
-                              </Button>
-                            )}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="min-h-10 rounded-xl"
-                              onClick={() =>
-                                setPendingUserAction({
-                                  item,
-                                  action: item.blocked ? "unblock" : "block",
-                                })
-                              }
-                            >
-                              {item.blocked ? (
-                                <UserCheck className="h-4 w-4" />
-                              ) : (
-                                <Ban className="h-4 w-4" />
-                              )}
-                              {item.blocked ? "הסרת חסימה" : "חסימת משתמש"}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              className="min-h-10 rounded-xl"
-                              onClick={() => setPendingUserAction({ item, action: "delete" })}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              מחיקה לצמיתות
-                            </Button>
-                          </div>
-                        )}
                       </li>
                     ))}
                   </ul>
