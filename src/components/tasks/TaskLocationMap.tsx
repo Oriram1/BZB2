@@ -62,7 +62,7 @@ const TaskLocationMap = ({ location, latitude, longitude, taskName }: TaskLocati
   }, [isLoaded, position, taskName]);
 
   const destination = position ? `${position.lat},${position.lng}` : location;
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving&dir_action=navigate`;
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
   const wazeDestination = position
     ? `ll=${encodeURIComponent(destination)}`
     : `q=${encodeURIComponent(location)}`;
@@ -84,7 +84,7 @@ const TaskLocationMap = ({ location, latitude, longitude, taskName }: TaskLocati
         href={wazeUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#33CCFF] px-3 text-sm font-bold text-slate-950 transition-colors hover:bg-[#26bdeF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={`ניווט אל ${location} באמצעות Waze`}
       >
         <WazeLogo />

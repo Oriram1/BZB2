@@ -1,13 +1,5 @@
-export const getRoleHomePath = (role: string): string => {
-  switch (role) {
-    case "parent":
-      return "/parent";
-    case "tasker":
-      return "/my-tasks";
-    case "admin":
-      return "/admin";
-    case "bee":
-    default:
-      return "/tasks";
-  }
-};
+/**
+ * Where a user lands right after signing in. Every role starts on the task
+ * board — role-specific screens are one tap away in the nav.
+ */
+export const getRoleHomePath = (_role: string): string => "/tasks";

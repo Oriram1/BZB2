@@ -14,7 +14,9 @@ export type NavItem = {
 };
 
 export const navItems: NavItem[] = [
-  { label: "דף הבית", shortLabel: "בית", to: "/", icon: Home },
+  /* The landing page is a marketing screen — signed-in users have no use for
+     it, so it only shows up in the guest menu. */
+  { label: "דף הבית", shortLabel: "בית", to: "/", icon: Home, guestOnly: true },
   { label: "כניסה / הרשמה", shortLabel: "כניסה", to: "/auth", icon: LogIn, guestOnly: true },
   { label: "מטלות זמינות", shortLabel: "מטלות", to: "/tasks", icon: ListTodo },
   { label: "צור מטלה", shortLabel: "מטלה חדשה", to: "/create-task", icon: PlusCircle, authOnly: true, requiredRoles: ["tasker"] },
