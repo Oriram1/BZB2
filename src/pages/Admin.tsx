@@ -174,6 +174,21 @@ const userActionLabel: Record<string, string> = {
   role_switched: "החלפת תפקיד",
 };
 
+const fullName = (profile: Pick<ProfileOption, "first_name" | "last_name">) =>
+  `${profile.first_name} ${profile.last_name}`.trim();
+
+/**
+ * The database stores roles as English enums. Showing `bee` to a Hebrew admin
+ * leaks the schema, so reuse the wording the rest of the product already uses
+ * (see PublicProfile and GoogleAuthButton).
+ */
+const roleLabels: Record<string, string> = {
+  tasker: "מציע מטלות",
+  bee: "מבצע מטלות",
+  parent: "הורה",
+  admin: "מנהל",
+};
+
 /**
  * Details are free-form jsonb, so render only the handful of keys we actually
  * write. Anything unexpected is skipped rather than dumped as raw JSON.
@@ -188,21 +203,6 @@ const activityDetail = (details: Json | null): string | null => {
   if (typeof record.role === "string") parts.push(roleLabels[record.role] ?? record.role);
   if (typeof record.method === "string") parts.push(record.method === "google" ? "Google" : "סיסמה");
   return parts.length > 0 ? parts.join(" · ") : null;
-};
-
-const fullName = (profile: Pick<ProfileOption, "first_name" | "last_name">) =>
-  `${profile.first_name} ${profile.last_name}`.trim();
-
-/**
- * The database stores roles as English enums. Showing `bee` to a Hebrew admin
- * leaks the schema, so reuse the wording the rest of the product already uses
- * (see PublicProfile and GoogleAuthButton).
- */
-const roleLabels: Record<string, string> = {
-  tasker: "מציע מטלות",
-  bee: "מבצע מטלות",
-  parent: "הורה",
-  admin: "מנהל",
 };
 
 /** Hebrew agrees the noun and the verb with the count; "1 משתמשים" is wrong. */

@@ -78,7 +78,10 @@ export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: H
           identity.initialize({
             client_id: GOOGLE_CLIENT_ID!,
             ux_mode: "popup",
-            use_fedcm_for_button: true,
+            // Keep the classic GIS button flow. FedCM is still experimental in
+            // some embedded browsers and can emit a network error before the
+            // normal Google popup fallback is available.
+            use_fedcm_for_button: false,
             nonce: nonce.hashed,
             callback: (response) => activeCredentialHandler?.(response),
           });
