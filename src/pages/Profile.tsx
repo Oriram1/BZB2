@@ -18,8 +18,16 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@/lib/gender";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
+
+/** A parent reachable by email, with no account behind it. */
+interface ParentContact {
+  id: string;
+  email: string;
+  created_at: string;
+}
 
 interface TaskStats {
   total: number;
@@ -61,7 +69,7 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [form, setForm] = useState({ first_name: "", last_name: "", age: "", address: "", phone: "" });
+  const [form, setForm] = useState({ first_name: "", last_name: "", age: "", address: "", phone: "", gender: "unspecified" as Gender });
   const [addressPosition, setAddressPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [addressLoading, setAddressLoading] = useState(false);
 
@@ -86,8 +94,68 @@ const Profile = () => {
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
   const [creatingFamilyCode, setCreatingFamilyCode] = useState(false);
   const [parentEmail, setParentEmail] = useState("");
+  const [parentContacts, setParentContacts] = useState<ParentContact[]>([]);
+  const [newParentEmail, setNewParentEmail] = useState("");
+  const [savingParentContact, setSavingParentContact] = useState(false);
 
   const [loadingData, setLoadingData] = useState(true);
+
+  const loadParentContacts = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("parent_contacts")
+      .select("id, email, created_at")
+      .eq("child_user_id", user.id)
+      .order("created_at", { ascending: true });
+    setParentContacts(data ?? []);
+  };
+
+  const addParentContact = async () => {
+    const email = newParentEmail.trim().toLowerCase();
+    if (!email) return;
+    setSavingParentContact(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        ok?: boolean;
+        emailed?: boolean;
+        error?: string;
+      }>("add-parent-contact", { body: { email } });
+
+      const failure = error ? "invoke_failed" : data?.error;
+      if (failure) {
+        toast.error(
+          failure === "already_added"
+            ? "הכתובת הזו כבר מקושרת"
+            : failure === "limit_reached"
+            ? "אפשר לקשר עד 3 כתובות"
+            : failure === "invalid_email"
+            ? "כתובת המייל לא תקינה"
+            : "לא הצלחנו לשמור את הכתובת. כדאי לנסות שוב.",
+        );
+        return;
+      }
+
+      setNewParentEmail("");
+      await loadParentContacts();
+      toast[data?.emailed ? "success" : "warning"](
+        data?.emailed
+          ? "הכתובת קושרה, ועדכון נשלח במייל 📧"
+          : "הכתובת נשמרה, אבל שליחת המייל נכשלה. כדאי לבדוק את הכתובת.",
+      );
+    } finally {
+      setSavingParentContact(false);
+    }
+  };
+
+  const removeParentContact = async (id: string) => {
+    const { error } = await supabase.from("parent_contacts").delete().eq("id", id);
+    if (error) {
+      toast.error("לא הצלחנו להסיר את הכתובת");
+      return;
+    }
+    setParentContacts((current) => current.filter((contact) => contact.id !== id));
+    toast.success("הכתובת הוסרה");
+  };
 
   /** `parentEmail` mails the code as well, for a parent who isn't in the room. */
   const createFamilyCode = async (parentEmail?: string) => {
@@ -144,6 +212,7 @@ const Profile = () => {
         age: profile.age?.toString() || "",
         address: profile.address || "",
         phone: profile.phone || "",
+        gender: profile.gender ?? "unspecified",
       });
       setAvatarUrl(profile.avatar_url);
     }
@@ -154,7 +223,7 @@ const Profile = () => {
     const load = async () => {
       setLoadingData(true);
       if (isTasker) await loadTaskerData();
-      if (isBee) await loadBeeData();
+      if (isBee) await Promise.all([loadBeeData(), loadParentContacts()]);
       setLoadingData(false);
     };
     load();
@@ -168,6 +237,7 @@ const Profile = () => {
       .from("tasks")
       .select("id, name, short_desc, status, views_count, payment, payment_type, category, created_at")
       .eq("creator_id", user.id)
+      .is("archived_at", null)
       .order("created_at", { ascending: false });
 
     if (!tasks) return;
@@ -179,7 +249,8 @@ const Profile = () => {
       const { data: apps } = await supabase
         .from("task_applications")
         .select("id, status, applicant_id")
-        .eq("task_id", task.id);
+        .eq("task_id", task.id)
+        .is("archived_at", null);
 
       const enrichedApps = [];
       for (const app of apps || []) {
@@ -210,7 +281,8 @@ const Profile = () => {
     const { data: apps } = await supabase
       .from("task_applications")
       .select("id, status, task_id")
-      .eq("applicant_id", user.id);
+      .eq("applicant_id", user.id)
+      .is("archived_at", null);
 
     if (!apps) return;
 
@@ -221,7 +293,8 @@ const Profile = () => {
       const { data: completedTasks } = await supabase
         .from("tasks")
         .select("payment, status")
-        .in("id", acceptedTaskIds);
+        .in("id", acceptedTaskIds)
+        .is("archived_at", null);
 
       totalEarnings = (completedTasks || [])
         .filter(t => t.status === "completed")
@@ -247,6 +320,7 @@ const Profile = () => {
         age: form.age ? parseInt(form.age) : null,
         address: form.address || null,
         phone: form.phone || null,
+        gender: form.gender,
       })
       .eq("user_id", user.id);
 
@@ -299,32 +373,38 @@ const Profile = () => {
 
       <div className="max-w-3xl mx-auto py-8 px-4 relative z-10 space-y-6">
         {/* Profile Card */}
-        <Card className="border-border overflow-visible">
-          <div className="h-24 gradient-honey" />
-          <CardContent className="relative pt-0 -mt-12 pb-6">
-            <div className="flex items-end gap-4 mb-4">
+        <Card className="border-border overflow-hidden">
+          {/* Identity sits at the top, on the banner — avatar, name and role in
+              one row, so the gradient is a backdrop rather than dead space. */}
+          <div className="gradient-honey px-5 py-5">
+            <div className="flex items-center gap-4">
               <AvatarPicker userId={user.id} currentAvatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
-              <div className="pb-1">
-                <h1 className="text-2xl font-extrabold text-foreground">{displayName}</h1>
-                {roleLabel && <Badge className="gradient-honey text-primary-foreground border-none font-bold mt-1">{roleLabel}</Badge>}
+              <div className="min-w-0">
+                <h1 className="text-2xl font-extrabold text-foreground truncate">{displayName}</h1>
+                {roleLabel && (
+                  <Badge className="bg-card text-foreground border-none font-bold mt-1.5 shadow-sm">{roleLabel}</Badge>
+                )}
               </div>
-              <div className="mr-auto pb-1">
+              <div className="mr-auto shrink-0">
                 {!editing ? (
-                  <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="rounded-full">
+                  <Button size="sm" onClick={() => setEditing(true)} className="bg-card text-foreground hover:bg-card/90 rounded-full font-bold shadow-sm">
                     <Edit3 className="w-4 h-4 ml-1" /> עריכה
                   </Button>
                 ) : (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSave} disabled={saving} className="gradient-honey text-primary-foreground rounded-full border-none font-bold">
+                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-card text-foreground hover:bg-card/90 rounded-full font-bold shadow-sm">
                       <Save className="w-4 h-4 ml-1" /> {saving ? "שומר..." : "שמור"}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setEditing(false)} className="rounded-full">
+                    <Button size="sm" onClick={() => setEditing(false)} className="bg-card text-foreground hover:bg-card/90 rounded-full shadow-sm">
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
                 )}
               </div>
             </div>
+          </div>
+
+          <CardContent className="pt-5 pb-6">
 
             {editing ? (
               <div className="grid grid-cols-2 gap-3">
@@ -339,6 +419,29 @@ const Profile = () => {
                 <div>
                   <Label className="text-xs text-muted-foreground">גיל</Label>
                   <Input type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={e => setForm(p => ({ ...p, age: e.target.value }))} />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs text-muted-foreground">מין</Label>
+                  {/* Drives how every email and notification addresses this
+                      person. "מעדיפ/ה לא לציין" reads in the plural. */}
+                  <div role="radiogroup" aria-label="מין" className="mt-1 grid grid-cols-3 gap-2">
+                    {GENDER_OPTIONS.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        role="radio"
+                        aria-checked={form.gender === option}
+                        onClick={() => setForm(p => ({ ...p, gender: option }))}
+                        className={`h-10 rounded-xl border-2 px-2 text-sm font-bold transition-colors ${
+                          form.gender === option
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-background text-muted-foreground hover:border-primary/40"
+                        }`}
+                      >
+                        {GENDER_LABEL[option]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">טלפון</Label>
@@ -373,11 +476,79 @@ const Profile = () => {
           <Card className="overflow-hidden border-border">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <KeyRound className="h-5 w-5 text-primary-ink" />
-                קישור להורה
+                <Mail className="h-5 w-5 text-primary-ink" />
+                עדכונים להורה
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                יוצרים קוד זמני ושולחים אותו להורה. הקוד תקף ל־10 דקות ולשימוש אחד.
+                מוסיפים את המייל של ההורה, והוא/היא יקבלו עדכון כשאתם מתחברים. ההורה לא צריך/ה
+                להירשם או לפתוח חשבון. אפשר עד 3 כתובות, ולהסיר בכל רגע.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {parentContacts.length > 0 && (
+                <ul className="space-y-2">
+                  {parentContacts.map((contact) => (
+                    <li
+                      key={contact.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/50 px-3 py-2"
+                    >
+                      <span dir="ltr" className="truncate text-sm font-semibold">{contact.email}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void removeParentContact(contact.id)}
+                        className="shrink-0 rounded-full font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                        הסרה
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {parentContacts.length < 3 ? (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="new-parent-email"
+                    type="email"
+                    dir="ltr"
+                    value={newParentEmail}
+                    onChange={(e) => setNewParentEmail(e.target.value)}
+                    placeholder="parent@example.com"
+                    className="h-11 rounded-xl"
+                  />
+                  <Button
+                    type="button"
+                    disabled={savingParentContact || !newParentEmail.trim()}
+                    onClick={() => void addParentContact()}
+                    className="min-h-11 shrink-0 rounded-xl font-bold"
+                  >
+                    <Mail className="h-4 w-4" />
+                    {savingParentContact ? "שומר..." : "הוספת הורה"}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  הגעתם למקסימום של 3 כתובות. כדי להוסיף אחרת, צריך להסיר אחת קודם.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {isBee && (
+          <Card className="overflow-hidden border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <KeyRound className="h-5 w-5 text-primary-ink" />
+                קישור להורה עם חשבון
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                לא חובה. זה מיועד להורה שרוצה חשבון ומרכז הורים מלא — לעדכונים בלבד מספיק
+                להוסיף מייל למעלה. יוצרים קוד זמני ושולחים אותו להורה. הקוד תקף ל־10 דקות
+                ולשימוש אחד.
               </p>
             </CardHeader>
             <CardContent>
@@ -460,10 +631,10 @@ const Profile = () => {
         {isTasker && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={taskerStats.total} color="text-primary-ink" />
-              <StatCard icon={Clock} label="פתוחות" value={taskerStats.open} color="text-amber-500" />
-              <StatCard icon={CheckCircle} label="הושלמו" value={taskerStats.completed} color="text-green-600" />
-              <StatCard icon={Users} label="נרשמים" value={taskerStats.totalApplicants} color="text-blue-500" />
+              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={taskerStats.total} color="text-primary-ink" to="/my-tasks?tab=published" />
+              <StatCard icon={Clock} label="פתוחות" value={taskerStats.open} color="text-amber-500" to="/my-tasks?tab=published" />
+              <StatCard icon={CheckCircle} label="הושלמו" value={taskerStats.completed} color="text-green-600" to="/my-tasks?tab=published" />
+              <StatCard icon={Users} label="נרשמים" value={taskerStats.totalApplicants} color="text-blue-500" to="/my-tasks?tab=applications" />
             </div>
 
             <Card>
@@ -486,12 +657,19 @@ const Profile = () => {
                 ) : (
                   myTasks.map((task) => (
                     <div key={task.id} className="bg-muted/50 rounded-2xl p-4 border border-border">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-bold text-foreground">{task.name}</h3>
+                      <div className="flex items-start justify-between mb-2 gap-3">
+                        <div className="min-w-0">
+                          {/* The title is the obvious thing to click, so it is
+                              the link — the button below is for anyone who
+                              does not think to try. */}
+                          <Link to={`/task/${task.id}`} className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <h3 className="font-bold text-foreground hover:text-primary-ink hover:underline underline-offset-4 transition-colors">
+                              {task.name}
+                            </h3>
+                          </Link>
                           <p className="text-sm text-muted-foreground">{task.short_desc}</p>
                         </div>
-                        <Badge variant="outline" className="font-bold text-xs">{statusLabel(task.status)}</Badge>
+                        <Badge variant="outline" className="font-bold text-xs shrink-0">{statusLabel(task.status)}</Badge>
                       </div>
                       <div className="flex gap-4 text-xs text-muted-foreground mb-2">
                         <span>👁️ {task.views_count} צפיות</span>
@@ -499,8 +677,17 @@ const Profile = () => {
                         <span>📝 {task.applications.length} נרשמים</span>
                       </div>
 
+                      <div className="border-t border-border pt-3 mt-2">
+                        <Link to={`/task/${task.id}`}>
+                          <Button size="sm" variant="outline" className="w-full rounded-full font-bold">
+                            <Eye className="w-4 h-4" />
+                            לפרטי המטלה
+                          </Button>
+                        </Link>
+                      </div>
+
                       {task.applications.filter(a => a.status === "pending").length > 0 && (
-                        <div className="border-t border-border pt-3 mt-2 space-y-2">
+                        <div className="pt-3 mt-1 space-y-2">
                           <p className="text-xs font-bold text-foreground">
                             {task.applications.filter(a => a.status === "pending").length} מועמדויות ממתינות
                           </p>
@@ -520,27 +707,69 @@ const Profile = () => {
         )}
 
         {isBee && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard icon={ClipboardList} label="הגשות" value={beeStats.applied} color="text-primary-ink" />
-            <StatCard icon={CheckCircle} label="התקבלו" value={beeStats.accepted} color="text-green-600" />
-            <StatCard icon={TrendingUp} label="הושלמו" value={beeStats.completed} color="text-blue-500" />
-            <StatCard icon={DollarSign} label="הכנסות" value={formatCurrency(beeStats.totalEarnings)} color="text-amber-500" />
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard icon={ClipboardList} label="הגשות" value={beeStats.applied} color="text-primary-ink" to="/my-tasks?tab=applications" />
+              <StatCard icon={CheckCircle} label="התקבלו" value={beeStats.accepted} color="text-green-600" to="/my-tasks?tab=performing" />
+              <StatCard icon={TrendingUp} label="הושלמו" value={beeStats.completed} color="text-blue-500" to="/my-tasks?tab=performing" />
+              <StatCard icon={DollarSign} label="הכנסות" value={formatCurrency(beeStats.totalEarnings)} color="text-amber-500" />
+            </div>
+
+            {/* The stats above answer "how am I doing". This answers "take me there". */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary-ink" />
+                  המטלות שלי
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 sm:grid-cols-3">
+                <Link to="/my-tasks?tab=applications">
+                  <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold">
+                    <ClipboardList className="w-4 h-4" />
+                    המועמדויות שלי
+                  </Button>
+                </Link>
+                <Link to="/my-tasks?tab=performing">
+                  <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold">
+                    <CheckCircle className="w-4 h-4" />
+                    מטלות שאני מבצע
+                  </Button>
+                </Link>
+                <Link to="/tasks">
+                  <Button className="w-full min-h-11 rounded-xl font-bold gradient-honey text-primary-foreground border-none">
+                    <Eye className="w-4 h-4" />
+                    חיפוש מטלות
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>
   );
 };
 
-function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: string | number; color: string }) {
-  return (
-    <Card className="border-border">
+function StatCard({ icon: Icon, label, value, color, to }: { icon: LucideIcon; label: string; value: string | number; color: string; to?: string }) {
+  const card = (
+    <Card className={`border-border h-full ${to ? "transition-transform hover:scale-[1.03] hover:border-primary/40" : ""}`}>
       <CardContent className="p-4 flex flex-col items-center text-center gap-1">
         <Icon className={`w-6 h-6 ${color}`} />
         <span className="text-2xl font-extrabold text-foreground">{value}</span>
         <span className="text-xs text-muted-foreground font-semibold">{label}</span>
       </CardContent>
     </Card>
+  );
+
+  // A number the person cannot act on is a dead end; where the figure has a
+  // page behind it, the card is the way in.
+  return to ? (
+    <Link to={to} className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }
 
