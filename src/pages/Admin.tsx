@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
@@ -86,9 +86,11 @@ interface DrilldownItem {
   id: string;
   title: string;
   meta: string;
-  detail: string;
+  /** Task rows only. User rows render `email` and `createdAt` as isolated runs. */
+  detail?: string;
   href: string;
   email?: string;
+  createdAt?: string;
   emailConfirmed?: boolean;
   blocked?: boolean;
   manageable?: boolean;
@@ -148,10 +150,106 @@ const actionLabel: Record<string, string> = {
 const fullName = (profile: Pick<ProfileOption, "first_name" | "last_name">) =>
   `${profile.first_name} ${profile.last_name}`.trim();
 
+/**
+ * The database stores roles as English enums. Showing `bee` to a Hebrew admin
+ * leaks the schema, so reuse the wording the rest of the product already uses
+ * (see PublicProfile and GoogleAuthButton).
+ */
+const roleLabels: Record<string, string> = {
+  tasker: "מציע מטלות",
+  bee: "מבצע מטלות",
+  parent: "הורה",
+  admin: "מנהל",
+};
+
+/** Hebrew agrees the noun and the verb with the count; "1 משתמשים" is wrong. */
+const usersSelectedLabel = (count: number) =>
+  count === 1 ? "משתמש אחד נבחר" : `${count} משתמשים נבחרו`;
+
+const usersCountLabel = (count: number) =>
+  count === 1 ? "משתמש אחד" : `${count} משתמשים`;
+
+const describeRoles = (userRoles: string[], blocked: boolean) => {
+  if (blocked) return "חסום";
+  if (userRoles.length === 0) return "ללא תפקיד";
+  return userRoles.map((role) => roleLabels[role] ?? role).join(", ");
+};
+
+/**
+ * An e-mail and a date are Latin runs inside a Hebrew sentence. Concatenating
+ * them into one string lets the bidi algorithm reorder the whole line — the
+ * address jumps to the far edge and the separator lands in the wrong place.
+ * Each run is isolated in its own element instead.
+ */
+function UserDetailLine({ email, createdAt }: { email?: string; createdAt?: string }) {
+  return (
+    <p className="mt-2 text-sm text-muted-foreground">
+      {email ? (
+        <bdi dir="ltr" className="break-all">{email}</bdi>
+      ) : (
+        <span>ללא אימייל</span>
+      )}
+      <span aria-hidden="true" className="mx-1.5 text-muted-foreground/60">·</span>
+      <span>
+        הצטרפות: <bdi dir="ltr" className="tabular-nums">{formatDate(createdAt)}</bdi>
+      </span>
+    </p>
+  );
+}
+
+/**
+ * A Hebrew name reads RTL; the id fallback is a Latin run and must not. A
+ * profile row can exist with both name fields blank, which used to render an
+ * empty element and leave the label dangling — fall back to the id for those.
+ */
+function PersonRef({
+  profile,
+  userId,
+}: {
+  profile?: ProfileOption;
+  userId: string;
+}) {
+  const name = profile ? fullName(profile) : "";
+  if (name) return <bdi>{name}</bdi>;
+  return (
+    <span className="text-muted-foreground">
+      ללא שם (<bdi dir="ltr" className="font-mono text-xs">{userId.slice(0, 8)}</bdi>)
+    </span>
+  );
+}
+
+/** Date + time is one Latin run; the surrounding block stays RTL. */
+function Timestamp({ value }: { value: string }) {
+  return (
+    <div className="mt-1 text-xs text-muted-foreground">
+      <bdi dir="ltr" className="tabular-nums">
+        {formatDate(value)} {formatTime(new Date(value))}
+      </bdi>
+    </div>
+  );
+}
+
+const TAB_VALUES = ["overview", "users", "family", "log"] as const;
+
 export default function Admin() {
   const { user, roles, loading } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") ?? "";
+  const activeTab = (TAB_VALUES as readonly string[]).includes(tabParam) ? tabParam : "overview";
+
+  /** The tab lives in the URL so refresh, back and shared links all land right. */
+  const setActiveTab = (value: string) => {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value === "overview") next.delete("tab");
+        else next.set("tab", value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const [identifier, setIdentifier] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -308,14 +406,10 @@ export default function Admin() {
         (data?.users ?? []).map((adminUser) => ({
           id: adminUser.id,
           title: adminUser.displayName,
-          meta: adminUser.blocked
-            ? "חסום"
-            : adminUser.roles.length > 0
-              ? adminUser.roles.join(", ")
-              : "ללא תפקיד",
-          detail: `${adminUser.email || "ללא אימייל"} · הצטרפות: ${formatDate(adminUser.createdAt)}`,
+          meta: describeRoles(adminUser.roles, adminUser.blocked),
           href: `/profile/${adminUser.id}`,
           email: adminUser.email,
+          createdAt: adminUser.createdAt,
           emailConfirmed: adminUser.emailConfirmed,
           blocked: adminUser.blocked,
           manageable: !adminUser.roles.includes("admin"),
@@ -390,14 +484,10 @@ export default function Admin() {
           .map((row) => ({
             id: row.id,
             title: row.displayName,
-            meta: row.blocked
-              ? "חסום"
-              : row.roles.length > 0
-                ? row.roles.join(", ")
-                : "ללא תפקיד",
-            detail: `${row.email || "ללא אימייל"} · הצטרפות: ${formatDate(row.createdAt)}`,
+            meta: describeRoles(row.roles, row.blocked),
             href: `/profile/${row.id}`,
             email: row.email,
+            createdAt: row.createdAt,
             emailConfirmed: row.emailConfirmed,
             blocked: row.blocked,
             manageable: !row.roles.includes("admin"),
@@ -456,7 +546,8 @@ export default function Admin() {
               : task.status === "accepted"
                 ? "אושרה"
                 : "בתהליך",
-          detail: `${task.location || "ללא מיקום"} · ${formatDate(task.created_at)}`,
+          detail: task.location || "ללא מיקום",
+          createdAt: task.created_at,
           href: `/task/${task.id}`,
         })),
       );
@@ -529,9 +620,9 @@ export default function Admin() {
       }
 
       if (failedCount > 0) {
-        toast.warning(`${deletedCount} משתמשים נמחקו, ${failedCount} לא נמחקו`);
+        toast.warning(`${usersCountLabel(deletedCount)} נמחקו, ${failedCount} לא נמחקו`);
       } else {
-        toast.success(`${deletedCount} משתמשים וכל המידע שלהם נמחקו`);
+        toast.success(`${usersCountLabel(deletedCount)} וכל המידע שלהם נמחקו`);
       }
 
       setBulkDeleteOpen(false);
@@ -698,7 +789,12 @@ export default function Admin() {
   if (loading || !isAdmin) return null;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background pb-20" dir="rtl">
+    <div
+      dir="rtl"
+      className={`relative min-h-screen overflow-hidden bg-background transition-[padding] ${
+        activeTab === "users" && selectedUserIds.length > 0 ? "pb-40" : "pb-20"
+      }`}
+    >
       <div className="pointer-events-none absolute -right-24 top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-[32rem] h-64 w-64 rounded-full bg-amber-200/20 blur-3xl" />
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b">
@@ -718,11 +814,21 @@ export default function Admin() {
 
       <main className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList dir="rtl" className="mb-6 w-full grid grid-cols-4 h-12 rounded-xl">
-            <TabsTrigger value="overview" className="rounded-lg font-bold text-sm">סקירה</TabsTrigger>
-            <TabsTrigger value="users" className="rounded-lg font-bold text-sm">משתמשים</TabsTrigger>
-            <TabsTrigger value="family" className="rounded-lg font-bold text-sm">משפחה</TabsTrigger>
-            <TabsTrigger value="log" className="rounded-lg font-bold text-sm">לוג</TabsTrigger>
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-4 rounded-xl p-1">
+            {[
+              { value: "overview", label: "סקירה" },
+              { value: "users", label: "משתמשים" },
+              { value: "family", label: "משפחה" },
+              { value: "log", label: "לוג" },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="min-h-11 rounded-lg px-1 text-sm font-bold"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* ─── Overview Tab ─── */}
@@ -745,7 +851,7 @@ export default function Admin() {
                 <div>
                   <h2 className="text-lg font-extrabold">כל המשתמשים</h2>
                   <p className="text-sm text-muted-foreground">
-                    {usersList.length > 0 && `${usersList.length} משתמשים רשומים`}
+                    {usersList.length > 0 && `${usersCountLabel(usersList.length)} רשומים`}
                   </p>
                 </div>
                 <Button
@@ -762,51 +868,45 @@ export default function Admin() {
               </div>
 
               <div className="mb-3">
+                {/* The query can be a Hebrew name or a Latin address, so the
+                    field follows whatever is actually typed. */}
                 <Input
-                  placeholder="חיפוש לפי שם או אימייל..."
+                  dir="auto"
+                  type="search"
+                  autoComplete="off"
+                  placeholder="חיפוש לפי שם או אימייל"
+                  aria-label="חיפוש משתמשים לפי שם או אימייל"
                   value={usersFilter}
                   onChange={(e) => setUsersFilter(e.target.value)}
-                  className="rounded-xl"
+                  className="min-h-11 rounded-xl"
                 />
               </div>
 
               {!usersLoading && !usersError && filteredUsers.length > 0 && (
-                <div className="sticky top-[61px] z-10 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
-                  <div>
-                    <label className="flex min-h-8 cursor-pointer items-center gap-3 font-bold">
-                      <Checkbox
-                        checked={
-                          allSelectableUsersSelected
-                            ? true
-                            : selectedUserIds.length > 0
-                              ? "indeterminate"
-                              : false
-                        }
-                        onCheckedChange={(checked) => {
-                          setSelectedUserIds(checked === true ? selectableUserIds : []);
-                          lastSelectedUserIdRef.current =
-                            checked === true ? selectableUserIds.at(-1) ?? null : null;
-                        }}
-                        aria-label="בחירת כל המשתמשים הניתנים למחיקה"
-                      />
-                      {selectedUserIds.length > 0
-                        ? `${selectedUserIds.length} נבחרו`
-                        : "בחירת הכול"}
-                    </label>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Shift + לחיצה מסמנים טווח
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    disabled={selectedUserIds.length === 0}
-                    className="min-h-11 rounded-xl font-bold"
-                    onClick={() => setBulkDeleteOpen(true)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    מחיקת {selectedUserIds.length} נבחרים
-                  </Button>
+                <div className="mb-3 rounded-xl border bg-muted/30 p-3">
+                  <label className="flex min-h-11 w-fit cursor-pointer items-center gap-3 font-bold">
+                    <Checkbox
+                      checked={
+                        allSelectableUsersSelected
+                          ? true
+                          : selectedUserIds.length > 0
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={(checked) => {
+                        setSelectedUserIds(checked === true ? selectableUserIds : []);
+                        lastSelectedUserIdRef.current =
+                          checked === true ? selectableUserIds.at(-1) ?? null : null;
+                      }}
+                      aria-label="בחירת כל המשתמשים הניתנים למחיקה"
+                    />
+                    {selectedUserIds.length > 0
+                      ? usersSelectedLabel(selectedUserIds.length)
+                      : "בחירת הכול"}
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    לחיצה עם <bdi dir="ltr">Shift</bdi> מסמנת טווח
+                  </p>
                 </div>
               )}
 
@@ -836,121 +936,126 @@ export default function Admin() {
                 </Card>
               ) : (
                 <ul className="space-y-2">
-                  {filteredUsers.map((item) => (
-                    <li key={item.id} className="relative overflow-hidden rounded-xl border bg-card">
-                      {item.id !== user?.id && item.manageable && (
-                        <div className="absolute end-4 top-4 z-[1] flex h-8 w-8 items-center justify-center rounded-lg bg-background shadow-sm">
-                          <Checkbox
-                            checked={selectedUserIds.includes(item.id)}
-                            onClick={(event) => {
-                              checkboxShiftPressedRef.current = event.shiftKey;
-                            }}
-                            onCheckedChange={(checked) => {
-                              updateUserSelection(
-                                item.id,
-                                checked === true,
-                                checkboxShiftPressedRef.current,
-                              );
-                              checkboxShiftPressedRef.current = false;
-                            }}
-                            aria-label={`בחירת ${item.title} למחיקה`}
-                          />
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        className={`group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
-                          item.manageable ? "pe-16" : ""
-                        }`}
-                        onClick={(event) => {
-                          if (
-                            item.manageable &&
-                            item.id !== user?.id &&
-                            event.shiftKey
-                          ) {
-                            event.preventDefault();
-                            updateUserSelection(item.id, true, true);
-                            return;
-                          }
-                          navigate(item.href);
-                        }}
-                        aria-label={`מעבר אל ${item.title}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                              <span className="font-extrabold">{item.title}</span>
-                              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary-ink">
-                                {item.meta}
-                              </span>
-                            </div>
-                            <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
-                            <span
-                              className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
-                                item.emailConfirmed
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-amber-100 text-amber-900"
-                              }`}
+                  {filteredUsers.map((item) => {
+                    const selectable = item.id !== user?.id && item.manageable;
+
+                    return (
+                      <li key={item.id} className="overflow-hidden rounded-xl border bg-card">
+                        <div className="flex items-start">
+                          {selectable && (
+                            /* Selection sits at the logical start (right in
+                               Hebrew); the chevron owns the logical end. */
+                            <label
+                              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center self-stretch"
+                              onClick={(event) => {
+                                checkboxShiftPressedRef.current = event.shiftKey;
+                              }}
                             >
-                              {item.emailConfirmed
-                                ? "אימייל מאושר"
-                                : "ממתין לאישור אימייל"}
-                            </span>
-                          </div>
-                          <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
+                              <Checkbox
+                                checked={selectedUserIds.includes(item.id)}
+                                onCheckedChange={(checked) => {
+                                  updateUserSelection(
+                                    item.id,
+                                    checked === true,
+                                    checkboxShiftPressedRef.current,
+                                  );
+                                  checkboxShiftPressedRef.current = false;
+                                }}
+                                aria-label={`בחירת ${item.title} למחיקה`}
+                              />
+                            </label>
+                          )}
+                          <button
+                            type="button"
+                            className={`group min-w-0 flex-1 p-4 text-start outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                              selectable ? "ps-1" : ""
+                            }`}
+                            onClick={(event) => {
+                              if (selectable && event.shiftKey) {
+                                event.preventDefault();
+                                updateUserSelection(item.id, true, true);
+                                return;
+                              }
+                              navigate(item.href);
+                            }}
+                            aria-label={`מעבר אל ${item.title}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <span className="font-extrabold">{item.title}</span>
+                                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary-ink">
+                                    {item.meta}
+                                  </span>
+                                </div>
+                                <UserDetailLine email={item.email} createdAt={item.createdAt} />
+                                <span
+                                  className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                                    item.emailConfirmed
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-amber-100 text-amber-900"
+                                  }`}
+                                >
+                                  {item.emailConfirmed
+                                    ? "אימייל מאושר"
+                                    : "ממתין לאישור אימייל"}
+                                </span>
+                              </div>
+                              <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
+                            </div>
+                          </button>
                         </div>
-                      </button>
-                      {item.id !== user?.id && item.manageable && (
-                        <div className="flex flex-wrap gap-2 border-t bg-muted/30 p-3">
-                          {!item.emailConfirmed && (
+                        {selectable && (
+                          <div className="flex flex-wrap items-center gap-2 border-t bg-muted/30 p-3">
+                            {!item.emailConfirmed && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="min-h-11 rounded-xl"
+                                onClick={() =>
+                                  setPendingUserAction({ item, action: "confirm_email" })
+                                }
+                              >
+                                <MailCheck className="h-4 w-4" />
+                                אישור הרשמה
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               size="sm"
-                              className="min-h-10 rounded-xl"
+                              variant="outline"
+                              className="min-h-11 rounded-xl"
                               onClick={() =>
                                 setPendingUserAction({
                                   item,
-                                  action: "confirm_email",
+                                  action: item.blocked ? "unblock" : "block",
                                 })
                               }
                             >
-                              <MailCheck className="h-4 w-4" />
-                              אישור הרשמה
+                              {item.blocked ? (
+                                <UserCheck className="h-4 w-4" />
+                              ) : (
+                                <Ban className="h-4 w-4" />
+                              )}
+                              {item.blocked ? "הסרת חסימה" : "חסימת משתמש"}
                             </Button>
-                          )}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="min-h-10 rounded-xl"
-                            onClick={() =>
-                              setPendingUserAction({
-                                item,
-                                action: item.blocked ? "unblock" : "block",
-                              })
-                            }
-                          >
-                            {item.blocked ? (
-                              <UserCheck className="h-4 w-4" />
-                            ) : (
-                              <Ban className="h-4 w-4" />
-                            )}
-                            {item.blocked ? "הסרת חסימה" : "חסימת משתמש"}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            className="min-h-10 rounded-xl"
-                            onClick={() => setPendingUserAction({ item, action: "delete" })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            מחיקה לצמיתות
-                          </Button>
-                        </div>
-                      )}
-                    </li>
-                  ))}
+                            {/* Pushed to the far end so a permanent delete is
+                                never the neighbour of an everyday action. */}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="ms-auto min-h-11 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setPendingUserAction({ item, action: "delete" })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              מחיקה
+                            </Button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
@@ -999,12 +1104,15 @@ export default function Admin() {
                                   <p className="font-bold">
                                     {account.title}
                                     {account.blocked && (
-                                      <span className="mr-2 rounded-lg bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive">
+                                      <span className="ms-2 rounded-lg bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive">
                                         חסום
                                       </span>
                                     )}
                                   </p>
-                                  <p className="text-sm text-muted-foreground break-all">{account.detail}</p>
+                                  <UserDetailLine
+                                    email={account.email}
+                                    createdAt={account.createdAt}
+                                  />
                                 </div>
 
                                 {account.manageable && account.id !== user?.id ? (
@@ -1134,15 +1242,19 @@ export default function Admin() {
                           <button
                             key={profile.user_id}
                             type="button"
-                            className="w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted"
+                            className="w-full rounded-md border px-3 py-2 text-start text-sm hover:bg-muted"
                             onClick={() => {
                               setSelectedParent(profile);
                               setParentResults([]);
                               setParentQuery(fullName(profile));
                             }}
                           >
-                            <div className="font-medium">{fullName(profile)}</div>
-                            <div className="text-xs text-muted-foreground">{profile.user_id}</div>
+                            <div className="font-medium">
+                              <bdi>{fullName(profile)}</bdi>
+                            </div>
+                            <bdi dir="ltr" className="block font-mono text-xs text-muted-foreground">
+                              {profile.user_id}
+                            </bdi>
                           </button>
                         ))}
                       </div>
@@ -1181,15 +1293,19 @@ export default function Admin() {
                           <button
                             key={profile.user_id}
                             type="button"
-                            className="w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted"
+                            className="w-full rounded-md border px-3 py-2 text-start text-sm hover:bg-muted"
                             onClick={() => {
                               setSelectedChild(profile);
                               setChildResults([]);
                               setChildQuery(fullName(profile));
                             }}
                           >
-                            <div className="font-medium">{fullName(profile)}</div>
-                            <div className="text-xs text-muted-foreground">{profile.user_id}</div>
+                            <div className="font-medium">
+                              <bdi>{fullName(profile)}</bdi>
+                            </div>
+                            <bdi dir="ltr" className="block font-mono text-xs text-muted-foreground">
+                              {profile.user_id}
+                            </bdi>
                           </button>
                         ))}
                       </div>
@@ -1224,14 +1340,12 @@ export default function Admin() {
                       <li key={link.id} className="border rounded-md p-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <div className="text-sm">
                           <div className="font-medium">
-                            {parent ? fullName(parent) : link.parent_user_id} ← הורה
+                            הורה: <PersonRef profile={parent} userId={link.parent_user_id} />
                           </div>
                           <div>
-                            {child ? fullName(child) : link.child_user_id} ← ילד
+                            ילד: <PersonRef profile={child} userId={link.child_user_id} />
                           </div>
-                          <div className="text-xs text-muted-foreground tabular mt-1">
-                            {formatDate(link.created_at)} {formatTime(new Date(link.created_at))}
-                          </div>
+                          <Timestamp value={link.created_at} />
                         </div>
                         <Button
                           type="button"
@@ -1292,11 +1406,16 @@ export default function Admin() {
                         </span>
                       </div>
                       <div className="text-muted-foreground">
-                        יעד: {row.target_identifier ?? row.target_user_id ?? "—"}
+                        יעד:{" "}
+                        {row.target_identifier ? (
+                          <bdi dir="auto">{row.target_identifier}</bdi>
+                        ) : row.target_user_id ? (
+                          <bdi dir="ltr" className="font-mono text-xs">{row.target_user_id}</bdi>
+                        ) : (
+                          "—"
+                        )}
                       </div>
-                      <div className="text-xs text-muted-foreground tabular">
-                        {formatDate(row.created_at)} {formatTime(new Date(row.created_at))}
-                      </div>
+                      <Timestamp value={row.created_at} />
                     </li>
                   ))}
                 </ul>
@@ -1305,6 +1424,41 @@ export default function Admin() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/*
+        Bulk delete lives at the bottom of the viewport, not in a sticky header:
+        it is the one action here that has to be reachable one-handed, and the
+        top corners are the hardest place on a phone to reach by thumb.
+      */}
+      {activeTab === "users" && selectedUserIds.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+            <p className="font-bold">{usersSelectedLabel(selectedUserIds.length)}</p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11 rounded-xl"
+                onClick={() => {
+                  setSelectedUserIds([]);
+                  lastSelectedUserIdRef.current = null;
+                }}
+              >
+                ניקוי הבחירה
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="min-h-11 rounded-xl font-bold"
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                מחיקה לצמיתות
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tasks drilldown dialog */}
       <Dialog
@@ -1315,11 +1469,11 @@ export default function Admin() {
       >
         <DialogContent
           dir="rtl"
-          className="max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl gap-0 overflow-hidden rounded-2xl p-0 text-right [&>button]:left-4 [&>button]:right-auto"
+          className="max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl gap-0 overflow-hidden rounded-2xl p-0 text-start"
         >
           {activeDrilldown && (
             <>
-              <DialogHeader className="border-b px-5 py-5 ps-14 text-right sm:text-right">
+              <DialogHeader className="border-b px-5 py-5 pe-14 text-start sm:text-start">
                 <DialogTitle className="text-xl font-extrabold">
                   {drilldownCopy[activeDrilldown].title}
                 </DialogTitle>
@@ -1356,7 +1510,7 @@ export default function Admin() {
                       <li key={item.id} className="relative overflow-hidden rounded-xl border bg-card">
                         <button
                           type="button"
-                          className="group w-full p-4 text-right outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                          className="group w-full p-4 text-start outline-none transition-all hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                           onClick={() => {
                             setActiveDrilldown(null);
                             navigate(item.href);
@@ -1371,7 +1525,11 @@ export default function Admin() {
                                   {item.meta}
                                 </span>
                               </div>
-                              <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
+                              <p className="mt-2 text-sm text-muted-foreground">
+                                <bdi>{item.detail}</bdi>
+                                <span aria-hidden="true" className="mx-1.5 text-muted-foreground/60">·</span>
+                                <bdi dir="ltr" className="tabular-nums">{formatDate(item.createdAt)}</bdi>
+                              </p>
                             </div>
                             <ChevronLeft className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
                           </div>
@@ -1392,8 +1550,8 @@ export default function Admin() {
           if (!open && !managingUser) setPendingUserAction(null);
         }}
       >
-        <AlertDialogContent dir="rtl" className="text-right">
-          <AlertDialogHeader className="text-right sm:text-right">
+        <AlertDialogContent className="text-start">
+          <AlertDialogHeader className="text-start sm:text-start">
             <AlertDialogTitle>
               {pendingUserAction?.action === "delete"
                 ? "מחיקת משתמש לצמיתות"
@@ -1443,10 +1601,10 @@ export default function Admin() {
           if (!managingUser) setBulkDeleteOpen(open);
         }}
       >
-        <AlertDialogContent dir="rtl" className="text-right">
-          <AlertDialogHeader className="text-right sm:text-right">
+        <AlertDialogContent className="text-start">
+          <AlertDialogHeader className="text-start sm:text-start">
             <AlertDialogTitle>
-              מחיקה לצמיתות של {selectedUserIds.length} משתמשים
+              מחיקה לצמיתות של {usersCountLabel(selectedUserIds.length)}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span className="block">
@@ -1470,7 +1628,7 @@ export default function Admin() {
             >
               {managingUser
                 ? "מוחק..."
-                : `כן, למחוק ${selectedUserIds.length} משתמשים`}
+                : `כן, למחוק ${usersCountLabel(selectedUserIds.length)}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1499,7 +1657,7 @@ function StatCard({
         onClick={onClick}
         disabled={loading}
         aria-label={`פתיחת פירוט ${label}`}
-        className="group min-h-36 w-full cursor-pointer p-4 text-right outline-none transition-colors hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-wait"
+        className="group min-h-36 w-full cursor-pointer p-4 text-start outline-none transition-colors hover:bg-primary/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-wait"
       >
         <div className="mb-3 flex items-start justify-between">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary-ink">

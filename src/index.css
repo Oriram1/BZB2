@@ -120,21 +120,30 @@
     text-align: start;
   }
 
-  /* Ensure inputs, textareas and placeholders inside RTL containers align to the right */
-  [dir="rtl"] input:not([dir="ltr"]),
-  [dir="rtl"] textarea:not([dir="ltr"]),
-  html[dir="rtl"] input:not([dir="ltr"]),
-  html[dir="rtl"] textarea:not([dir="ltr"]) {
+  /* Ensure inputs, textareas and placeholders inside RTL containers align to the
+     right. `dir="auto"` is excluded on purpose: a search box that must follow
+     whatever the user types (Hebrew name or Latin e-mail) sets it deliberately,
+     and forcing RTL back on would defeat it. */
+  [dir="rtl"] input:not([dir="ltr"]):not([dir="auto"]),
+  [dir="rtl"] textarea:not([dir="ltr"]):not([dir="auto"]),
+  html[dir="rtl"] input:not([dir="ltr"]):not([dir="auto"]),
+  html[dir="rtl"] textarea:not([dir="ltr"]):not([dir="auto"]) {
     direction: rtl;
     text-align: right;
   }
 
-  [dir="rtl"] input:not([dir="ltr"])::placeholder,
-  [dir="rtl"] textarea:not([dir="ltr"])::placeholder,
-  html[dir="rtl"] input:not([dir="ltr"])::placeholder,
-  html[dir="rtl"] textarea:not([dir="ltr"])::placeholder {
+  [dir="rtl"] input:not([dir="ltr"]):not([dir="auto"])::placeholder,
+  [dir="rtl"] textarea:not([dir="ltr"]):not([dir="auto"])::placeholder,
+  html[dir="rtl"] input:not([dir="ltr"]):not([dir="auto"])::placeholder,
+  html[dir="rtl"] textarea:not([dir="ltr"]):not([dir="auto"])::placeholder {
     direction: rtl;
     text-align: right;
+  }
+
+  /* An auto-direction field still starts empty and right-aligned in Hebrew. */
+  [dir="rtl"] input[dir="auto"],
+  html[dir="rtl"] input[dir="auto"] {
+    text-align: start;
   }
 
   /* Native date and time inputs WebKit/Blink shadow DOM RTL fixes */

@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 
+import { DirectionProvider } from "@radix-ui/react-direction";
+
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GoogleMapsProvider } from "@/components/tasks/GoogleMapsProvider";
 import RoleGuard from "@/components/RoleGuard";
@@ -63,7 +65,14 @@ const ScrollToTop = () => {
   return null;
 };
 
+/**
+ * Every Radix primitive (Tabs, Select, DropdownMenu, Slider, ScrollArea…)
+ * defaults to `dir="ltr"` and stamps it on its own root element, which flips
+ * the whole subtree back to LTR no matter what `<html dir="rtl">` says. The
+ * provider is the single place that tells all of them we are an RTL app.
+ */
 const App = () => (
+  <DirectionProvider dir="rtl">
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <GoogleMapsProvider>
@@ -109,6 +118,7 @@ const App = () => (
       </GoogleMapsProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </DirectionProvider>
 );
 
 export default App;
