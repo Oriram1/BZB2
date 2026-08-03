@@ -27,7 +27,7 @@ const Auth = () => {
               כניסה 🔑
             </Button>
           </Link>
-          <Link to="/pricing">
+          <Link to="/register/tasker">
             <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-primary/40 text-foreground hover:bg-primary/5 hover:scale-[1.02] transition-transform duration-300">
               הרשם כמציע מטלות 📋
             </Button>
@@ -37,17 +37,21 @@ const Auth = () => {
               הרשם לקבלת מטלות 💪
             </Button>
           </Link>
-          <Link to="/register/parent">
-            <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-primary/30 text-foreground hover:bg-primary/5 hover:scale-[1.02] transition-transform duration-300">
-              הרשם כהורה 🛡️
-            </Button>
-          </Link>
           <Link to="/tasks">
             <Button variant="ghost" className="w-full py-6 text-lg text-muted-foreground hover:text-foreground rounded-2xl">
               סיור כאורח 👀
             </Button>
           </Link>
         </div>
+
+        {/* Parents are recipients, not users — there is nothing here for them
+            to sign up for. Said plainly so nobody goes looking for the button
+            that used to be here. */}
+        <p className="mt-6 text-center text-sm text-muted-foreground leading-relaxed">
+          🛡️ הורה? אין צורך להירשם.
+          <br />
+          הילד/ה מוסיף/ה את כתובת המייל שלכם מהפרופיל, ותקבלו עדכון כשהוא/היא מתחבר/ת.
+        </p>
       </div>
     </div>
   );
