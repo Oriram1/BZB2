@@ -20,6 +20,7 @@ import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRoleHomePath } from "@/lib/roleNavigation";
 import { logUserActivity } from "@/lib/activityLog";
+import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@/lib/gender";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -74,7 +75,7 @@ const Register = () => {
   const [showInsurancePopup, setShowInsurancePopup] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    firstName: "", lastName: "", age: "", address: "",
+    firstName: "", lastName: "", age: "", address: "", gender: "" as Gender | "",
     email: "", phone: "", password: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -191,6 +192,8 @@ const Register = () => {
     else if (Number.isNaN(age) || age < minAge) next.age = `הגיל המינימלי להרשמה הוא ${minAge}`;
     else if (age > 120) next.age = "הגיל שהוזן לא נראה תקין";
 
+    if (!form.gender) next.gender = "צריך לבחור אחת מהאפשרויות";
+
     if (!form.address.trim()) next.address = "חסרה כתובת";
 
     if (!form.email.trim()) next.email = "חסרה כתובת אימייל";
@@ -245,6 +248,7 @@ const Register = () => {
       const { error: profileError } = await supabase.from("profiles").update({
         age: parseInt(form.age) || null,
         address: form.address,
+        gender: (form.gender || "unspecified") as Gender,
         // Store a canonical 05XXXXXXXX form regardless of how it was typed.
         phone: normalizePhone(form.phone),
       }).eq("user_id", data.user.id);
@@ -357,6 +361,31 @@ const Register = () => {
             {errors.age
               ? <FieldError id="age" message={errors.age} />
               : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}</p>}
+          </div>
+          <div>
+            <Label htmlFor="gender">מין</Label>
+            {/* Asked at signup because Hebrew inflects every message the app
+                later sends. "מעדיפ/ה לא לציין" is a real answer — it reads in
+                the plural, the same as anyone we cannot identify. */}
+            <div id="gender" role="radiogroup" aria-label="מין" className="mt-1 grid grid-cols-3 gap-2">
+              {GENDER_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.gender === option}
+                  onClick={() => updateField("gender", option)}
+                  className={`h-12 rounded-2xl border-2 px-2 text-sm font-bold transition-colors ${
+                    form.gender === option
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {GENDER_LABEL[option]}
+                </button>
+              ))}
+            </div>
+            {errors.gender && <FieldError id="gender" message={errors.gender} />}
           </div>
           <div>
             <Label htmlFor="address">כתובת</Label>

@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
         if (parentEmail) {
           const { data: profile } = await admin
             .from("profiles")
-            .select("first_name, last_name")
+            .select("first_name, last_name, gender")
             .eq("user_id", user.id)
             .maybeSingle();
 
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
               content: emailContent({
                 id: "family-link",
                 event_type: "family_link_code",
-                data: { code: displayCode, child_name: childName || "הילד/ה שלך" },
+                data: { code: displayCode, child_name: childName, child_gender: profile?.gender },
                 link: "/parent",
               }),
             });

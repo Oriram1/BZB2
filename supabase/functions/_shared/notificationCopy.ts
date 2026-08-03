@@ -5,6 +5,7 @@
  * source of truth for what a user actually reads — in email and in push alike.
  */
 import { siteUrl, type EmailContent } from "./email.ts";
+import { formFor, RECIPIENT, say, SUBJECT, type Form } from "./gender.ts";
 
 export type NotificationEvent =
   | "application_received"
@@ -15,7 +16,11 @@ export type NotificationEvent =
   | "parent_digest"
   | "family_link_code"
   | "quiet_hours_digest"
-  | "task_cancelled";
+  | "task_cancelled"
+  // Addressed to a parent who has no account, so it is mailed directly and
+  // never stored in public.notifications (which is keyed by user_id).
+  | "parent_contact_added"
+  | "child_signed_in";
 
 export type NotificationRow = {
   id: string;
@@ -42,21 +47,30 @@ function when(data: Record<string, unknown>) {
   return [date, time].filter(Boolean).join(" בשעה ");
 }
 
-export function emailContent(row: NotificationRow): EmailContent {
+/**
+ * @param to How the reader is addressed. Callers that know who the recipient is
+ *   pass their form; a parent contact with no account is left to default to the
+ *   plural, which is also what someone who declined to say gets.
+ */
+export function emailContent(row: NotificationRow, to: Form = "plural"): EmailContent {
   const base = siteUrl();
   const data = row.data ?? {};
   const url = `${base}${row.link ?? "/"}`;
   const manageUrl = `${base}/settings`;
+  /** The third party this message is about, where there is one. */
+  const about = (key: string) => formFor(data[key] as string | undefined);
 
   switch (row.event_type) {
     case "application_received": {
-      const name = str(data.applicant_name, "מועמד/ת");
-      const task = str(data.task_name, "המטלה שלך");
+      const who = about("applicant_gender");
+      const name = str(data.applicant_name, say(who, SUBJECT.candidate));
+      const task = str(data.task_name, `המטלה ${say(to, RECIPIENT.yours)}`);
+      const submitted = say(who, SUBJECT.submitted);
       return {
-        subject: `${name} הגיש/ה מועמדות ל"${task}" 🐝`,
-        preheader: `מועמדות חדשה מחכה לתשובה שלך`,
-        heading: "יש לך מועמדות חדשה",
-        paragraphs: [`${name} הגיש/ה מועמדות למטלה "${task}".`, "אפשר לאשר או לדחות ישירות מהמסך של המטלה."],
+        subject: `${name} ${submitted} מועמדות ל"${task}" 🐝`,
+        preheader: `מועמדות חדשה מחכה לתשובה ${say(to, RECIPIENT.yours)}`,
+        heading: `יש ${say(to, RECIPIENT.toYou)} מועמדות חדשה`,
+        paragraphs: [`${name} ${submitted} מועמדות למטלה "${task}".`, "אפשר לאשר או לדחות ישירות מהמסך של המטלה."],
         action: { label: "צפייה במועמדות", url },
         manageUrl,
       };
@@ -68,18 +82,18 @@ export function emailContent(row: NotificationRow): EmailContent {
       return accepted
         ? {
             subject: `התקבלת למטלה "${task}"! 🎉`,
-            preheader: "יש לך מטלה חדשה",
+            preheader: `יש ${say(to, RECIPIENT.toYou)} מטלה חדשה`,
             heading: "התקבלת!",
             paragraphs: [`מזל טוב — התקבלת למטלה "${task}".`, "כדאי להיכנס לפרטי המטלה כדי לתאם את המועד והמקום."],
             action: { label: "לפרטי המטלה", url },
             manageUrl,
           }
         : {
-            subject: `עדכון לגבי המועמדות שלך ל"${task}"`,
+            subject: `עדכון לגבי המועמדות ${say(to, RECIPIENT.yours)} ל"${task}"`,
             preheader: "המועמדות לא התקבלה הפעם",
-            heading: "עדכון על המועמדות שלך",
+            heading: `עדכון על המועמדות ${say(to, RECIPIENT.yours)}`,
             paragraphs: [
-              `המועמדות שלך למטלה "${task}" לא התקבלה הפעם.`,
+              `המועמדות ${say(to, RECIPIENT.yours)} למטלה "${task}" לא התקבלה הפעם.`,
               "יש עוד הרבה מטלות פתוחות — שווה להציץ.",
             ],
             action: { label: "למטלות פתוחות", url: `${base}/tasks` },
@@ -91,11 +105,12 @@ export function emailContent(row: NotificationRow): EmailContent {
       const sender = str(data.sender_name, "משתמש");
       const count = Number(data.unread_count) || 1;
       const plural = count > 1 ? `${count} הודעות חדשות` : "הודעה חדשה";
+      const toYou = say(to, RECIPIENT.toYou);
       return {
         subject: `${plural} מ${sender}`,
-        preheader: "מחכה לך בצ׳אט",
-        heading: `יש לך ${plural}`,
-        paragraphs: [`${sender} שלח/ה לך ${plural} ב־BZB.`],
+        preheader: `מחכה ${toYou} בצ׳אט`,
+        heading: `יש ${toYou} ${plural}`,
+        paragraphs: [`${sender} ${say(about("sender_gender"), SUBJECT.sent)} ${toYou} ${plural} ב־BZB.`],
         action: { label: "פתיחת הצ׳אט", url },
         manageUrl,
       };
@@ -116,15 +131,17 @@ export function emailContent(row: NotificationRow): EmailContent {
     }
 
     case "parent_child_accepted": {
-      const child = str(data.child_name, "הילד/ה שלך");
+      const kid = about("child_gender");
+      const child = str(data.child_name, say(kid, SUBJECT.yourChild));
       const task = str(data.task_name, "מטלה");
       const place = str(data.location);
       const schedule = when(data);
+      const accepted = say(kid, SUBJECT.accepted);
       return {
-        subject: `${child} התקבל/ה למטלה "${task}"`,
-        preheader: "עדכון על פעילות הילד/ה שלך",
+        subject: `${child} ${accepted} למטלה "${task}"`,
+        preheader: `עדכון על פעילות ${say(kid, SUBJECT.yourChild)}`,
         heading: "עדכון חשוב",
-        paragraphs: [`${child} התקבל/ה לביצוע המטלה "${task}".`],
+        paragraphs: [`${child} ${accepted} לביצוע המטלה "${task}".`],
         bullets: [...(place ? [`מיקום: ${place}`] : []), ...(schedule ? [`מועד: ${schedule}`] : [])],
         action: { label: "למרכז ההורים", url },
         manageUrl,
@@ -137,8 +154,8 @@ export function emailContent(row: NotificationRow): EmailContent {
         ? (data.cards as { title: string; lines: string[] }[])
         : [];
       return {
-        subject: `הדוח היומי שלך מ־BZB — ${date}`,
-        preheader: "סיכום הפעילות של הילדים שלך היום",
+        subject: `הדוח היומי ${say(to, RECIPIENT.yours)} מ־BZB — ${date}`,
+        preheader: `סיכום הפעילות של הילדים ${say(to, RECIPIENT.yours)} היום`,
         heading: "הדוח היומי",
         paragraphs: ["הנה מה שקרה היום:"],
         cards,
@@ -149,17 +166,52 @@ export function emailContent(row: NotificationRow): EmailContent {
 
     case "family_link_code": {
       const code = str(data.code);
-      const child = str(data.child_name, "הילד/ה שלך");
+      const kid = about("child_gender");
+      const child = str(data.child_name, say(kid, SUBJECT.yourChild));
       return {
-        subject: "קוד הקישור המשפחתי שלך",
-        preheader: "קוד לחיבור החשבון שלך לחשבון הילד/ה",
+        subject: `קוד הקישור המשפחתי ${say(to, RECIPIENT.yours)}`,
+        preheader: `קוד לחיבור החשבון ${say(to, RECIPIENT.yours)} לחשבון ${say(kid, SUBJECT.child)}`,
         heading: "קוד קישור משפחתי",
         paragraphs: [
-          `${child} מבקש/ת לקשר את החשבון שלכם.`,
+          `${child} ${say(kid, SUBJECT.asks)} לקשר את החשבון שלכם.`,
           "צריך להזין את הקוד הבא במרכז ההורים. הקוד תקף ל־10 דקות.",
         ],
         code,
         action: { label: "למרכז ההורים", url: `${base}/parent` },
+        manageUrl,
+      };
+    }
+
+    case "parent_contact_added": {
+      const kid = about("child_gender");
+      const child = str(data.child_name, say(kid, SUBJECT.yourChild));
+      return {
+        subject: `${child} ${say(kid, SUBJECT.added)} אתכם כהורה ב־Busy Bee 🐝`,
+        preheader: `מעכשיו ${say(to, RECIPIENT.willReceive)} עדכון כש${say(kid, SUBJECT.child)} ${say(kid, SUBJECT.signsIn)}`,
+        heading: "אתם מחוברים",
+        paragraphs: [
+          `${child} ${say(kid, SUBJECT.asked)} ש${say(to, RECIPIENT.willReceive)} עדכונים על הפעילות ${say(kid, SUBJECT.his)} ב־Busy Bee.`,
+          "אין צורך להירשם או לפתוח חשבון — העדכונים יגיעו למייל הזה.",
+          `אם זו טעות, ${say(to, RECIPIENT.ask)} מ${say(kid, SUBJECT.child)} להסיר את הכתובת דרך הפרופיל ${say(kid, SUBJECT.his)}.`,
+        ],
+        manageUrl,
+      };
+    }
+
+    case "child_signed_in": {
+      const kid = about("child_gender");
+      const child = str(data.child_name, say(kid, SUBJECT.yourChild));
+      const at = str(data.signed_in_at);
+      const signedIn = say(kid, SUBJECT.signedIn);
+      return {
+        subject: `${child} ${signedIn} ל־Busy Bee`,
+        preheader: "עדכון התחברות",
+        heading: "עדכון התחברות",
+        paragraphs: [
+          at ? `${child} ${signedIn} לאפליקציה ב־${at}.` : `${child} ${signedIn} לאפליקציה.`,
+          "זהו עדכון בלבד — לא נדרשת מכם שום פעולה.",
+          "כדי למנוע הצפה, נשלח על כך לכל היותר עדכון אחד ביום.",
+        ],
         manageUrl,
       };
     }
@@ -184,12 +236,13 @@ export function emailContent(row: NotificationRow): EmailContent {
     case "task_cancelled": {
       const task = str(data.task_name, "המטלה");
       const canceller = str(data.canceller_name, "מפרסם המטלה");
+      const cancelled = say(about("canceller_gender"), SUBJECT.cancelled);
       return {
         subject: `המטלה "${task}" בוטלה`,
-        preheader: `${canceller} ביטל/ה את המטלה`,
+        preheader: `${canceller} ${cancelled} את המטלה`,
         heading: "המטלה בוטלה",
         paragraphs: [
-          `${canceller} ביטל/ה את המטלה "${task}".`,
+          `${canceller} ${cancelled} את המטלה "${task}".`,
           "אפשר לחפש מטלות חדשות בכל עת.",
         ],
         action: { label: "למטלות פתוחות", url: `${base}/tasks` },
@@ -199,16 +252,17 @@ export function emailContent(row: NotificationRow): EmailContent {
   }
 }
 
-export function pushPayload(row: NotificationRow): PushPayload {
+export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayload {
   const base = siteUrl();
   const data = row.data ?? {};
   const url = `${base}${row.link ?? "/"}`;
+  const about = (key: string) => formFor(data[key] as string | undefined);
 
   switch (row.event_type) {
     case "application_received":
       return {
         title: "מועמדות חדשה 🐝",
-        body: `${str(data.applicant_name, "מועמד/ת")} הגיש/ה מועמדות ל"${str(data.task_name, "המטלה שלך")}"`,
+        body: `${str(data.applicant_name, say(about("applicant_gender"), SUBJECT.candidate))} ${say(about("applicant_gender"), SUBJECT.submitted)} מועמדות ל"${str(data.task_name, `המטלה ${say(to, RECIPIENT.yours)}`)}"`,
         url,
         tag: `application-${str(data.task_id)}`,
       };
@@ -231,7 +285,7 @@ export function pushPayload(row: NotificationRow): PushPayload {
     case "message_received":
       return {
         title: str(data.sender_name, "הודעה חדשה"),
-        body: "שלח/ה לך הודעה חדשה",
+        body: `${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)} הודעה חדשה`,
         url,
         // Same tag per conversation so a burst of messages collapses into one.
         tag: `chat-${str(data.conversation_id)}`,
@@ -247,16 +301,16 @@ export function pushPayload(row: NotificationRow): PushPayload {
 
     case "parent_child_accepted":
       return {
-        title: "עדכון על הילד/ה שלך",
-        body: `${str(data.child_name, "הילד/ה")} התקבל/ה למטלה "${str(data.task_name, "מטלה")}"`,
+        title: `עדכון על ${say(about("child_gender"), SUBJECT.yourChild)}`,
+        body: `${str(data.child_name, say(about("child_gender"), SUBJECT.child))} ${say(about("child_gender"), SUBJECT.accepted)} למטלה "${str(data.task_name, "מטלה")}"`,
         url,
         tag: `child-accepted-${str(data.task_id)}`,
       };
 
     case "parent_digest":
       return {
-        title: "הדוח היומי שלך 🐝",
-        body: str(data.summary, "סיכום הפעילות של הילדים שלך היום"),
+        title: `הדוח היומי ${say(to, RECIPIENT.yours)} 🐝`,
+        body: str(data.summary, `סיכום הפעילות של הילדים ${say(to, RECIPIENT.yours)} היום`),
         url,
         tag: `digest-${str(data.date)}`,
       };
@@ -264,9 +318,27 @@ export function pushPayload(row: NotificationRow): PushPayload {
     case "family_link_code":
       return {
         title: "קוד קישור משפחתי",
-        body: "נשלח אליך קוד לחיבור החשבון",
+        body: `נשלח ${say(to, RECIPIENT.toYou)} קוד לחיבור החשבון`,
         url,
         tag: "family-link",
+      };
+
+    // Both of these are addressed to a parent with no account, so there is no
+    // device to push to. The cases exist to keep this switch exhaustive.
+    case "parent_contact_added":
+      return {
+        title: "אתם מחוברים",
+        body: `${str(data.child_name, say(about("child_gender"), SUBJECT.yourChild))} ${say(about("child_gender"), SUBJECT.added)} אתכם כהורה`,
+        url,
+        tag: "parent-contact-added",
+      };
+
+    case "child_signed_in":
+      return {
+        title: "עדכון התחברות",
+        body: `${str(data.child_name, say(about("child_gender"), SUBJECT.yourChild))} ${say(about("child_gender"), SUBJECT.signedIn)} ל־Busy Bee`,
+        url,
+        tag: "child-signed-in",
       };
 
     case "quiet_hours_digest": {
@@ -304,4 +376,8 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   family_link_code: { email: true, push: false },
   quiet_hours_digest: { email: true, push: true },
   task_cancelled: { email: true, push: true },
+  // Sent to an address, not to an account, so the per-user settings screen
+  // never reaches these. The child removes the contact to stop them.
+  parent_contact_added: { email: true, push: false },
+  child_signed_in: { email: true, push: false },
 };

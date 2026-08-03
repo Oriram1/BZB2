@@ -6,6 +6,7 @@
  * The split is deliberate — those are long-form messages, these are glanceable
  * lines — but the event list and channel defaults must stay in step.
  */
+import { formFor, RECIPIENT, say, SUBJECT, type Form } from "@/lib/gender";
 
 export type NotificationEvent =
   | "application_received"
@@ -32,16 +33,26 @@ export type NotificationRow = {
 const text = (value: unknown, fallback = "") =>
   typeof value === "string" && value.trim() ? value.trim() : fallback;
 
-/** Single line shown in the bell dropdown. */
-export function notificationLine(row: NotificationRow): { title: string; body: string; emoji: string } {
+/**
+ * Single line shown in the bell dropdown.
+ *
+ * @param to How the reader is addressed. The bell only ever renders for the
+ *   signed-in user, so callers pass that person's form.
+ */
+export function notificationLine(
+  row: NotificationRow,
+  to: Form = "plural",
+): { title: string; body: string; emoji: string } {
   const data = row.data ?? {};
+  /** The third party this line is about, where there is one. */
+  const about = (key: string) => formFor(data[key] as string | undefined);
 
   switch (row.event_type) {
     case "application_received":
       return {
         emoji: "🐝",
         title: "מועמדות חדשה",
-        body: `${text(data.applicant_name, "מועמד/ת")} הגיש/ה מועמדות ל"${text(data.task_name, "המטלה שלך")}"`,
+        body: `${text(data.applicant_name, say(about("applicant_gender"), SUBJECT.candidate))} ${say(about("applicant_gender"), SUBJECT.submitted)} מועמדות ל"${text(data.task_name, `המטלה ${say(to, RECIPIENT.yours)}`)}"`,
       };
 
     case "application_decided":
@@ -61,7 +72,7 @@ export function notificationLine(row: NotificationRow): { title: string; body: s
       return {
         emoji: "✉️",
         title: "הודעה חדשה",
-        body: `${text(data.sender_name, "משתמש")} שלח/ה לך הודעה`,
+        body: `${text(data.sender_name, "משתמש")} ${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)} הודעה`,
       };
 
     case "task_completed":
@@ -74,8 +85,8 @@ export function notificationLine(row: NotificationRow): { title: string; body: s
     case "parent_child_accepted":
       return {
         emoji: "👋",
-        title: "עדכון על הילד/ה",
-        body: `${text(data.child_name, "הילד/ה")} התקבל/ה למטלה "${text(data.task_name, "מטלה")}"`,
+        title: `עדכון על ${say(about("child_gender"), SUBJECT.child)}`,
+        body: `${text(data.child_name, say(about("child_gender"), SUBJECT.child))} ${say(about("child_gender"), SUBJECT.accepted)} למטלה "${text(data.task_name, "מטלה")}"`,
       };
 
     case "parent_digest":
@@ -159,8 +170,8 @@ export const SETTINGS_ROWS: {
   },
   {
     event: "parent_child_accepted",
-    label: "הילד/ה התקבל/ה למטלה",
-    description: "התראה מיידית כשהילד/ה מתקבל/ת לביצוע מטלה",
+    label: "הילד התקבל למטלה",
+    description: "התראה מיידית כשהילד מתקבל לביצוע מטלה",
     roles: ["parent"],
   },
   {

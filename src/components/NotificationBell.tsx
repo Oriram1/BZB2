@@ -4,13 +4,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
+import { formFor } from "@/lib/gender";
 import { useNotifications } from "@/hooks/useNotifications";
 import { notificationLine } from "@/lib/notificationCopy";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const NotificationBell = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { items, loading, unreadCount, markRead, markAllRead } = useNotifications();
 
@@ -76,7 +77,7 @@ const NotificationBell = () => {
           ) : (
             <ul className="divide-y divide-border">
               {items.map((item) => {
-                const line = notificationLine(item);
+                const line = notificationLine(item, formFor(profile?.gender));
                 const unread = !item.read_at;
                 const taskId = typeof item.data.task_id === "string" ? item.data.task_id : null;
                 const applicationId = typeof item.data.application_id === "string" ? item.data.application_id : null;

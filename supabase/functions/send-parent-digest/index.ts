@@ -54,13 +54,16 @@ async function buildChildCard(
 ): Promise<{ title: string; lines: string[]; events: number; earned: number } | null> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("first_name, last_name")
+    .select("first_name, last_name, gender")
     .eq("user_id", childId)
     .maybeSingle();
 
   const name = profile
-    ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "הילד/ה"
-    : "הילד/ה";
+    ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() ||
+      say(formFor(profile.gender), SUBJECT.child)
+    : say("plural", SUBJECT.child);
+
+  const kid = formFor(profile?.gender);
 
   const { data: applications } = await admin
     .from("task_applications")
@@ -85,10 +88,10 @@ async function buildChildCard(
     if (!task) continue;
 
     const submittedToday = new Date(application.created_at) >= since;
-    if (submittedToday) lines.push(`הגיש/ה מועמדות ל"${task.name}"`);
+    if (submittedToday) lines.push(`${say(kid, SUBJECT.submitted)} מועמדות ל"${task.name}"`);
 
     if (application.status === "accepted") {
-      lines.push(`התקבל/ה למטלה "${task.name}"${task.location ? ` — ${task.location}` : ""}`);
+      lines.push(`${say(kid, SUBJECT.accepted)} למטלה "${task.name}"${task.location ? ` — ${task.location}` : ""}`);
     } else if (application.status === "rejected" && !submittedToday) {
       lines.push(`המועמדות ל"${task.name}" לא התקבלה`);
     }
@@ -96,7 +99,7 @@ async function buildChildCard(
     if (task.status === "completed" && application.status === "accepted") {
       const amount = Number(task.payment) || 0;
       earned += amount;
-      lines.push(`סיים/ה את "${task.name}"${amount ? ` — ₪${amount.toLocaleString("he-IL")}` : ""}`);
+      lines.push(`${say(kid, SUBJECT.finished)} את "${task.name}"${amount ? ` — ₪${amount.toLocaleString("he-IL")}` : ""}`);
     }
   }
 

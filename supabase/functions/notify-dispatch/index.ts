@@ -13,6 +13,7 @@ import {
   pushPayload,
   type NotificationRow,
 } from "../_shared/notificationCopy.ts";
+import { formFor } from "../_shared/gender.ts";
 import { pushConfigured, sendPush } from "../_shared/push.ts";
 import { inQuietWindow, israelHour, resolveQuietHours } from "../_shared/quietHours.ts";
 /** Don't email someone who was looking at the app this recently. */
@@ -183,6 +184,15 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Hebrew inflects what is said TO the reader, not just about them. One read,
+  // shared by both channels below.
+  const { data: recipientProfile } = await admin
+    .from("profiles")
+    .select("gender")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const to = formFor(recipientProfile?.gender);
+
   // ---- Email --------------------------------------------------------------
   if (!alreadyHandled.has("email")) {
     if (emailSkipReason) {
@@ -194,7 +204,7 @@ Deno.serve(async (req) => {
         await logDelivery(admin, notificationId, userId, "email", "skipped", "no_address");
       } else {
         try {
-          await sendEmail({ to: address, content: emailContent(row), tag: row.event_type });
+          await sendEmail({ to: address, content: emailContent(row, to), tag: row.event_type });
           await logDelivery(admin, notificationId, userId, "email", "sent");
         } catch (error) {
           await logDelivery(
@@ -227,7 +237,7 @@ Deno.serve(async (req) => {
         .select("id, endpoint, p256dh, auth")
         .eq("user_id", userId);
 
-      const payload = { ...pushPayload(row), notificationId };
+      const payload = { ...pushPayload(row, to), notificationId };
       const results = await Promise.all(
         (subscriptions ?? []).map(async (subscription) => {
           const result = await sendPush(subscription, payload);

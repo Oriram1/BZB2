@@ -323,6 +323,30 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_contacts: {
+        Row: {
+          child_user_id: string
+          created_at: string
+          email: string
+          id: string
+          last_notified_at: string | null
+        }
+        Insert: {
+          child_user_id: string
+          created_at?: string
+          email: string
+          id?: string
+          last_notified_at?: string | null
+        }
+        Update: {
+          child_user_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          last_notified_at?: string | null
+        }
+        Relationships: []
+      }
       parent_links: {
         Row: {
           child_user_id: string
@@ -351,6 +375,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           first_name: string
+          gender: Database["public"]["Enums"]["gender"]
           id: string
           last_active_at: string | null
           last_name: string
@@ -364,6 +389,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           first_name?: string
+          gender?: Database["public"]["Enums"]["gender"]
           id?: string
           last_active_at?: string | null
           last_name?: string
@@ -377,6 +403,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           first_name?: string
+          gender?: Database["public"]["Enums"]["gender"]
           id?: string
           last_active_at?: string | null
           last_name?: string
@@ -735,6 +762,7 @@ export type Database = {
       }
     }
     Enums: {
+      gender: "male" | "female" | "unspecified"
       app_role: "tasker" | "bee" | "parent" | "admin"
       application_status: "pending" | "accepted" | "rejected"
       delivery_status: "sent" | "failed" | "skipped"
