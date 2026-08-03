@@ -40,7 +40,15 @@ const Landing = () => {
           <p dir="ltr" className="text-lg md:text-xl text-primary-foreground/85 font-medium animate-slide-up" style={{ animationDelay: "0.2s" }}>
             🐝 Your chores are their honey 🍯
           </p>
-          {!user && (
+          {user ? (
+            <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
+              <Link to="/tasks">
+                <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
+                  למטלות 📋
+                </Button>
+              </Link>
+            </div>
+          ) : (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
               <Link to="/pricing">
                 <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
@@ -60,7 +68,9 @@ const Landing = () => {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 flex flex-col items-center space-y-[-14px] opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+        <div
+          className="absolute bottom-8 flex flex-col items-center space-y-[-14px] opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+          onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>
           <svg className="w-8 h-8 text-primary-foreground animate-[bounce_2s_infinite]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
           </svg>
@@ -74,7 +84,7 @@ const Landing = () => {
       </div>
 
       {/* Features Section */}
-      <section className="py-20 px-4 bg-card relative overflow-hidden">
+      <section id="how-it-works" className="py-20 px-4 bg-card relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
         
