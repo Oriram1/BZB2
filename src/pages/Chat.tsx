@@ -145,7 +145,9 @@ const Chat = () => {
     };
     fetchMessages();
 
-    // Subscribe to realtime messages
+    // Subscribe to realtime messages. Dedup by id: our own sends are appended
+    // optimistically in sendMessage, so the INSERT echo for those would
+    // otherwise show the same message twice.
     const channel = supabase
       .channel(`messages-${activeChat}`)
       .on("postgres_changes", {
@@ -154,11 +156,23 @@ const Chat = () => {
         table: "messages",
         filter: `conversation_id=eq.${activeChat}`,
       }, (payload) => {
-        setMessages((prev) => [...prev, payload.new as Message]);
+        const incoming = payload.new as Message;
+        setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Realtime delivery isn't guaranteed once the socket drops — a locked
+    // phone or backgrounded tab misses INSERT events with no replay. Refetch
+    // on return so anything sent during that gap still shows up.
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") fetchMessages();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [activeChat]);
 
   // Attachments live in a private bucket, so each one needs a signed URL. They
@@ -204,15 +218,25 @@ const Chat = () => {
       attachmentPath = path;
     }
 
-    const { error } = await supabase.from("messages").insert({
-      conversation_id: activeChat,
-      sender_id: user.id,
-      content: text,
-      attachment_path: attachmentPath,
-      attachment_type: attachmentPath ? kind ?? null : null,
-      attachment_duration: kind === "audio" ? duration ?? null : null,
-    });
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: activeChat,
+        sender_id: user.id,
+        content: text,
+        attachment_path: attachmentPath,
+        attachment_type: attachmentPath ? kind ?? null : null,
+        attachment_duration: kind === "audio" ? duration ?? null : null,
+      })
+      .select()
+      .single();
     if (error) throw error;
+
+    // Show it immediately rather than waiting for the realtime echo — that
+    // channel can be down (backgrounded tab, dropped socket) with no signal
+    // that it's down, which is what left senders' own messages invisible.
+    const sent = data as Message;
+    setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
   };
 
   const activeConv = conversations.find((c) => c.id === activeChat);

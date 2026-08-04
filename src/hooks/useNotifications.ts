@@ -45,14 +45,27 @@ export function useNotifications() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        (payload) => setItems((prev) => [payload.new as NotificationRow, ...prev]),
+        (payload) => {
+          const incoming = payload.new as NotificationRow;
+          setItems((prev) => (prev.some((item) => item.id === incoming.id) ? prev : [incoming, ...prev]));
+        },
       )
       .subscribe();
 
+    // The socket drops when a phone locks or the tab backgrounds, and
+    // Supabase never replays what was missed while it was down — so the
+    // badge can go stale until something else remounts this hook. Reload on
+    // return to catch up.
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [user]);
+  }, [user, load]);
 
   const unreadCount = items.filter((item) => !item.read_at).length;
 
