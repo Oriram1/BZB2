@@ -57,6 +57,8 @@
 - audit לכל workflow שיש בו יותר ממסלול כתיבה אחד;
 - בדיקת rate limit ו־timeout לכל ספק חיצוני.
 - בדיקת live privilege עדיין דורשת חשבון throwaway.
+- Auth rate limits הוגדרו ב־Production: email 10, OTP 10, verify 10, SMS 5, anonymous 30, refresh 150.
+- backup/restore test עבר על dump של Production ל־Postgres זמני מבודד; קבצי backup לא נכנסים ל־Git.
 - Production הכיל function מתה בשם `send-password-reset`; לא היה frontend שקרא לה, והתיעוד ציין שהוחלפה ב־`send-auth-email`. היא נמחקה מ־Production אחרי audit.
 
 אלה פעולות Production שלא ניתן להוכיח מהריפו בלבד.

@@ -75,3 +75,5 @@ Frontend חדש לא עולה לפני שה־DB וה־functions תומכים ב�
 - 13 repository Edge Functions: deployed.
 - `send-password-reset`: removed as dead legacy function.
 - linked DB lint: passed, no schema errors.
+- Production Auth rate limits: email 10, OTP 10, verify 10, SMS 5, anonymous 30, token refresh 150.
+- Backup artifacts stored locally under `backups/` and excluded from Git because they contain private data.

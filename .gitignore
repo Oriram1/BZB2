@@ -31,3 +31,6 @@ supabase/.temp/
 *.sw?
 .vercel
 supabase/.branches/
+
+# Production backups contain private user data; never commit them.
+backups/
