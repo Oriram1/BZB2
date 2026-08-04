@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -20,8 +20,64 @@ describe("architecture invariants", () => {
     const config = readFileSync(resolve(root, "supabase/config.toml"), "utf8");
     expect(config).toContain("[functions.send-auth-email]");
     expect(config).toContain("[functions.notify-dispatch]");
+    expect(config).toContain("[functions.send-quiet-digest]\nverify_jwt = false");
     expect(config).toContain("[functions.admin-manage-users]\nverify_jwt = true");
     expect(config).toContain("[functions.geocode-address]\nverify_jwt = true");
+  });
+
+  it("keeps every deployed Edge Function declared in config", () => {
+    const config = readFileSync(resolve(root, "supabase/config.toml"), "utf8");
+    const functionDirs = readdirSync(resolve(root, "supabase/functions"), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && readdirSync(resolve(root, "supabase/functions", entry.name)).includes("index.ts"))
+      .map((entry) => entry.name);
+    for (const name of functionDirs) {
+      expect(config, `${name} missing from supabase/config.toml`).toContain(`[functions.${name}]`);
+    }
+  });
+
+  it("bounds external geocoding input and request time", () => {
+    const source = readFileSync(resolve(root, "supabase/functions/geocode-address/index.ts"), "utf8");
+    expect(source).toContain("length > 500");
+    expect(source).toContain("AbortSignal.timeout(8_000)");
+  });
+
+  it("bounds Resend requests", () => {
+    const email = readFileSync(resolve(root, "supabase/functions/_shared/email.ts"), "utf8");
+    const selfTest = readFileSync(resolve(root, "supabase/functions/email-selftest/index.ts"), "utf8");
+    expect(email).toContain("AbortSignal.timeout(10_000)");
+    expect(selfTest).toContain("AbortSignal.timeout(10_000)");
+  });
+
+  it("keeps task cancellation on one server command", () => {
+    const page = readFileSync(resolve(root, "src/pages/MyTasks.tsx"), "utf8");
+    const migration = readFileSync(resolve(root, "supabase/migrations/20260804130000_canonical_task_cancellation.sql"), "utf8");
+    expect(page).toContain('rpc("cancel_task"');
+    expect(page).not.toContain('.from("notifications").insert');
+    expect(migration).toContain("CREATE OR REPLACE FUNCTION public.cancel_task");
+    expect(migration).toContain("FOR UPDATE");
+    expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.cancel_task(UUID) TO authenticated");
+  });
+
+  it("keeps production security headers configured", () => {
+    const vercel = readFileSync(resolve(root, "vercel.json"), "utf8");
+    expect(vercel).toContain('"Content-Security-Policy"');
+    expect(vercel).toContain('"X-Content-Type-Options"');
+    expect(vercel).toContain('"Referrer-Policy"');
+    expect(vercel).toContain("object-src 'none'");
+  });
+
+  it("does not expose raw Edge Function exceptions", () => {
+    const auth = readFileSync(resolve(root, "supabase/functions/_shared/auth.ts"), "utf8");
+    expect(auth).toContain('return json({ error: "internal_error" }, 500);');
+    expect(auth).toContain('console.error("edge_function_failure", error);');
+    expect(auth).toContain('"Cache-Control": "no-store"');
+    const reset = readFileSync(resolve(root, "supabase/functions/admin-reset-password/index.ts"), "utf8");
+    expect(reset).toContain('return json({ error: "internal_error" }, 500);');
+    expect(reset).toContain('return json({ error: "password_reset_failed" }, 500);');
+    expect(reset).not.toContain('return json({ error: updateErr.message }, 500);');
+    const authHook = readFileSync(resolve(root, "supabase/functions/send-auth-email/index.ts"), "utf8");
+    expect(authHook).toContain('message: "email_send_failed"');
+    expect(authHook).toContain('console.error("send_auth_email_failed", error);');
   });
 
   // Archiving is this app's delete. It sets archived_at instead of removing the

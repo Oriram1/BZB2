@@ -9,7 +9,7 @@ export const corsHeaders = {
 export function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 }
 
@@ -52,6 +52,8 @@ export function errorResponse(error: unknown) {
   if (message === "unauthorized") return json({ error: message }, 401);
   if (message === "forbidden") return json({ error: message }, 403);
   if (message === "server_not_configured") return json({ error: message }, 500);
-  return json({ error: message }, 500);
+  // Never expose database/provider errors, SQL text or stack details to callers.
+  // Keep diagnosis in server logs only.
+  console.error("edge_function_failure", error);
+  return json({ error: "internal_error" }, 500);
 }
-

@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     // A non-2xx tells Auth the send failed so the user sees a real error
     // instead of silently waiting for a mail that never arrives.
-    const message = error instanceof Error ? error.message : "unexpected_error";
-    return json({ error: { http_code: 500, message } }, 500);
+    console.error("send_auth_email_failed", error);
+    return json({ error: { http_code: 500, message: "email_send_failed" } }, 500);
   }
 });

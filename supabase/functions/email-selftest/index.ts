@@ -26,6 +26,7 @@ function fromDomain(from: string) {
 
 async function domainStatus(apiKey: string, domain: string | null) {
   const response = await fetch("https://api.resend.com/domains", {
+    signal: AbortSignal.timeout(10_000),
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!response.ok) {

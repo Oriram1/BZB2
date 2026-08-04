@@ -18,7 +18,7 @@ Deno.serve(async (request) => {
 
   try {
     const { address } = await request.json();
-    if (typeof address !== "string" || !address.trim()) {
+    if (typeof address !== "string" || !address.trim() || address.trim().length > 500) {
       return new Response(JSON.stringify({ error: "Address is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -34,7 +34,7 @@ Deno.serve(async (request) => {
     url.searchParams.set("language", "he");
     url.searchParams.set("key", apiKey);
 
-    const googleResponse = await fetch(url);
+    const googleResponse = await fetch(url, { signal: AbortSignal.timeout(8_000) });
     const googleData = await googleResponse.json();
     const result = googleData.results?.[0];
     if (!result || googleData.status !== "OK") {

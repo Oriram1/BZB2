@@ -371,7 +371,7 @@ export default function Admin() {
    * screen already caches by id for the family tab. Fetch the missing ones in
    * one round trip rather than one per row.
    */
-  const loadActivity = async () => {
+  const loadActivity = useCallback(async () => {
     setActivityLoading(true);
     const { data, error } = await fetchAllPages((from, to) => supabase
       .from("user_activity_log")
@@ -407,7 +407,7 @@ export default function Admin() {
     }
 
     setActivityLoading(false);
-  };
+  }, [profilesById]);
 
   const loadLinks = async () => {
     const { data, error } = await fetchAllPages((from, to) => supabase
@@ -610,7 +610,7 @@ export default function Admin() {
       void loadDuplicatePhones();
       void loadUsersList();
     }
-  }, [isAdmin, loadDuplicatePhones]);
+  }, [isAdmin, loadActivity, loadDuplicatePhones]);
 
   const openDrilldown = async (kind: DrilldownKind) => {
     setActiveDrilldown(kind);

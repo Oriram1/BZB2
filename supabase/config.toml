@@ -14,13 +14,16 @@ verify_jwt = false
 [functions.send-parent-digest]
 verify_jwt = false
 
+[functions.send-quiet-digest]
+verify_jwt = false
+
 # Operator-only diagnostic, run by hand with a shared secret header.
 [functions.email-selftest]
 verify_jwt = false
 
 # All other functions use Supabase JWT verification at the gateway. Keep this
 # explicit so a future config change cannot silently make user endpoints
-# public. The three exceptions above are machine-to-machine integrations and
+# public. The five exceptions above are machine-to-machine integrations and
 # must authenticate with their own webhook/shared-secret checks.
 [functions.admin-manage-users]
 verify_jwt = true

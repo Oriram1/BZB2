@@ -112,9 +112,13 @@ Deno.serve(async (req) => {
       details: updateErr ? { error: updateErr.message } : null,
     });
 
-    if (updateErr) return json({ error: updateErr.message }, 500);
+    if (updateErr) {
+      console.error("admin_reset_password_failed", updateErr);
+      return json({ error: "password_reset_failed" }, 500);
+    }
     return json({ ok: true, target_user_id: targetUserId });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    console.error("admin_reset_password_unhandled", e);
+    return json({ error: "internal_error" }, 500);
   }
 });

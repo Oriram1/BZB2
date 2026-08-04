@@ -293,40 +293,10 @@ const MyTasks = () => {
   };
 
   const cancelTask = async (task: PublishedTask) => {
-    const { error } = await supabase
-      .from("tasks")
-      .update({ status: "cancelled" })
-      .eq("id", task.id)
-      .is("archived_at", null);
+    const { error } = await supabase.rpc("cancel_task", { _task_id: task.id });
     if (error) {
       toast.error("לא הצלחנו לבטל את המטלה");
       return;
-    }
-
-    const { data: accepted } = await supabase
-      .from("task_applications")
-      .select("applicant_id")
-      .eq("task_id", task.id)
-      .eq("status", "accepted")
-      .is("archived_at", null);
-
-    const profile = await supabase
-      .from("profiles")
-      .select("first_name, last_name")
-      .eq("user_id", user!.id)
-      .single();
-
-    const cancellerName = profile.data
-      ? `${profile.data.first_name} ${profile.data.last_name}`.trim()
-      : "מפרסם המטלה";
-
-    for (const app of accepted?.data ?? []) {
-      await supabase.from("notifications").insert({
-        user_id: app.applicant_id,
-        event_type: "task_cancelled",
-        data: { task_name: task.name, task_id: task.id, canceller_name: cancellerName },
-        link: "/tasks",
-      });
     }
 
     setPublishedTasks((current) =>
