@@ -42,8 +42,21 @@ declare global {
 const getGoogleIdentity = (): GoogleIdentityClient => {
   if (!GOOGLE_CLIENT_ID) throw new Error("חסר Google Client ID");
   const identity = window.google?.accounts?.id;
-  if (!identity) throw new Error("Google עדיין נטען. נסה שוב בעוד רגע.");
+  if (!identity) throw new Error("Google לא נטען. כדאי לנסות שוב.");
   return identity;
+};
+
+const waitForGoogleIdentity = async (timeoutMs = 10000): Promise<GoogleIdentityClient> => {
+  if (!GOOGLE_CLIENT_ID) throw new Error("חסר Google Client ID");
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const identity = window.google?.accounts?.id;
+    if (identity) return identity;
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+  }
+
+  return getGoogleIdentity();
 };
 
 export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: HTMLElement, onReady?: () => void): Promise<User> => {
@@ -53,7 +66,7 @@ export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: H
   else localStorage.removeItem(GOOGLE_ROLE_KEY);
 
   activeGoogleAuth = (async () => {
-    const identity = getGoogleIdentity();
+    const identity = await waitForGoogleIdentity();
     if (!googleNonce) googleNonce = await createNonce();
     const nonce = googleNonce;
 
