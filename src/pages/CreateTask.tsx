@@ -17,7 +17,7 @@ import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Im
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatCurrency, formatDate, formatTime } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
@@ -512,7 +512,7 @@ const CreateTask = () => {
                   </div>
                   <div className="space-y-4">
                     <SummaryItem label="כתובת" value={form.location} onEdit={() => setStep(4)} />
-                    <SummaryItem label="מתי?" value={`${formatDate(form.date)}${form.time ? `, ${formatTime(form.time)}` : ""}`} onEdit={() => setStep(4)} />
+                    <SummaryItem label="מתי?" value={formatDateTime(form.date, form.time)} onEdit={() => setStep(4)} />
                     <SummaryItem label="זמן משוער" value={formatDurationSummary(form.duration, form.durationUnit)} onEdit={() => setStep(4)} />
                   </div>
                 </div>

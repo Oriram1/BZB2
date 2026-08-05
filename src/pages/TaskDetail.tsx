@@ -15,7 +15,6 @@ import {
   Users,
   MapPin,
   Calendar,
-  Clock,
   Hourglass,
   FileText,
   StickyNote,
@@ -24,7 +23,7 @@ import {
   Share2,
   Eye,
 } from "lucide-react";
-import { formatCurrency, formatDate, formatTime, formatDuration } from "@/lib/format";
+import { formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import {
@@ -346,26 +345,14 @@ const TaskDetail = () => {
             </div>
           )}
 
-          {task.scheduled_date && (
+          {(task.scheduled_date || task.scheduled_time) && (
             <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
                 <Calendar size={18} />
               </div>
               <div>
-                <span className="text-xs text-muted-foreground block font-medium">תאריך</span>
-                <span className="font-bold text-foreground text-sm tabular">{formatDate(task.scheduled_date)}</span>
-              </div>
-            </div>
-          )}
-
-          {task.scheduled_time && (
-            <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
-                <Clock size={18} />
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground block font-medium">שעה</span>
-                <span className="font-bold text-foreground text-sm tabular">{formatTime(task.scheduled_time)}</span>
+                <span className="text-xs text-muted-foreground block font-medium">מועד</span>
+                <span className="font-bold text-foreground text-sm tabular">{formatDateTime(task.scheduled_date, task.scheduled_time)}</span>
               </div>
             </div>
           )}

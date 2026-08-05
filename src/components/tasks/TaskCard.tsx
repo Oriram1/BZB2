@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, MapPin, Calendar, Clock, Hourglass, type LucideIcon } from "lucide-react";
+import { Users, MapPin, Calendar, Hourglass, type LucideIcon } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
-import { formatCurrency, formatDate, formatTime, formatDuration, formatDistance } from "@/lib/format";
+import { formatCurrency, formatDateTime, formatDuration, formatDistance } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -119,8 +119,7 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
       </div>
       {/* Fixed field order — the optional distance sits last so nothing shifts when it is missing. */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground mt-4 pt-4 border-t border-border relative">
-        <Field icon={Calendar} label="תאריך" value={formatDate(task.date)} />
-        <Field icon={Clock} label="שעה" value={formatTime(task.time)} />
+        <Field icon={Calendar} label="מועד" value={formatDateTime(task.date, task.time)} />
         <Field icon={Hourglass} label="משך" value={formatDuration(task.duration)} />
         <Field
           icon={Users}

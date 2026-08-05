@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { formatDate, formatTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { toast } from "sonner";
 
 type ChildSummary = {
@@ -308,8 +308,7 @@ const ParentalHub = () => {
                         <p className="text-muted-foreground">אצל {child.activeTask.taskerName}</p>
                         {child.activeTask.location && <p className="text-muted-foreground">{child.activeTask.location}</p>}
                         <p className="text-muted-foreground">
-                          {child.activeTask.scheduledDate ? formatDate(child.activeTask.scheduledDate) : "תאריך לא צוין"}
-                          {child.activeTask.scheduledTime ? `, ${formatTime(child.activeTask.scheduledTime)}` : ""}
+                          {formatDateTime(child.activeTask.scheduledDate, child.activeTask.scheduledTime)}
                         </p>
                         <Badge variant="secondary" className="rounded-lg font-bold mt-2">
                           {statusLabel(child.activeTask.status)}

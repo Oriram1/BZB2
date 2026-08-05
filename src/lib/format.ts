@@ -1,6 +1,6 @@
 /**
  * Israeli formatting helpers.
- * Dates are dd.MM.yyyy, times are HH:mm (no seconds), money is ₪ with
+ * Dates are dd/mm/yyyy, times are HH:mm (no seconds), money is ₪ with
  * thousands separators. Everything is rendered through Intl with the he-IL
  * locale and the Asia/Jerusalem time zone rather than hand-built strings.
  */
@@ -31,12 +31,24 @@ const currencyFormatter = new Intl.NumberFormat("he-IL", {
 /** Placeholder shown instead of an empty or unparsable value. */
 export const EMPTY = "לא צוין";
 
-/** "2026-04-16" -> "16.04.2026". Returns EMPTY for missing/invalid input. */
+/** "2026-04-16" -> "16/04/2026". Returns EMPTY for missing/invalid input. */
 export function formatDate(value?: string | Date | null): string {
   if (!value) return EMPTY;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return EMPTY;
-  return dateFormatter.format(date).replace(/\//g, ".");
+  return dateFormatter.format(date);
+}
+
+/** Combines task date/time as "dd/mm/yyyy hh:mm". */
+export function formatDateTime(
+  date?: string | Date | null,
+  time?: string | Date | null,
+): string {
+  const formattedDate = formatDate(date);
+  const formattedTime = time ? formatTime(time) : EMPTY;
+  if (formattedDate === EMPTY) return formattedTime;
+  if (formattedTime === EMPTY) return formattedDate;
+  return `${formattedDate} ${formattedTime}`;
 }
 
 /** "2026-04-16" -> "יום חמישי, 16 באפריל 2026". For detail screens. */

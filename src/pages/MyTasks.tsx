@@ -22,6 +22,7 @@ import { ensureAcceptedTaskConversation } from "@/lib/taskConversations";
 import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
+import { formatDateTime } from "@/lib/format";
 
 type ApplicationStatus = "pending" | "accepted" | "rejected";
 /** The task_status enum, so a screen cannot invent a state the database rejects. */
@@ -608,7 +609,7 @@ const MyTasks = () => {
                   </div>
                   <div className="mt-3 text-sm text-muted-foreground space-y-1">
                     <p>{task.location}</p>
-                    {(task.scheduledDate || task.scheduledTime) && <p>{task.scheduledDate} {task.scheduledTime}</p>}
+                    {(task.scheduledDate || task.scheduledTime) && <p>{formatDateTime(task.scheduledDate, task.scheduledTime)}</p>}
                   </div>
                   {task.applicationStatus === "accepted" && (
                     <Button
