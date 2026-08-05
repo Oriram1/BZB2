@@ -37,7 +37,8 @@ BEGIN
     'message_received',
     jsonb_build_object(
       'conversation_id', conversation_row.id,
-      'sender_name', COALESCE(sender_name, 'משתמש')
+      'sender_name', COALESCE(sender_name, 'משתמש'),
+      'message_content', NULLIF(TRIM(NEW.content), '')
     ),
     '/chat?conversation=' || conversation_row.id
   );

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, CheckCheck, Settings as SettingsIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,19 @@ import { cn } from "@/lib/utils";
 const NotificationBell = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const { items, loading, unreadCount, markRead, markAllRead } = useNotifications();
+  const location = useLocation();
+  const { items, loading, markRead, markAllRead } = useNotifications();
 
   if (!user) return null;
+
+  const activeConversationId = location.pathname === "/chat"
+    ? new URLSearchParams(location.search).get("conversation")
+    : null;
+  const visibleItems = items.filter((item) => {
+    if (item.event_type !== "message_received" || !activeConversationId) return true;
+    return item.data.conversation_id !== activeConversationId;
+  });
+  const visibleUnreadCount = visibleItems.filter((item) => !item.read_at).length;
 
   const open = (id: string, link: string | null, unread: boolean) => {
     if (unread) markRead(id);
@@ -27,11 +37,11 @@ const NotificationBell = () => {
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={unreadCount > 0 ? `התראות, ${unreadCount} חדשות` : "התראות"}
+          aria-label={visibleUnreadCount > 0 ? `התראות, ${visibleUnreadCount} חדשות` : "התראות"}
           className="relative z-10 shrink-0 w-10 h-10 overflow-visible rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
         >
           <Bell size={19} aria-hidden="true" />
-          {unreadCount > 0 && (
+          {visibleUnreadCount > 0 && (
             <span className="pointer-events-none absolute -top-1 -right-1 z-20 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center leading-none">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
@@ -49,7 +59,7 @@ const NotificationBell = () => {
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
           <span className="min-w-0 flex-1 text-right font-extrabold text-foreground">התראות</span>
           <div className="flex shrink-0 items-center gap-1">
-            {unreadCount > 0 && (
+            {visibleUnreadCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -75,14 +85,14 @@ const NotificationBell = () => {
         <ScrollArea className="max-h-96">
           {loading ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">טוען…</p>
-          ) : items.length === 0 ? (
+          ) : visibleItems.length === 0 ? (
             <div className="px-4 py-10 text-center">
               <p className="text-3xl mb-2">🐝</p>
               <p className="text-sm text-muted-foreground">אין התראות חדשות</p>
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const line = notificationLine(item, formFor(profile?.gender));
                 const unread = !item.read_at;
                 const taskId = typeof item.data.task_id === "string" ? item.data.task_id : null;

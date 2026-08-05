@@ -72,7 +72,7 @@ export function notificationLine(
       return {
         emoji: "✉️",
         title: "הודעה חדשה",
-        body: `${text(data.sender_name, "משתמש")} ${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)} הודעה`,
+        body: `${text(data.sender_name, "משתמש")} ${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)}: ${text(data.message_content, "הודעה חדשה")}`,
       };
 
     case "task_completed":

@@ -110,7 +110,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
         subject: `${plural} מ${sender}`,
         preheader: `מחכה ${toYou} בצ׳אט`,
         heading: `יש ${toYou} ${plural}`,
-        paragraphs: [`${sender} ${say(about("sender_gender"), SUBJECT.sent)} ${toYou} ${plural} ב־BZB.`],
+        paragraphs: [`${sender} ${say(about("sender_gender"), SUBJECT.sent)} ${toYou} הודעה: "${str(data.message_content, "הודעה חדשה")}"`],
         action: { label: "פתיחת הצ׳אט", url },
         manageUrl,
       };
@@ -285,7 +285,7 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
     case "message_received":
       return {
         title: str(data.sender_name, "הודעה חדשה"),
-        body: `${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)} הודעה חדשה`,
+        body: `${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)}: ${str(data.message_content, "הודעה חדשה")}`,
         url,
         // Same tag per conversation so a burst of messages collapses into one.
         tag: `chat-${str(data.conversation_id)}`,
