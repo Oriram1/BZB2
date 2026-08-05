@@ -38,7 +38,7 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
   return (
     <header
       className={cn(
-        "gradient-honey py-3 px-4 sticky top-0 z-30 shadow-md",
+        "relative gradient-honey py-3 px-4 sticky top-0 z-30 shadow-md",
         className,
       )}
     >
@@ -84,6 +84,8 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
 
         {/* The bell stays visible on mobile too: it is the only notification
             channel that reaches every user regardless of email or push. */}
+      </div>
+      <div className="absolute left-4 top-1/2 -translate-y-1/2">
         <NotificationBell />
       </div>
     </header>

@@ -39,10 +39,15 @@ const NotificationBell = () => {
         </button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" dir="rtl" className="w-[min(22rem,calc(100vw-2rem))] p-0 rounded-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="font-extrabold text-foreground">התראות</span>
-          <div className="flex items-center gap-1">
+      <PopoverContent
+        align="end"
+        dir="rtl"
+        aria-label="התראות"
+        className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden p-0 rounded-2xl shadow-lg"
+      >
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <span className="min-w-0 flex-1 text-right font-extrabold text-foreground">התראות</span>
+          <div className="flex shrink-0 items-center gap-1">
             {unreadCount > 0 && (
               <Button
                 variant="ghost"
@@ -90,22 +95,22 @@ const NotificationBell = () => {
                       type="button"
                       onClick={() => open(item.id, targetLink, unread)}
                       className={cn(
-                        "w-full text-right px-4 py-3 hover:bg-accent/40 transition-colors",
+                        "w-full px-4 py-3 text-right hover:bg-accent/40 transition-colors",
                         unread && "bg-accent/20",
                       )}
                     >
-                      <span className="flex flex-row-reverse items-center justify-end gap-2" dir="ltr">
-                        <span aria-hidden="true" className="text-lg leading-none">{line.emoji}</span>
-                        <span dir="rtl">
+                      <span className="flex items-center gap-2" dir="rtl">
+                        {unread && <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />}
+                        <span className="min-w-0 flex-1 truncate">
                           <span className={cn("text-sm text-foreground", unread ? "font-extrabold" : "font-bold")}>
                             {line.title}
                           </span>
                         </span>
-                        {unread && <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-hidden="true" />}
+                        <span aria-hidden="true" className="shrink-0 text-lg leading-none">{line.emoji}</span>
                       </span>
-                      <span className="block min-w-0" dir="rtl">
-                        <span className="block text-sm text-muted-foreground truncate">{line.body}</span>
-                        <span className="block text-xs text-muted-foreground/80 mt-0.5">
+                      <span className="mt-1 block min-w-0 pr-4" dir="rtl">
+                        <span className="block truncate text-sm text-muted-foreground">{line.body}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground/80">
                           {formatRelativeTime(item.created_at)}
                         </span>
                       </span>

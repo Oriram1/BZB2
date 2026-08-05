@@ -40,17 +40,21 @@ export function useNotifications() {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel(`notifications-${user.id}`)
-      .on(
+    // A stable topic can be returned by Supabase again while a previous
+    // effect cleanup is still removing it (notably in React Strict Mode and
+    // during Vite HMR). Reusing that already-subscribed channel makes
+    // Realtime reject the next `.on(...)` call. Each mounted effect owns a
+    // fresh channel, and cleanup still removes it when the effect unmounts.
+    const channel = supabase.channel(`notifications-${user.id}-${Date.now()}`);
+    channel.on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload) => {
           const incoming = payload.new as NotificationRow;
           setItems((prev) => (prev.some((item) => item.id === incoming.id) ? prev : [incoming, ...prev]));
         },
-      )
-      .subscribe();
+      );
+    channel.subscribe();
 
     // The socket drops when a phone locks or the tab backgrounds, and
     // Supabase never replays what was missed while it was down — so the
