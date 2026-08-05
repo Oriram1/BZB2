@@ -287,24 +287,27 @@ const Profile = () => {
     if (!apps) return;
 
     const acceptedTaskIds = apps.filter(a => a.status === "accepted").map(a => a.task_id);
+    let completed = 0;
     let totalEarnings = 0;
 
     if (acceptedTaskIds.length > 0) {
-      const { data: completedTasks } = await supabase
+      const { data: acceptedTasks } = await supabase
         .from("tasks")
         .select("payment, status")
         .in("id", acceptedTaskIds)
         .is("archived_at", null);
 
-      totalEarnings = (completedTasks || [])
-        .filter(t => t.status === "completed")
-        .reduce((sum, t) => sum + Number(t.payment), 0);
+      // Being accepted is not being paid: only a task the publisher closed
+      // through complete_task counts towards either number.
+      const completedTasks = (acceptedTasks || []).filter(t => t.status === "completed");
+      completed = completedTasks.length;
+      totalEarnings = completedTasks.reduce((sum, t) => sum + Number(t.payment), 0);
     }
 
     setBeeStats({
       applied: apps.length,
       accepted: apps.filter(a => a.status === "accepted").length,
-      completed: apps.filter(a => a.status === "accepted").length, // approximation
+      completed,
       totalEarnings,
     });
   };

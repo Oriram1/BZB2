@@ -88,6 +88,16 @@ const MyTasks = () => {
     [applications],
   );
 
+  /** Only a task with someone working on it can be completed — see complete_task. */
+  const acceptedByTask = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const application of applications) {
+      if (application.status !== "accepted") continue;
+      counts.set(application.taskId, (counts.get(application.taskId) ?? 0) + 1);
+    }
+    return counts;
+  }, [applications]);
+
   const requestedTab = searchParams.get("tab");
   const activeTab = requestedTab === "applications" && isTasker
     ? "applications"
@@ -274,6 +284,8 @@ const MyTasks = () => {
   };
 
   const [confirmTask, setConfirmTask] = useState<PublishedTask | null>(null);
+  /** Kept apart from `confirmTask`: closing a task and deleting it are different decisions. */
+  const [confirmComplete, setConfirmComplete] = useState<PublishedTask | null>(null);
   const touchStartRef = useRef<{ x: number; y: number; id: string } | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent, taskId: string) => {
@@ -295,7 +307,11 @@ const MyTasks = () => {
   const cancelTask = async (task: PublishedTask) => {
     const { error } = await supabase.rpc("cancel_task", { _task_id: task.id });
     if (error) {
-      toast.error("לא הצלחנו לבטל את המטלה");
+      toast.error(
+        error.message.includes("task_completed")
+          ? "המטלה כבר הושלמה, אז אי אפשר לבטל אותה"
+          : "לא הצלחנו לבטל את המטלה",
+      );
       return;
     }
 
@@ -304,6 +320,27 @@ const MyTasks = () => {
     );
     logUserActivity(user?.id, "task_cancelled", { entityType: "task", entityId: task.id, details: { name: task.name } });
     toast.success("המטלה בוטלה");
+  };
+
+  /** What the database refuses, said in the words the tasker used to get here. */
+  const completionError: Record<string, string> = {
+    no_accepted_worker: "אפשר לסמן מטלה כהושלמה רק אחרי שנבחר לה עובד",
+    task_cancelled: "המטלה בוטלה, אז אי אפשר לסמן אותה כהושלמה",
+  };
+
+  const completeTask = async (task: PublishedTask) => {
+    const { error } = await supabase.rpc("complete_task", { _task_id: task.id });
+    if (error) {
+      const reason = Object.keys(completionError).find((key) => error.message.includes(key));
+      toast.error(reason ? completionError[reason] : "לא הצלחנו לסמן את המטלה כהושלמה");
+      return;
+    }
+
+    setPublishedTasks((current) =>
+      current.map((t) => (t.id === task.id ? { ...t, status: "completed" } : t)),
+    );
+    logUserActivity(user?.id, "task_completed", { entityType: "task", entityId: task.id, details: { name: task.name } });
+    toast.success("המטלה סומנה כהושלמה. התשלום נרשם לעובדים שביצעו אותה");
   };
 
   const archiveTask = async (task: PublishedTask) => {
@@ -443,48 +480,57 @@ const MyTasks = () => {
                   <p className="font-bold">עדיין לא פרסמתם מטלות</p>
                   <Link to="/create-task"><Button className="mt-4 rounded-full gradient-honey text-primary-foreground">פרסום מטלה</Button></Link>
                 </div>
-              ) : publishedTasks.map((task) => (
-                <article
-                  key={task.id}
-                  className="rounded-3xl border border-border bg-card p-5 shadow-sm touch-pan-y"
-                  onTouchStart={(e) => handleTouchStart(e, task.id)}
-                  onTouchEnd={(e) => handleTouchEnd(e, task)}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <Link to={`/task/${task.id}`} className="min-w-0 flex-1">
-                      <h2 className="font-extrabold text-lg truncate">{task.name}</h2>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{task.short_desc}</p>
-                    </Link>
-                    <Badge className="rounded-full gradient-honey text-primary-foreground border-0">{taskStatusLabel(task.status)}</Badge>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <span className="text-sm text-muted-foreground inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>
-                    <div className="flex items-center gap-2">
-                      <Link to={`/task/${task.id}`}><Button variant="outline" size="sm" className="rounded-full font-bold">לפרטי המטלה</Button></Link>
-                      {task.status !== "cancelled" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setConfirmTask(task)}
-                          className="rounded-full text-destructive font-bold"
-                        >
-                          ביטול / מחיקה
-                        </Button>
-                      )}
-                      {task.status === "cancelled" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setConfirmTask(task)}
-                          className="rounded-full text-destructive font-bold"
-                        >
-                          מחיקה
-                        </Button>
-                      )}
+              ) : publishedTasks.map((task) => {
+                const closed = task.status === "completed" || task.status === "cancelled";
+                const canComplete = !closed && (acceptedByTask.get(task.id) ?? 0) > 0;
+
+                return (
+                  <article
+                    key={task.id}
+                    className="rounded-3xl border border-border bg-card p-5 shadow-sm touch-pan-y"
+                    onTouchStart={(e) => handleTouchStart(e, task.id)}
+                    onTouchEnd={(e) => handleTouchEnd(e, task)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <Link to={`/task/${task.id}`} className="min-w-0 flex-1">
+                        <h2 className="font-extrabold text-lg truncate">{task.name}</h2>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{task.short_desc}</p>
+                      </Link>
+                      {/* A closed task has to read as closed at a glance, or the
+                          list looks identical before and after completing one. */}
+                      <Badge
+                        variant={closed ? "secondary" : undefined}
+                        className={`rounded-full ${closed ? "" : "gradient-honey text-primary-foreground border-0"}`}
+                      >
+                        {taskStatusLabel(task.status)}
+                      </Badge>
                     </div>
-                  </div>
-                </article>
-              ))}
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                      <span className="text-sm text-muted-foreground inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {canComplete && (
+                          <Button
+                            size="sm"
+                            onClick={() => setConfirmComplete(task)}
+                            className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                          >
+                            <Check size={15} /> סמן כהושלמה
+                          </Button>
+                        )}
+                        <Link to={`/task/${task.id}`}><Button variant="outline" size="sm" className="rounded-full font-bold">לפרטי המטלה</Button></Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmTask(task)}
+                          className="rounded-full text-destructive font-bold"
+                        >
+                          {closed ? "מחיקה" : "ביטול / מחיקה"}
+                        </Button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </TabsContent>
           )}
 
@@ -536,14 +582,18 @@ const MyTasks = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>מה לעשות עם &ldquo;{confirmTask?.name}&rdquo;?</AlertDialogTitle>
               <AlertDialogDescription>
-                {confirmTask?.status !== "cancelled"
-                  ? "ביטול משנה את הסטטוס ומתריע למועמדים שהתקבלו. מחיקה מעבירה לארכיון ומסירה מהאתר."
-                  : "המטלה כבר בוטלה. מחיקה מעבירה לארכיון ומסירה מהאתר."}
+                {confirmTask?.status === "cancelled"
+                  ? "המטלה כבר בוטלה. מחיקה מעבירה לארכיון ומסירה מהאתר."
+                  : confirmTask?.status === "completed"
+                    ? "המטלה כבר הושלמה ואי אפשר לבטל אותה. מחיקה מעבירה לארכיון ומסירה מהאתר."
+                    : "ביטול משנה את הסטטוס ומתריע למועמדים שהתקבלו. מחיקה מעבירה לארכיון ומסירה מהאתר."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
               <AlertDialogCancel className="rounded-full">חזרה</AlertDialogCancel>
-              {confirmTask?.status !== "cancelled" && (
+              {/* Completed and cancelled are both terminal — complete_task credited
+                  the bee already, so cancelling out of it would erase real earnings. */}
+              {confirmTask?.status !== "cancelled" && confirmTask?.status !== "completed" && (
                 <AlertDialogAction
                   onClick={() => { if (confirmTask) cancelTask(confirmTask); setConfirmTask(null); }}
                   className="rounded-full bg-amber-600 text-white hover:bg-amber-700"
@@ -556,6 +606,27 @@ const MyTasks = () => {
                 className="rounded-full bg-destructive text-destructive-foreground"
               >
                 מחיקה (ארכיון)
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!confirmComplete} onOpenChange={(open) => !open && setConfirmComplete(null)}>
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>לסמן את &ldquo;{confirmComplete?.name}&rdquo; כהושלמה?</AlertDialogTitle>
+              <AlertDialogDescription>
+                המטלה תיסגר ותרד מרשימת המטלות הזמינות, והתשלום יירשם בפרופיל של מי שביצע אותה.
+                אחרי הסימון אי אפשר לבטל את המטלה.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+              <AlertDialogCancel className="rounded-full">חזרה</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => { if (confirmComplete) completeTask(confirmComplete); setConfirmComplete(null); }}
+                className="rounded-full gradient-honey text-primary-foreground"
+              >
+                סימון כהושלמה
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -58,6 +58,30 @@ describe("architecture invariants", () => {
     expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.cancel_task(UUID) TO authenticated");
   });
 
+  it("keeps task completion on one server command", () => {
+    const page = readFileSync(resolve(root, "src/pages/MyTasks.tsx"), "utf8");
+    const migration = readFileSync(resolve(root, "supabase/migrations/20260805120000_canonical_task_completion.sql"), "utf8");
+    expect(page).toContain('rpc("complete_task"');
+    // Closing a task is what credits a bee, so the client must never write the
+    // status itself and reach the payment receipts through a plain update.
+    expect(page).not.toContain('.update({ status: "completed" })');
+    expect(migration).toContain("CREATE OR REPLACE FUNCTION public.complete_task");
+    expect(migration).toContain("FOR UPDATE");
+    expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.complete_task(UUID) TO authenticated");
+    // Completion is terminal on both sides: it needs someone to pay, and it
+    // cannot be undone by cancelling afterwards.
+    expect(migration).toContain("no_accepted_worker");
+    expect(migration).toContain("task_completed");
+  });
+
+  it("counts a bee's completed tasks and earnings from task status, not acceptance", () => {
+    const profile = readFileSync(resolve(root, "src/pages/Profile.tsx"), "utf8");
+    // The old stat counted accepted applications, so a bee who was picked but
+    // never paid still read as having completed the work.
+    expect(profile).not.toContain("// approximation");
+    expect(profile).toContain('t.status === "completed"');
+  });
+
   it("keeps production security headers configured", () => {
     const vercel = readFileSync(resolve(root, "vercel.json"), "utf8");
     expect(vercel).toContain('"Content-Security-Policy"');

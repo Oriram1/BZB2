@@ -718,6 +718,8 @@ export type Database = {
         Args: { _task_id: string; _user_id: string }
         Returns: undefined
       }
+      cancel_task: { Args: { _task_id: string }; Returns: undefined }
+      complete_task: { Args: { _task_id: string }; Returns: undefined }
       enqueue_notification: {
         Args: {
           _data: Json

@@ -11,6 +11,7 @@ export type UserActivityAction =
   | "signup"
   | "task_created"
   | "task_cancelled"
+  | "task_completed"
   | "task_deleted"
   | "application_submitted"
   | "application_accepted"
