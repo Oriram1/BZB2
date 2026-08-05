@@ -39,7 +39,7 @@ import InstallPrompt from "./components/InstallPrompt";
 const queryClient = new QueryClient();
 
 const RouteViewport = ({ children }: { children: ReactNode }) => (
-  <div>{children}</div>
+  <div className="overflow-x-hidden">{children}</div>
 );
 
 /**

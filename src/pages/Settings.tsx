@@ -38,7 +38,7 @@ const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 const hourLabel = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
 
 const Settings = () => {
-  const { user, roles } = useAuth();
+  const { user, roles, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -54,6 +54,7 @@ const Settings = () => {
   const rows = useMemo(() => rowsForRoles(roles), [roles]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       navigate("/login");
       return;
@@ -93,7 +94,7 @@ const Settings = () => {
     };
 
     load();
-  }, [user, navigate]);
+  }, [authLoading, user, navigate]);
 
   const toggleChannel = async (event: NotificationEvent, channel: keyof Channels, value: boolean) => {
     if (!user) return;
@@ -161,6 +162,18 @@ const Settings = () => {
   // — and a denied prompt is not something the app can ask for a second time.
   const showInstallHint = needsInstall();
   const pushUnavailable = !pushSupported() || !pushConfigured();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-muted" dir="rtl">
+        <PageHeader title="הגדרות התראות" icon={<Bell size={18} />} />
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-5" aria-busy="true">
+          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted" dir="rtl">

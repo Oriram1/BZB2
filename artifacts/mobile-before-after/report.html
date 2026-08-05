@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>דוח בדיקת מובייל — BusyBee</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f7f7f7;color:#222;margin:24px}
+    h1{margin-bottom:4px}.note{color:#555;margin-bottom:24px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#fff;padding:16px;margin:16px 0;border-radius:12px}
+    .cell{min-width:0}.cell h2{font-size:18px;margin:0 0 10px}.cell img{display:block;width:390px;max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px}
+    .missing{height:180px;display:grid;place-items:center;border:1px dashed #aaa;border-radius:8px;color:#777;background:#fafafa}
+    @media(max-width:700px){body{margin:12px}.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <h1>דוח בדיקת UI/UX במובייל — BusyBee</h1>
+  <div class="note">רוחב בדיקה: 390px. כל צילום לאחר המתנה של 8 שניות. צילום “לפני” מוצג רק אם קיים צילום אמיתי.</div>
+  <section class="row"><div class="cell"><h2>לפני — דף הבית</h2><img src="before-home.png" alt="לפני: דף הבית"></div><div class="cell"><h2>אחרי — דף הבית</h2><img src="after-home-latest.png" alt="אחרי: דף הבית"></div></section>
+  <section class="row"><div class="cell"><h2>לפני — מטלות</h2><img src="before-tasks.png" alt="לפני: מטלות"></div><div class="cell"><h2>אחרי — מטלות</h2><img src="../mobile-full-audit/full-after-tasks.png" alt="אחרי: מטלות"></div></section>
+  <section class="row"><div class="cell"><h2>לפני — פרופיל</h2><img src="before-profile.png" alt="לפני: פרופיל"></div><div class="cell"><h2>אחרי — פרופיל</h2><img src="../mobile-full-audit/full-after-profile.png" alt="אחרי: פרופיל"></div></section>
+  <section class="row"><div class="cell"><h2>לפני — ניהול</h2><div class="missing">אין צילום לפני אמיתי</div></div><div class="cell"><h2>אחרי — ניהול</h2><img src="../mobile-full-audit/admin-after-admin.png" alt="אחרי: ניהול"></div></section>
+</body>
+</html>

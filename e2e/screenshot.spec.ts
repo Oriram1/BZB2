@@ -25,7 +25,8 @@ test.describe('Visual Screen Walkthrough', () => {
     for (const route of routes) {
       await page.goto(route.path);
       // Wait for network idle and animations
-      await page.waitForTimeout(2000); 
+      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForTimeout(2000);
       
       const screenshotPath = path.join(outDir, `${route.name}-${device}.png`);
       await page.screenshot({ path: screenshotPath, fullPage: true });

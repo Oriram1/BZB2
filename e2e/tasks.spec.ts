@@ -8,8 +8,8 @@ test.describe('Task Creation & Listing Flows', () => {
     await expect(page.locator('h1, h2')).toContainText(/מטלות|חפש/i);
     
     // Check toggle between list and map views
-    const listMapToggle = page.locator('button:has-text("מפה"), button:has-text("רשימה"), [role="tab"]').first();
-    await expect(listMapToggle).toBeVisible();
+    await expect(page.getByRole('button', { name: 'תצוגת רשימה' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'תצוגת מפה' })).toBeVisible();
   });
 
   test('Task creation page requires authentication', async ({ page }) => {

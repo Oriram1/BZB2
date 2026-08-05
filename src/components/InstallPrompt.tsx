@@ -144,7 +144,7 @@ const InstallPrompt = () => {
   return (
     <div
       dir="rtl"
-      className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] inset-x-4 z-40 max-w-md mx-auto bg-card border border-border shadow-xl rounded-2xl p-4 animate-slide-up"
+      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] inset-x-4 z-50 max-w-md mx-auto bg-background border-2 border-primary/25 shadow-2xl rounded-2xl p-4 animate-slide-up"
     >
       <div className="flex items-start gap-3">
         <span className="text-2xl leading-none shrink-0" aria-hidden="true">🐝</span>
@@ -165,7 +165,7 @@ const InstallPrompt = () => {
             <Button
               size="sm"
               onClick={install}
-              className="mt-3 gradient-honey text-primary-foreground rounded-full border-none font-bold gap-1.5"
+              className="mt-3 min-h-11 gradient-honey text-primary-foreground rounded-full border-none font-bold gap-1.5 shadow-md"
             >
               <Download size={14} />
               התקנה

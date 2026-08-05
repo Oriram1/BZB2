@@ -43,7 +43,7 @@ const Landing = () => {
           {user ? (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
               <Link to="/tasks">
-                <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
+                <Button size="lg" className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink shadow-glow font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
                   למטלות 📋
                 </Button>
               </Link>
@@ -51,7 +51,7 @@ const Landing = () => {
           ) : (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
               <Link to="/auth">
-                <Button size="lg" className="text-lg px-10 py-7 bg-card text-foreground shadow-glow font-extrabold rounded-full border-none hover:scale-105 transition-transform duration-300">
+                <Button size="lg" className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink shadow-glow font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
                   בואו נתחיל! 🚀
                 </Button>
               </Link>
@@ -59,7 +59,7 @@ const Landing = () => {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="text-lg px-10 py-7 glass text-foreground font-bold rounded-full border-2 border-primary-foreground/30 hover:scale-105 transition-transform duration-300">
+                  className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink font-bold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
                   סיור כאורח 👀
                 </Button>
               </Link>
@@ -152,7 +152,7 @@ const Landing = () => {
           <Link to="/auth">
             <Button
               size="lg"
-              className="text-lg px-10 py-7 bg-card text-foreground font-extrabold rounded-full hover:scale-105 transition-transform duration-300 shadow-glow">
+              className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300 shadow-glow">
               
               הירשמו עכשיו 🐝
             </Button>

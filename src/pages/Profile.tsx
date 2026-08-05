@@ -380,17 +380,17 @@ const Profile = () => {
           {/* Identity sits at the top, on the banner — avatar, name and role in
               one row, so the gradient is a backdrop rather than dead space. */}
           <div className="gradient-honey px-5 py-5">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <AvatarPicker userId={user.id} currentAvatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
               <div className="min-w-0">
-                <h1 className="text-2xl font-extrabold text-foreground truncate">{displayName}</h1>
+                <h1 className="text-lg sm:text-2xl leading-tight font-extrabold text-foreground break-words">{displayName}</h1>
                 {roleLabel && (
                   <Badge className="bg-card text-foreground border-none font-bold mt-1.5 shadow-sm">{roleLabel}</Badge>
                 )}
               </div>
               <div className="mr-auto shrink-0">
                 {!editing ? (
-                  <Button size="sm" onClick={() => setEditing(true)} className="bg-card text-foreground hover:bg-card/90 rounded-full font-bold shadow-sm">
+                  <Button size="sm" onClick={() => setEditing(true)} className="bg-card text-foreground hover:bg-card/90 rounded-full font-bold shadow-sm px-3">
                     <Edit3 className="w-4 h-4 ml-1" /> עריכה
                   </Button>
                 ) : (

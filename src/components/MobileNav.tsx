@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { visibleNavItems } from "@/components/navItems";
 import { useNavDrawer } from "@/components/NavDrawerContext";
+import NotificationBell from "@/components/NotificationBell";
 
 /**
  * A closed drawer must be unreachable by keyboard and screen reader, not just
@@ -45,7 +46,14 @@ export function NavDrawerTrigger({ floating = false }: { floating?: boolean }) {
 export function FloatingNavTrigger() {
   const { hasHeader } = useNavDrawer();
   if (hasHeader) return null;
-  return <NavDrawerTrigger floating />;
+  return (
+    <>
+      <div className="fixed top-4 start-16 z-40">
+        <NotificationBell />
+      </div>
+      <NavDrawerTrigger floating />
+    </>
+  );
 }
 
 export function MobileNav() {

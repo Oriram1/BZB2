@@ -35,7 +35,8 @@ test.describe('Authenticated Visual Screen Walkthrough', () => {
     for (const route of routes) {
       await page.goto(route.path);
       // Wait for any skeletons or data to load
-      await page.waitForTimeout(3000); 
+      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForTimeout(3000);
       
       const screenshotPath = path.join(outDir, `${route.name}-${device}.png`);
       await page.screenshot({ path: screenshotPath, fullPage: true });
