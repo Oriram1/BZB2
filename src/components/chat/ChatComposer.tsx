@@ -216,7 +216,7 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
 
   if (recording) {
     return (
-      <div className="shrink-0 border-t border-border bg-card px-2 py-2">
+      <div className="shrink-0 border-t border-border bg-card px-2 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -252,7 +252,7 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
   }
 
   return (
-    <div className="shrink-0 border-t border-border bg-card px-2 py-2">
+    <div className="shrink-0 border-t border-border bg-card px-2 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       {image && (
         <div className="mb-2 flex items-center gap-2 rounded-2xl bg-muted/60 p-2">
           <img
@@ -280,8 +280,8 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
         </div>
       )}
 
-      {/* dir="rtl" on the page makes the first child the right-most one: attach
-          sits at the inline start, send/mic at the inline end — as in WhatsApp. */}
+      {/* In RTL flex order the first child is on the right: send/mic is kept
+          first for the primary action, with attach on the left. */}
       <div className="flex items-end gap-1.5">
         <input
           ref={fileInputRef}
@@ -292,18 +292,6 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
           aria-hidden="true"
           tabIndex={-1}
         />
-
-        <Button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || sending}
-          size="icon"
-          variant="ghost"
-          aria-label="צירוף תמונה"
-          className="h-11 w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
-        >
-          <Plus size={22} />
-        </Button>
 
         {/* One line: the emoji button sits on the text's own centre line. Once
             the box grows it hugs the bottom instead, next to the last line. */}
@@ -380,6 +368,18 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
           ) : (
             <Mic size={20} />
           )}
+        </Button>
+
+        <Button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled || sending}
+          size="icon"
+          variant="ghost"
+          aria-label="צירוף תמונה"
+          className="h-11 w-11 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+        >
+          <Plus size={22} />
         </Button>
       </div>
     </div>
