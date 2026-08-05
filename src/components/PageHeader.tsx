@@ -85,7 +85,7 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
         {/* The bell stays visible on mobile too: it is the only notification
             channel that reaches every user regardless of email or push. */}
       </div>
-      <div className="absolute left-4 top-1/2 -translate-y-1/2">
+      <div className="absolute left-4 top-1/2 z-40 -translate-y-1/2 overflow-visible">
         <NotificationBell />
       </div>
     </header>

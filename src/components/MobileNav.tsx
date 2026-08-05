@@ -48,7 +48,7 @@ export function FloatingNavTrigger() {
   if (hasHeader) return null;
   return (
     <>
-      <div className="fixed top-4 left-4 z-40">
+      <div className="fixed top-4 left-4 z-40 overflow-visible">
         <NotificationBell />
       </div>
       <NavDrawerTrigger floating />

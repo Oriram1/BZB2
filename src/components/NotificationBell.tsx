@@ -28,11 +28,11 @@ const NotificationBell = () => {
         <button
           type="button"
           aria-label={unreadCount > 0 ? `התראות, ${unreadCount} חדשות` : "התראות"}
-          className="relative shrink-0 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+          className="relative z-10 shrink-0 w-10 h-10 overflow-visible rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
         >
           <Bell size={19} aria-hidden="true" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center">
+            <span className="pointer-events-none absolute -top-1 -right-1 z-20 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center leading-none">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -40,7 +40,8 @@ const NotificationBell = () => {
       </PopoverTrigger>
 
       <PopoverContent
-        align="end"
+        align="start"
+        sideOffset={8}
         dir="rtl"
         aria-label="התראות"
         className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden p-0 rounded-2xl shadow-lg"
