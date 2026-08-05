@@ -16,6 +16,7 @@ dist-ssr
 # template — it lists every variable the app needs, with empty values.
 .env
 .env.*
+.env.local
 !.env.example
 supabase/.temp/
 
