@@ -21,6 +21,8 @@ interface Conversation {
   participant_1: string;
   participant_2: string;
   task_id: string | null;
+  otherId: string;
+  otherPhone: string | null;
   otherName: string;
   taskName: string;
   lastMessage: string;
@@ -56,6 +58,7 @@ const Chat = () => {
   const [showSidebar, setShowSidebar] = useState(true);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // The chat is the one screen that must fit the device exactly instead of
@@ -83,7 +86,7 @@ const Chat = () => {
         const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
         const { data: profile } = await supabase
           .from("profiles")
-          .select("first_name, last_name")
+          .select("first_name, last_name, phone")
           .eq("user_id", otherId)
           .single();
 
@@ -112,6 +115,8 @@ const Chat = () => {
           participant_1: c.participant_1,
           participant_2: c.participant_2,
           task_id: c.task_id,
+          otherId,
+          otherPhone: profile?.phone ?? null,
           otherName: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "משתמש",
           taskName,
           lastMessage: lastMsg?.[0] ? previewOf(lastMsg[0]) : "",
@@ -322,9 +327,45 @@ const Chat = () => {
                     <p className="truncate text-[10px] text-muted-foreground">מטלה: {activeConv.taskName}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" aria-label="שיחת טלפון"><Phone size={16} /></Button>
-                  <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" aria-label="אפשרויות נוספות"><MoreVertical size={16} /></Button>
+                <div className="relative flex items-center gap-1">
+                  <Button
+                    asChild={Boolean(activeConv.otherPhone)}
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-full w-8 h-8"
+                    aria-label={activeConv.otherPhone ? "חיוג" : "אין מספר טלפון זמין"}
+                    disabled={!activeConv.otherPhone}
+                  >
+                    {activeConv.otherPhone ? (
+                      <a href={`tel:${activeConv.otherPhone}`} dir="ltr">
+                        <Phone size={16} />
+                      </a>
+                    ) : (
+                      <Phone size={16} />
+                    )}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="rounded-full w-8 h-8"
+                    aria-label="אפשרויות נוספות"
+                    aria-expanded={moreOpen}
+                    onClick={() => setMoreOpen((open) => !open)}
+                  >
+                    <MoreVertical size={16} />
+                  </Button>
+                  {moreOpen && (
+                    <div className="absolute end-0 top-10 z-50 min-w-44 rounded-xl border border-border bg-background p-1 shadow-lg" role="menu">
+                      <Link
+                        to={`/profile/${activeConv.otherId}`}
+                        onClick={() => setMoreOpen(false)}
+                        className="block rounded-lg px-3 py-2 text-right text-sm font-semibold hover:bg-muted"
+                        role="menuitem"
+                      >
+                        צפייה בפרופיל
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
 
