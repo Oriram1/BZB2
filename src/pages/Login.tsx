@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,21 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { logUserActivity } from "@/lib/activityLog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/tasks", { replace: true });
+    }
+  }, [authLoading, navigate, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
