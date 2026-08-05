@@ -21,15 +21,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { ensureAcceptedTaskConversation } from "@/lib/taskConversations";
 import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
 
 type ApplicationStatus = "pending" | "accepted" | "rejected";
+/** The task_status enum, so a screen cannot invent a state the database rejects. */
+type TaskStatus = Database["public"]["Enums"]["task_status"];
 
 interface PublishedTask {
   id: string;
   name: string;
   short_desc: string;
   views_count: number;
-  status: string;
+  status: TaskStatus;
 }
 
 interface CandidateApplication {
@@ -51,13 +54,13 @@ interface PerformingTask {
   id: string;
   name: string;
   shortDesc: string;
-  status: string;
+  status: TaskStatus;
   scheduledDate: string | null;
   scheduledTime: string | null;
   location: string;
 }
 
-const taskStatusLabel = (status: string) => {
+const taskStatusLabel = (status: TaskStatus) => {
   if (status === "open") return "פתוחה";
   if (status === "accepted") return "התקבלה";
   if (status === "in_progress") return "בביצוע";

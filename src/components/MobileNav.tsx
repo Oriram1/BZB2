@@ -7,6 +7,13 @@ import { navItems } from "@/components/navItems";
 import { useNavDrawer } from "@/components/NavDrawerContext";
 
 /**
+ * A closed drawer must be unreachable by keyboard and screen reader, not just
+ * translated off-screen. React 18's typings predate `inert`, so it is spread in
+ * rather than written as a prop; the DOM honours it either way.
+ */
+const inertWhenClosed = (open: boolean) => (open ? {} : { inert: "" }) as { inert?: string };
+
+/**
  * Desktop-only navigation drawer. On mobile the bottom bar is the navigation,
  * so nothing here renders below the md breakpoint.
  *
@@ -89,7 +96,7 @@ export function MobileNav() {
         aria-modal="true"
         aria-label="תפריט ניווט"
         aria-hidden={!open}
-        inert={!open ? "" : undefined}
+        {...inertWhenClosed(open)}
         className={cn(
           // Logical inset: start-0 is the right edge in Hebrew, the left edge if
           // the app is ever switched to LTR. border-e faces the page content.
