@@ -88,6 +88,8 @@ describe("architecture invariants", () => {
     expect(vercel).toContain('"X-Content-Type-Options"');
     expect(vercel).toContain('"Referrer-Policy"');
     expect(vercel).toContain("object-src 'none'");
+    expect(vercel).toContain("script-src 'self' https://accounts.google.com https://maps.googleapis.com");
+    expect(vercel).toContain("wss://nrqgoaxraywprlbyzrso.supabase.co");
   });
 
   it("does not expose raw Edge Function exceptions", () => {
