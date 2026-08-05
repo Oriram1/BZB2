@@ -94,6 +94,21 @@ describe("architecture invariants", () => {
     expect(migration).toContain("BEFORE UPDATE OF status ON public.task_applications");
   });
 
+  // switch_my_role exchanges tasker for bee, but the tasks an account published
+  // and the applications it submitted stay with it, and RLS keeps permitting
+  // both. A screen that gates on the current role instead of what the account
+  // owns is how a switched publisher lost every way to accept a candidate.
+  it("reaches published tasks and applications by ownership, not current role", () => {
+    const page = readFileSync(resolve(root, "src/pages/MyTasks.tsx"), "utf8");
+    expect(page).toContain("const managesTasks = isTasker || publishedTasks.length > 0");
+    expect(page).toContain("const performsTasks = isBee || performingTasks.length > 0");
+    // Neither the fetch nor any tab may be behind a bare role check again.
+    expect(page).not.toContain("if (isTasker) {");
+    expect(page).not.toContain("if (isBee) {");
+    expect(page).not.toContain("{isTasker && <TabsTrigger");
+    expect(page).not.toContain("{isBee && <TabsTrigger");
+  });
+
   it("keeps production security headers configured", () => {
     const vercel = readFileSync(resolve(root, "vercel.json"), "utf8");
     expect(vercel).toContain('"Content-Security-Policy"');

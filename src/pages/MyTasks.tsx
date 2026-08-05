@@ -104,14 +104,25 @@ const MyTasks = () => {
     return counts;
   }, [applications]);
 
+  /**
+   * What the account actually has, not what role it currently holds.
+   *
+   * switch_my_role exchanges tasker for bee, but published tasks and submitted
+   * applications stay with the account and RLS still permits both. Hiding a tab
+   * behind the current role is what left a switched publisher with no way to
+   * accept anyone.
+   */
+  const managesTasks = isTasker || publishedTasks.length > 0;
+  const performsTasks = isBee || performingTasks.length > 0;
+
   const requestedTab = searchParams.get("tab");
-  const activeTab = requestedTab === "applications" && isTasker
+  const activeTab = requestedTab === "applications" && managesTasks
     ? "applications"
-    : requestedTab === "performing" && isBee
+    : requestedTab === "performing" && performsTasks
       ? "performing"
-      : requestedTab === "published" && isTasker
+      : requestedTab === "published" && managesTasks
         ? "published"
-        : isTasker
+        : managesTasks
           ? "applications"
           : "performing";
 
@@ -126,7 +137,11 @@ const MyTasks = () => {
       const nextApplications: CandidateApplication[] = [];
       const nextPerformingTasks: PerformingTask[] = [];
 
-      if (isTasker) {
+      // Loaded for everyone, not just accounts currently holding the role.
+      // switch_my_role swaps tasker for bee but leaves published tasks owned by
+      // the account, and RLS still lets the owner manage them — gating the fetch
+      // on the role is what made those tasks unreachable.
+      {
         const { data: taskRows, error: taskError } = await supabase
           .from("tasks")
           .select("id, name, short_desc, views_count, status, workers_needed")
@@ -180,7 +195,9 @@ const MyTasks = () => {
         }
       }
 
-      if (isBee) {
+      // Same reasoning as above, in the other direction: someone who applied to
+      // tasks and then switched to tasker still has work to show up for.
+      {
         const { data: ownApplications } = await supabase
           .from("task_applications")
           .select("id, status, task_id")
@@ -226,7 +243,7 @@ const MyTasks = () => {
     return () => {
       cancelled = true;
     };
-  }, [isBee, isTasker, user]);
+  }, [user]);
 
   useEffect(() => {
     if (loading) return;
@@ -386,8 +403,8 @@ const MyTasks = () => {
 
       <main className="max-w-3xl mx-auto py-5 px-4 relative z-10">
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
-          <TabsList className={`grid w-full h-auto rounded-2xl bg-card border border-border p-1 ${isTasker && isBee ? "grid-cols-3" : isTasker ? "grid-cols-2" : "grid-cols-1"}`}>
-            {isTasker && (
+          <TabsList className={`grid w-full h-auto rounded-2xl bg-card border border-border p-1 ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
+            {managesTasks && (
               <TabsTrigger value="applications" className="relative min-h-11 rounded-xl font-bold gap-1.5">
                 מועמדויות
                 {pendingCount > 0 && (
@@ -397,11 +414,11 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {isTasker && <TabsTrigger value="published" className="min-h-11 rounded-xl font-bold">מטלות שפרסמתי</TabsTrigger>}
-            {isBee && <TabsTrigger value="performing" className="min-h-11 rounded-xl font-bold">מטלות שאני מבצע</TabsTrigger>}
+            {managesTasks && <TabsTrigger value="published" className="min-h-11 rounded-xl font-bold">מטלות שפרסמתי</TabsTrigger>}
+            {performsTasks && <TabsTrigger value="performing" className="min-h-11 rounded-xl font-bold">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
 
-          {isTasker && (
+          {managesTasks && (
             <TabsContent value="applications" className="mt-4 space-y-3">
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מועמדויות…</p>
@@ -503,7 +520,7 @@ const MyTasks = () => {
             </TabsContent>
           )}
 
-          {isTasker && (
+          {managesTasks && (
             <TabsContent value="published" className="mt-4 space-y-3">
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מטלות…</p>
@@ -571,7 +588,7 @@ const MyTasks = () => {
             </TabsContent>
           )}
 
-          {isBee && (
+          {performsTasks && (
             <TabsContent value="performing" className="mt-4 space-y-3">
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מטלות…</p>
