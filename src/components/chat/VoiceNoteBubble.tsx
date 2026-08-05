@@ -58,8 +58,9 @@ export function VoiceNoteBubble({ src, duration, outgoing }: VoiceNoteBubbleProp
       audio.pause();
       setPlaying(false);
     } else {
-      void audio.play();
-      setPlaying(true);
+      void audio.play()
+        .then(() => setPlaying(true))
+        .catch(() => setPlaying(false));
     }
   };
 

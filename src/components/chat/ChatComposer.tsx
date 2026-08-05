@@ -32,7 +32,10 @@ const MAX_TEXTAREA_PX = 120;
 
 /** Safari does not record webm; Chrome and Firefox do not record mp4. */
 const pickAudioMimeType = () => {
-  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  // Safari/iOS can record and play AAC in an MP4 container, but generally
+  // cannot play the WebM recordings preferred by Chromium. Check support at
+  // runtime so Chromium still gets its native WebM/Opus path.
+  const candidates = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
   return candidates.find((type) => MediaRecorder.isTypeSupported?.(type)) ?? "";
 };
 
