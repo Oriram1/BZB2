@@ -43,7 +43,7 @@ const NotificationBell = () => {
           <Bell size={19} aria-hidden="true" />
           {visibleUnreadCount > 0 && (
             <span className="pointer-events-none absolute -top-1 -right-1 z-20 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center leading-none">
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {visibleUnreadCount > 9 ? "9+" : visibleUnreadCount}
             </span>
           )}
         </button>
