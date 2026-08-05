@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { consumeGoogleSignupRole } from "@/lib/googleAuth";
 import { toast } from "sonner";
+import { getRoleHomePath } from "@/lib/roleNavigation";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -18,16 +19,23 @@ const AuthCallback = () => {
         return;
       }
 
-      const role = consumeGoogleSignupRole();
-      if (role) {
-        navigate(`/register/${role}?google=1`, { replace: true });
-      } else {
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.session.user.id);
+      const requestedRole = consumeGoogleSignupRole();
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.session.user.id);
 
-        navigate(roles && roles.length > 0 ? "/tasks" : "/auth?google=1", { replace: true });
+      if (rolesError) {
+        toast.error("החשבון חובר, אך לא הצלחנו לטעון את ההרשאות.");
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      const currentRole = roles?.[0]?.role;
+      if (currentRole) {
+        navigate(getRoleHomePath(currentRole), { replace: true });
+      } else {
+        navigate(requestedRole ? `/register/${requestedRole}?google=1` : "/auth?google=1", { replace: true });
       }
     });
 
