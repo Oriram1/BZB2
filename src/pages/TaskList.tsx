@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Map, List, MapPin, ChevronDown, SearchX, Plus } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -113,7 +113,7 @@ const TaskList = () => {
         }
       />
 
-      <div className="max-w-5xl mx-auto py-5 px-4 relative z-10">
+      <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
         {/* Icon-only toggle: two states with familiar icons need no labels, and the
             narrow control keeps the title on one line down to 320px. */}
         <div className="flex items-center justify-between gap-3 mb-4 animate-fade-in">
@@ -274,6 +274,16 @@ const TaskList = () => {
           </div>
         )}
       </div>
+
+      {isTasker && (
+        <Link
+          to="/create-task"
+          aria-label="הוספת מטלה חדשה"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-5 z-30 flex h-[60px] w-[60px] items-center justify-center rounded-[20px] gradient-honey text-primary-foreground shadow-[0_12px_32px_rgba(245,158,11,0.38),inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-200 hover:scale-105 hover:rotate-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40 md:hidden"
+        >
+          <Plus size={28} strokeWidth={2.5} aria-hidden="true" />
+        </Link>
+      )}
     </div>
   );
 };
