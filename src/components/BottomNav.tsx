@@ -4,7 +4,7 @@ import { MoreHorizontal, LogOut, UserCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { navItems } from "@/components/navItems";
+import { visibleNavItems } from "@/components/navItems";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /**
@@ -33,15 +33,7 @@ export function BottomNav() {
     ? `${profile.first_name} ${profile.last_name}`.trim() || user?.email || "משתמש"
     : user?.email || "משתמש";
 
-  const items = navItems
-    .filter((item) => {
-      if (item.guestOnly && user) return false;
-      if (item.authOnly && !user) return false;
-      if (item.requiredRoles && item.requiredRoles.length > 0) {
-        if (!item.requiredRoles.some((r) => roles.includes(r))) return false;
-      }
-      return true;
-    })
+  const items = visibleNavItems(Boolean(user), roles)
     .sort((a, b) => tabOrder.indexOf(a.to) - tabOrder.indexOf(b.to));
 
   const needsMore = items.length > MAX_SLOTS;

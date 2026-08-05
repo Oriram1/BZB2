@@ -3,7 +3,7 @@ import { Menu, X, UserCircle, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { navItems } from "@/components/navItems";
+import { visibleNavItems } from "@/components/navItems";
 import { useNavDrawer } from "@/components/NavDrawerContext";
 
 /**
@@ -73,14 +73,7 @@ export function MobileNav() {
     ? "הורה"
     : "";
 
-  const filteredItems = navItems.filter((item) => {
-    if (item.guestOnly && user) return false;
-    if (item.authOnly && !user) return false;
-    if (item.requiredRoles && item.requiredRoles.length > 0) {
-      if (!item.requiredRoles.some((r) => roles.includes(r))) return false;
-    }
-    return true;
-  });
+  const filteredItems = visibleNavItems(Boolean(user), roles);
 
   return (
     <>

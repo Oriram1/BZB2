@@ -82,6 +82,18 @@ describe("architecture invariants", () => {
     expect(profile).toContain('t.status === "completed"');
   });
 
+  it("caps accepted workers at the number the task asked for", () => {
+    const page = readFileSync(resolve(root, "src/pages/MyTasks.tsx"), "utf8");
+    const migration = readFileSync(resolve(root, "supabase/migrations/20260805160000_task_worker_capacity.sql"), "utf8");
+    // The screen hides the approval button when full, but two taskers racing on
+    // the last position is settled by the row lock, not by the button.
+    expect(page).toContain("workers_needed");
+    expect(page).toContain("task_positions_full");
+    expect(migration).toContain("FOR UPDATE");
+    expect(migration).toContain("RAISE EXCEPTION 'task_positions_full'");
+    expect(migration).toContain("BEFORE UPDATE OF status ON public.task_applications");
+  });
+
   it("keeps production security headers configured", () => {
     const vercel = readFileSync(resolve(root, "vercel.json"), "utf8");
     expect(vercel).toContain('"Content-Security-Policy"');

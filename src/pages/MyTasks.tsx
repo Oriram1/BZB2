@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, Eye, MessageCircle, Plus, Star, UserRound, X } from "lucide-react";
+import { Check, Eye, MessageCircle, Plus, Star, UserRound, Users, X } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -33,12 +33,15 @@ interface PublishedTask {
   short_desc: string;
   views_count: number;
   status: TaskStatus;
+  workers_needed: number;
 }
 
 interface CandidateApplication {
   id: string;
   taskId: string;
   taskName: string;
+  /** From the task, so a candidate card can say how many positions are left. */
+  workersNeeded: number;
   applicantId: string;
   status: ApplicationStatus;
   firstName: string;
@@ -126,7 +129,7 @@ const MyTasks = () => {
       if (isTasker) {
         const { data: taskRows, error: taskError } = await supabase
           .from("tasks")
-          .select("id, name, short_desc, views_count, status")
+          .select("id, name, short_desc, views_count, status, workers_needed")
           .eq("creator_id", user.id)
           .is("archived_at", null)
           .order("created_at", { ascending: false });
@@ -159,6 +162,7 @@ const MyTasks = () => {
                     id: application.id,
                     taskId: task.id,
                     taskName: task.name,
+                    workersNeeded: task.workers_needed,
                     applicantId: application.applicant_id,
                     status: application.status,
                     firstName: profile?.first_name ?? "",
@@ -246,7 +250,11 @@ const MyTasks = () => {
       .is("archived_at", null);
 
     if (error) {
-      toast.error("לא הצלחנו לעדכן את המועמדות");
+      toast.error(
+        error.message.includes("task_positions_full")
+          ? "כל המקומות במטלה כבר תפוסים"
+          : "לא הצלחנו לעדכן את המועמדות",
+      );
       setActionId(null);
       return;
     }
@@ -406,6 +414,8 @@ const MyTasks = () => {
               ) : applications.map((application) => {
                 const fullName = `${application.firstName} ${application.lastName}`.trim() || "משתמש";
                 const highlighted = searchParams.get("application") === application.id;
+                const taken = acceptedByTask.get(application.taskId) ?? 0;
+                const full = taken >= application.workersNeeded;
                 return (
                   <article
                     id={`application-${application.id}`}
@@ -425,15 +435,33 @@ const MyTasks = () => {
                             {applicationStatusLabel[application.status]}
                           </Badge>
                         </div>
-                        <Link to={`/task/${application.taskId}`} className="text-sm text-primary-ink font-semibold hover:underline">
-                          {application.taskName}
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link to={`/task/${application.taskId}`} className="text-sm text-primary-ink font-semibold hover:underline">
+                            {application.taskName}
+                          </Link>
+                          {/* The number the approval decision actually turns on. */}
+                          <Badge
+                            variant={full ? "default" : "outline"}
+                            className="rounded-full text-[11px] font-bold tabular-nums"
+                          >
+                            <Users size={11} className="ms-1" aria-hidden="true" />
+                            {taken}/{application.workersNeeded} נבחרו
+                          </Badge>
+                        </div>
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1"><Check size={13} /> {application.completedTasks} מטלות שהושלמו</span>
                           <span className="inline-flex items-center gap-1"><Star size={13} /> אין דירוגים עדיין</span>
                         </div>
                       </div>
                     </div>
+
+                    {/* A greyed-out approval button with no reason next to it reads
+                        as a broken screen rather than a full task. */}
+                    {full && application.status === "pending" && (
+                      <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+                        כל המקומות במטלה תפוסים. כדי לקבל מועמד אחר צריך קודם לדחות מישהו שכבר נבחר.
+                      </p>
+                    )}
 
                     <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
                       <Button asChild variant="outline" className="rounded-full font-bold">
@@ -443,7 +471,8 @@ const MyTasks = () => {
                         <>
                           <Button
                             onClick={() => updateApplicationStatus(application, "accepted")}
-                            disabled={actionId === application.id}
+                            disabled={actionId === application.id || full}
+                            title={full ? "כל המקומות במטלה תפוסים" : undefined}
                             className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
                           >
                             <Check size={16} /> אישור וקבלה
@@ -509,7 +538,12 @@ const MyTasks = () => {
                       </Badge>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-                      <span className="text-sm text-muted-foreground inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>
+                        <span className="inline-flex items-center gap-1 tabular-nums">
+                          <Users size={15} /> {acceptedByTask.get(task.id) ?? 0}/{task.workers_needed} נבחרו
+                        </span>
+                      </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {canComplete && (
                           <Button
