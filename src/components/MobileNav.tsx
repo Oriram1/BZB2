@@ -12,6 +12,14 @@ import NotificationBell from "@/components/NotificationBell";
  * translated off-screen. React 18's typings predate `inert`, so it is spread in
  * rather than written as a prop; the DOM honours it either way.
  */
+/**
+ * The drawer stays mounted so it can slide, so it has to be closed to assistive
+ * tech while off-screen. `inert` alone does that: it drops the subtree from the
+ * accessibility tree *and* refuses focus inside it. Pairing it with
+ * `aria-hidden` used to add a race — a link in here could still hold focus on
+ * the frame `aria-hidden` landed, which the browser reports as hiding a focused
+ * element from screen readers.
+ */
 const inertWhenClosed = (open: boolean) => (open ? {} : { inert: "" }) as { inert?: string };
 
 /**
@@ -96,7 +104,6 @@ export function MobileNav() {
         role="dialog"
         aria-modal="true"
         aria-label="תפריט ניווט"
-        aria-hidden={!open}
         {...inertWhenClosed(open)}
         className={cn(
           // Logical inset: start-0 is the right edge in Hebrew, the left edge if

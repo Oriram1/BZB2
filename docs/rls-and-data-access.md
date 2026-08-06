@@ -182,6 +182,39 @@ exceptions — `send-auth-email`, `notify-dispatch`, `send-parent-digest`,
 signature or a shared secret instead. `architecture-invariants.test.ts` asserts
 this; keep new user-facing functions explicit rather than relying on a default.
 
+### Why `verify_jwt = false` is not a hole
+
+The flag turns off JWT checking **at the Supabase gateway only**. It does not
+make the function public, and `true` is not an available alternative for these
+four: none is called from a browser, so no caller has a user JWT at all.
+`send-auth-email` is invoked by Supabase Auth as a Send Email Hook; the other
+three by `pg_net` from a database trigger or by cron. A gateway that demanded a
+JWT would reject every legitimate call.
+
+The question that matters is whether the function authenticates itself. Each
+does, and each was verified live with an unauthenticated request:
+
+| Function | Mechanism | Unauthenticated call |
+|---|---|---|
+| `send-auth-email` | Standard Webhooks signature over `SEND_EMAIL_HOOK_SECRET` | `401 invalid_signature` |
+| `notify-dispatch` | shared secret in `x-notify-secret` | `401 unauthorized` |
+| `send-parent-digest` | same secret | `401 unauthorized` |
+| `send-quiet-digest` | same secret | `401 unauthorized` |
+
+Two properties of this arrangement are worth knowing before extending it:
+
+- **The secret comparison is not constant-time.** The three digest functions use
+  `req.headers.get("x-notify-secret") !== expectedSecret`, which leaks a timing
+  side channel in principle. Over HTTP, against network jitter, exploiting it is
+  impractical, so it is left as is — a considered trade-off, not an oversight.
+  `timingSafeEqual` closes it cheaply if you want the guarantee.
+- **Three functions share one secret** (`NOTIFY_DISPATCH_SECRET`). A leak of one
+  exposes all three. Splitting them costs little if their blast radii ever
+  diverge.
+
+A new function may only take `verify_jwt = false` if it likewise has no browser
+caller *and* authenticates by signature or secret on its own.
+
 Inside a function, `admin` is the service-role client and **bypasses RLS
 entirely**. Do not create it before authorization is settled, and never let a
 caller-supplied id decide which rows it touches without checking that caller

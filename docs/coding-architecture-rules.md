@@ -36,7 +36,11 @@ JWT → user → role → capability → resource scope → פעולה
 כל function חדשה:
 
 1. מופיעה ב־`supabase/config.toml` עם `verify_jwt = true`.
-2. מגדירה חריג `verify_jwt = false` רק אם היא webhook/cron.
+2. מגדירה חריג `verify_jwt = false` רק אם היא webhook/cron — כלומר אין לה קורא
+   מהדפדפן ולכן אין JWT של משתמש כלל — **וגם** מאמתת בעצמה בחתימה או בסוד.
+   הדגל מכבה אימות בשער של Supabase בלבד; הוא לא הופך פונקציה לציבורית, אבל גם
+   לא מחליף אימות. ראו `rls-and-data-access.md` לרשימת החריגים ולמנגנון של כל
+   אחד. השוואת סוד עדיפה ב־`timingSafeEqual` ולא ב־`!==`.
 3. בודקת method, headers, body ו־size.
 4. מאמתת משתמש ותפקיד לפני יצירת privileged client.
 5. מחזירה שגיאות API יציבות ולא stack trace.
