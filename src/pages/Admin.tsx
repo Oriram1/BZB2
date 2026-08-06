@@ -307,6 +307,17 @@ export default function Admin() {
   const [selectedChild, setSelectedChild] = useState<ProfileOption | null>(null);
   const [links, setLinks] = useState<ParentLinkRow[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, ProfileOption>>({});
+  /*
+   * `loadActivity` reads this cache to skip profiles it already has, but it
+   * also writes to it. Taking `profilesById` as a dependency would give the
+   * callback a new identity on every write, which re-runs the mount effect —
+   * and that effect calls `loadActivity` again. Reading through a ref keeps
+   * the callback stable so the loop cannot start.
+   */
+  const profilesByIdRef = useRef(profilesById);
+  useEffect(() => {
+    profilesByIdRef.current = profilesById;
+  }, [profilesById]);
   const [searchingParent, setSearchingParent] = useState(false);
   const [searchingChild, setSearchingChild] = useState(false);
   const [linkSubmitting, setLinkSubmitting] = useState(false);
@@ -389,7 +400,7 @@ export default function Admin() {
     setActivity(rows);
 
     const missingIds = Array.from(new Set(rows.map((row) => row.user_id)))
-      .filter((id) => !profilesById[id]);
+      .filter((id) => !profilesByIdRef.current[id]);
 
     if (missingIds.length > 0) {
       const { data: profiles } = await supabase
@@ -407,7 +418,7 @@ export default function Admin() {
     }
 
     setActivityLoading(false);
-  }, [profilesById]);
+  }, []);
 
   const loadLinks = async () => {
     const { data, error } = await fetchAllPages((from, to) => supabase
