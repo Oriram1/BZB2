@@ -20,7 +20,7 @@ import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRoleHomePath } from "@/lib/roleNavigation";
 import { logUserActivity } from "@/lib/activityLog";
-import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@/lib/gender";
+import { formFor, GENDER_LABEL, GENDER_OPTIONS, RECIPIENT, say, type Gender } from "@/lib/gender";
 
 const planLabels: Record<string, string> = {
   quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
@@ -479,7 +479,7 @@ const Register = () => {
           <div className="flex items-center gap-2">
             <Checkbox id="marketing" checked={marketingConsent} onCheckedChange={(v) => setMarketingConsent(v === true)} />
             <Label htmlFor="marketing" className="text-sm text-muted-foreground cursor-pointer">
-              אני מסכים/ה לקבל עדכונים, הצעות ודברי פרסומת מ-BZB בדוא"ל, SMS והודעות פוש
+              אני {say(formFor(form.gender), RECIPIENT.agree)} לקבל עדכונים, הצעות ודברי פרסומת מ-BZB בדוא"ל, SMS והודעות פוש
             </Label>
           </div>
 

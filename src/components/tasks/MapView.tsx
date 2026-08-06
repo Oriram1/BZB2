@@ -6,12 +6,13 @@ import CategoryIcon from "./CategoryIcon";
 import type { Task } from "./TaskCard";
 import { useGoogleMaps } from "./GoogleMapsProvider";
 import { useAuth } from "@/contexts/AuthContext";
+import { formFor, RECIPIENT, say } from "@/lib/gender";
 
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
   const { isLoaded, error } = useGoogleMaps();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const isOwnTask = !!selected && !!user && selected.creatorId === user.id;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -119,7 +120,7 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
                 size="sm"
                 className="gradient-honey text-primary-foreground rounded-full border-none font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300"
               >
-                אני מעוניין/ת 🐝
+                אני {say(formFor(profile?.gender), RECIPIENT.interested)} 🐝
               </Button>
             )}
           </div>

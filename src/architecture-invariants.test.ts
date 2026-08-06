@@ -170,8 +170,20 @@ describe("architecture invariants", () => {
   // A slash form is the app writing "הגיש/ה" because it does not know who it is
   // talking about. Now that it does, the only legitimate slashes left are the
   // plural fallbacks inside the vocabulary itself.
+  // The screens listed here all render someone whose gender is on file — the
+  // profile being viewed, the child behind a share token, the signed-in user
+  // pressing the button — so none of them has an excuse for a slash form.
+  // Screens that describe a person with no account (a parent contact, a child
+  // the app has not loaded yet) are deliberately absent from this list.
   it("does not reintroduce slash forms in notification copy", () => {
-    for (const file of ["supabase/functions/_shared/notificationCopy.ts", "src/lib/notificationCopy.ts"]) {
+    for (const file of [
+      "supabase/functions/_shared/notificationCopy.ts",
+      "src/lib/notificationCopy.ts",
+      "supabase/functions/admin-manage-users/index.ts",
+      "src/pages/PublicProfile.tsx",
+      "src/pages/TaskDetail.tsx",
+      "src/components/tasks/MapView.tsx",
+    ]) {
       const source = readFileSync(resolve(root, file), "utf8");
       const slashes: string[] = source.match(/[א-ת]\/[א-ת]/g) ?? [];
       expect(slashes, `${file} still hard-codes gendered slash forms`).toEqual([]);

@@ -751,6 +751,7 @@ export type Database = {
           avatar_url: string
           created_at: string
           first_name: string
+          gender: Database["public"]["Enums"]["gender"]
           last_name: string
           user_id: string
         }[]

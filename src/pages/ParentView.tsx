@@ -7,9 +7,10 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import { CheckCircle, Clock, ClipboardList, Coins, AlertTriangle } from "lucide-react";
+import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
 
 interface ChildData {
-  child: { first_name: string; last_name: string; avatar_url: string | null; age: number | null };
+  child: { first_name: string; last_name: string; avatar_url: string | null; age: number | null; gender: Gender | null };
   stats: { total_tasks: number; completed: number; total_earned: number };
   tasks: {
     name: string;
@@ -122,7 +123,7 @@ const ParentView = () => {
             <CardContent className="py-4">
               <Coins className="mx-auto mb-1 h-5 w-5 text-amber-500" />
               <p className="text-2xl font-extrabold">{formatCurrency(stats.total_earned)}</p>
-              <p className="text-xs text-muted-foreground">הרוויח/ה</p>
+              <p className="text-xs text-muted-foreground">{say(formFor(child.gender), SUBJECT.earned)}</p>
             </CardContent>
           </Card>
         </div>

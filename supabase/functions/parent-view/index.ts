@@ -26,7 +26,7 @@ Deno.serve(withCors(async (req) => {
 
     const { data: profile } = await admin
       .from("profiles")
-      .select("first_name, last_name, avatar_url, age")
+      .select("first_name, last_name, avatar_url, age, gender")
       .eq("user_id", childId)
       .maybeSingle();
 
@@ -55,6 +55,7 @@ Deno.serve(withCors(async (req) => {
         last_name: profile?.last_name ?? "",
         avatar_url: profile?.avatar_url ?? null,
         age: profile?.age ?? null,
+        gender: profile?.gender ?? null,
       },
       stats: {
         total_tasks: tasks?.length ?? 0,

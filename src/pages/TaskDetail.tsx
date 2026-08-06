@@ -26,6 +26,7 @@ import {
 import { formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
+import { formFor, RECIPIENT, say } from "@/lib/gender";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,7 +80,7 @@ interface CreatorProfile {
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, roles } = useAuth();
+  const { user, roles, profile } = useAuth();
   const isBee = roles.includes("bee");
   const [task, setTask] = useState<TaskData | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
@@ -441,7 +442,7 @@ const TaskDetail = () => {
             onClick={handleApply}
             disabled={applying || alreadyApplied}
           >
-            {alreadyApplied ? "כבר הגשת מועמדות ✓" : "אני מעוניין/ת לבצע 🐝"}
+            {alreadyApplied ? "כבר הגשת מועמדות ✓" : `אני ${say(formFor(profile?.gender), RECIPIENT.interested)} לבצע 🐝`}
           </Button>
         </div>
       )}

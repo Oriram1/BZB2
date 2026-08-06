@@ -69,6 +69,14 @@ export const SUBJECT = {
   child: { male: "הבן", female: "הבת", plural: "הילד/ה" },
   /** הפעילות שלו */
   his: { male: "שלו", female: "שלה", plural: "שלהם" },
+  /** מחק את החשבון */
+  deleted: { male: "מחק", female: "מחקה", plural: "מחקו" },
+  /** הרוויח 120 ₪ */
+  earned: { male: "הרוויח", female: "הרוויחה", plural: "הרוויחו" },
+  /** חבר מאז 2026 */
+  member: { male: "חבר", female: "חברה", plural: "חבר/ה" },
+  /** המשתמש דני — used when the role, not the name, leads the sentence */
+  user: { male: "המשתמש", female: "המשתמשת", plural: "המשתמש/ת" },
 } as const satisfies Record<string, Inflection>;
 
 export const RECIPIENT = {
@@ -82,6 +90,10 @@ export const RECIPIENT = {
   ask: { male: "בקש", female: "בקשי", plural: "בקשו" },
   /** אפשר לאשר או לדחות */
   can: { male: "אתה יכול", female: "את יכולה", plural: "אתם יכולים" },
+  /** אני מעוניין לבצע */
+  interested: { male: "מעוניין", female: "מעוניינת", plural: "מעוניין/ת" },
+  /** אני מסכים לקבל עדכונים */
+  agree: { male: "מסכים", female: "מסכימה", plural: "מסכים/ה" },
 } as const satisfies Record<string, Inflection>;
 
 /** Hebrew label for each stored value, for the pickers. */

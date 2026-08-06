@@ -10,12 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ClipboardList, CheckCircle2, UserX, Pencil, Calendar } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
+import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
 
 interface PublicProfileData {
   user_id: string;
   first_name: string;
   last_name: string;
   avatar_url: string | null;
+  gender: Gender | null;
   created_at: string;
 }
 
@@ -141,7 +143,7 @@ const PublicProfile = () => {
               )}
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
                 <Calendar size={12} aria-hidden="true" />
-                חבר/ה מאז {formatDate(profile.created_at)}
+                {say(formFor(profile.gender), SUBJECT.member)} מאז {formatDate(profile.created_at)}
               </p>
             </div>
           </div>
