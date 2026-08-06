@@ -23,6 +23,7 @@ import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@/lib/gender";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
+import QRCode from "qrcode";
 
 /** A parent reachable by email, with no account behind it. */
 interface ParentContact {
@@ -95,6 +96,7 @@ const Profile = () => {
   const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0 });
   const [familyCode, setFamilyCode] = useState<string | null>(null);
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
+  const [familyQr, setFamilyQr] = useState<string | null>(null);
   const [creatingFamilyCode, setCreatingFamilyCode] = useState(false);
   const [parentEmail, setParentEmail] = useState("");
   const [parentContacts, setParentContacts] = useState<ParentContact[]>([]);
@@ -186,24 +188,43 @@ const Profile = () => {
         setParentEmail("");
         toast[data.emailed ? "success" : "warning"](
           data.emailed
-            ? "הקוד נשלח למייל של ההורה 📧"
-            : "נוצר קוד, אבל שליחת המייל נכשלה. אפשר להקריא את הקוד",
+            ? "הקישור נשלח למייל של ההורה 📧"
+            : "נוצר קישור, אבל שליחת המייל נכשלה. אפשר לסרוק את קוד ה־QR",
         );
       } else {
-        toast.success("נוצר קוד חדש להורה");
+        toast.success("נוצר קוד QR חדש להורה");
       }
     } finally {
       setCreatingFamilyCode(false);
     }
   };
 
-  const copyFamilyCode = async () => {
-    if (!familyCode) return;
+  /** The parent scans or opens this — no digits to read aloud or mistype. */
+  const familyLinkUrl = familyCode
+    ? `${window.location.origin}/parent?code=${familyCode}`
+    : null;
+
+  useEffect(() => {
+    if (!familyLinkUrl) {
+      setFamilyQr(null);
+      return;
+    }
+    let cancelled = false;
+    void QRCode.toDataURL(familyLinkUrl, { width: 320, margin: 1 }).then((url) => {
+      if (!cancelled) setFamilyQr(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [familyLinkUrl]);
+
+  const copyFamilyLink = async () => {
+    if (!familyLinkUrl) return;
     try {
-      await navigator.clipboard.writeText(familyCode);
-      toast.success("הקוד הועתק");
+      await navigator.clipboard.writeText(familyLinkUrl);
+      toast.success("הקישור הועתק");
     } catch {
-      toast.error("לא הצלחנו להעתיק את הקוד");
+      toast.error("לא הצלחנו להעתיק את הקישור");
     }
   };
 
@@ -582,17 +603,23 @@ const Profile = () => {
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 לא חובה. זה מיועד להורה שרוצה חשבון ומרכז הורים מלא — לעדכונים בלבד מספיק
-                להוסיף מייל למעלה. יוצרים קוד זמני ושולחים אותו להורה. הקוד תקף ל־10 דקות
-                ולשימוש אחד.
+                להוסיף מייל למעלה. ההורה סורק את הקוד מהמסך, או מקבל קישור למייל. אין מה
+                להקליד. הקישור תקף ל־10 דקות ולשימוש אחד.
               </p>
             </CardHeader>
             <CardContent>
               {familyCode ? (
                 <div className="rounded-2xl border bg-primary/5 p-5 text-center">
-                  <p className="mb-2 text-sm font-semibold text-muted-foreground">הקוד שלך</p>
-                  <div dir="ltr" className="text-4xl font-black tracking-[0.3em] tabular-nums">
-                    {familyCode}
-                  </div>
+                  <p className="mb-3 text-sm font-semibold text-muted-foreground">
+                    ההורה סורק את הקוד עם המצלמה
+                  </p>
+                  {familyQr && (
+                    <img
+                      src={familyQr}
+                      alt="קוד QR לקישור ההורה"
+                      className="mx-auto h-44 w-44 rounded-xl bg-white p-2"
+                    />
+                  )}
                   <p className="mt-3 text-xs text-muted-foreground">
                     בתוקף עד{" "}
                     {familyCodeExpiresAt
@@ -603,9 +630,9 @@ const Profile = () => {
                       : ""}
                   </p>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <Button type="button" onClick={() => void copyFamilyCode()} className="min-h-11 rounded-xl font-bold">
+                    <Button type="button" onClick={() => void copyFamilyLink()} className="min-h-11 rounded-xl font-bold">
                       <Copy className="h-4 w-4" />
-                      העתקת הקוד
+                      העתקת הקישור
                     </Button>
                     <Button
                       type="button"
@@ -615,7 +642,7 @@ const Profile = () => {
                       className="min-h-11 rounded-xl font-bold"
                     >
                       <RefreshCw className={`h-4 w-4 ${creatingFamilyCode ? "animate-spin" : ""}`} />
-                      קוד חדש
+                      יצירת קוד מחדש
                     </Button>
                   </div>
                 </div>
@@ -627,14 +654,14 @@ const Profile = () => {
                   className="min-h-11 w-full rounded-xl font-bold"
                 >
                   <KeyRound className="h-4 w-4" />
-                  {creatingFamilyCode ? "יוצר קוד..." : "יצירת קוד להורה"}
+                  {creatingFamilyCode ? "יוצר..." : "יצירת קוד QR להורה"}
                 </Button>
               )}
 
               {/* For when the parent isn't standing next to the phone. */}
               <div className="mt-4 border-t border-border pt-4">
                 <Label htmlFor="parent-email" className="text-sm font-semibold">
-                  או שלחו את הקוד למייל של ההורה
+                  או שלחו קישור למייל של ההורה
                 </Label>
                 <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                   <Input

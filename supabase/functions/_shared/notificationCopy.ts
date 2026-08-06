@@ -169,15 +169,14 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       const kid = about("child_gender");
       const child = str(data.child_name, say(kid, SUBJECT.yourChild));
       return {
-        subject: `קוד הקישור המשפחתי ${say(to, RECIPIENT.yours)}`,
-        preheader: `קוד לחיבור החשבון ${say(to, RECIPIENT.yours)} לחשבון ${say(kid, SUBJECT.child)}`,
-        heading: "קוד קישור משפחתי",
+        subject: `קישור החשבון המשפחתי ${say(to, RECIPIENT.yours)}`,
+        preheader: `קישור לחיבור החשבון ${say(to, RECIPIENT.yours)} לחשבון ${say(kid, SUBJECT.child)}`,
+        heading: "קישור חשבון משפחתי",
         paragraphs: [
           `${child} ${say(kid, SUBJECT.asks)} לקשר את החשבון שלכם.`,
-          "צריך להזין את הקוד הבא במרכז ההורים. הקוד תקף ל־10 דקות.",
+          "מספיק ללחוץ על הכפתור — אין מה להקליד. הקישור תקף ל־10 דקות.",
         ],
-        code,
-        action: { label: "למרכז ההורים", url: `${base}/parent` },
+        action: { label: "לקישור החשבון", url: `${base}/parent?code=${code}` },
         manageUrl,
       };
     }
@@ -319,8 +318,8 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
 
     case "family_link_code":
       return {
-        title: "קוד קישור משפחתי",
-        body: `נשלח ${say(to, RECIPIENT.toYou)} קוד לחיבור החשבון`,
+        title: "קישור חשבון משפחתי",
+        body: `נשלח ${say(to, RECIPIENT.toYou)} קישור לחיבור החשבון`,
         url,
         tag: "family-link",
       };

@@ -37,3 +37,6 @@ verify_jwt = true
 verify_jwt = true
 [functions.notify-parent-signin]
 verify_jwt = true
+# The share token is the auth; parents have no account.
+[functions.parent-view]
+verify_jwt = false
