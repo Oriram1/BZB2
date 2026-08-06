@@ -194,6 +194,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           "אין צורך להירשם או לפתוח חשבון — העדכונים יגיעו למייל הזה.",
           `אם זו טעות, ${say(to, RECIPIENT.ask)} מ${say(kid, SUBJECT.child)} להסיר את הכתובת דרך הפרופיל ${say(kid, SUBJECT.his)}.`,
         ],
+        ...(str(data.view_token) ? { action: { label: "צפייה בסטטוס המטלות", url } } : {}),
         manageUrl,
       };
     }
@@ -212,6 +213,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           "זהו עדכון בלבד — לא נדרשת מכם שום פעולה.",
           "כדי למנוע הצפה, נשלח על כך לכל היותר עדכון אחד ביום.",
         ],
+        ...(str(data.view_token) ? { action: { label: "צפייה בסטטוס המטלות", url } } : {}),
         manageUrl,
       };
     }

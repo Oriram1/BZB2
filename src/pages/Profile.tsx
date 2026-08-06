@@ -22,12 +22,14 @@ import { formatCurrency } from "@/lib/format";
 import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@/lib/gender";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
+import { ParentShareLink } from "@/components/profile/ParentShareLink";
 
 /** A parent reachable by email, with no account behind it. */
 interface ParentContact {
   id: string;
   email: string;
   created_at: string;
+  view_token: string;
 }
 
 interface TaskStats {
@@ -108,7 +110,7 @@ const Profile = () => {
     if (!user) return;
     const { data } = await supabase
       .from("parent_contacts")
-      .select("id, email, created_at")
+      .select("id, email, created_at, view_token")
       .eq("child_user_id", user.id)
       .order("created_at", { ascending: true });
     setParentContacts(data ?? []);
@@ -520,19 +522,22 @@ const Profile = () => {
                   {parentContacts.map((contact) => (
                     <li
                       key={contact.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/50 px-3 py-2"
+                      className="rounded-xl border border-border bg-muted/50 px-3 py-2 space-y-1"
                     >
-                      <span dir="ltr" className="truncate text-sm font-semibold">{contact.email}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void removeParentContact(contact.id)}
-                        className="shrink-0 rounded-full font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                        הסרה
-                      </Button>
+                      <div className="flex items-center justify-between gap-3">
+                        <span dir="ltr" className="truncate text-sm font-semibold">{contact.email}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void removeParentContact(contact.id)}
+                          className="shrink-0 rounded-full font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                          הסרה
+                        </Button>
+                      </div>
+                      <ParentShareLink viewToken={contact.view_token} />
                     </li>
                   ))}
                 </ul>

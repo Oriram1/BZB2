@@ -28,7 +28,7 @@ Deno.serve(withCors(async (req) => {
     const cutoff = new Date(Date.now() - THROTTLE_MS).toISOString();
     const { data: contacts } = await admin
       .from("parent_contacts")
-      .select("id, email, last_notified_at")
+      .select("id, email, last_notified_at, view_token")
       .eq("child_user_id", user.id)
       .or(`last_notified_at.is.null,last_notified_at.lt.${cutoff}`);
 
@@ -58,8 +58,8 @@ Deno.serve(withCors(async (req) => {
           content: emailContent({
             id: contact.id,
             event_type: "child_signed_in",
-            data: { child_name: childName, signed_in_at: signedInAt, child_gender: profile?.gender },
-            link: "/",
+            data: { child_name: childName, signed_in_at: signedInAt, child_gender: profile?.gender, view_token: contact.view_token },
+            link: `/parent/view/${contact.view_token}`,
           }),
         });
         // Stamped only on success, so a failed send is retried next sign-in

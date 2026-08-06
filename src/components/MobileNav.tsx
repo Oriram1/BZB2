@@ -150,7 +150,7 @@ export function MobileNav() {
                 <span className="text-lg font-bold text-primary-ink">התראות</span>
               </>
             ) : (
-              <><BzbLogo className="w-9 h-9" /><span className="text-lg font-bold text-primary-ink">BZB</span></>
+              <BzbLogo className="w-9 h-9" />
             )}
             <div className="flex-1" />
             {!showNotifications && user && (

@@ -330,6 +330,7 @@ export type Database = {
           email: string
           id: string
           last_notified_at: string | null
+          view_token: string
         }
         Insert: {
           child_user_id: string
@@ -337,6 +338,7 @@ export type Database = {
           email: string
           id?: string
           last_notified_at?: string | null
+          view_token?: string
         }
         Update: {
           child_user_id?: string
@@ -344,6 +346,7 @@ export type Database = {
           email?: string
           id?: string
           last_notified_at?: string | null
+          view_token?: string
         }
         Relationships: []
       }

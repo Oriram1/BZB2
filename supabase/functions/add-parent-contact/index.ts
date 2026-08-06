@@ -23,9 +23,11 @@ Deno.serve(withCors(async (req) => {
       return json({ error: "invalid_email" }, 400);
     }
 
-    const { error: insertError } = await admin
+    const { data: inserted, error: insertError } = await admin
       .from("parent_contacts")
-      .insert({ child_user_id: user.id, email });
+      .insert({ child_user_id: user.id, email })
+      .select("view_token")
+      .single();
 
     if (insertError) {
       if (insertError.code === "23505") return json({ error: "already_added" }, 409);
@@ -55,8 +57,8 @@ Deno.serve(withCors(async (req) => {
         content: emailContent({
           id: "parent-contact",
           event_type: "parent_contact_added",
-          data: { child_name: childName, child_gender: profile?.gender },
-          link: "/",
+          data: { child_name: childName, child_gender: profile?.gender, view_token: inserted?.view_token },
+          link: inserted?.view_token ? `/parent/view/${inserted.view_token}` : "/",
         }),
       });
       emailed = true;
