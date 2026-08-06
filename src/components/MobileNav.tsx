@@ -117,28 +117,33 @@ export function MobileNav() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <UserCircle className="w-6 h-6 text-primary-ink" />
-              )}
-            </div>
-            {user ? (
+          {user ? (
+            <Link to="/profile" onClick={() => setOpen(false)} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 active:bg-muted transition-colors">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <UserCircle className="w-6 h-6 text-primary-ink" />
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{displayName}</p>
                 {roleLabel && <p className="text-xs text-muted-foreground">{roleLabel}</p>}
               </div>
-            ) : (
+            </Link>
+          ) : (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                <UserCircle className="w-6 h-6 text-primary-ink" />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">אורח</p>
                 <Link to="/auth" onClick={() => setOpen(false)} className="text-xs text-primary-ink hover:underline">
                   התחבר או הירשם →
                 </Link>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2">
