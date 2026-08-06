@@ -405,15 +405,16 @@ const Profile = () => {
           {/* Identity sits at the top, on the banner — avatar, name and role in
               one row, so the gradient is a backdrop rather than dead space. */}
           <div className="gradient-honey px-5 py-5">
-            <div className="flex items-center gap-3 sm:gap-4">
+            {/* Mobile: vertical stack. Desktop: horizontal row. */}
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
               <AvatarPicker userId={user.id} currentAvatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl leading-tight font-extrabold text-foreground break-words">{displayName}</h1>
+              <div className="min-w-0 text-center sm:text-right">
+                <h1 className="text-lg sm:text-2xl leading-tight font-extrabold text-foreground truncate max-w-[200px] sm:max-w-none sm:break-words sm:whitespace-normal">{displayName}</h1>
                 {roleLabel && (
                   <Badge className="bg-card text-foreground border-none font-bold mt-1.5 shadow-sm">{roleLabel}</Badge>
                 )}
               </div>
-              <div className="mr-auto shrink-0">
+              <div className="sm:mr-auto shrink-0">
                 {!editing ? (
                   <Button size="sm" onClick={() => setEditing(true)} className="bg-card text-foreground hover:bg-card/90 rounded-full font-bold shadow-sm px-3">
                     <Edit3 className="w-4 h-4 ml-1" /> עריכה
