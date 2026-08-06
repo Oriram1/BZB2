@@ -47,8 +47,8 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("הקובץ גדול מדי (מקסימום 2MB)");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("הקובץ גדול מדי (מקסימום 10MB)");
       return;
     }
 
@@ -66,17 +66,11 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
       return;
     }
 
-    const { data: signed } = await supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from("avatars")
-      .createSignedUrl(path, 60 * 60 * 24);
+      .getPublicUrl(path);
 
-    if (!signed?.signedUrl) {
-      toast.error("שגיאה ביצירת קישור לתמונה");
-      setUploading(false);
-      return;
-    }
-
-    await persist(signed.signedUrl);
+    await persist(publicUrlData.publicUrl);
     setUploading(false);
   };
 
@@ -120,7 +114,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
             <label className="flex items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors">
               <Upload className="w-5 h-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                {uploading ? "מעלה..." : "לחץ לבחירת תמונה (מקס׳ 2MB)"}
+                {uploading ? "מעלה..." : "לחץ לבחירת תמונה (מקס׳ 10MB)"}
               </span>
               <input
                 type="file"
