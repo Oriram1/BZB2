@@ -65,7 +65,7 @@ interface TaskWithApps {
 }
 
 const Profile = () => {
-  const { user, profile, roles, loading: authLoading } = useAuth();
+  const { user, profile, roles, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -335,6 +335,7 @@ const Profile = () => {
       toast.error("שגיאה בשמירת הפרופיל");
     } else {
       logUserActivity(user.id, "profile_updated", { entityType: "profile", entityId: user.id });
+      await refreshProfile();
       toast.success("הפרופיל עודכן בהצלחה!");
       setEditing(false);
     }
