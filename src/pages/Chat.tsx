@@ -212,6 +212,12 @@ const Chat = () => {
 
     let attachmentPath: string | null = null;
     if (file && kind) {
+      const ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      const ALLOWED_AUDIO = ["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg"];
+      const allowed = kind === "image" ? ALLOWED_IMAGE : ALLOWED_AUDIO;
+      if (!allowed.includes(file.type)) {
+        throw new Error("סוג קובץ לא נתמך");
+      }
       // The conversation id is the first path segment — that is what the storage
       // policy checks to decide who may read the file.
       const extension = file.name.split(".").pop() || (kind === "image" ? "jpg" : "webm");

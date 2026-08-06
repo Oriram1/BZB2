@@ -41,6 +41,12 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error("ניתן להעלות רק תמונות (JPEG, PNG, GIF, WebP)");
+      return;
+    }
+
     if (file.size > 2 * 1024 * 1024) {
       toast.error("הקובץ גדול מדי (מקסימום 2MB)");
       return;
@@ -62,7 +68,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
 
     const { data: signed } = await supabase.storage
       .from("avatars")
-      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      .createSignedUrl(path, 60 * 60 * 24);
 
     if (!signed?.signedUrl) {
       toast.error("שגיאה ביצירת קישור לתמונה");

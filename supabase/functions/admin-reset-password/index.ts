@@ -1,20 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { corsHeaders, corsOrigin } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+function json(body: unknown, status = 200, req?: Request) {
+  const headers: Record<string, string> = { ...corsHeaders, "Content-Type": "application/json" };
+  if (req) headers["Access-Control-Allow-Origin"] = corsOrigin(req);
+  return new Response(JSON.stringify(body), { status, headers,
   });
 }
 
 function isStrongPassword(password: string) {
-  return password.length >= 6 && /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password);
+  return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password);
 }
 
 Deno.serve(async (req) => {
@@ -50,7 +45,7 @@ Deno.serve(async (req) => {
     const identifier = String(body.identifier ?? "").trim();
     const newPassword = String(body.newPassword ?? "");
     if (!identifier || !isStrongPassword(newPassword)) {
-      return json({ error: "Password must be at least 6 characters and include letters, numbers, and a special character" }, 400);
+      return json({ error: "Password must be at least 8 characters and include letters, numbers, and a special character" }, 400);
     }
 
     // Find target user — by email, or by profile first/last name
@@ -75,11 +70,12 @@ Deno.serve(async (req) => {
         page++;
       }
     } else {
-      // search by profile name
+      // search by profile name — use separate ilike calls to avoid filter injection
+      const sanitized = identifier.replace(/[,.*()]/g, "");
       const { data: profiles } = await admin
         .from("profiles")
         .select("user_id, first_name, last_name")
-        .or(`first_name.ilike.${identifier},last_name.ilike.${identifier}`)
+        .or(`first_name.ilike.%${sanitized}%,last_name.ilike.%${sanitized}%`)
         .limit(2);
       if (profiles && profiles.length === 1) {
         targetUserId = profiles[0].user_id;

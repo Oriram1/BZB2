@@ -1,18 +1,16 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders, corsOrigin } from "../_shared/auth.ts";
 
 Deno.serve(async (request) => {
+  const cors = { ...corsHeaders, "Access-Control-Allow-Origin": corsOrigin(request) };
+
   if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: cors });
   }
 
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 
@@ -21,7 +19,7 @@ Deno.serve(async (request) => {
     if (typeof address !== "string" || !address.trim() || address.trim().length > 500) {
       return new Response(JSON.stringify({ error: "Address is required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -40,7 +38,7 @@ Deno.serve(async (request) => {
     if (!result || googleData.status !== "OK") {
       return new Response(JSON.stringify({ formattedAddress: null, lat: null, lng: null }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -48,12 +46,12 @@ Deno.serve(async (request) => {
       formattedAddress: result.formatted_address,
       lat: result.geometry.location.lat,
       lng: result.geometry.location.lng,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("geocode-address failed", error);
     return new Response(JSON.stringify({ error: "Geocoding failed" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

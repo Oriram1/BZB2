@@ -1,16 +1,32 @@
 import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
+const ALLOWED_ORIGINS = [
+  "https://bzb-web.com",
+  "https://www.bzb-web.com",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+export function corsOrigin(req: Request): string {
+  const origin = req.headers.get("Origin") ?? "";
+  if (ALLOWED_ORIGINS.includes(origin) || origin.endsWith(".vercel.app")) return origin;
+  return ALLOWED_ORIGINS[0];
+}
+
 export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-export function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
-  });
+export function json(body: unknown, status = 200, req?: Request) {
+  const headers: Record<string, string> = {
+    ...corsHeaders,
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+  };
+  if (req) headers["Access-Control-Allow-Origin"] = corsOrigin(req);
+  return new Response(JSON.stringify(body), { status, headers });
 }
 
 export async function authenticatedClients(req: Request): Promise<{

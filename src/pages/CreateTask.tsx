@@ -73,6 +73,11 @@ const CreateTask = () => {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error("ניתן להעלות רק תמונות (JPEG, PNG, GIF, WebP)");
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       toast.error("גודל הקובץ חייב להיות עד 5MB");
       return;
@@ -94,7 +99,7 @@ const CreateTask = () => {
     }
     const { data: signed } = await supabase.storage
       .from("task-images")
-      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      .createSignedUrl(path, 60 * 60 * 24);
     return signed?.signedUrl ?? null;
   };
 
