@@ -316,7 +316,7 @@ const TaskList = () => {
         <Link
           to="/create-task"
           aria-label="הוספת מטלה חדשה"
-          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-5 z-30 flex h-[60px] w-[60px] items-center justify-center rounded-[20px] gradient-honey text-primary-foreground shadow-[0_12px_32px_rgba(245,158,11,0.38),inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-200 hover:scale-105 hover:rotate-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40 md:hidden"
+          className="fixed bottom-[calc(2.5rem+env(safe-area-inset-bottom))] left-5 z-30 flex h-[60px] w-[60px] items-center justify-center rounded-[20px] gradient-honey text-primary-foreground shadow-[0_12px_32px_rgba(245,158,11,0.38),inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-200 hover:scale-105 hover:rotate-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40 md:hidden"
         >
           <Plus size={28} strokeWidth={2.5} aria-hidden="true" />
         </Link>
