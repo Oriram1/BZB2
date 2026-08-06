@@ -43,9 +43,7 @@ describe("architecture invariants", () => {
 
   it("bounds Resend requests", () => {
     const email = readFileSync(resolve(root, "supabase/functions/_shared/email.ts"), "utf8");
-    const selfTest = readFileSync(resolve(root, "supabase/functions/email-selftest/index.ts"), "utf8");
     expect(email).toContain("AbortSignal.timeout(10_000)");
-    expect(selfTest).toContain("AbortSignal.timeout(10_000)");
   });
 
   it("keeps task cancellation on one server command", () => {

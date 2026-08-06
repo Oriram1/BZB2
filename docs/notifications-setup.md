@@ -10,7 +10,7 @@
 > **דומיין שולח — בוצע (2 באוגוסט 2026).** `bzb-web.com` מאומת ב־Resend,
 > `RESEND_FROM_EMAIL="BZB <noreply@bzb-web.com>"`, ונבדקה שליחה בפועל לשתי כתובות
 > שאחת מהן אינה בעל חשבון ה־Resend — שתיהן התקבלו. הבדיקה רצה דרך
-> `email-selftest` (ראו סעיף 4.1).
+> `email-selftest` (פונקציה תפעולית שהוסרה מאז).
 >
 > **Send Email Hook — הופעל (3 באוגוסט 2026).** `hook_send_email_enabled: true`.
 > נבדק על מסלול `recover` של משתמש קיים ועל הרשמה חדשה — שניהם החזירו 200, כלומר
@@ -330,34 +330,6 @@ select name from vault.secrets;
 ```
 
 **אין כפתור להפעלת התראות במסך ההגדרות** — זה תקין כשהאפליקציה רצה בלשונית דפדפן. פוש מוצע רק לאפליקציה מותקנת; המסך מציג במקום זאת הסבר התקנה המותאם לפלטפורמה.
-
----
-
-## 4.1 בדיקת שליחה — `email-selftest`
-
-פונקציה תפעולית שמדווחת על הגדרות השולח ועל מצב האימות של הדומיין ב־Resend,
-ואם ביקשת — שולחת את התבנית האמיתית לנמענים שתציין. מוגנת בסוד משותף
-(`EMAIL_SELFTEST_SECRET`), בדיוק כמו שאר הפונקציות הלא־אינטראקטיביות.
-
-בדיקת הגדרות בלבד, בלי לשלוח כלום:
-
-```bash
-curl -s -X POST "$SUPABASE_URL/functions/v1/email-selftest" \
-  -H "x-selftest-secret: $EMAIL_SELFTEST_SECRET" \
-  -H "Content-Type: application/json" -d '{}'
-```
-
-שליחה בפועל — **תמיד עם נמען אחד לפחות שאינו בעל חשבון ה־Resend**:
-
-```bash
-curl -s -X POST "$SUPABASE_URL/functions/v1/email-selftest" \
-  -H "x-selftest-secret: $EMAIL_SELFTEST_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{"to":["someone@example.com","other@example.com"]}'
-```
-
-התשובה מחזירה `config.sandboxSender` (האם עדיין `resend.dev`),
-`config.sender.status` (`verified` או לא), ולכל נמען `ok` ומזהה ההודעה ב־Resend.
 
 ---
 

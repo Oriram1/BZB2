@@ -178,7 +178,7 @@ Rules for adding one:
 
 `config.toml` sets `verify_jwt = true` for every user-facing function. The four
 exceptions — `send-auth-email`, `notify-dispatch`, `send-parent-digest`,
-`email-selftest` — are machine-to-machine and authenticate with a webhook
+`send-quiet-digest` — are machine-to-machine and authenticate with a webhook
 signature or a shared secret instead. `architecture-invariants.test.ts` asserts
 this; keep new user-facing functions explicit rather than relying on a default.
 
