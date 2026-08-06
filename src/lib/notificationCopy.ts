@@ -17,7 +17,9 @@ export type NotificationEvent =
   | "parent_digest"
   | "family_link_code"
   | "quiet_hours_digest"
-  | "task_cancelled";
+  | "task_cancelled"
+  // Raised by a parent from the public view page; the child approves it.
+  | "parent_contact_requested";
 
 export type AppRole = "tasker" | "bee" | "parent";
 
@@ -108,6 +110,15 @@ export function notificationLine(
       };
     }
 
+    case "parent_contact_requested":
+      return {
+        emoji: "👀",
+        title: "בקשה לקבל עדכונים עליך",
+        // Passive on purpose. The requester is a stranger who typed an address,
+        // so there is no gender to inflect on and no slash form to fall back to.
+        body: `התקבלה בקשה מהכתובת ${text(data.email, "שהוזנה")} לקבל עדכונים על הפעילות ${say(to, RECIPIENT.yours)}`,
+      };
+
     case "task_cancelled":
       return {
         emoji: "❌",
@@ -131,6 +142,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   family_link_code: { email: true, push: false },
   quiet_hours_digest: { email: true, push: true },
   task_cancelled: { email: true, push: true },
+  parent_contact_requested: { email: true, push: true },
 };
 
 /**

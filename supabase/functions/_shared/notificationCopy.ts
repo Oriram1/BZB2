@@ -17,10 +17,18 @@ export type NotificationEvent =
   | "family_link_code"
   | "quiet_hours_digest"
   | "task_cancelled"
+  // Raised by a parent from the public view page and delivered to the child,
+  // who is the only one who may approve it.
+  | "parent_contact_requested"
   // Addressed to a parent who has no account, so it is mailed directly and
   // never stored in public.notifications (which is keyed by user_id).
   | "parent_contact_added"
-  | "child_signed_in";
+  | "child_signed_in"
+  // Fanned out to a child's parent contacts by notify-dispatch. Same three
+  // moments the child is already told about, worded for someone watching from
+  // the outside. Copy-only, like the two above: no row in notification_event.
+  | "parent_child_completed"
+  | "parent_child_cancelled";
 
 export type NotificationRow = {
   id: string;
@@ -198,6 +206,40 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       };
     }
 
+    case "parent_child_completed": {
+      const kid = about("child_gender");
+      const child = str(data.child_name, say(kid, SUBJECT.yourChild));
+      const task = str(data.task_name, "מטלה");
+      return {
+        subject: `${child} ${say(kid, SUBJECT.finished)} מטלה 🎉`,
+        preheader: `"${task}" סומנה כהושלמה`,
+        heading: "מטלה הושלמה",
+        paragraphs: [
+          `${child} ${say(kid, SUBJECT.finished)} את המטלה "${task}".`,
+          shekels(data) ? `התשלום על המטלה: ${shekels(data)}.` : "",
+        ].filter(Boolean),
+        ...(str(data.view_token) ? { action: { label: "צפייה בסטטוס המטלות", url } } : {}),
+        manageUrl,
+      };
+    }
+
+    case "parent_child_cancelled": {
+      const kid = about("child_gender");
+      const child = str(data.child_name, say(kid, SUBJECT.yourChild));
+      const task = str(data.task_name, "המטלה");
+      return {
+        subject: `מטלה של ${child} בוטלה`,
+        preheader: `"${task}" בוטלה על ידי המפרסם`,
+        heading: "מטלה בוטלה",
+        paragraphs: [
+          `המטלה "${task}", ש${child} ${say(kid, SUBJECT.accepted)} אליה, בוטלה על ידי ${str(data.canceller_name, "מפרסם המטלה")}.`,
+          "לא נדרשת שום פעולה — זה עדכון בלבד.",
+        ],
+        ...(str(data.view_token) ? { action: { label: "צפייה בסטטוס המטלות", url } } : {}),
+        manageUrl,
+      };
+    }
+
     case "child_signed_in": {
       const kid = about("child_gender");
       const child = str(data.child_name, say(kid, SUBJECT.yourChild));
@@ -213,6 +255,24 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           "כדי למנוע הצפה, נשלח על כך לכל היותר עדכון אחד ביום.",
         ],
         ...(str(data.view_token) ? { action: { label: "צפייה בסטטוס המטלות", url } } : {}),
+        manageUrl,
+      };
+    }
+
+    case "parent_contact_requested": {
+      const address = str(data.email, "כתובת חדשה");
+      return {
+        subject: "מישהו ביקש לקבל עדכונים עליך ב־Busy Bee",
+        preheader: `בקשה מהכתובת ${address} ממתינה לאישור`,
+        heading: "בקשה לקבל עדכונים",
+        paragraphs: [
+          // Passive: the requester is a stranger who typed an address into the
+          // public page, so there is no gender here to inflect on.
+          `התקבלה בקשה מהכתובת ${address} לקבל עדכונים על הפעילות ${say(to, RECIPIENT.yours)} ב־Busy Bee.`,
+          `שום דבר לא נשלח לכתובת הזאת עד ש${say(to, RECIPIENT.can)} לאשר אותה.`,
+          "אם זה לא מוכר — אפשר פשוט לדחות, ולא יקרה כלום.",
+        ],
+        action: { label: "לאישור או לדחייה", url: `${base}/profile` },
         manageUrl,
       };
     }
@@ -334,12 +394,36 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
         tag: "parent-contact-added",
       };
 
+    case "parent_child_completed":
+      return {
+        title: "מטלה הושלמה 🎉",
+        body: `${str(data.child_name, say(about("child_gender"), SUBJECT.yourChild))} ${say(about("child_gender"), SUBJECT.finished)} את "${str(data.task_name, "המטלה")}"`,
+        url,
+        tag: `parent-completed-${str(data.task_id)}`,
+      };
+
+    case "parent_child_cancelled":
+      return {
+        title: "מטלה בוטלה",
+        body: `"${str(data.task_name, "המטלה")}" בוטלה`,
+        url,
+        tag: `parent-cancelled-${str(data.task_id)}`,
+      };
+
     case "child_signed_in":
       return {
         title: "עדכון התחברות",
         body: `${str(data.child_name, say(about("child_gender"), SUBJECT.yourChild))} ${say(about("child_gender"), SUBJECT.signedIn)} ל־Busy Bee`,
         url,
         tag: "child-signed-in",
+      };
+
+    case "parent_contact_requested":
+      return {
+        title: "בקשה לקבל עדכונים עליך 👀",
+        body: `מהכתובת ${str(data.email, "שהוזנה")} — צריך את האישור שלך`,
+        url,
+        tag: "parent-contact-requested",
       };
 
     case "quiet_hours_digest": {
@@ -381,4 +465,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   // never reaches these. The child removes the contact to stop them.
   parent_contact_added: { email: true, push: false },
   child_signed_in: { email: true, push: false },
+  parent_contact_requested: { email: true, push: true },
+  parent_child_completed: { email: true, push: false },
+  parent_child_cancelled: { email: true, push: false },
 };

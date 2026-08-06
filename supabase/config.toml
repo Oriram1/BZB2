@@ -40,3 +40,10 @@ verify_jwt = true
 # The share token is the auth; parents have no account.
 [functions.parent-view]
 verify_jwt = false
+
+# Both are reached from the public parent page, so there is no JWT to check.
+# Each verifies the share token itself before touching a row.
+[functions.parent-prefs]
+verify_jwt = false
+[functions.request-parent-contact]
+verify_jwt = false

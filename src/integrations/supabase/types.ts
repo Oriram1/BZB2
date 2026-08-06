@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_audit_log: {
@@ -323,6 +348,27 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_contact_requests: {
+        Row: {
+          child_user_id: string
+          email: string
+          id: string
+          requested_at: string
+        }
+        Insert: {
+          child_user_id: string
+          email: string
+          id?: string
+          requested_at?: string
+        }
+        Update: {
+          child_user_id?: string
+          email?: string
+          id?: string
+          requested_at?: string
+        }
+        Relationships: []
+      }
       parent_contacts: {
         Row: {
           child_user_id: string
@@ -330,6 +376,11 @@ export type Database = {
           email: string
           id: string
           last_notified_at: string | null
+          notify_accepted: boolean
+          notify_cancelled: boolean
+          notify_completed: boolean
+          notify_digest: boolean
+          notify_signin: boolean
           view_token: string
         }
         Insert: {
@@ -338,6 +389,11 @@ export type Database = {
           email: string
           id?: string
           last_notified_at?: string | null
+          notify_accepted?: boolean
+          notify_cancelled?: boolean
+          notify_completed?: boolean
+          notify_digest?: boolean
+          notify_signin?: boolean
           view_token?: string
         }
         Update: {
@@ -346,6 +402,11 @@ export type Database = {
           email?: string
           id?: string
           last_notified_at?: string | null
+          notify_accepted?: boolean
+          notify_cancelled?: boolean
+          notify_completed?: boolean
+          notify_digest?: boolean
+          notify_signin?: boolean
           view_token?: string
         }
         Relationships: []
@@ -764,6 +825,7 @@ export type Database = {
         Args: { object_name: string }
         Returns: boolean
       }
+      purge_expired_archives: { Args: never; Returns: number }
       record_task_view: { Args: { _task_id: string }; Returns: number }
       redeem_family_link_code: {
         Args: { _code_hash: string; _parent_user_id: string }
@@ -777,10 +839,10 @@ export type Database = {
       }
     }
     Enums: {
-      gender: "male" | "female" | "unspecified"
       app_role: "tasker" | "bee" | "parent" | "admin"
       application_status: "pending" | "accepted" | "rejected"
       delivery_status: "sent" | "failed" | "skipped"
+      gender: "male" | "female" | "unspecified"
       notification_channel: "email" | "push"
       notification_event:
         | "application_received"
@@ -792,6 +854,7 @@ export type Database = {
         | "family_link_code"
         | "quiet_hours_digest"
         | "task_cancelled"
+        | "parent_contact_requested"
       payment_type: "task" | "hour"
       task_category:
         | "housework"
@@ -932,11 +995,15 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["tasker", "bee", "parent", "admin"],
       application_status: ["pending", "accepted", "rejected"],
       delivery_status: ["sent", "failed", "skipped"],
+      gender: ["male", "female", "unspecified"],
       notification_channel: ["email", "push"],
       notification_event: [
         "application_received",
@@ -948,6 +1015,7 @@ export const Constants = {
         "family_link_code",
         "quiet_hours_digest",
         "task_cancelled",
+        "parent_contact_requested",
       ],
       payment_type: ["task", "hour"],
       task_category: [

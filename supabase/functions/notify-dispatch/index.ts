@@ -105,6 +105,93 @@ async function chatEmailAllowed(
   return { allowed: true, unreadCount };
 }
 
+/**
+ * A parent contact has no auth.users row, so nothing about them can ride the
+ * notifications table (keyed by user_id) — but every event they care about is
+ * already a notification for their child. Rather than a second queue and a
+ * second set of triggers, the dispatcher forwards from here.
+ *
+ * Maps the child's event to the parent-facing copy and the switch that gates it.
+ */
+const PARENT_FANOUT: Record<string, { pref: string; event: NotificationRow["event_type"] }> = {
+  application_decided: { pref: "notify_accepted", event: "parent_child_accepted" },
+  task_completed: { pref: "notify_completed", event: "parent_child_completed" },
+  task_cancelled: { pref: "notify_cancelled", event: "parent_child_cancelled" },
+};
+
+async function fanOutToParentContacts(
+  admin: SupabaseClient,
+  row: NotificationRow,
+  userId: string,
+) {
+  const mapping = PARENT_FANOUT[row.event_type];
+  if (!mapping) return;
+
+  // A rejection is the child's business, not their parent's. Only an acceptance
+  // is forwarded.
+  if (row.event_type === "application_decided" && row.data.status !== "accepted") return;
+
+  // task_completed is enqueued to the task's creator as well as its workers. A
+  // parent watching a child should hear about tasks the child *did*, not tasks
+  // the child posted, so the creator's copy of the event is dropped here.
+  if (row.event_type === "task_completed") {
+    const taskId = String(row.data.task_id ?? "");
+    if (!taskId) return;
+    const { data: task } = await admin
+      .from("tasks")
+      .select("creator_id")
+      .eq("id", taskId)
+      .maybeSingle();
+    if (!task || task.creator_id === userId) return;
+  }
+
+  const { data: contacts } = await admin
+    .from("parent_contacts")
+    .select("id, email, view_token")
+    .eq("child_user_id", userId)
+    .eq(mapping.pref, true);
+
+  if (!contacts?.length) return;
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("first_name, last_name, gender")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  // Left empty when unknown so the copy layer picks the gendered fallback
+  // rather than this file hard-coding a slash form.
+  const childName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+
+  for (const contact of contacts) {
+    try {
+      await sendEmail({
+        to: contact.email,
+        tag: mapping.event,
+        content: emailContent({
+          id: contact.id,
+          event_type: mapping.event,
+          data: {
+            ...row.data,
+            child_name: childName,
+            child_gender: profile?.gender,
+            view_token: contact.view_token,
+          },
+          link: `/parent/view/${contact.view_token}`,
+        }),
+      });
+    } catch (error) {
+      // One bad address must not stop the rest, and must never fail the
+      // dispatch for the child themselves — their email already went out above.
+      console.error("parent_fanout_failed", {
+        contactId: contact.id,
+        event: mapping.event,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
@@ -218,6 +305,16 @@ Deno.serve(async (req) => {
         }
       }
     }
+  }
+
+  // ---- Parent contacts ----------------------------------------------------
+  // Piggybacks on the email channel's idempotency marker rather than adding a
+  // third one: `alreadyHandled` was read before the block above wrote to it, so
+  // this runs exactly once per notification even when pg_net retries. It is
+  // gated on the marker and not on whether the child's own email actually went
+  // out — a child who muted their email has not muted their parent's.
+  if (!alreadyHandled.has("email")) {
+    await fanOutToParentContacts(admin, row, userId);
   }
 
   // ---- Push ---------------------------------------------------------------

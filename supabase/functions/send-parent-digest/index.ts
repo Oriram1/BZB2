@@ -8,6 +8,12 @@
  * digest is noise, and noise is what makes people mute the whole channel.
  */
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import { sendEmail } from "../_shared/email.ts";
+import { emailContent } from "../_shared/notificationCopy.ts";
+// These three were used throughout buildChildCard but never imported, so every
+// run threw ReferenceError before it built a single card. The digest has been
+// dead since the gender rewrite; this is the fix.
+import { formFor, say, SUBJECT } from "../_shared/gender.ts";
 
 const TIME_ZONE = "Asia/Jerusalem";
 const DEFAULT_DIGEST_HOUR = 20;
@@ -126,10 +132,9 @@ Deno.serve(async (req) => {
   const since = dayStartUtc(date);
 
   const { data: links } = await admin.from("parent_links").select("parent_user_id, child_user_id");
-  if (!links?.length) return json({ ok: true, sent: 0 });
 
   const childrenByParent = new Map<string, string[]>();
-  for (const link of links) {
+  for (const link of links ?? []) {
     const list = childrenByParent.get(link.parent_user_id) ?? [];
     list.push(link.child_user_id);
     childrenByParent.set(link.parent_user_id, list);
@@ -173,5 +178,49 @@ Deno.serve(async (req) => {
     sent += 1;
   }
 
-  return json({ ok: true, hour, date, sent });
+  // Parent contacts have no account, so none of the above reaches them: no
+  // notifications row to insert (it is keyed by user_id) and no digest_hour to
+  // read. They are mailed directly, on the default hour, which is the only hour
+  // they have any way of choosing.
+  let contactsSent = 0;
+  if (hour === DEFAULT_DIGEST_HOUR) {
+    const { data: contacts } = await admin
+      .from("parent_contacts")
+      .select("id, email, child_user_id, view_token")
+      .eq("notify_digest", true);
+
+    for (const contact of contacts ?? []) {
+      const card = await buildChildCard(admin, contact.child_user_id, since);
+      // Nothing happened today → no email. An empty digest is the noise that
+      // makes people mute the channel.
+      if (!card) continue;
+
+      try {
+        await sendEmail({
+          to: contact.email,
+          tag: "parent_digest",
+          content: emailContent({
+            id: contact.id,
+            event_type: "parent_digest",
+            data: {
+              date,
+              summary: `${card.title}: ${card.events} עדכונים היום`,
+              total_earned: card.earned,
+              cards: [{ title: card.title, lines: card.lines }],
+              view_token: contact.view_token,
+            },
+            link: `/parent/view/${contact.view_token}`,
+          }),
+        });
+        contactsSent += 1;
+      } catch (error) {
+        console.error("parent_contact_digest_failed", {
+          contactId: contact.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  return json({ ok: true, hour, date, sent, contactsSent });
 });

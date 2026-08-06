@@ -30,6 +30,7 @@ Deno.serve(withCors(async (req) => {
       .from("parent_contacts")
       .select("id, email, last_notified_at, view_token")
       .eq("child_user_id", user.id)
+      .eq("notify_signin", true)
       .or(`last_notified_at.is.null,last_notified_at.lt.${cutoff}`);
 
     if (!contacts?.length) return json({ notified: 0 });

@@ -93,6 +93,41 @@ describe("authorization invariants", () => {
     expect([...created].filter((table) => !guarded.has(table))).toEqual([]);
   });
 
+  // The public parent page can ask for an address to be added to a child's
+  // contact list. Everything that makes that safe rather than reckless is the
+  // fact that the browser cannot write the queue directly — only
+  // request-parent-contact can, and only after checking a share token. A stray
+  // GRANT INSERT here would let anyone queue a stranger against any child id.
+  it("never lets a client write the parent request queue", () => {
+    const grants = [...allSql.matchAll(/GRANT ([^;]+) ON public\.parent_contact_requests TO ([^;]+);/g)];
+    expect(grants.length, "no grants found on parent_contact_requests").toBeGreaterThan(0);
+    for (const [, privileges, roles] of grants) {
+      if (/anon|authenticated/.test(roles)) {
+        expect(privileges, `parent_contact_requests grants INSERT to ${roles.trim()}`)
+          .not.toMatch(/INSERT|ALL/);
+      }
+    }
+    expect(allSql, "parent_contact_requests has an INSERT policy")
+      .not.toMatch(/CREATE POLICY[^;]+ON public\.parent_contact_requests FOR INSERT/);
+  });
+
+  // A parent's preferences are edited from a page with no session, so the token
+  // is the only credential. If parent_contacts ever became updatable by anon,
+  // that token would stop being a scoping mechanism and start being decoration.
+  it("keeps parent_contacts unwritable except through service_role", () => {
+    const grants = [...allSql.matchAll(/GRANT ([^;]+) ON public\.parent_contacts TO ([^;]+);/g)];
+    expect(grants.length, "no grants found on parent_contacts").toBeGreaterThan(0);
+    for (const [, privileges, roles] of grants) {
+      if (/anon/.test(roles)) {
+        expect(privileges, `parent_contacts is granted to anon`).toEqual("");
+      }
+      if (/authenticated/.test(roles)) {
+        expect(privileges, "parent_contacts grants UPDATE to authenticated")
+          .not.toMatch(/UPDATE|ALL/);
+      }
+    }
+  });
+
   it("never ships a service role key to the browser", () => {
     // This key bypasses RLS entirely. One of these in client code makes every
     // other guard in this file decorative.

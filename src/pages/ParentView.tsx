@@ -8,8 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import { CheckCircle, Clock, ClipboardList, Coins, AlertTriangle } from "lucide-react";
 import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
+import { ParentNotificationPrefs, type ParentPrefs } from "@/components/parent/ParentNotificationPrefs";
+import { ParentSubscribeCard } from "@/components/parent/ParentSubscribeCard";
 
 interface ChildData {
+  /** The row this share token belongs to — never anyone else's. */
+  contact: { email: string; prefs: ParentPrefs };
   child: { first_name: string; last_name: string; avatar_url: string | null; age: number | null; gender: Gender | null };
   stats: { total_tasks: number; completed: number; total_earned: number };
   tasks: {
@@ -81,7 +85,8 @@ const ParentView = () => {
     );
   }
 
-  const { child, stats, tasks } = data;
+  const { child, stats, tasks, contact } = data;
+  const childName = `${child.first_name ?? ""} ${child.last_name ?? ""}`.trim();
   const initials = `${child.first_name?.[0] ?? ""}${child.last_name?.[0] ?? ""}`;
 
   return (
@@ -127,6 +132,18 @@ const ParentView = () => {
             </CardContent>
           </Card>
         </div>
+
+        {contact && (
+          <ParentNotificationPrefs
+            token={token!}
+            email={contact.email}
+            prefs={contact.prefs}
+            childGender={child.gender}
+            childName={childName}
+          />
+        )}
+
+        <ParentSubscribeCard token={token!} childGender={child.gender} childName={childName} />
 
         {/* Tasks */}
         <Card className="border-border">

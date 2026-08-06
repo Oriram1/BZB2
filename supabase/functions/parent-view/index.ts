@@ -16,7 +16,9 @@ Deno.serve(withCors(async (req) => {
 
     const { data: contact } = await admin
       .from("parent_contacts")
-      .select("child_user_id")
+      .select(
+        "child_user_id, email, notify_signin, notify_accepted, notify_digest, notify_completed, notify_cancelled",
+      )
       .eq("view_token", token)
       .maybeSingle();
 
@@ -50,6 +52,18 @@ Deno.serve(withCors(async (req) => {
       }, 0) ?? 0;
 
     return json({
+      // Only this token's own row. A parent sees the switches for their own
+      // address and learns nothing about who else is on the child's list.
+      contact: {
+        email: contact.email,
+        prefs: {
+          notify_signin: contact.notify_signin,
+          notify_accepted: contact.notify_accepted,
+          notify_digest: contact.notify_digest,
+          notify_completed: contact.notify_completed,
+          notify_cancelled: contact.notify_cancelled,
+        },
+      },
       child: {
         first_name: profile?.first_name ?? "",
         last_name: profile?.last_name ?? "",

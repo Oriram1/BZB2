@@ -25,6 +25,13 @@ import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import QRCode from "qrcode";
 
+/** Someone who asked, from the public view page, to be added to the list. */
+interface ParentRequest {
+  id: string;
+  email: string;
+  requested_at: string;
+}
+
 /** A parent reachable by email, with no account behind it. */
 interface ParentContact {
   id: string;
@@ -100,6 +107,8 @@ const Profile = () => {
   const [creatingFamilyCode, setCreatingFamilyCode] = useState(false);
   const [parentEmail, setParentEmail] = useState("");
   const [parentContacts, setParentContacts] = useState<ParentContact[]>([]);
+  const [parentRequests, setParentRequests] = useState<ParentRequest[]>([]);
+  const [decidingRequest, setDecidingRequest] = useState<string | null>(null);
   const [newParentEmail, setNewParentEmail] = useState("");
   const [savingParentContact, setSavingParentContact] = useState(false);
 
@@ -107,6 +116,58 @@ const Profile = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+
+  const loadParentRequests = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("parent_contact_requests")
+      .select("id, email, requested_at")
+      .eq("child_user_id", user.id)
+      .order("requested_at", { ascending: true });
+    setParentRequests(data ?? []);
+  };
+
+  /**
+   * Approving reuses add-parent-contact rather than inserting directly, so an
+   * approved parent gets the same welcome email and share link as one the child
+   * typed in themselves. The request row is cleared only after that succeeds —
+   * a dropped request with no contact behind it is a silent loss.
+   */
+  const decideParentRequest = async (request: ParentRequest, approve: boolean) => {
+    setDecidingRequest(request.id);
+    try {
+      if (approve) {
+        const { data, error } = await supabase.functions.invoke<{ error?: string }>(
+          "add-parent-contact",
+          { body: { email: request.email } },
+        );
+        const failure = error ? "invoke_failed" : data?.error;
+        if (failure && failure !== "already_added") {
+          toast.error(
+            failure === "limit_reached"
+              ? "אפשר לקשר עד 3 כתובות"
+              : "לא הצלחנו לאשר את הבקשה",
+          );
+          return;
+        }
+      }
+
+      const { error: deleteError } = await supabase
+        .from("parent_contact_requests")
+        .delete()
+        .eq("id", request.id);
+      if (deleteError) {
+        toast.error("לא הצלחנו לעדכן את הבקשה");
+        return;
+      }
+
+      setParentRequests((current) => current.filter((row) => row.id !== request.id));
+      if (approve) await loadParentContacts();
+      toast.success(approve ? "הכתובת אושרה ונוספה 📧" : "הבקשה נדחתה");
+    } finally {
+      setDecidingRequest(null);
+    }
+  };
 
   const loadParentContacts = async () => {
     if (!user) return;
@@ -250,7 +311,7 @@ const Profile = () => {
     const load = async () => {
       setLoadingData(true);
       if (isTasker) await loadTaskerData();
-      if (isBee) await Promise.all([loadBeeData(), loadParentContacts()]);
+      if (isBee) await Promise.all([loadBeeData(), loadParentContacts(), loadParentRequests()]);
       setLoadingData(false);
     };
     load();
@@ -538,6 +599,47 @@ const Profile = () => {
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Someone holding your share link asked to be added. Nothing was
+                  sent to them and nothing will be until you say so. */}
+              {parentRequests.length > 0 && (
+                <ul className="space-y-2">
+                  {parentRequests.map((request) => (
+                    <li
+                      key={request.id}
+                      className="rounded-xl border-2 border-primary/40 bg-primary/5 px-3 py-2 space-y-2"
+                    >
+                      <div>
+                        <p className="text-sm font-bold text-foreground">בקשה לקבל עדכונים</p>
+                        <p dir="ltr" className="truncate text-sm text-muted-foreground">
+                          {request.email}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={decidingRequest === request.id}
+                          onClick={() => void decideParentRequest(request, true)}
+                          className="rounded-full font-bold"
+                        >
+                          אישור
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={decidingRequest === request.id}
+                          onClick={() => void decideParentRequest(request, false)}
+                          className="rounded-full font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          דחייה
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               {parentContacts.length > 0 && (
                 <ul className="space-y-2">
                   {parentContacts.map((contact) => (
