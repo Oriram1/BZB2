@@ -1002,7 +1002,6 @@ export default function Admin() {
                 {/* The query can be a Hebrew name or a Latin address, so the
                     field follows whatever is actually typed. */}
                 <Input
-                  dir="auto"
                   type="search"
                   autoComplete="off"
                   placeholder="חיפוש לפי שם או אימייל"
