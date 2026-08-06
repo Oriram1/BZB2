@@ -91,9 +91,20 @@ mean guessing:
   `[functions.notify-parent-signin] verify_jwt = true` block in
   `supabase/config.toml`.
 
-## Still to deploy
+## Deployed
 
-The migration and the updated `parent-view` / `admin-manage-users` edge functions
-are in git but **not yet pushed to Supabase**. Until they are, `PublicProfile`
-will read `gender` as `undefined` and fall back to the plural — i.e. the old
-"חבר/ה" — and `ParentView` likewise.
+Everything in this session is live on project `nrqgoaxraywprlbyzrso`.
+
+`supabase db push` needed `--include-all`: `20260806090000_public_profile_gender.sql`
+carries an earlier timestamp than the last migration already on the remote, so
+the CLI refuses to insert it into history without the flag. The migration only
+redefines a function and has no ordering dependency, so applying it out of order
+is safe. That same push also applied `20260806140000_parent_view_token.sql`,
+which the previous session had committed but never deployed — the outstanding
+item recorded at the end of `session-2026-08-06-drawer-notifications.md`.
+
+The `parent-view` and `admin-manage-users` edge functions were redeployed so
+they pick up the new `_shared/gender.ts` vocabulary and the child-gender field.
+
+Verified against the live database — `get_public_profile` now returns
+`user_id, first_name, last_name, avatar_url, gender, created_at`.
