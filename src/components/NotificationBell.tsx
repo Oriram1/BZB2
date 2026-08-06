@@ -10,7 +10,7 @@ import { notificationLine } from "@/lib/notificationCopy";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const NotificationBell = () => {
+const NotificationBell = ({ variant = "header" }: { variant?: "header" | "drawer" }) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,7 +38,12 @@ const NotificationBell = () => {
         <button
           type="button"
           aria-label={visibleUnreadCount > 0 ? `התראות, ${visibleUnreadCount} חדשות` : "התראות"}
-          className="relative z-10 shrink-0 w-10 h-10 overflow-visible rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+          className={cn(
+            "relative z-10 shrink-0 w-10 h-10 overflow-visible rounded-full flex items-center justify-center transition-colors",
+            variant === "drawer"
+              ? "bg-muted hover:bg-muted/80 text-foreground"
+              : "bg-white/20 hover:bg-white/30 text-white",
+          )}
         >
           <Bell size={19} aria-hidden="true" />
           {visibleUnreadCount > 0 && (
@@ -51,10 +56,16 @@ const NotificationBell = () => {
 
       <PopoverContent
         align="start"
+        side={variant === "drawer" ? "bottom" : undefined}
         sideOffset={8}
         dir="rtl"
         aria-label="התראות"
-        className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden p-0 rounded-2xl shadow-lg"
+        className={cn(
+          "overflow-hidden p-0 rounded-2xl shadow-lg",
+          variant === "drawer"
+            ? "w-64 max-h-80"
+            : "w-[min(24rem,calc(100vw-2rem))]",
+        )}
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
           <span className="min-w-0 flex-1 text-right font-extrabold text-foreground">התראות</span>
@@ -64,25 +75,27 @@ const NotificationBell = () => {
                 variant="ghost"
                 size="sm"
                 onClick={markAllRead}
-                className="h-8 px-2 text-xs font-bold gap-1"
+                className="h-8 w-8 p-0"
+                aria-label="סמן הכל כנקרא"
               >
-                <CheckCheck size={14} />
-                סמן הכל כנקרא
+                <CheckCheck size={16} />
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/settings")}
-              aria-label="הגדרות התראות"
-              className="h-8 w-8 p-0"
-            >
-              <SettingsIcon size={15} />
-            </Button>
+            {variant !== "drawer" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/settings")}
+                aria-label="הגדרות התראות"
+                className="h-8 w-8 p-0"
+              >
+                <SettingsIcon size={15} />
+              </Button>
+            )}
           </div>
         </div>
 
-        <ScrollArea className="max-h-96">
+        <ScrollArea className={variant === "drawer" ? "max-h-60" : "max-h-96"} onTouchMove={(e) => e.stopPropagation()} style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
           {loading ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">טוען…</p>
           ) : visibleItems.length === 0 ? (

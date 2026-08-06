@@ -31,6 +31,7 @@ import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import ParentReport from "./pages/ParentReport";
+import ParentView from "./pages/ParentView";
 import { MobileNav, FloatingNavTrigger } from "./components/MobileNav";
 import { NavDrawerProvider } from "./components/NavDrawerContext";
 import PresenceTracker from "./components/PresenceTracker";
@@ -40,7 +41,7 @@ import CookieConsent from "./components/CookieConsent";
 const queryClient = new QueryClient();
 
 const RouteViewport = ({ children }: { children: ReactNode }) => (
-  <div className="overflow-x-hidden">{children}</div>
+  <div className="[overflow-x:clip]">{children}</div>
 );
 
 /**
@@ -100,6 +101,7 @@ const App = () => (
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
                 <Route path="/parent/report/:date" element={<RoleGuard allowedRoles={["parent"]}><ParentReport /></RoleGuard>} />
+                <Route path="/parent/view/:token" element={<ParentView />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/chat" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Chat /></RoleGuard>} />
                 <Route path="/profile" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Profile /></RoleGuard>} />

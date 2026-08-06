@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import BzbLogo from "@/components/BzbLogo";
 import { Button } from "@/components/ui/button";
 import { NavDrawerTrigger } from "@/components/MobileNav";
-import NotificationBell from "@/components/NotificationBell";
 import { useRegisterHeader } from "@/components/NavDrawerContext";
 import { cn } from "@/lib/utils";
 
@@ -49,18 +48,6 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
         {/* Desktop navigation lives in the drawer; mobile uses the bottom bar. */}
         <NavDrawerTrigger />
 
-        {showBack && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={goBack}
-            aria-label="חזרה למסך הקודם"
-            className="rounded-full text-primary-foreground hover:bg-foreground/10 shrink-0 h-11 w-11"
-          >
-            <ArrowRight size={20} />
-          </Button>
-        )}
-
         <Link
           to="/"
           aria-label="לדף הבית"
@@ -81,13 +68,20 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
 
         {/* Trailing edge (left in Hebrew) is for page actions, not navigation. */}
         {action && <div className="hidden md:block shrink-0">{action}</div>}
-
-        {/* The bell stays visible on mobile too: it is the only notification
-            channel that reaches every user regardless of email or push. */}
       </div>
-      <div className="absolute left-4 top-1/2 z-40 -translate-y-1/2 overflow-visible">
-        <NotificationBell />
-      </div>
+      {showBack && (
+        <div className="absolute left-4 top-1/2 z-40 -translate-y-1/2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goBack}
+            aria-label="חזרה למסך הקודם"
+            className="rounded-full text-primary-foreground hover:bg-foreground/10 shrink-0 h-11 w-11"
+          >
+            <ArrowRight size={20} className="rotate-180" />
+          </Button>
+        </div>
+      )}
     </header>
   );
 }
