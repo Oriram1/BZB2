@@ -9,14 +9,13 @@
  * actually goes out: one email per contact per 24h. A repeat call is a no-op,
  * so a refreshed tab or a second device costs nothing.
  */
-import { authenticatedClients, corsHeaders, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, hasRole, json } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { emailContent } from "../_shared/notificationCopy.ts";
 
 const THROTTLE_MS = 24 * 60 * 60 * 1000;
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
@@ -89,4 +88,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return errorResponse(error);
   }
-});
+}));

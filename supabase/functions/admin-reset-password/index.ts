@@ -1,19 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { corsHeaders, corsOrigin } from "../_shared/auth.ts";
-
-function json(body: unknown, status = 200, req?: Request) {
-  const headers: Record<string, string> = { ...corsHeaders, "Content-Type": "application/json" };
-  if (req) headers["Access-Control-Allow-Origin"] = corsOrigin(req);
-  return new Response(JSON.stringify(body), { status, headers,
-  });
-}
+import { json, withCors } from "../_shared/auth.ts";
 
 function isStrongPassword(password: string) {
   return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password);
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+Deno.serve(withCors(async (req) => {
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -117,4 +109,4 @@ Deno.serve(async (req) => {
     console.error("admin_reset_password_unhandled", e);
     return json({ error: "internal_error" }, 500);
   }
-});
+}));

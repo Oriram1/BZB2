@@ -1,8 +1,7 @@
 /** Registers or removes a browser's Web Push subscription for the caller. */
-import { authenticatedClients, corsHeaders, errorResponse, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, json } from "../_shared/auth.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
@@ -45,4 +44,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return errorResponse(error);
   }
-});
+}));

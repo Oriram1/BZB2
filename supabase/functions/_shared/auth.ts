@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
 const ALLOWED_ORIGINS = [
@@ -13,20 +14,51 @@ export function corsOrigin(req: Request): string {
   return ALLOWED_ORIGINS[0];
 }
 
-export const corsHeaders = {
-  "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+/**
+ * The site answers on both the apex and the `www.` host, and previews answer on
+ * `*.vercel.app`, so a single hard-coded origin fails the preflight for every
+ * caller but one. Responses are built deep inside each handler, far from the
+ * `Request` — rather than thread it through every call site, `withCors` stashes
+ * it here so `json` can echo the caller's own origin.
+ */
+const requestContext = new AsyncLocalStorage<Request>();
+
+export function corsHeadersFor(req?: Request) {
+  return {
+    // `Vary` keeps a proxy from serving one origin's headers to another.
+    "Vary": "Origin",
+    "Access-Control-Allow-Origin": req ? corsOrigin(req) : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
+/** Kept for callers that build their own header bag; prefer `corsHeadersFor`. */
+export const corsHeaders = corsHeadersFor();
+
+/**
+ * Wraps a handler so the preflight answers with the caller's origin and every
+ * `json` response inside it does the same.
+ */
+export function withCors(handler: (req: Request) => Response | Promise<Response>) {
+  return (req: Request) =>
+    requestContext.run(req, async () => {
+      if (req.method === "OPTIONS") {
+        return new Response("ok", { headers: corsHeadersFor(req) });
+      }
+      return await handler(req);
+    });
+}
 
 export function json(body: unknown, status = 200, req?: Request) {
-  const headers: Record<string, string> = {
-    ...corsHeaders,
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-  };
-  if (req) headers["Access-Control-Allow-Origin"] = corsOrigin(req);
-  return new Response(JSON.stringify(body), { status, headers });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeadersFor(req ?? requestContext.getStore()),
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 export async function authenticatedClients(req: Request): Promise<{

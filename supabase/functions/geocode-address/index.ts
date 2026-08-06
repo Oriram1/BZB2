@@ -1,11 +1,7 @@
-import { corsHeaders, corsOrigin } from "../_shared/auth.ts";
+import { corsHeadersFor, withCors } from "../_shared/auth.ts";
 
-Deno.serve(async (request) => {
-  const cors = { ...corsHeaders, "Access-Control-Allow-Origin": corsOrigin(request) };
-
-  if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: cors });
-  }
+Deno.serve(withCors(async (request) => {
+  const cors = corsHeadersFor(request);
 
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
@@ -54,4 +50,4 @@ Deno.serve(async (request) => {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   }
-});
+}));

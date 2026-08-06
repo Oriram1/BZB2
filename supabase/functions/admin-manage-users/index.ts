@@ -1,4 +1,4 @@
-import { authenticatedClients, corsHeaders, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, hasRole, json } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import type { User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
@@ -43,8 +43,7 @@ async function deleteUserCompletely(admin: AdminClient, userId: string) {
   if (error) throw error;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
@@ -314,4 +313,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return errorResponse(error);
   }
-});
+}));
