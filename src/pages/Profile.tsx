@@ -776,8 +776,8 @@ const Profile = () => {
             </Card>
           </>
         )}
-        {/* Account deletion — privacy right */}
-        <Card className="border-destructive/30">
+        {/* Account deletion — privacy right (hidden for admins) */}
+        {!roles.includes("admin") && <Card className="border-destructive/30">
           <CardContent className="pt-5 pb-5">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -836,7 +836,7 @@ const Profile = () => {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
     </div>
   );

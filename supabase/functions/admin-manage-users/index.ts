@@ -1,4 +1,5 @@
 import { authenticatedClients, corsHeaders, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { sendEmail } from "../_shared/email.ts";
 import type { User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
 async function listAllUsers(admin: Awaited<ReturnType<typeof authenticatedClients>>["admin"]) {
@@ -57,12 +58,77 @@ Deno.serve(async (req) => {
       if (await hasRole(admin, callerUser.id, "admin")) {
         return json({ error: "admin_cannot_self_delete" }, 403);
       }
+
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("user_id", callerUser.id)
+        .single();
+      const displayName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || callerUser.email || "משתמש";
+
+      const { data: parentContacts } = await admin
+        .from("parent_contacts")
+        .select("email")
+        .eq("child_user_id", callerUser.id);
+
       try {
         await deleteUserCompletely(admin, callerUser.id);
       } catch (error) {
         const message = error instanceof Error ? error.message : "self_delete_failed";
         return json({ error: message }, 500);
       }
+
+      const emailTasks: Promise<unknown>[] = [];
+
+      const { data: adminRoles } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+      if (adminRoles?.length) {
+        const adminIds = adminRoles.map((r) => r.user_id);
+        const { data: adminUsers } = await admin.auth.admin.listUsers({ perPage: 200 });
+        const adminEmails = (adminUsers?.users ?? [])
+          .filter((u) => adminIds.includes(u.id) && u.email)
+          .map((u) => u.email!);
+
+        for (const email of adminEmails) {
+          emailTasks.push(
+            sendEmail({
+              to: email,
+              tag: "account_deleted_admin",
+              content: {
+                subject: `חשבון נמחק — ${displayName}`,
+                preheader: `${displayName} מחק/ה את החשבון שלו/ה`,
+                heading: "חשבון נמחק מהמערכת",
+                paragraphs: [
+                  `המשתמש/ת ${displayName} (${callerUser.email ?? "ללא מייל"}) מחק/ה את החשבון שלו/ה.`,
+                  "כל המידע נמחק לצמיתות.",
+                ],
+              },
+            }).catch(() => {}),
+          );
+        }
+      }
+
+      for (const contact of parentContacts ?? []) {
+        emailTasks.push(
+          sendEmail({
+            to: contact.email,
+            tag: "account_deleted_parent",
+            content: {
+              subject: `${displayName} מחק/ה את החשבון ב-BZB`,
+              preheader: `${displayName} מחק/ה את החשבון`,
+              heading: "החשבון נמחק",
+              paragraphs: [
+                `רצינו לעדכן אותך ש-${displayName} מחק/ה את החשבון שלו/ה במערכת BZB.`,
+                "כל המידע שלו/ה נמחק לצמיתות מהמערכת.",
+              ],
+            },
+          }).catch(() => {}),
+        );
+      }
+
+      await Promise.all(emailTasks);
       return json({ ok: true });
     }
 
