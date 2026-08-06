@@ -47,11 +47,28 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
-    const { user: adminUser, admin } = await authenticatedClients(req);
-    if (!(await hasRole(admin, adminUser.id, "admin"))) throw new Error("forbidden");
+    const { user: callerUser, admin } = await authenticatedClients(req);
 
     const body = await req.json().catch(() => ({}));
     const action = String(body.action ?? "list");
+
+    // Self-deletion: any authenticated user can delete their own account.
+    if (action === "delete_self") {
+      if (await hasRole(admin, callerUser.id, "admin")) {
+        return json({ error: "admin_cannot_self_delete" }, 403);
+      }
+      try {
+        await deleteUserCompletely(admin, callerUser.id);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "self_delete_failed";
+        return json({ error: message }, 500);
+      }
+      return json({ ok: true });
+    }
+
+    // All other actions require admin role.
+    const adminUser = callerUser;
+    if (!(await hasRole(admin, adminUser.id, "admin"))) throw new Error("forbidden");
 
     if (action === "list") {
       const authUsers = await listAllUsers(admin);

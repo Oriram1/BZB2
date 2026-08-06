@@ -71,6 +71,7 @@ const Register = () => {
     ? `הרשמה למנוי ${planLabels[planId]}`
     : "הרשמה למציעי מטלות 📋";
   const [agreed, setAgreed] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [insurance, setInsurance] = useState(false);
   const [showInsurancePopup, setShowInsurancePopup] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -262,8 +263,8 @@ const Register = () => {
         latitude: resolvedPosition?.lat ?? null,
         longitude: resolvedPosition?.lng ?? null,
         gender: (form.gender || "unspecified") as Gender,
-        // Store a canonical 05XXXXXXXX form regardless of how it was typed.
         phone: normalizePhone(form.phone),
+        marketing_consent: marketingConsent,
       }).eq("user_id", data.user.id);
 
       const { error: roleError } = await supabase.from("user_roles").insert({
@@ -473,6 +474,13 @@ const Register = () => {
               </Label>
             </div>
             <FieldError id="terms" message={errors.terms} />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox id="marketing" checked={marketingConsent} onCheckedChange={(v) => setMarketingConsent(v === true)} />
+            <Label htmlFor="marketing" className="text-sm text-muted-foreground cursor-pointer">
+              אני מסכים/ה לקבל עדכונים, הצעות ודברי פרסומת מ-BZB בדוא"ל, SMS והודעות פוש
+            </Label>
           </div>
 
           {isPaidPlan && (

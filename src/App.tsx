@@ -35,6 +35,7 @@ import { MobileNav, FloatingNavTrigger } from "./components/MobileNav";
 import { NavDrawerProvider } from "./components/NavDrawerContext";
 import PresenceTracker from "./components/PresenceTracker";
 import InstallPrompt from "./components/InstallPrompt";
+import CookieConsent from "./components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,7 @@ const App = () => (
               </Routes>
             </RouteViewport>
             <InstallPrompt />
+            <CookieConsent />
             <FloatingNavTrigger />
           </NavDrawerProvider>
           </BrowserRouter>

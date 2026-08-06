@@ -381,6 +381,7 @@ export type Database = {
           last_name: string
           latitude: number | null
           longitude: number | null
+          marketing_consent: boolean
           phone: string | null
           updated_at: string
           user_id: string
@@ -397,6 +398,7 @@ export type Database = {
           last_name?: string
           latitude?: number | null
           longitude?: number | null
+          marketing_consent?: boolean
           phone?: string | null
           updated_at?: string
           user_id: string
@@ -413,6 +415,7 @@ export type Database = {
           last_name?: string
           latitude?: number | null
           longitude?: number | null
+          marketing_consent?: boolean
           phone?: string | null
           updated_at?: string
           user_id?: string
