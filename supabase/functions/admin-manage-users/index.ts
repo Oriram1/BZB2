@@ -1,4 +1,4 @@
-import { authenticatedClients, withCors, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, hasRole, json, readJsonObject } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { formFor, say, SUBJECT } from "../_shared/gender.ts";
 import type { User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
@@ -50,7 +50,7 @@ Deno.serve(withCors(async (req) => {
   try {
     const { user: callerUser, admin } = await authenticatedClients(req);
 
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req, 64_000);
     const action = String(body.action ?? "list");
 
     // Self-deletion: any authenticated user can delete their own account.

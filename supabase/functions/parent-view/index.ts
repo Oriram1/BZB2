@@ -3,12 +3,12 @@
  * parent_contacts.view_token. No auth required — the token IS the auth.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { withCors, json, errorResponse } from "../_shared/auth.ts";
+import { withCors, json, errorResponse, readJsonObject } from "../_shared/auth.ts";
 
 Deno.serve(withCors(async (req) => {
   try {
-    const { token } = await req.json();
-    if (!token || typeof token !== "string") return json({ error: "missing_token" }, 400);
+    const { token } = await readJsonObject(req);
+    if (typeof token !== "string" || !token.trim() || token.length > 256) return json({ error: "missing_token" }, 400);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -47,7 +47,7 @@ Deno.serve(withCors(async (req) => {
     const totalEarned = tasks
       ?.filter((t) => t.status === "completed")
       .reduce((sum, t) => {
-        const task = t.task as any;
+        const task = t.task as { payment?: unknown } | null;
         return sum + (Number(task?.payment) || 0);
       }, 0) ?? 0;
 
@@ -77,7 +77,7 @@ Deno.serve(withCors(async (req) => {
         total_earned: totalEarned,
       },
       tasks: (tasks ?? []).map((t) => {
-        const task = t.task as any;
+        const task = t.task as { name?: unknown; short_desc?: unknown; status?: unknown; payment?: unknown; payment_type?: unknown; category?: unknown } | null;
         return {
           name: task?.name ?? "",
           short_desc: task?.short_desc ?? "",

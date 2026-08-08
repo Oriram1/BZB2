@@ -1,12 +1,12 @@
 /** Registers or removes a browser's Web Push subscription for the caller. */
-import { authenticatedClients, withCors, errorResponse, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, json, readJsonObject } from "../_shared/auth.ts";
 
 Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
     const { user, admin } = await authenticatedClients(req);
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req, 16_384);
     const action = String(body.action ?? "subscribe");
     const endpoint = String(body.subscription?.endpoint ?? "");
 

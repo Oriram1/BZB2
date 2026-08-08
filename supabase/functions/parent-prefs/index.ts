@@ -7,7 +7,7 @@
  * which already loads this row.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { withCors, json, errorResponse } from "../_shared/auth.ts";
+import { withCors, json, errorResponse, readJsonObject } from "../_shared/auth.ts";
 
 /** The only columns a parent may set. Anything else in the body is ignored. */
 const EDITABLE = [
@@ -22,11 +22,12 @@ Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req);
     const token = String(body.token ?? "");
     if (!token) return json({ error: "missing_token" }, 400);
 
-    const prefs = (body.prefs ?? {}) as Record<string, unknown>;
+    const prefs = body.prefs;
+    if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) return json({ error: "invalid_prefs" }, 400);
     // Allow-list rather than pass-through: a spread of the request body here
     // would let a caller write last_notified_at and reset their own throttle.
     const update: Record<string, boolean> = {};

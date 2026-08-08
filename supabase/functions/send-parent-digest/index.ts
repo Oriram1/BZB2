@@ -14,6 +14,7 @@ import { emailContent } from "../_shared/notificationCopy.ts";
 // run threw ReferenceError before it built a single card. The digest has been
 // dead since the gender rewrite; this is the fix.
 import { formFor, say, SUBJECT } from "../_shared/gender.ts";
+import { requireSecret } from "../_shared/auth.ts";
 
 const TIME_ZONE = "Asia/Jerusalem";
 const DEFAULT_DIGEST_HOUR = 20;
@@ -118,10 +119,7 @@ async function buildChildCard(
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  const expectedSecret = Deno.env.get("NOTIFY_DISPATCH_SECRET");
-  if (!expectedSecret || req.headers.get("x-notify-secret") !== expectedSecret) {
-    return json({ error: "unauthorized" }, 401);
-  }
+  try { requireSecret(req, "NOTIFY_DISPATCH_SECRET"); } catch { return json({ error: "unauthorized" }, 401); }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

@@ -1,4 +1,4 @@
-import { corsHeadersFor, withCors } from "../_shared/auth.ts";
+import { corsHeadersFor, withCors, readJsonObject } from "../_shared/auth.ts";
 
 Deno.serve(withCors(async (request) => {
   const cors = corsHeadersFor(request);
@@ -11,7 +11,7 @@ Deno.serve(withCors(async (request) => {
   }
 
   try {
-    const { address } = await request.json();
+    const { address } = await readJsonObject(request, 8_192);
     if (typeof address !== "string" || !address.trim() || address.trim().length > 500) {
       return new Response(JSON.stringify({ error: "Address is required" }), {
         status: 400,

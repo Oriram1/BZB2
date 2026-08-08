@@ -1,4 +1,4 @@
-import { authenticatedClients, withCors, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, hasRole, json, readJsonObject } from "../_shared/auth.ts";
 
 async function hashCode(code: string) {
   const bytes = new TextEncoder().encode(code);
@@ -13,7 +13,7 @@ Deno.serve(withCors(async (req) => {
     const { user, admin } = await authenticatedClients(req);
     if (!(await hasRole(admin, user.id, "parent"))) return json({ error: "parent_only" }, 403);
 
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req);
     const code = String(body.code ?? "").replace(/\D/g, "");
     if (!/^\d{6}$/.test(code)) return json({ error: "invalid_code_format" }, 400);
 

@@ -1,4 +1,4 @@
-import { authenticatedClients, withCors, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, hasRole, json, readJsonObject } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { emailContent } from "../_shared/notificationCopy.ts";
 
@@ -17,7 +17,7 @@ Deno.serve(withCors(async (req) => {
     const { user, admin } = await authenticatedClients(req);
     if (!(await hasRole(admin, user.id, "bee"))) return json({ error: "bee_only" }, 403);
 
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req);
     const parentEmail = String(body.parentEmail ?? "").trim().toLowerCase();
     if (parentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
       return json({ error: "invalid_email" }, 400);

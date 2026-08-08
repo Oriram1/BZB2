@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { json, withCors } from "../_shared/auth.ts";
+import { json, withCors, readJsonObject } from "../_shared/auth.ts";
 
 function isStrongPassword(password: string) {
   return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password);
@@ -33,7 +33,7 @@ Deno.serve(withCors(async (req) => {
       .maybeSingle();
     if (!roleRow) return json({ error: "Forbidden — admin only" }, 403);
 
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req);
     const identifier = String(body.identifier ?? "").trim();
     const newPassword = String(body.newPassword ?? "");
     if (!identifier || !isStrongPassword(newPassword)) {

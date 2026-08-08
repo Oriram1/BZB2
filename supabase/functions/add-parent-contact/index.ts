@@ -6,7 +6,7 @@
  * be trusted to send mail, and doing the insert client-side then calling out
  * for the email leaves a window where the contact exists but was never told.
  */
-import { authenticatedClients, withCors, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, hasRole, json, readJsonObject } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { emailContent } from "../_shared/notificationCopy.ts";
 
@@ -17,7 +17,7 @@ Deno.serve(withCors(async (req) => {
     const { user, admin } = await authenticatedClients(req);
     if (!(await hasRole(admin, user.id, "bee"))) return json({ error: "bee_only" }, 403);
 
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req);
     const email = String(body.email ?? "").trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return json({ error: "invalid_email" }, 400);

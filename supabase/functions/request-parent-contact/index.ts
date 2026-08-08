@@ -9,7 +9,7 @@
  * table comment in 20260806220100_parent_contact_prefs_and_requests.sql.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { withCors, json, errorResponse } from "../_shared/auth.ts";
+import { withCors, json, errorResponse, readJsonObject } from "../_shared/auth.ts";
 
 /** One request per share token per 10 minutes. */
 const THROTTLE_MS = 10 * 60 * 1000;
@@ -18,7 +18,7 @@ Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = await readJsonObject(req);
     const token = String(body.token ?? "");
     const email = String(body.email ?? "").trim().toLowerCase();
 

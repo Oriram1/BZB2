@@ -99,9 +99,30 @@ export function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "unknown_error";
   if (message === "unauthorized") return json({ error: message }, 401);
   if (message === "forbidden") return json({ error: message }, 403);
+  if (message === "invalid_json" || message === "invalid_json_object") return json({ error: message }, 400);
+  if (message === "payload_too_large") return json({ error: message }, 413);
   if (message === "server_not_configured") return json({ error: message }, 500);
   // Never expose database/provider errors, SQL text or stack details to callers.
   // Keep diagnosis in server logs only.
   console.error("edge_function_failure", error);
   return json({ error: "internal_error" }, 500);
+}
+
+export type JsonObject = Record<string, unknown>;
+
+/** Parse bounded JSON object input. Never silently converts malformed JSON to {}. */
+export async function readJsonObject(req: Request, maxBytes = 32_768): Promise<JsonObject> {
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) throw new Error("payload_too_large");
+  const raw = await req.text();
+  if (new TextEncoder().encode(raw).byteLength > maxBytes) throw new Error("payload_too_large");
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); } catch { throw new Error("invalid_json"); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid_json_object");
+  return parsed as JsonObject;
+}
+
+export function requireSecret(req: Request, envName: string): void {
+  const expected = Deno.env.get(envName);
+  if (!expected || req.headers.get("x-notify-secret") !== expected) throw new Error("unauthorized");
 }
