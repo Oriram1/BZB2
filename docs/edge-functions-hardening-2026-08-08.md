@@ -17,6 +17,8 @@ Functions audited:
 - Added `requireSecret()` for cron/internal functions.
 - Added stable `400` and `413` responses for malformed and oversized requests.
 - Applied strict JSON parsing to authenticated mutations, public token endpoints, push subscription, admin actions, and digest dispatches.
+- Applied strict JSON parsing to sign-in notification calls; webhook email retains raw-body parsing because signature verification requires exact bytes.
+- Added shared parser tests for valid objects, malformed JSON, arrays/primitives, and oversized payloads.
 - Replaced `as any` in `parent-view` with explicit narrow response shapes.
 - Preserved service-role usage only inside server-side functions after authentication or independent cron-secret verification.
 - Preserved allow-listed preference updates in `parent-prefs`.

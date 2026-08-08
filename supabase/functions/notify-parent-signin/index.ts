@@ -9,7 +9,7 @@
  * actually goes out: one email per contact per 24h. A repeat call is a no-op,
  * so a refreshed tab or a second device costs nothing.
  */
-import { authenticatedClients, withCors, errorResponse, hasRole, json } from "../_shared/auth.ts";
+import { authenticatedClients, withCors, errorResponse, hasRole, json, readJsonObject } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { emailContent } from "../_shared/notificationCopy.ts";
 
@@ -19,6 +19,8 @@ Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
+    // Sign-in client sends an empty JSON command; reject malformed input before auth side effects.
+    await readJsonObject(req, 1_024);
     const { user, admin } = await authenticatedClients(req);
 
     // Only a child account has parents to notify. Anyone else is a quiet no-op

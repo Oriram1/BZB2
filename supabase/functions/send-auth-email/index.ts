@@ -10,17 +10,19 @@
  */
 import { Webhook } from "npm:standardwebhooks@1.0.0";
 import { sendEmail, siteUrl, type EmailContent } from "../_shared/email.ts";
+import { corsOrigin } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const corsHeadersFor = (req?: Request) => ({
+  "Access-Control-Allow-Origin": req ? corsOrigin(req) : "https://bzb-web.com",
+  "Vary": "Origin",
   "Access-Control-Allow-Headers": "authorization, content-type, webhook-id, webhook-timestamp, webhook-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+});
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeadersFor(), "Content-Type": "application/json" },
   });
 }
 
@@ -145,7 +147,7 @@ function buildContent(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeadersFor(req) });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
