@@ -252,11 +252,9 @@ const ParentalHub = () => {
                 בקשו מהילד/ה ליצור קוד QR בפרופיל, וסרקו אותו.
               </p>
             </div>
-            <Link to="/tasks">
-              <Button className="gradient-honey text-primary-foreground rounded-full font-bold">
-                חזרה למטלות
-              </Button>
-            </Link>
+            <Button className="gradient-honey text-primary-foreground rounded-full font-bold" asChild>
+<Link to="/tasks">חזרה למטלות</Link>
+</Button>
           </Card>
         ) : (
           <div className="grid gap-6">

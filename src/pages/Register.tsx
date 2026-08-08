@@ -127,7 +127,7 @@ const Register = () => {
 
   if (user && existingRole && existingRole !== requestedRole) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center px-4" dir="rtl">
         <section className="w-full max-w-md rounded-3xl border border-border bg-background p-8 text-center shadow-xl">
           <BzbLogo className="mx-auto mb-5 h-20 w-20" />
           <h1 className="text-2xl font-extrabold text-foreground">החשבון כבר רשום</h1>
@@ -159,7 +159,7 @@ const Register = () => {
             </Button>
           </div>
         </section>
-      </main>
+      </div>
     );
   }
 

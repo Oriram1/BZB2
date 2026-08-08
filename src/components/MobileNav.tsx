@@ -118,7 +118,12 @@ export function MobileNav() {
   return (
     <>
       {open && (
+        /* Decorative scrim. Clicking it is a mouse shortcut; the keyboard
+           path is Escape, handled by the drawer itself. aria-hidden keeps it
+           out of the accessibility tree so it is not announced as a control. */
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
         <div
+          aria-hidden="true"
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={handleCloseDrawer}
         />

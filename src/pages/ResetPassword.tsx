@@ -14,6 +14,8 @@ const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // WCAG 3.3.1/3.3.3: the toast disappears; the field has to stay marked.
+  const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string }>({});
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
@@ -40,13 +42,16 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setErrors({});
 
     if (!isStrongPassword(password)) {
+      setErrors({ password: passwordRequirementsMessage });
       toast.error(passwordRequirementsMessage);
       return;
     }
 
     if (password !== confirmPassword) {
+      setErrors({ confirmPassword: "שתי הסיסמאות לא תואמות" });
       toast.error("שתי הסיסמאות לא תואמות");
       return;
     }
@@ -56,6 +61,7 @@ const ResetPassword = () => {
     setLoading(false);
 
     if (error) {
+      setErrors({ password: error.message });
       toast.error(error.message);
       return;
     }
@@ -83,11 +89,9 @@ const ResetPassword = () => {
             <p className="text-muted-foreground">
               כדי לאפס סיסמה צריך לפתוח את הקישור שנשלח לאימייל.
             </p>
-            <Link to="/login">
-              <Button variant="outline" className="w-full rounded-2xl h-12 font-bold">
-                חזרה למסך הכניסה
-              </Button>
-            </Link>
+            <Button variant="outline" className="w-full rounded-2xl h-12 font-bold" asChild>
+<Link to="/login">חזרה למסך הכניסה</Link>
+</Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -99,9 +103,14 @@ const ResetPassword = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
                 className="mt-1 rounded-2xl h-12"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? "password-error" : undefined}
               />
               <PasswordStrength password={password} />
               {!password && <p className="text-xs text-muted-foreground mt-1">{passwordRequirementsMessage}</p>}
+              {errors.password && (
+                <p id="password-error" role="alert" className="text-sm font-medium text-destructive mt-1">{errors.password}</p>
+              )}
             </div>
 
             <div>
@@ -112,7 +121,12 @@ const ResetPassword = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
                 className="mt-1 rounded-2xl h-12"
+                aria-invalid={!!errors.confirmPassword}
+                aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
               />
+              {errors.confirmPassword && (
+                <p id="confirmPassword-error" role="alert" className="text-sm font-medium text-destructive mt-1">{errors.confirmPassword}</p>
+              )}
             </div>
 
             <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none">

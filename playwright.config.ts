@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Point the suite at an already-running server (a preview build, a deploy)
+// instead of spawning `npm run dev`, which reuses whatever holds port 8080.
+const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:8080';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +12,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -27,10 +31,12 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:8080',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
-  },
+  webServer: process.env.E2E_BASE_URL
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: BASE_URL,
+        reuseExistingServer: true,
+        timeout: 120 * 1000,
+      },
 });

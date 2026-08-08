@@ -40,8 +40,24 @@ import CookieConsent from "./components/CookieConsent";
 
 const queryClient = new QueryClient();
 
+/**
+ * WCAG 2.4.1: every screen repeats the nav drawer and the floating trigger, so
+ * keyboard users need one jump straight to the screen's own content. `tabIndex`
+ * of -1 lets the anchor move focus into the region without making it a tab stop.
+ */
 const RouteViewport = ({ children }: { children: ReactNode }) => (
-  <div className="[overflow-x:clip]">{children}</div>
+  <main id="main" tabIndex={-1} className="[overflow-x:clip] focus:outline-none">
+    {children}
+  </main>
+);
+
+const SkipToContent = () => (
+  <a
+    href="#main"
+    className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:start-4 focus:z-[10000] focus:rounded-lg focus:bg-card focus:px-4 focus:py-2 focus:font-semibold focus:text-foreground focus:shadow-xl focus:ring-2 focus:ring-ring"
+  >
+    דילוג לתוכן הראשי
+  </a>
 );
 
 /**
@@ -84,6 +100,7 @@ const App = () => (
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <NavDrawerProvider>
             <ScrollToTop />
+            <SkipToContent />
             <MobileNav />
             <PresenceTracker />
             <RouteViewport>

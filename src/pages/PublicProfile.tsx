@@ -108,11 +108,9 @@ const PublicProfile = () => {
           <UserX className="w-12 h-12 mx-auto mb-4 text-muted-foreground" aria-hidden="true" />
           <p className="text-lg font-semibold text-foreground">המשתמש לא נמצא</p>
           <p className="text-muted-foreground mt-1">ייתכן שהחשבון נמחק או שהקישור שגוי.</p>
-          <Link to="/tasks">
-            <Button variant="outline" className="mt-6 rounded-full">
-              למטלות הזמינות
-            </Button>
-          </Link>
+          <Button variant="outline" className="mt-6 rounded-full" asChild>
+<Link to="/tasks">למטלות הזמינות</Link>
+</Button>
         </div>
       </div>
     );
@@ -149,12 +147,10 @@ const PublicProfile = () => {
           </div>
 
           {isSelf && (
-            <Link to="/profile">
-              <Button variant="outline" className="w-full mt-4 rounded-full">
-                <Pencil size={14} className="ms-1" aria-hidden="true" />
-                לעריכת הפרופיל שלי
-              </Button>
-            </Link>
+            <Button variant="outline" className="w-full mt-4 rounded-full" asChild>
+<Link to="/profile"><Pencil size={14} className="ms-1" aria-hidden="true" />
+                לעריכת הפרופיל שלי</Link>
+</Button>
           )}
         </div>
 

@@ -953,7 +953,7 @@ export default function Admin() {
         </div>
       </header>
 
-      <main className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
+      <div className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 grid h-auto w-full grid-cols-5 rounded-xl p-1">
             {[
@@ -1628,7 +1628,7 @@ export default function Admin() {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
 
       {/*
         Bulk delete lives at the bottom of the viewport, not in a sticky header:

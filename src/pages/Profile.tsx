@@ -456,9 +456,9 @@ const Profile = () => {
       <div className="min-h-screen bg-muted flex items-center justify-center" dir="rtl">
         <div className="text-center">
           <p className="text-xl font-bold text-foreground mb-4">יש להתחבר כדי לצפות בפרופיל</p>
-          <Link to="/auth">
-            <Button className="gradient-honey text-primary-foreground rounded-full font-bold">כניסה 🐝</Button>
-          </Link>
+          <Button className="gradient-honey text-primary-foreground rounded-full font-bold" asChild>
+<Link to="/auth">כניסה 🐝</Link>
+</Button>
         </div>
       </div>
     );
@@ -476,11 +476,9 @@ const Profile = () => {
 
       <PageHeader
         action={
-          <Link to="/tasks">
-            <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300">
-              מטלות זמינות
-            </Button>
-          </Link>
+          <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300" asChild>
+<Link to="/tasks">מטלות זמינות</Link>
+</Button>
         }
       />
 
@@ -523,22 +521,22 @@ const Profile = () => {
             {editing ? (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">שם פרטי</Label>
-                  <Input value={form.first_name} onChange={e => setForm(p => ({ ...p, first_name: e.target.value }))} />
+                  <Label htmlFor="profile-first-name" className="text-xs text-muted-foreground">שם פרטי</Label>
+                  <Input id="profile-first-name" autoComplete="given-name" value={form.first_name} onChange={e => setForm(p => ({ ...p, first_name: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">שם משפחה</Label>
-                  <Input value={form.last_name} onChange={e => setForm(p => ({ ...p, last_name: e.target.value }))} />
+                  <Label htmlFor="profile-last-name" className="text-xs text-muted-foreground">שם משפחה</Label>
+                  <Input id="profile-last-name" autoComplete="family-name" value={form.last_name} onChange={e => setForm(p => ({ ...p, last_name: e.target.value }))} />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">גיל</Label>
-                  <Input type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={e => setForm(p => ({ ...p, age: e.target.value }))} />
+                  <Label htmlFor="profile-age" className="text-xs text-muted-foreground">גיל</Label>
+                  <Input id="profile-age" type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={e => setForm(p => ({ ...p, age: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-xs text-muted-foreground">מין</Label>
+                  <Label id="profile-gender-label" className="text-xs text-muted-foreground">מין</Label>
                   {/* Drives how every email and notification addresses this
                       person. "מעדיפ/ה לא לציין" reads in the plural. */}
-                  <div role="radiogroup" aria-label="מין" className="mt-1 grid grid-cols-3 gap-2">
+                  <div role="radiogroup" aria-labelledby="profile-gender-label" className="mt-1 grid grid-cols-3 gap-2">
                     {GENDER_OPTIONS.map((option) => (
                       <button
                         key={option}
@@ -558,12 +556,12 @@ const Profile = () => {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">טלפון</Label>
-                  <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} dir="ltr" />
+                  <Label htmlFor="profile-phone" className="text-xs text-muted-foreground">טלפון</Label>
+                  <Input id="profile-phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} dir="ltr" />
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-xs text-muted-foreground">כתובת</Label>
-                  <Input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} onBlur={handleAddressBlur} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleAddressBlur(); } }} />
+                  <Label htmlFor="profile-address" className="text-xs text-muted-foreground">כתובת</Label>
+                  <Input id="profile-address" autoComplete="street-address" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} onBlur={handleAddressBlur} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleAddressBlur(); } }} />
                   {addressLoading && <p className="mt-1 text-xs text-muted-foreground">מאתר את הכתובת...</p>}
                   <div className="mt-3">
                     <GoogleMapPicker
@@ -814,9 +812,9 @@ const Profile = () => {
                 ) : myTasks.length === 0 ? (
                   <div className="text-center py-6">
                     <p className="text-muted-foreground mb-3">עדיין לא פרסמת מטלות</p>
-                    <Link to="/create-task">
-                      <Button className="gradient-honey text-primary-foreground rounded-full font-bold">פרסם מטלה 🐝</Button>
-                    </Link>
+                    <Button className="gradient-honey text-primary-foreground rounded-full font-bold" asChild>
+<Link to="/create-task">פרסם מטלה 🐝</Link>
+</Button>
                   </div>
                 ) : (
                   myTasks.map((task) => (
@@ -842,12 +840,10 @@ const Profile = () => {
                       </div>
 
                       <div className="border-t border-border pt-3 mt-2">
-                        <Link to={`/task/${task.id}`}>
-                          <Button size="sm" variant="outline" className="w-full rounded-full font-bold">
-                            <Eye className="w-4 h-4" />
-                            לפרטי המטלה
-                          </Button>
-                        </Link>
+                        <Button size="sm" variant="outline" className="w-full rounded-full font-bold" asChild>
+<Link to={`/task/${task.id}`}><Eye className="w-4 h-4" />
+                            לפרטי המטלה</Link>
+</Button>
                       </div>
 
                       {task.applications.filter(a => a.status === "pending").length > 0 && (
@@ -855,11 +851,9 @@ const Profile = () => {
                           <p className="text-xs font-bold text-foreground">
                             {task.applications.filter(a => a.status === "pending").length} מועמדויות ממתינות
                           </p>
-                          <Link to={`/my-tasks?tab=applications&task=${task.id}`}>
-                            <Button size="sm" className="w-full rounded-full gradient-honey text-primary-foreground font-bold">
-                              לניהול המועמדויות
-                            </Button>
-                          </Link>
+                          <Button size="sm" className="w-full rounded-full gradient-honey text-primary-foreground font-bold" asChild>
+<Link to={`/my-tasks?tab=applications&task=${task.id}`}>לניהול המועמדויות</Link>
+</Button>
                         </div>
                       )}
                     </div>
@@ -888,24 +882,18 @@ const Profile = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-3">
-                <Link to="/my-tasks?tab=applications">
-                  <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold">
-                    <ClipboardList className="w-4 h-4" />
-                    המועמדויות שלי
-                  </Button>
-                </Link>
-                <Link to="/my-tasks?tab=performing">
-                  <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold">
-                    <CheckCircle className="w-4 h-4" />
-                    מטלות שאני מבצע
-                  </Button>
-                </Link>
-                <Link to="/tasks">
-                  <Button className="w-full min-h-11 rounded-xl font-bold gradient-honey text-primary-foreground border-none">
-                    <Eye className="w-4 h-4" />
-                    חיפוש מטלות
-                  </Button>
-                </Link>
+                <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold" asChild>
+<Link to="/my-tasks?tab=applications"><ClipboardList className="w-4 h-4" />
+                    המועמדויות שלי</Link>
+</Button>
+                <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold" asChild>
+<Link to="/my-tasks?tab=performing"><CheckCircle className="w-4 h-4" />
+                    מטלות שאני מבצע</Link>
+</Button>
+                <Button className="w-full min-h-11 rounded-xl font-bold gradient-honey text-primary-foreground border-none" asChild>
+<Link to="/tasks"><Eye className="w-4 h-4" />
+                    חיפוש מטלות</Link>
+</Button>
               </CardContent>
             </Card>
           </>
@@ -943,8 +931,9 @@ const Profile = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="mt-2">
-              <Label className="text-sm font-semibold">הקלידו &laquo;מחק את החשבון&raquo; לאישור:</Label>
+              <Label htmlFor="delete-confirm" className="text-sm font-semibold">הקלידו &laquo;מחק את החשבון&raquo; לאישור:</Label>
               <Input
+                id="delete-confirm"
                 dir="rtl"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}

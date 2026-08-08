@@ -249,6 +249,7 @@ const TaskDetail = () => {
       {/* Standard App Page Header */}
       <PageHeader
         title={task.name}
+        titleIsPageHeading
         showBack={true}
         action={
           <Button

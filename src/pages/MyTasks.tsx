@@ -392,17 +392,16 @@ const MyTasks = () => {
       <div className="absolute top-40 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
       <PageHeader
         title="המטלות שלי"
+        titleIsPageHeading
         action={isTasker ? (
-          <Link to="/create-task">
-            <Button size="sm" className="rounded-full bg-white text-slate-950 hover:bg-white/90 font-black shadow-md gap-1.5">
-              <Plus size={16} aria-hidden="true" />
-              פרסום מטלה
-            </Button>
-          </Link>
+          <Button size="sm" className="rounded-full bg-white text-slate-950 hover:bg-white/90 font-black shadow-md gap-1.5" asChild>
+<Link to="/create-task"><Plus size={16} aria-hidden="true" />
+              פרסום מטלה</Link>
+</Button>
         ) : undefined}
       />
 
-      <main className="max-w-3xl mx-auto py-5 px-4 relative z-10">
+      <div className="max-w-3xl mx-auto py-5 px-4 relative z-10">
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
           <TabsList className={`grid w-full h-auto rounded-2xl bg-card border border-border p-1 ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
             {managesTasks && (
@@ -528,7 +527,9 @@ const MyTasks = () => {
               ) : publishedTasks.length === 0 ? (
                 <div className="rounded-3xl border border-border bg-card p-8 text-center">
                   <p className="font-bold">עדיין לא פרסמתם מטלות</p>
-                  <Link to="/create-task"><Button className="mt-4 rounded-full gradient-honey text-primary-foreground">פרסום מטלה</Button></Link>
+                  <Button className="mt-4 rounded-full gradient-honey text-primary-foreground" asChild>
+<Link to="/create-task">פרסום מטלה</Link>
+</Button>
                 </div>
               ) : publishedTasks.map((task) => {
                 const closed = task.status === "completed" || task.status === "cancelled";
@@ -572,7 +573,9 @@ const MyTasks = () => {
                             <Check size={15} /> סמן כהושלמה
                           </Button>
                         )}
-                        <Link to={`/task/${task.id}`}><Button variant="outline" size="sm" className="rounded-full font-bold">לפרטי המטלה</Button></Link>
+                        <Button variant="outline" size="sm" className="rounded-full font-bold" asChild>
+<Link to={`/task/${task.id}`}>לפרטי המטלה</Link>
+</Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -596,7 +599,9 @@ const MyTasks = () => {
               ) : performingTasks.length === 0 ? (
                 <div className="rounded-3xl border border-border bg-card p-8 text-center">
                   <p className="font-bold">עדיין לא הגשתם מועמדות</p>
-                  <Link to="/tasks"><Button className="mt-4 rounded-full gradient-honey text-primary-foreground">למטלות הזמינות</Button></Link>
+                  <Button className="mt-4 rounded-full gradient-honey text-primary-foreground" asChild>
+<Link to="/tasks">למטלות הזמינות</Link>
+</Button>
                 </div>
               ) : performingTasks.map((task) => (
                 <article key={task.applicationId} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
@@ -686,7 +691,7 @@ const MyTasks = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </main>
+      </div>
     </div>
   );
 };

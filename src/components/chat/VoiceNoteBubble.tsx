@@ -76,6 +76,9 @@ export function VoiceNoteBubble({ src, duration, outgoing }: VoiceNoteBubbleProp
 
   return (
     <div className="flex w-52 max-w-full items-center gap-2.5 py-0.5">
+      {/* User-recorded audio: no caption track exists to attach. WCAG 1.2.1
+          is met by the chat transcript around it, not by this element. */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
 
       <button

@@ -37,9 +37,11 @@ const AuthCallback = () => {
   }, [navigate]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center" dir="rtl">
-      <p className="text-muted-foreground">מחברים את החשבון ל־Google...</p>
-    </main>
+    <div className="min-h-screen flex items-center justify-center" dir="rtl">
+      <h1 className="sr-only">התחברות עם Google</h1>
+      {/* role="status" so a screen reader announces the wait instead of landing on a silent page. */}
+      <p role="status" className="text-muted-foreground">מחברים את החשבון ל־Google...</p>
+    </div>
   );
 };
 
