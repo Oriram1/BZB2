@@ -257,6 +257,21 @@ const TaskList = () => {
           )}
         </div>
 
+        {/*
+          WCAG 4.1.3: changing a category or the distance silently swaps the
+          cards below. Sighted users see the list redraw; everyone else needs to
+          be told. Polite, so it waits for the filter button to finish speaking.
+        */}
+        <p aria-live="polite" className="sr-only">
+          {loading
+            ? "טוען מטלות"
+            : filteredTasks.length === 0
+              ? "לא נמצאו מטלות"
+              : filteredTasks.length === 1
+                ? "נמצאה מטלה אחת"
+                : `נמצאו ${filteredTasks.length} מטלות`}
+        </p>
+
         {/* Content */}
         {!loading && filteredTasks.length > 0 && (
           viewMode === "list" ? (

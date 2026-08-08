@@ -22,26 +22,18 @@ const Auth = () => {
         </div>
 
         <div className="flex flex-col gap-3">
-          <Link to="/login">
-            <Button className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300">
-              כניסה 🔑
-            </Button>
-          </Link>
-          <Link to="/register/tasker">
-            <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-primary/40 text-foreground hover:bg-primary/5 hover:scale-[1.02] transition-transform duration-300">
-              הרשם כמציע מטלות 📋
-            </Button>
-          </Link>
-          <Link to="/register/worker">
-            <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-secondary/40 text-foreground hover:bg-secondary/10 hover:scale-[1.02] transition-transform duration-300">
-              הרשם לקבלת מטלות 💪
-            </Button>
-          </Link>
-          <Link to="/tasks">
-            <Button variant="ghost" className="w-full py-6 text-lg text-muted-foreground hover:text-foreground rounded-2xl">
-              סיור כאורח 👀
-            </Button>
-          </Link>
+          <Button className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300" asChild>
+<Link to="/login">כניסה 🔑</Link>
+</Button>
+          <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-primary/40 text-foreground hover:bg-primary/5 hover:scale-[1.02] transition-transform duration-300" asChild>
+<Link to="/register/tasker">הרשם כמציע מטלות 📋</Link>
+</Button>
+          <Button variant="outline" className="w-full py-6 text-lg font-bold rounded-2xl border-2 border-secondary/40 text-foreground hover:bg-secondary/10 hover:scale-[1.02] transition-transform duration-300" asChild>
+<Link to="/register/worker">הרשם לקבלת מטלות 💪</Link>
+</Button>
+          <Button variant="ghost" className="w-full py-6 text-lg text-muted-foreground hover:text-foreground rounded-2xl" asChild>
+<Link to="/tasks">סיור כאורח 👀</Link>
+</Button>
         </div>
 
         {/* Parents are recipients, not users — there is nothing here for them

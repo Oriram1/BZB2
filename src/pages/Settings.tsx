@@ -166,7 +166,7 @@ const Settings = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-muted" dir="rtl">
-        <PageHeader title="הגדרות התראות" icon={<Bell size={18} />} />
+        <PageHeader title="הגדרות התראות" titleIsPageHeading icon={<Bell size={18} />} />
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-5" aria-busy="true">
           <Skeleton className="h-40 w-full rounded-2xl" />
           <Skeleton className="h-64 w-full rounded-2xl" />
@@ -177,7 +177,7 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-muted" dir="rtl">
-      <PageHeader title="הגדרות התראות" icon={<Bell size={18} />} />
+      <PageHeader title="הגדרות התראות" titleIsPageHeading icon={<Bell size={18} />} />
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         {/* Push enrolment */}
@@ -340,7 +340,7 @@ const Settings = () => {
             {quietEnabled && (
               <div className="flex items-center gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">מ־</Label>
+                  <Label id="quiet-start-label" className="text-xs text-muted-foreground">מ־</Label>
                   <Select
                     value={String(quietStart)}
                     onValueChange={(value) => {
@@ -349,7 +349,7 @@ const Settings = () => {
                       saveSettings({ quiet_hours_start: hour });
                     }}
                   >
-                    <SelectTrigger className="w-28 rounded-2xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-labelledby="quiet-start-label" className="w-28 rounded-2xl h-11"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {HOURS.map((hour) => (
                         <SelectItem key={hour} value={String(hour)}>{hourLabel(hour)}</SelectItem>
@@ -358,7 +358,7 @@ const Settings = () => {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">עד</Label>
+                  <Label id="quiet-end-label" className="text-xs text-muted-foreground">עד</Label>
                   <Select
                     value={String(quietEnd)}
                     onValueChange={(value) => {
@@ -367,7 +367,7 @@ const Settings = () => {
                       saveSettings({ quiet_hours_end: hour });
                     }}
                   >
-                    <SelectTrigger className="w-28 rounded-2xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-labelledby="quiet-end-label" className="w-28 rounded-2xl h-11"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {HOURS.map((hour) => (
                         <SelectItem key={hour} value={String(hour)}>{hourLabel(hour)}</SelectItem>

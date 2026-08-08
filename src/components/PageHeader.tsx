@@ -10,6 +10,12 @@ import { cn } from "@/lib/utils";
 interface PageHeaderProps {
   /** Short page name shown next to the logo. */
   title?: string;
+  /**
+   * Render `title` as the page's `<h1>`. Off by default because most screens
+   * already carry their own heading in the body; turning it on there would
+   * give the page two competing level-one headings.
+   */
+  titleIsPageHeading?: boolean;
   /** Page-specific call to action. Hidden on mobile — the bottom bar covers navigation there. */
   action?: ReactNode;
   /** Optional icon rendered before the title. */
@@ -26,7 +32,15 @@ interface PageHeaderProps {
  * links are deliberately absent — on mobile they live in the bottom bar and on
  * desktop in the side drawer, so repeating them here created two competing menus.
  */
-export function PageHeader({ title, action, icon, showBack = true, className }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  titleIsPageHeading = false,
+  action,
+  icon,
+  showBack = true,
+  className,
+}: PageHeaderProps) {
+  const TitleTag = titleIsPageHeading ? "h1" : "span";
   const navigate = useNavigate();
   useRegisterHeader();
 
@@ -58,10 +72,10 @@ export function PageHeader({ title, action, icon, showBack = true, className }: 
         </Link>
 
         {title && (
-          <span className="flex items-center gap-1.5 font-semibold text-primary-foreground/90 text-sm truncate">
+          <TitleTag className="flex items-center gap-1.5 font-semibold text-primary-foreground/90 text-sm truncate">
             {icon}
             {title}
-          </span>
+          </TitleTag>
         )}
 
         <div className="flex-1" />

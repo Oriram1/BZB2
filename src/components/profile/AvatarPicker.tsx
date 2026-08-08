@@ -79,18 +79,24 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="relative group">
+        {/* The name has to come from the button, not the <img>: the image is the
+            current value, while the control's job is "change the picture". */}
+        <button
+          type="button"
+          aria-label="שינוי תמונת הפרופיל"
+          className="relative group rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
           <div className="w-24 h-24 rounded-full border-4 border-primary/20 shadow-lg overflow-hidden bg-muted">
             {displayAvatar ? (
-              <img src={displayAvatar} alt="Profile" className="w-full h-full object-cover" />
+              <img src={displayAvatar} alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-                <Camera className="w-8 h-8" />
+                <Camera aria-hidden="true" className="w-8 h-8" />
               </div>
             )}
           </div>
-          <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Camera className="w-6 h-6 text-white" />
+          <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center justify-center">
+            <Camera aria-hidden="true" className="w-6 h-6 text-white" />
           </div>
         </button>
       </DialogTrigger>

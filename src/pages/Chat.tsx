@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowRight, Camera, Mic, Phone, MoreVertical } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import ChatComposer, { type OutgoingMessage } from "@/components/chat/ChatComposer";
@@ -257,9 +257,9 @@ const Chat = () => {
       <div className="flex h-[var(--app-height)] items-center justify-center bg-muted" dir="rtl">
         <div className="text-center">
           <p className="text-xl font-bold text-foreground mb-4">יש להתחבר כדי לצפות בהודעות</p>
-          <Link to="/login">
-            <Button className="gradient-honey text-primary-foreground rounded-full font-bold">כניסה 🐝</Button>
-          </Link>
+          <Button className="gradient-honey text-primary-foreground rounded-full font-bold" asChild>
+<Link to="/login">כניסה 🐝</Link>
+</Button>
         </div>
       </div>
     );
@@ -276,7 +276,7 @@ const Chat = () => {
       className="fixed inset-x-0 top-[var(--app-offset)] flex h-[var(--app-height)] flex-col overflow-hidden bg-muted pb-[var(--bottom-nav-height)]"
       dir="rtl"
     >
-      <PageHeader title="הודעות" className="shrink-0" />
+      <PageHeader title="הודעות" titleIsPageHeading className="shrink-0" />
 
       <div className="mx-auto flex w-full min-h-0 max-w-6xl flex-1 overflow-hidden">
         {/* Sidebar */}
@@ -449,6 +449,11 @@ const Chat = () => {
 
       <Dialog open={Boolean(lightbox)} onOpenChange={(open) => !open && setLightbox(null)}>
         <DialogContent className="max-w-[95vw] border-none bg-transparent p-0 shadow-none sm:max-w-3xl">
+          {/* Radix needs a title to name the dialog; the image is the whole
+              content, so the name belongs to the screen reader only. */}
+          <DialogHeader className="sr-only">
+            <DialogTitle>תצוגה מוגדלת של התמונה</DialogTitle>
+          </DialogHeader>
           {lightbox && (
             <img src={lightbox} alt="תמונה בצ׳אט" className="max-h-[85dvh] w-full rounded-xl object-contain" />
           )}

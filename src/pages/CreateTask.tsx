@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,7 +52,6 @@ const CreateTask = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const today = new Date();
   const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
@@ -163,7 +162,7 @@ const CreateTask = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
-      <PageHeader title="פרסום מטלה חדשה" />
+      <PageHeader title="פרסום מטלה חדשה" titleIsPageHeading />
       <div className="absolute inset-0 bg-muted" />
       <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
@@ -300,9 +299,9 @@ const CreateTask = () => {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-right block mb-1 font-bold">סוג תשלום</Label>
+                  <Label id="payment-type-label" className="text-right block mb-1 font-bold">סוג תשלום</Label>
                   <Select value={form.paymentType} onValueChange={(v) => updateForm("paymentType", v)}>
-                    <SelectTrigger className="rounded-2xl h-12 text-right"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-labelledby="payment-type-label" className="rounded-2xl h-12 text-right"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="task">למשימה (פיקס)</SelectItem>
                       <SelectItem value="hour">לשעה</SelectItem>
@@ -429,31 +428,36 @@ const CreateTask = () => {
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">תמונה והערות</h2>
               <div>
-                <Label className="text-right block mb-1 font-bold">הוסף תמונה</Label>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-2 border-2 border-dashed border-border rounded-2xl p-6 sm:p-8 text-center cursor-pointer hover:border-primary transition-colors overflow-hidden"
+                <Label htmlFor="task-image" className="text-right block mb-1 font-bold">הוסף תמונה</Label>
+                {/* The file input carries the real semantics: `sr-only` instead of
+                    `hidden` keeps it in the tab order and operable from the
+                    keyboard. Clicking the drop zone stays a mouse convenience,
+                    and focus-within shows keyboard users where they are. */}
+                <label
+                  htmlFor="task-image"
+                  className="mt-2 block border-2 border-dashed border-border rounded-2xl p-6 sm:p-8 text-center cursor-pointer hover:border-primary transition-colors overflow-hidden focus-within:border-primary focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
                 >
                   {imagePreview ? (
                     <div className="relative">
-                      <img src={imagePreview} alt="תצוגה מקדימה" className="max-h-48 mx-auto rounded-xl object-cover" />
+                      <img src={imagePreview} alt="תצוגה מקדימה של התמונה שנבחרה" className="max-h-48 mx-auto rounded-xl object-cover" />
                       <p className="text-xs text-muted-foreground mt-2 font-medium">לחץ להחלפת התמונה</p>
                     </div>
                   ) : (
                     <>
-                      <Image size={40} className="mx-auto mb-3 text-muted-foreground" />
+                      <Image aria-hidden="true" size={40} className="mx-auto mb-3 text-muted-foreground" />
                       <p className="text-sm font-bold text-muted-foreground">לחץ להעלאת תמונה</p>
-                      <p className="text-xs text-muted-foreground/80 mt-1">פורמטים נתמכים: JPG, PNG עד 5MB</p>
+                      <p id="task-image-hint" className="text-xs text-muted-foreground/80 mt-1">פורמטים נתמכים: JPG, PNG עד 5MB</p>
                     </>
                   )}
                   <input
-                    ref={fileInputRef}
+                    id="task-image"
                     type="file"
                     accept="image/*"
-                    className="hidden"
+                    aria-describedby="task-image-hint"
+                    className="sr-only"
                     onChange={handleImageSelect}
                   />
-                </div>
+                </label>
               </div>
               <div>
                 <Label htmlFor="notes" className="text-right block mb-1 font-bold">הערות נוספות</Label>
@@ -622,7 +626,7 @@ const formatDurationSummary = (value: string, unit: string) => {
 
 const SummaryItem = ({ label, value, valueClassName = "", onEdit }: { label: string; value: string; valueClassName?: string; onEdit?: () => void }) => (
   <div className="flex flex-col gap-0.5 text-start">
-    <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">{label}</span>{onEdit && <button type="button" onClick={onEdit} className="text-xs font-bold text-primary-ink underline">עריכה</button>}</div>
+    <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">{label}</span>{onEdit && <button type="button" onClick={onEdit} className="inline-flex min-h-11 items-center rounded px-2 text-xs font-bold text-primary-ink underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">עריכה</button>}</div>
     <span className={`text-sm font-semibold text-foreground ${valueClassName}`}>{value || "—"}</span>
   </div>
 );

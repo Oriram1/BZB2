@@ -3,6 +3,11 @@ import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { categories } from "@/lib/categories";
+
+/** The global CSS reset kills animations; scrollIntoView is JS and has to ask itself. */
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const Landing = () => {
   const { user } = useAuth();
   return (
@@ -25,62 +30,57 @@ const Landing = () => {
         <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-secondary/20 rounded-full blur-3xl animate-blob animation-delay-4000" />
 
         <div className="relative z-10 flex flex-col items-center gap-5 max-w-2xl">
+          {/* Decorative: the site name is spelled out in the <h1> right below. */}
           <img
-
-            alt="BZB Logo"
+            alt=""
+            aria-hidden="true"
             className="w-36 h-36 animate-float drop-shadow-2xl" src="/lovable-uploads/2dbef5fd-0953-4d8c-acee-47c58e45b35a.jpg" />
-          
-          
 
-          
-          <p className="text-2xl md:text-3xl font-bold text-primary-foreground/95 animate-slide-up" style={{ animationDelay: "0.1s" }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground/95 animate-slide-up" style={{ animationDelay: "0.1s" }}>
             Busy Bee
-          </p>
+          </h1>
           {/* English tagline: keep LTR so the emoji stay at the intended ends */}
           <p dir="ltr" className="text-lg md:text-xl text-primary-foreground/85 font-medium animate-slide-up" style={{ animationDelay: "0.2s" }}>
             🐝 Your chores are their honey 🍯
           </p>
           {user ? (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
-              <Link to="/tasks">
-                <Button size="lg" className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink shadow-glow font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
-                  למטלות 📋
-                </Button>
-              </Link>
+              <Button size="lg" asChild className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink shadow-glow font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
+                <Link to="/tasks">למטלות 📋</Link>
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4 mt-8 animate-slide-up" style={{ animationDelay: "0.3s" }}>
-              <Link to="/auth">
-                <Button size="lg" className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink shadow-glow font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
-                  בואו נתחיל! 🚀
-                </Button>
-              </Link>
-              <Link to="/tasks">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink font-bold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
-                  סיור כאורח 👀
-                </Button>
-              </Link>
+              <Button size="lg" asChild className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink shadow-glow font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
+                <Link to="/auth">בואו נתחיל! 🚀</Link>
+              </Button>
+              <Button
+                size="lg"
+                asChild
+                variant="outline"
+                className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink font-bold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300">
+                <Link to="/tasks">סיור כאורח 👀</Link>
+              </Button>
             </div>
           )}
         </div>
 
         {/* Scroll indicator */}
-        <div
-          className="absolute bottom-8 flex flex-col items-center space-y-[-14px] opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
-          onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>
-          <svg className="w-8 h-8 text-primary-foreground animate-[bounce_2s_infinite]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button
+          type="button"
+          aria-label="דלג לסעיף איך זה עובד"
+          onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth" })}
+          className="absolute bottom-8 flex flex-col items-center space-y-[-14px] rounded-xl opacity-70 hover:opacity-100 focus-visible:opacity-100 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent">
+          <svg aria-hidden="true" className="w-8 h-8 text-primary-foreground animate-[bounce_2s_infinite]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
           </svg>
-          <svg className="w-8 h-8 text-primary-foreground/70 animate-[bounce_2s_infinite_200ms]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg aria-hidden="true" className="w-8 h-8 text-primary-foreground/70 animate-[bounce_2s_infinite_200ms]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
           </svg>
-          <svg className="w-8 h-8 text-primary-foreground/40 animate-[bounce_2s_infinite_400ms]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg aria-hidden="true" className="w-8 h-8 text-primary-foreground/40 animate-[bounce_2s_infinite_400ms]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
           </svg>
-        </div>
+        </button>
       </div>
 
       {/* Features Section */}
@@ -128,6 +128,7 @@ const Landing = () => {
                 <Link
                   key={cat.value}
                   to="/tasks"
+                  aria-label={`מטלות בקטגוריית ${cat.label}`}
                   className="flex items-center gap-2 px-6 py-3 min-h-11 rounded-2xl bg-card shadow-sm text-foreground font-semibold border border-border card-hover text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Icon size={18} className="text-primary-ink" aria-hidden="true" />
@@ -149,25 +150,23 @@ const Landing = () => {
           <p className="text-primary-foreground/80 mb-10 text-lg">
             הצטרפו לקהילת Busy Bee עוד היום
           </p>
-          <Link to="/auth">
-            <Button
-              size="lg"
-              className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300 shadow-glow">
-              
-              הירשמו עכשיו 🐝
-            </Button>
-          </Link>
+          <Button
+            size="lg"
+            asChild
+            className="min-h-12 text-lg px-10 py-7 bg-white text-primary-ink font-extrabold rounded-full border-2 border-white hover:bg-white/90 hover:scale-105 transition-transform duration-300 shadow-glow">
+            <Link to="/auth">הירשמו עכשיו 🐝</Link>
+          </Button>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="py-8 px-4 bg-foreground text-center" dir="rtl">
         <div className="flex justify-center gap-4 mb-3">
-          <Link to="/terms" className="text-background/70 text-sm font-medium hover:text-background underline transition-colors">
+          <Link to="/terms" className="text-background/70 text-sm font-medium hover:text-background underline transition-colors rounded px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background focus-visible:ring-offset-2 focus-visible:ring-offset-foreground">
             תקנון ותנאי שימוש
           </Link>
-          <span className="text-background/40">|</span>
-          <Link to="/privacy" className="text-background/70 text-sm font-medium hover:text-background underline transition-colors">
+          <span aria-hidden="true" className="text-background/60 py-1">|</span>
+          <Link to="/privacy" className="text-background/70 text-sm font-medium hover:text-background underline transition-colors rounded px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background focus-visible:ring-offset-2 focus-visible:ring-offset-foreground">
             מדיניות פרטיות
           </Link>
         </div>

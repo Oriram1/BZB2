@@ -18,6 +18,10 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+  // WCAG 3.3.1: a toast alone leaves the fields looking valid. Keeping the
+  // error in state lets the inputs report themselves as invalid and lets the
+  // message be tied to them with aria-describedby.
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -28,9 +32,11 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setFormError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
+      setFormError(error.message);
       toast.error(error.message);
     } else {
       const { data: signedIn } = await supabase.auth.getUser();
@@ -83,15 +89,21 @@ const Login = () => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <Label htmlFor="email">אימייל</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" className="mt-1 rounded-2xl h-12" dir="ltr" required />
+            <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" className="mt-1 rounded-2xl h-12" dir="ltr" required aria-invalid={!!formError} aria-describedby={formError ? "login-error" : undefined} />
           </div>
           <div>
             <Label htmlFor="password">סיסמה</Label>
-            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="mt-1 rounded-2xl h-12" required />
+            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="mt-1 rounded-2xl h-12" required aria-invalid={!!formError} aria-describedby={formError ? "login-error" : undefined} />
           </div>
 
+          {formError && (
+            <p id="login-error" role="alert" className="text-sm font-medium text-destructive">
+              {formError}
+            </p>
+          )}
+
           <div className="flex justify-start">
-            <button type="button" onClick={handleForgotPassword} disabled={forgotLoading} className="text-sm text-primary-ink font-medium hover:underline disabled:opacity-50">
+            <button type="button" onClick={handleForgotPassword} disabled={forgotLoading} className="inline-flex min-h-11 items-center rounded px-2 text-sm text-primary-ink font-medium hover:underline disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               {forgotLoading ? "שולחים..." : "שכחתם סיסמה?"}
             </button>
           </div>

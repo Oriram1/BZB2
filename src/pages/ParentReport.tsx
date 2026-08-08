@@ -79,7 +79,7 @@ const ParentReport = () => {
 
   return (
     <div className="min-h-screen bg-muted" dir="rtl">
-      <PageHeader title="דוח יומי" icon={<Shield size={18} />} />
+      <PageHeader title="דוח יומי" titleIsPageHeading icon={<Shield size={18} />} />
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         {/* Day navigation. In RTL the "previous day" control sits on the right. */}
