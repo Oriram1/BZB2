@@ -40,3 +40,8 @@ backups/
 # Security audit artifacts — contain live keys, never commit
 SECURITY-ROTATION-CHECKLIST.md
 strix_runs/
+
+# Playwright artifacts. They capture whatever was on screen — including values
+# typed into password fields — so they must never be committed.
+test-results/
+playwright-report/
