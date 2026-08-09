@@ -45,3 +45,8 @@ strix_runs/
 # typed into password fields — so they must never be committed.
 test-results/
 playwright-report/
+
+# Written by `npm run test:functions` / `typecheck:functions`, which run Deno
+# through npx rather than as a declared dependency. Committing it would pin a
+# toolchain the repo does not otherwise install.
+deno.lock

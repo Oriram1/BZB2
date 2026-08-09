@@ -8,7 +8,8 @@ import { withCors, json, errorResponse, readJsonObject } from "../_shared/auth.t
 Deno.serve(withCors(async (req) => {
   try {
     const { token } = await readJsonObject(req);
-    if (typeof token !== "string" || !token.trim() || token.length > 256) return json({ error: "missing_token" }, 400);
+    if (typeof token !== "string" || !token.trim()) return json({ error: "missing_token" }, 400);
+    if (token.length > 256) return json({ error: "invalid_token" }, 400);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

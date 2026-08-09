@@ -97,7 +97,17 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const body = await readJsonObject(req);
+
+  // Not wrapped by `withCors`/`errorResponse`, so a throw here would escape the
+  // handler and become an unstructured 500 instead of the documented 400/413.
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonObject(req);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "invalid_json";
+    return json({ error: message }, message === "payload_too_large" ? 413 : 400);
+  }
+
   const onlyUser = body.user_id ? String(body.user_id) : null;
   const force = body.force === true;
 

@@ -26,8 +26,11 @@ Deno.serve(withCors(async (req) => {
     const token = String(body.token ?? "");
     if (!token) return json({ error: "missing_token" }, 400);
 
-    const prefs = body.prefs;
-    if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) return json({ error: "invalid_prefs" }, 400);
+    const rawPrefs = body.prefs;
+    if (!rawPrefs || typeof rawPrefs !== "object" || Array.isArray(rawPrefs)) {
+      return json({ error: "invalid_prefs" }, 400);
+    }
+    const prefs = rawPrefs as Record<string, unknown>;
     // Allow-list rather than pass-through: a spread of the request body here
     // would let a caller write last_notified_at and reset their own throttle.
     const update: Record<string, boolean> = {};

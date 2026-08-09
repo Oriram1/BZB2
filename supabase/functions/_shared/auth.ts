@@ -122,7 +122,24 @@ export async function readJsonObject(req: Request, maxBytes = 32_768): Promise<J
   return parsed as JsonObject;
 }
 
-export function requireSecret(req: Request, envName: string): void {
+/**
+ * Compares without an early exit on the first differing byte, so response time
+ * does not leak how much of a guessed secret was correct. Length is compared
+ * up front and does leak — that is the standard trade-off and is harmless for
+ * a fixed-length shared secret.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
+
+export function requireSecret(req: Request, envName: string, headerName = "x-notify-secret"): void {
   const expected = Deno.env.get(envName);
-  if (!expected || req.headers.get("x-notify-secret") !== expected) throw new Error("unauthorized");
+  const supplied = req.headers.get(headerName);
+  if (!expected || !supplied || !timingSafeEqual(supplied, expected)) throw new Error("unauthorized");
 }

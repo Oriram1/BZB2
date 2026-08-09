@@ -11,6 +11,8 @@
     "typecheck": "tsc --build --force",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:functions": "npx --yes deno@2 test --allow-env supabase/functions/",
+    "typecheck:functions": "npx --yes deno@2 check --node-modules-dir=auto supabase/functions/*/index.ts supabase/functions/_shared/*.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
