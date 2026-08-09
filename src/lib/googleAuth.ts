@@ -60,8 +60,6 @@ const waitForGoogleIdentity = async (timeoutMs = 10000): Promise<GoogleIdentityC
 };
 
 export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: HTMLElement, onReady?: () => void): Promise<User> => {
-  if (activeGoogleAuth) return activeGoogleAuth;
-
   if (role) localStorage.setItem(GOOGLE_ROLE_KEY, role);
   else localStorage.removeItem(GOOGLE_ROLE_KEY);
 
