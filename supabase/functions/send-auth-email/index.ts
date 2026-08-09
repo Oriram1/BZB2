@@ -12,17 +12,17 @@ import { Webhook } from "npm:standardwebhooks@1.0.0";
 import { sendEmail, siteUrl, type EmailContent } from "../_shared/email.ts";
 import { corsOrigin } from "../_shared/auth.ts";
 
-const corsHeadersFor = (req?: Request) => ({
-  "Access-Control-Allow-Origin": req ? corsOrigin(req) : "https://bzb-web.com",
+const corsHeadersFor = (req: Request) => ({
+  "Access-Control-Allow-Origin": corsOrigin(req),
   "Vary": "Origin",
   "Access-Control-Allow-Headers": "authorization, content-type, webhook-id, webhook-timestamp, webhook-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 });
 
-function json(body: unknown, status = 200) {
+function json(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeadersFor(), "Content-Type": "application/json" },
+    headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
   });
 }
 
@@ -148,11 +148,11 @@ function buildContent(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeadersFor(req) });
-  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  if (req.method !== "POST") return json(req, { error: "method_not_allowed" }, 405);
 
   const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
   if (!hookSecret || !Deno.env.get("RESEND_API_KEY")) {
-    return json({ error: { message: "server_not_configured" } }, 500);
+    return json(req, { error: { message: "server_not_configured" } }, 500);
   }
 
   const payloadText = await req.text();
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     const webhook = new Webhook(hookSecret.replace("v1,whsec_", ""));
     payload = webhook.verify(payloadText, headers) as HookPayload;
   } catch {
-    return json({ error: { message: "invalid_signature" } }, 401);
+    return json(req, { error: { message: "invalid_signature" } }, 401);
   }
 
   const { user, email_data: data } = payload;
@@ -198,11 +198,11 @@ Deno.serve(async (req) => {
       ),
     });
 
-    return json({});
+    return json(req, {});
   } catch (error) {
     // A non-2xx tells Auth the send failed so the user sees a real error
     // instead of silently waiting for a mail that never arrives.
     console.error("send_auth_email_failed", error);
-    return json({ error: { http_code: 500, message: "email_send_failed" } }, 500);
+    return json(req, { error: { http_code: 500, message: "email_send_failed" } }, 500);
   }
 });

@@ -10,8 +10,20 @@ Deno.serve(withCors(async (request) => {
     });
   }
 
+  // Parsed outside the try below: that catch turns everything into a generic
+  // 500, which would swallow the boundary errors as "Geocoding failed".
+  let address: unknown;
   try {
-    const { address } = await readJsonObject(request, 8_192);
+    ({ address } = await readJsonObject(request, 8_192));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "invalid_json";
+    return new Response(JSON.stringify({ error: message }), {
+      status: message === "payload_too_large" ? 413 : 400,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
+
+  try {
     if (typeof address !== "string" || !address.trim() || address.trim().length > 500) {
       return new Response(JSON.stringify({ error: "Address is required" }), {
         status: 400,
