@@ -48,27 +48,40 @@ const TaskList = () => {
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        const mapped: Task[] = data.map((t, i) => ({
-          id: i + 1,
-          dbId: t.id,
-          name: t.name,
-          shortDesc: t.short_desc,
-          category: t.category,
-          categoryLabel: categoryLabel(t.category),
-          payment: Number(t.payment),
-          paymentType: t.payment_type,
-          location: t.location || "",
-          date: t.scheduled_date || "",
-          time: t.scheduled_time || "",
-          duration: Number(t.duration_hours) || 0,
-          workers: t.workers_needed,
-          status: t.status,
-          // No stand-in coordinates: a task published without a location must not
-          // be measured against — and filtered out by — a place it never had.
-          lat: t.latitude,
-          lng: t.longitude,
-          creatorId: t.creator_id,
-        }));
+        const acceptedCounts = await Promise.all(
+          data.map(async (t) => {
+            const { count } = await supabase
+              .from("task_applications")
+              .select("*", { count: "exact", head: true })
+              .eq("task_id", t.id)
+              .eq("status", "accepted")
+              .is("archived_at", null);
+            return { id: t.id, accepted: count ?? 0 };
+          }),
+        );
+        const countMap = new Map(acceptedCounts.map((c) => [c.id, c.accepted]));
+
+        const mapped: Task[] = data
+          .filter((t) => (countMap.get(t.id) ?? 0) < t.workers_needed)
+          .map((t, i) => ({
+            id: i + 1,
+            dbId: t.id,
+            name: t.name,
+            shortDesc: t.short_desc,
+            category: t.category,
+            categoryLabel: categoryLabel(t.category),
+            payment: Number(t.payment),
+            paymentType: t.payment_type,
+            location: t.location || "",
+            date: t.scheduled_date || "",
+            time: t.scheduled_time || "",
+            duration: Number(t.duration_hours) || 0,
+            workers: t.workers_needed,
+            status: t.status,
+            lat: t.latitude,
+            lng: t.longitude,
+            creatorId: t.creator_id,
+          }));
         setTasks(mapped);
       }
       setLoading(false);

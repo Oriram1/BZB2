@@ -43,7 +43,7 @@ const CreateTask = () => {
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
     payment: "", paymentType: "task", workers: "1",
-    location: "", date: "", time: "", duration: "", durationUnit: "hours", expiry: "24",
+    location: "", date: "", time: "", duration: "", durationUnit: "hours", expiry: "3",
     notes: "",
   });
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
@@ -142,7 +142,7 @@ const CreateTask = () => {
       scheduled_date: form.date || null,
       scheduled_time: form.time || null,
       duration_hours: form.duration ? (form.durationUnit === "minutes" ? parseFloat(form.duration) / 60 : parseFloat(form.duration)) : null,
-      expiry_hours: parseInt(form.expiry) || 24,
+      expiry_hours: (parseInt(form.expiry) || 3) * 24,
       notes: form.notes || null,
       image_url: imageUrl,
     }).select("id").maybeSingle();
@@ -409,7 +409,7 @@ const CreateTask = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="expiry" className="text-right block mb-1 font-bold">תוקף הפרסום (שעות)</Label>
+                <Label htmlFor="expiry" className="text-right block mb-1 font-bold">תוקף הפרסום (ימים)</Label>
                 <Input
                   id="expiry"
                   type="text"
@@ -537,7 +537,7 @@ const CreateTask = () => {
                   <div className="space-y-4">
                     <SummaryItem label="תשלום מוצע" value={`${formatCurrency(Number(form.payment))} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} valueClassName="text-green-600 dark:text-green-400 font-black text-lg" onEdit={() => setStep(3)} />
                     <SummaryItem label="עובדים דרושים" value={form.workers} onEdit={() => setStep(3)} />
-                    <SummaryItem label="תוקף מודעה" value={`${form.expiry} שעות`} onEdit={() => setStep(3)} />
+                    <SummaryItem label="תוקף מודעה" value={`${form.expiry} ימים`} onEdit={() => setStep(3)} />
                   </div>
                 </div>
 

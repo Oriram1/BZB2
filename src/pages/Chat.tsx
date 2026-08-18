@@ -137,9 +137,9 @@ const Chat = () => {
     fetchConversations();
   }, [requestedConversation, user]);
 
-  // Load messages for active chat
+  // Load messages for active chat + mark as read
   useEffect(() => {
-    if (!activeChat) return;
+    if (!activeChat || !user) return;
     const fetchMessages = async () => {
       const { data } = await supabase
         .from("messages")
@@ -147,6 +147,17 @@ const Chat = () => {
         .eq("conversation_id", activeChat)
         .order("created_at", { ascending: true });
       setMessages((data as Message[]) || []);
+
+      await supabase
+        .from("messages")
+        .update({ read: true })
+        .eq("conversation_id", activeChat)
+        .eq("read", false)
+        .neq("sender_id", user.id);
+
+      setConversations((prev) =>
+        prev.map((c) => c.id === activeChat ? { ...c, unread: 0 } : c),
+      );
     };
     fetchMessages();
 

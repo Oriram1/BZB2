@@ -22,7 +22,12 @@ import {
   Trash2,
   Share2,
   Eye,
+  Pencil,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
@@ -87,6 +92,9 @@ const TaskDetail = () => {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", shortDesc: "", fullDesc: "", payment: "", location: "", notes: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -206,6 +214,51 @@ const TaskDetail = () => {
       toast.success("המטלה נמחקה בהצלחה 🗑️");
       navigate("/my-tasks");
     }
+  };
+
+  const openEdit = () => {
+    if (!task) return;
+    setEditForm({
+      name: task.name,
+      shortDesc: task.short_desc,
+      fullDesc: task.full_desc || "",
+      payment: String(task.payment),
+      location: task.location || "",
+      notes: task.notes || "",
+    });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!task) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        name: editForm.name,
+        short_desc: editForm.shortDesc,
+        full_desc: editForm.fullDesc || null,
+        payment: parseFloat(editForm.payment) || 0,
+        location: editForm.location || null,
+        notes: editForm.notes || null,
+      })
+      .eq("id", task.id);
+    setSaving(false);
+    if (error) {
+      toast.error("שגיאה בעדכון המטלה");
+      return;
+    }
+    setTask({
+      ...task,
+      name: editForm.name,
+      short_desc: editForm.shortDesc,
+      full_desc: editForm.fullDesc || null,
+      payment: parseFloat(editForm.payment) || 0,
+      location: editForm.location || null,
+      notes: editForm.notes || null,
+    });
+    setEditOpen(false);
+    toast.success("המטלה עודכנה בהצלחה");
   };
 
   const handleShare = () => {
@@ -386,12 +439,12 @@ const TaskDetail = () => {
 
         {/* Detailed Description */}
         {task.full_desc && (
-          <div className="bg-card rounded-3xl p-5 border border-border/60 shadow-sm space-y-2">
-            <div className="flex items-center gap-2 text-foreground font-extrabold text-base mb-1">
-              <FileText size={18} className="text-primary-ink" />
+          <div className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-6 border-2 border-primary/30 shadow-md space-y-3">
+            <div className="flex items-center gap-2 text-foreground font-black text-lg">
+              <FileText size={20} className="text-primary-ink" />
               <h3>תיאור מפורט</h3>
             </div>
-            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.full_desc}</p>
+            <p className="text-foreground text-base leading-relaxed whitespace-pre-wrap dir-auto">{task.full_desc}</p>
           </div>
         )}
 
@@ -453,9 +506,10 @@ const TaskDetail = () => {
           <Button
             variant="outline"
             className="flex-1 h-12 rounded-2xl font-bold text-base border-border bg-card hover:bg-accent text-foreground"
-            onClick={() => navigate("/my-tasks")}
+            onClick={openEdit}
           >
-            ניהול מטלה
+            <Pencil size={16} className="ms-1" />
+            עריכה
           </Button>
 
           <AlertDialog>
@@ -488,6 +542,42 @@ const TaskDetail = () => {
           </AlertDialog>
         </div>
       )}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent dir="rtl" className="max-w-lg max-h-[85dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>עריכת מטלה</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 mt-2">
+            <div>
+              <Label className="text-right block mb-1 font-bold">שם המטלה</Label>
+              <Input dir="rtl" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="rounded-xl" />
+            </div>
+            <div>
+              <Label className="text-right block mb-1 font-bold">תיאור קצר</Label>
+              <Input dir="rtl" value={editForm.shortDesc} onChange={(e) => setEditForm((f) => ({ ...f, shortDesc: e.target.value }))} maxLength={120} className="rounded-xl" />
+            </div>
+            <div>
+              <Label className="text-right block mb-1 font-bold">תיאור מפורט</Label>
+              <Textarea dir="rtl" value={editForm.fullDesc} onChange={(e) => setEditForm((f) => ({ ...f, fullDesc: e.target.value }))} className="rounded-xl min-h-[100px]" />
+            </div>
+            <div>
+              <Label className="text-right block mb-1 font-bold">תשלום (₪)</Label>
+              <Input dir="rtl" type="text" inputMode="numeric" value={editForm.payment} onChange={(e) => setEditForm((f) => ({ ...f, payment: e.target.value }))} className="rounded-xl" />
+            </div>
+            <div>
+              <Label className="text-right block mb-1 font-bold">מיקום</Label>
+              <Input dir="rtl" value={editForm.location} onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))} className="rounded-xl" />
+            </div>
+            <div>
+              <Label className="text-right block mb-1 font-bold">הערות</Label>
+              <Textarea dir="rtl" value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} className="rounded-xl min-h-[80px]" />
+            </div>
+            <Button onClick={handleSaveEdit} disabled={saving || !editForm.name || !editForm.shortDesc} className="gradient-honey text-primary-foreground rounded-full font-bold h-11">
+              {saving ? "שומר..." : "שמירת שינויים"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
