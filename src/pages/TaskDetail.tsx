@@ -167,8 +167,10 @@ const TaskDetail = () => {
   useEffect(() => {
     if (task && location.state?.openEdit) {
       openEdit();
+      window.history.replaceState({}, "");
     }
-  }, [task, location.state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id]);
 
   const handleApply = async () => {
     if (!user || !isBee) {
