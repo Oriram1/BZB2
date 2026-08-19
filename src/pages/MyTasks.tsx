@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, Eye, MessageCircle, Plus, Star, UserRound, Users, X } from "lucide-react";
+import { Check, Eye, MessageCircle, Pencil, Plus, Star, UserRound, Users, X } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -576,6 +576,11 @@ const MyTasks = () => {
                         <Button variant="outline" size="sm" className="rounded-full font-bold" asChild>
 <Link to={`/task/${task.id}`}>לפרטי המטלה</Link>
 </Button>
+                        {!closed && (
+                          <Button variant="outline" size="sm" className="rounded-full font-bold gap-1" asChild>
+<Link to={`/task/${task.id}`} state={{ openEdit: true }}><Pencil size={14} />עריכה</Link>
+</Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,7 @@ interface CreatorProfile {
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, roles, profile } = useAuth();
   const isBee = roles.includes("bee");
   const [task, setTask] = useState<TaskData | null>(null);
@@ -162,6 +163,12 @@ const TaskDetail = () => {
     };
     fetchTask();
   }, [id, user, navigate]);
+
+  useEffect(() => {
+    if (task && location.state?.openEdit) {
+      openEdit();
+    }
+  }, [task, location.state]);
 
   const handleApply = async () => {
     if (!user || !isBee) {
