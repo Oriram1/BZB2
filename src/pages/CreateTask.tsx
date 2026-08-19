@@ -333,16 +333,31 @@ const CreateTask = () => {
                   <Label htmlFor="date" className="text-right block mb-1 font-bold">תאריך</Label>
                   <Input
                     id="date"
-                    type="date"
+                    type="text"
+                    inputMode="numeric"
                     dir="ltr"
-                    lang="he-IL"
-                    min={minimumDate}
-                    value={form.date}
-                    onChange={(event) => updateForm("date", event.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    value={form.date ? form.date.split("-").reverse().join("/") : ""}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9/]/g, "");
+                      // auto-insert slashes
+                      let formatted = raw;
+                      if (raw.length === 2 && !raw.includes("/")) formatted = raw + "/";
+                      if (raw.length === 5 && raw.split("/").length === 2) formatted = raw + "/";
+                      // convert dd/mm/yyyy → yyyy-mm-dd for storage
+                      const parts = formatted.split("/");
+                      if (parts.length === 3 && parts[2].length === 4) {
+                        updateForm("date", `${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`);
+                      } else {
+                        // store display value temporarily (not valid ISO yet)
+                        updateForm("date", formatted.length <= 10 ? formatted : form.date);
+                      }
+                    }}
                     aria-describedby="date-hint"
                     className="h-12 rounded-2xl px-4 text-base font-medium"
+                    maxLength={10}
                   />
-                  <p id="date-hint" className="mt-1 text-xs text-muted-foreground">אפשר להקליד תאריך או לבחור מלוח השנה.</p>
+                  <p id="date-hint" className="mt-1 text-xs text-muted-foreground">הקלד בפורמט DD/MM/YYYY.</p>
                 </div>
                 <div>
                   <Label htmlFor="time" className="text-right block mb-1 font-bold">שעה</Label>
