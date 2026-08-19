@@ -334,6 +334,7 @@ const TaskDetail = () => {
               src={task.image_url}
               alt={task.name}
               className="w-full h-52 sm:h-64 object-cover"
+              onError={(e) => { (e.currentTarget.closest(".relative") as HTMLElement | null)?.remove(); }}
             />
             <div className="absolute top-3 right-3">
               <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs shadow-md">
