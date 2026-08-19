@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, List, MapPin, ChevronDown, SearchX, Plus, ExternalLink } from "lucide-react";
+import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus, ExternalLink } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
@@ -192,7 +192,7 @@ const TaskList = () => {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Map size={18} />
+              <MapIcon size={18} />
             </button>
             </div>
           </div>
