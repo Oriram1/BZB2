@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { NavDrawerTrigger } from "@/components/MobileNav";
 import { useRegisterHeader } from "@/components/NavDrawerContext";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PageHeaderProps {
   /** Short page name shown next to the logo. */
@@ -42,6 +43,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   const TitleTag = titleIsPageHeading ? "h1" : "span";
   const navigate = useNavigate();
+  const { user } = useAuth();
   useRegisterHeader();
 
   // Landing directly on a deep link leaves no history to go back to, which would
@@ -63,7 +65,7 @@ export function PageHeader({
         <NavDrawerTrigger />
 
         <Link
-          to="/"
+          to={user ? "/tasks" : "/"}
           aria-label="לדף הבית"
           className="flex items-center gap-2 shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
         >
