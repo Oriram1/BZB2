@@ -93,7 +93,7 @@ const TaskDetail = () => {
   const [applying, setApplying] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", shortDesc: "", fullDesc: "", payment: "", location: "", notes: "" });
+  const [editForm, setEditForm] = useState({ name: "", shortDesc: "", fullDesc: "", payment: "", location: "", notes: "", date: "", time: "", durationDays: "" });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -225,6 +225,9 @@ const TaskDetail = () => {
       payment: String(task.payment),
       location: task.location || "",
       notes: task.notes || "",
+      date: task.scheduled_date || "",
+      time: task.scheduled_time || "",
+      durationDays: task.duration_hours ? String(Math.round(task.duration_hours / 24)) : "",
     });
     setEditOpen(true);
   };
@@ -241,6 +244,9 @@ const TaskDetail = () => {
         payment: parseFloat(editForm.payment) || 0,
         location: editForm.location || null,
         notes: editForm.notes || null,
+        scheduled_date: editForm.date || null,
+        scheduled_time: editForm.time || null,
+        duration_hours: editForm.durationDays ? parseFloat(editForm.durationDays) * 24 : null,
       })
       .eq("id", task.id);
     setSaving(false);
@@ -256,6 +262,9 @@ const TaskDetail = () => {
       payment: parseFloat(editForm.payment) || 0,
       location: editForm.location || null,
       notes: editForm.notes || null,
+      scheduled_date: editForm.date || null,
+      scheduled_time: editForm.time || null,
+      duration_hours: editForm.durationDays ? parseFloat(editForm.durationDays) * 24 : null,
     });
     setEditOpen(false);
     toast.success("המטלה עודכנה בהצלחה");
@@ -567,6 +576,20 @@ const TaskDetail = () => {
             <div>
               <Label className="text-right block mb-1 font-bold">מיקום</Label>
               <Input dir="rtl" value={editForm.location} onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))} className="rounded-xl" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-right block mb-1 font-bold">תאריך</Label>
+                <Input type="date" dir="rtl" value={editForm.date} onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))} className="rounded-xl" />
+              </div>
+              <div>
+                <Label className="text-right block mb-1 font-bold">שעה</Label>
+                <Input type="time" dir="rtl" value={editForm.time} onChange={(e) => setEditForm((f) => ({ ...f, time: e.target.value }))} className="rounded-xl" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-right block mb-1 font-bold">משך מוערך (ימים)</Label>
+              <Input dir="rtl" type="text" inputMode="numeric" value={editForm.durationDays} onChange={(e) => setEditForm((f) => ({ ...f, durationDays: e.target.value.replace(/[^0-9]/g, "") }))} placeholder="1" className="rounded-xl" />
             </div>
             <div>
               <Label className="text-right block mb-1 font-bold">הערות</Label>
