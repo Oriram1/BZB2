@@ -43,7 +43,7 @@ const CreateTask = () => {
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
     payment: "", paymentType: "task", workers: "1",
-    location: "", date: "", time: "", duration: "", durationUnit: "hours", expiry: "3",
+    location: "", date: "", time: "", duration: "", durationUnit: "days", expiry: "3",
     notes: "",
   });
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
@@ -109,7 +109,7 @@ const CreateTask = () => {
       case 3: return !!form.payment;
       case 4: {
         const duration = Number(form.duration);
-        const validDuration = !form.duration || (form.durationUnit === "minutes" ? duration >= 5 && duration <= 1440 : duration >= 0.5 && duration <= 24);
+        const validDuration = !form.duration || (duration >= 1 && duration <= 30);
         return !!form.location && !!form.date && !!form.time && validDuration;
       }
       default: return true;
@@ -141,7 +141,7 @@ const CreateTask = () => {
       longitude: selectedLng,
       scheduled_date: form.date || null,
       scheduled_time: form.time || null,
-      duration_hours: form.duration ? (form.durationUnit === "minutes" ? parseFloat(form.duration) / 60 : parseFloat(form.duration)) : null,
+      duration_hours: form.duration ? parseFloat(form.duration) * 24 : null,
       expiry_hours: (parseInt(form.expiry) || 3) * 24,
       notes: form.notes || null,
       image_url: imageUrl,
@@ -359,29 +359,17 @@ const CreateTask = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="duration" className="text-right block mb-1 font-bold">משך זמן מוערך</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="duration"
-                    type="text"
-                    inputMode="numeric"
-                    dir="rtl"
-                    value={form.duration}
-                    onChange={(e) => updateForm("duration", e.target.value.replace(/[^0-9.]/g, ""))}
-                    className="rounded-2xl h-12 flex-1 text-right text-base"
-                    placeholder="1"
-                    min={form.durationUnit === "minutes" ? 5 : 0.5}
-                    max={form.durationUnit === "minutes" ? 1440 : 24}
-                    step={form.durationUnit === "minutes" ? 1 : 0.5}
-                  />
-                  <Select value={form.durationUnit} onValueChange={(v) => updateForm("durationUnit", v)}>
-                    <SelectTrigger className="rounded-2xl h-12 w-32 text-right"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hours">שעות</SelectItem>
-                      <SelectItem value="minutes">דקות</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Label htmlFor="duration" className="text-right block mb-1 font-bold">משך זמן מוערך (ימים)</Label>
+                <Input
+                  id="duration"
+                  type="text"
+                  inputMode="numeric"
+                  dir="rtl"
+                  value={form.duration}
+                  onChange={(e) => updateForm("duration", e.target.value.replace(/[^0-9]/g, ""))}
+                  className="rounded-2xl h-12 text-right text-base"
+                  placeholder="1"
+                />
               </div>
               <div>
                 <Label htmlFor="location" className="text-right block mb-1 font-bold">כתובת המטלה</Label>
@@ -617,11 +605,10 @@ const publishErrorMessage = (error: { message: string; code?: string }) => {
   return "שגיאה בפרסום המטלה: " + error.message;
 };
 
-const formatDurationSummary = (value: string, unit: string) => {
+const formatDurationSummary = (value: string, _unit: string) => {
   if (!value) return "לא צוין";
   const amount = Number(value);
-  if (unit === "minutes") return amount >= 60 && amount % 60 === 0 ? `${amount / 60} שעות (${amount} דקות)` : `${amount} דקות`;
-  return amount === 1 ? "שעה (60 דקות)" : `${amount} שעות (${Math.round(amount * 60)} דקות)`;
+  return amount === 1 ? "יום אחד" : `${amount} ימים`;
 };
 
 const SummaryItem = ({ label, value, valueClassName = "", onEdit }: { label: string; value: string; valueClassName?: string; onEdit?: () => void }) => (
