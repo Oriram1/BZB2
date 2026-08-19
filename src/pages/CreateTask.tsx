@@ -335,6 +335,7 @@ const CreateTask = () => {
                     id="date"
                     type="date"
                     dir="ltr"
+                    lang="he-IL"
                     min={minimumDate}
                     value={form.date}
                     onChange={(event) => updateForm("date", event.target.value)}
