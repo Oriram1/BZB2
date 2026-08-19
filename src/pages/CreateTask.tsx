@@ -369,7 +369,8 @@ const CreateTask = () => {
                     value={form.time}
                     onChange={(event) => updateForm("time", event.target.value)}
                     aria-describedby="time-hint"
-                    className="h-12 rounded-2xl px-4 text-base font-medium"
+                    className="h-12 rounded-2xl px-4 text-base font-medium text-left [direction:ltr]"
+                    style={{ unicodeBidi: "plaintext" }}
                   />
                   <p id="time-hint" className="mt-1 text-xs text-muted-foreground">אפשר להקליד שעה בפורמט HH:MM או להשתמש בבורר השעה.</p>
                 </div>
