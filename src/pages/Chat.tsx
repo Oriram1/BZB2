@@ -11,6 +11,7 @@ import VoiceNoteBubble from "@/components/chat/VoiceNoteBubble";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const MEDIA_BUCKET = "chat-media";
 /** Signed URLs are re-minted on every visit, so an hour is plenty. */
@@ -64,6 +65,7 @@ const Chat = () => {
   // The chat is the one screen that must fit the device exactly instead of
   // scrolling as a document — see the hook for what `100vh` gets wrong here.
   useViewportHeight();
+  const { markConversationNotificationsRead } = useNotifications();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -158,6 +160,8 @@ const Chat = () => {
       setConversations((prev) =>
         prev.map((c) => c.id === activeChat ? { ...c, unread: 0 } : c),
       );
+
+      markConversationNotificationsRead(activeChat);
     };
     fetchMessages();
 
@@ -189,7 +193,7 @@ const Chat = () => {
       supabase.removeChannel(channel);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [activeChat]);
+  }, [activeChat, markConversationNotificationsRead]);
 
   // Attachments live in a private bucket, so each one needs a signed URL. They
   // are minted in one batch per render pass rather than one request per bubble.

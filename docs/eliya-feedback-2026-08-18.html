@@ -67,8 +67,13 @@
   }
   .done { background: #22c55e; color: #fff; }
   .skip { background: #94a3b8; color: #fff; }
+  .needs-check { background: #f59e0b; color: #fff; }
   .card.is-done { border-color: #22c55e; }
   .card.is-skip { opacity: 0.7; }
+  .card.is-needs-check { border-color: #f59e0b; }
+  .check-note { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 0.6rem 0.9rem; font-size: 0.88rem; margin-top: 0.8rem; color: #92400e; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .check-note { background: #3a2e10; color: #fbbf24; border-color: #f59e0b; } }
+  :root[data-theme="dark"] .check-note { background: #3a2e10; color: #fbbf24; border-color: #f59e0b; }
 </style>
 
 <h1>הערות מאליה — סיכום ופירוט</h1>
@@ -94,7 +99,7 @@
 
 <!-- 1 -->
 <div class="card is-done">
-  <div class="card-header"><span class="card-num">1</span><span class="card-title">תוקף מטלה בימים ולא בשעות</span><span class="status done">תוקן</span></div>
+  <div class="card-header"><span class="card-num">1</span><span class="card-title">תוקף מטלה בימים ולא בשעות</span><span class="status done">תוקן ✓ נבדק — איתי</span></div>
   <div class="original">כשיוצרים מטלות התוקף צריך להיות בימים ולא בשעות.</div>
   <div class="field"><span class="field-label">מה</span> כשמפרסמים מטלה חדשה, התוקף שלה (כמה זמן היא פעילה) צריך להיקבע בימים — לא בשעות. למשל: "המטלה פעילה ל-3 ימים".</div>
   <div class="field"><span class="field-label">איפה</span> במסך יצירת מטלה חדשה.</div>
@@ -103,7 +108,7 @@
 
 <!-- 2 -->
 <div class="card is-done">
-  <div class="card-header"><span class="card-num">2</span><span class="card-title">עריכת מטלה אחרי פרסום</span><span class="status done">תוקן</span></div>
+  <div class="card-header"><span class="card-num">2</span><span class="card-title">עריכת מטלה אחרי פרסום</span><span class="status done">תוקן ✓ נבדק — איתי</span></div>
   <div class="original">צריך להיות אופציה לעריכת המטלה אחרי שפרסמת אותה.</div>
   <div class="field"><span class="field-label">מה</span> לאפשר למפרסם לערוך את פרטי המטלה גם אחרי שהיא כבר פורסמה — למשל לשנות תיאור, מיקום, מועד או מחיר.</div>
   <div class="field"><span class="field-label">איפה</span> במסך פרטי המטלה (למפרסם שלה).</div>
@@ -111,57 +116,62 @@
 </div>
 
 <!-- 3 -->
-<div class="card is-done">
-  <div class="card-header"><span class="card-num">3</span><span class="card-title">סימון הודעה כנקראה</span><span class="status done">תוקן</span></div>
+<div class="card is-needs-check">
+  <div class="card-header"><span class="card-num">3</span><span class="card-title">סימון הודעה כנקראה</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
   <div class="original">כשאתה מתכתב עם מישהו שהסימון של ההודעה ירד אחרי שפתחת את ההודעה.</div>
   <div class="field"><span class="field-label">מה</span> כשנכנסים לצ'אט ופותחים שיחה, הסימון של "הודעה חדשה" (הנקודה או המספר) צריך להיעלם. כרגע הוא כנראה נשאר גם אחרי שקראת.</div>
   <div class="field"><span class="field-label">איפה</span> במסך הצ'אט — רשימת השיחות והאייקון של ההתראות.</div>
   <div class="field"><span class="field-label">איך</span> ברגע שהמשתמש פותח שיחה, לסמן את כל ההודעות בה כ"נקראו" ולהוריד את הסימון.</div>
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> הלוגיקה תוקנה — גם messages.read וגם notifications.read_at מתעדכנים כשפותחים שיחה. צריך לאמת שהנקודה/מספר נעלמים בפועל בשני המקומות: רשימת השיחות + פעמון ההתראות.</div>
 </div>
 
 <!-- 4 -->
-<div class="card is-done">
-  <div class="card-header"><span class="card-num">4</span><span class="card-title">מטלה נעלמת כשמלאה</span><span class="status done">תוקן</span></div>
+<div class="card is-needs-check">
+  <div class="card-header"><span class="card-num">4</span><span class="card-title">מטלה נעלמת כשמלאה</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
   <div class="original">אחרי שכמות האנשים הנדרשים למשימה נרשמים המשימה צריכה להעלם.</div>
   <div class="field"><span class="field-label">מה</span> כשכל המקומות במטלה תפוסים (למשל נדרשו 2 מבצעים ו-2 נרשמו) — המטלה צריכה להיעלם מהפיד הציבורי.</div>
   <div class="field"><span class="field-label">איפה</span> בדף המטלות (הפיד הראשי).</div>
-  <div class="field"><span class="field-label">איך</span> ברגע שמספר הנרשמים שווה למספר הנדרש, להסתיר את המטלה מהרשימה הציבורית (היא עדיין תופיע למפרסם ולמבצעים שנרשמו).</div>
+  <div class="field"><span class="field-label">איך</span> ברגע שמספר הנרשמים שווה למספר הנדרש, להסתיר את המטלה מהרשימה הציבורית (היא עדיין תופיע למפרסם ולמבצעים שנרשמו).
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> הסינון קיים בקוד (TaskList.tsx) — מטלה שמספר accepted שווה ל-workers_needed לא מוצגת בפיד. צריך לאמת שזה עובד בפועל.</div></div>
 </div>
 
 <!-- 5 -->
-<div class="card is-skip">
-  <div class="card-header"><span class="card-num">5</span><span class="card-title">באג במסנן מרחק</span><span class="status skip">לבדוק — ייתכן קשור ל-8</span></div>
+<div class="card is-needs-check">
+  <div class="card-header"><span class="card-num">5</span><span class="card-title">באג במסנן מרחק</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
   <div class="original">המרחק בדף משימות הפסיק לעבוד כמו שצריך.</div>
   <div class="field"><span class="field-label">מה</span> מסנן המרחק בדף המטלות לא מסנן כמו שצריך — ייתכן שהוא מציג מטלות רחוקות או לא מגיב לשינויים.</div>
   <div class="field"><span class="field-label">איפה</span> בדף המטלות — מסנן המרחק.</div>
-  <div class="field"><span class="field-label">איך</span> לבדוק את חישוב המרחק ולתקן את הבאג. יכול להיות קשור למיקום המשתמש, ליחידות המרחק, או לבעיה בשאילתה.</div>
+  <div class="field"><span class="field-label">איך</span> לבדוק את חישוב המרחק ולתקן את הבאג. יכול להיות קשור למיקום המשתמש, ליחידות המרחק, או לבעיה בשאילתה.
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> הלוגיקה קיימת (TaskList.tsx) — distanceKm מחשב ומסנן. כעת גם ערך המרחק נשמר ב-localStorage אחרי פריט 8. צריך לוודא שהמרחק אכן מסנן נכון בפועל.</div></div>
 </div>
 
 <!-- 6 -->
-<div class="card is-skip">
-  <div class="card-header"><span class="card-num">6</span><span class="card-title">דירוג וביקורות</span><span class="status skip">דורש טבלאות DB חדשות</span></div>
+<div class="card is-needs-check">
+  <div class="card-header"><span class="card-num">6</span><span class="card-title">דירוג וביקורות</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
   <div class="original">צריך להיות אפשרות לתת ולראות דירוג וביקורת של המציעים והמבצעים.</div>
   <div class="field"><span class="field-label">מה</span> בסיום מטלה, שני הצדדים (מפרסם ומבצע) צריכים לדרג אחד את השני — כוכבים + טקסט חופשי.</div>
   <div class="field"><span class="field-label">איפה</span> מסך סיום מטלה + פרופיל המשתמש.</div>
-  <div class="field"><span class="field-label">איך</span> להוסיף מסך דירוג בסיום מטלה, ולהציג את הדירוג הממוצע והביקורות בפרופיל של כל משתמש.</div>
+  <div class="field"><span class="field-label">איך</span> להוסיף מסך דירוג בסיום מטלה, ולהציג את הדירוג הממוצע והביקורות בפרופיל של כל משתמש.
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> מיגרציה reviews + user_avg_ratings view עלו ל-remote. ReviewDialog נפתח אחרי complete_task. ביקורות מוצגות בפרופיל הציבורי. צריך לאמת flow מלא: השלמת מטלה → דיאלוג → ביקורת נשמרת כ-pending → אדמין מאשר → מופיע בפרופיל.</div></div>
 </div>
 
 <!-- 7 -->
-<div class="card is-skip">
-  <div class="card-header"><span class="card-num">7</span><span class="card-title">התראה על דחיית מועמדות</span><span class="status skip">דורש edge function</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">7</span><span class="card-title">התראה על דחיית מועמדות</span><span class="status done">תוקן ✓ (קיים מלפני)</span></div>
   <div class="original">כשמציע דוחה את המועמדות של המבצע זה צריך לשלוח למבצע התראה על זה.</div>
   <div class="field"><span class="field-label">מה</span> כשמפרסם מטלה דוחה מועמד שנרשם — המועמד צריך לקבל התראה שמעדכנת אותו שנדחה.</div>
   <div class="field"><span class="field-label">איפה</span> מערכת ההתראות (push / בתוך האפליקציה).</div>
-  <div class="field"><span class="field-label">איך</span> כשלוחצים "דחייה" על מועמד — לשלוח לו התראה אוטומטית.</div>
+  <div class="field"><span class="field-label">איך</span> כשלוחצים "דחייה" על מועמד — לשלוח לו התראה אוטומטית. כבר קיים: on_application_decided trigger שולח notification עם status=rejected + copy מוצגת בפעמון.</div>
 </div>
 
 <!-- 8 -->
-<div class="card is-skip">
-  <div class="card-header"><span class="card-num">8</span><span class="card-title">שמירת מרחק אחרי ריפרש</span><span class="status skip">דורש שמירה ב-DB (פרופיל)</span></div>
+<div class="card is-needs-check">
+  <div class="card-header"><span class="card-num">8</span><span class="card-title">שמירת מרחק אחרי ריפרש</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
   <div class="original">אם עושים ריפרש לעמוד מטלות זה לא צריך לאפס את המרחק ששמת חזרה ל-10 ק"מ.</div>
   <div class="field"><span class="field-label">מה</span> כשמרעננים את דף המטלות, המרחק שהמשתמש בחר (למשל 25 ק"מ) חוזר ל-10 ק"מ. צריך לשמור את הבחירה.</div>
   <div class="field"><span class="field-label">איפה</span> בדף המטלות — מסנן המרחק.</div>
-  <div class="field"><span class="field-label">איך</span> לשמור את ערך המרחק שהמשתמש בחר (בזיכרון הדפדפן או בפרופיל), כך שאחרי ריפרש הוא לא מתאפס.</div>
+  <div class="field"><span class="field-label">איך</span> לשמור את ערך המרחק שהמשתמש בחר (בזיכרון הדפדפן או בפרופיל), כך שאחרי ריפרש הוא לא מתאפס.
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> תוקן ב-TaskList.tsx — ערך נשמר ב-localStorage (bzb_max_distance) ונטען בפתיחה. צריך לאמת שאחרי ריפרש הערך נשמר.</div></div>
 </div>
 
 <!-- 9 -->
@@ -174,28 +184,30 @@
 </div>
 
 <!-- 10 -->
-<div class="card is-skip">
-  <div class="card-header"><span class="card-num">10</span><span class="card-title">דירוג והיסטוריה בפרופיל</span><span class="status skip">דורש טבלאות DB חדשות</span></div>
+<div class="card is-needs-check">
+  <div class="card-header"><span class="card-num">10</span><span class="card-title">דירוג והיסטוריה בפרופיל</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
   <div class="original">כשנכנסים לפרופיל של מישהו צריך לראות את הדירוג שלו ואת ההיסטורית משימות.</div>
   <div class="field"><span class="field-label">מה</span> בפרופיל הציבורי של משתמש, צריך להציג את הדירוג הממוצע שלו ואת רשימת המטלות שביצע או פרסם.</div>
   <div class="field"><span class="field-label">איפה</span> במסך הפרופיל הציבורי.</div>
-  <div class="field"><span class="field-label">איך</span> להוסיף אזור עם כוכבי דירוג ממוצע ורשימת משימות קודמות (שם + תאריך + דירוג).</div>
+  <div class="field"><span class="field-label">איך</span> להוסיף אזור עם כוכבי דירוג ממוצע ורשימת משימות קודמות (שם + תאריך + דירוג).
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> PublicProfile.tsx מציג כעת section עם avg_rating ורשימת ביקורות מאושרות. תלוי בפריט 6 — אחרי שיש ביקורות מאושרות לבדוק שהן מוצגות נכון.</div></div>
 </div>
 
 <!-- 11 -->
-<div class="card is-skip">
-  <div class="card-header"><span class="card-num">11</span><span class="card-title">אישור אדמין לביקורות</span><span class="status skip">דורש טבלאות DB + אדמין</span></div>
+<div class="card is-needs-check">
+  <div class="card-header"><span class="card-num">11</span><span class="card-title">אישור אדמין לביקורות</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
   <div class="original">במידה ומתקבלת ביקורת היא צריכה להישלח לאדמין לאישור לפני שהיא מתפרסמת על הפרופיל.</div>
   <div class="field"><span class="field-label">מה</span> כשמשתמש כותב ביקורת על מישהו, הביקורת לא מתפרסמת מיד — היא ממתינה לאישור אדמין.</div>
   <div class="field"><span class="field-label">איפה</span> מערכת הביקורות + פאנל האדמין.</div>
-  <div class="field"><span class="field-label">איך</span> ביקורת חדשה נשמרת בסטטוס "ממתינה". אדמין רואה אותה בפאנל, יכול לאשר או לדחות. רק אחרי אישור היא מופיעה בפרופיל.</div>
+  <div class="field"><span class="field-label">איך</span> ביקורת חדשה נשמרת בסטטוס "ממתינה". אדמין רואה אותה בפאנל, יכול לאשר או לדחות. רק אחרי אישור היא מופיעה בפרופיל.
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> AdminReviewsPanel קיים בפאנל אדמין (Tab "ביקורות"). ביקורות נשמרות עם status=pending, אדמין יכול לאשר/לדחות. צריך לאמת שהpanel טוען נכון ושאישור מביא את הביקורת לפרופיל.</div></div>
 </div>
 
 <!-- 12 -->
-<div class="card is-skip">
-  <div class="card-header"><span class="card-num">12</span><span class="card-title">חסימת משתמש על ידי אדמין</span><span class="status skip">דורש שינוי DB + אדמין</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">12</span><span class="card-title">חסימת משתמש על ידי אדמין</span><span class="status done">תוקן ✓ (קיים מלפני)</span></div>
   <div class="original">לאדמין צריכה להיות היכולת לחסום משתמש לפרק זמן שיוחלט על ידיו.</div>
   <div class="field"><span class="field-label">מה</span> אדמין צריך לאפשרות לחסום משתמש לתקופה מסוימת (יום, שבוע, חודש, או מותאם אישית). המשתמש החסום לא יוכל לפרסם או להירשם למטלות.</div>
   <div class="field"><span class="field-label">איפה</span> פאנל האדמין — ניהול משתמשים.</div>
-  <div class="field"><span class="field-label">איך</span> להוסיף כפתור "חסימה" ליד כל משתמש בפאנל, עם בחירת משך החסימה. המערכת תבדוק בכל פעולה אם המשתמש חסום, ותציג לו הודעה מתאימה.</div>
+  <div class="field"><span class="field-label">איך</span> כפתור "חסימת משתמש" קיים בפאנל (block/unblock דרך Supabase Auth). כרגע חסימה היא לצמיתות — duration picker עדיין לא קיים.</div>
 </div>

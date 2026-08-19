@@ -7,7 +7,7 @@ import CategoryIcon from "@/components/tasks/CategoryIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, CheckCircle2, UserX, Pencil, Calendar } from "lucide-react";
+import { ClipboardList, CheckCircle2, UserX, Pencil, Calendar, Star } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
@@ -19,6 +19,14 @@ interface PublicProfileData {
   avatar_url: string | null;
   gender: Gender | null;
   created_at: string;
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  body: string | null;
+  created_at: string;
+  reviewer_id: string;
 }
 
 interface PublicTask {
@@ -45,6 +53,8 @@ const PublicProfile = () => {
   const [profile, setProfile] = useState<PublicProfileData | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [tasks, setTasks] = useState<PublicTask[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,7 +64,7 @@ const PublicProfile = () => {
     const load = async () => {
       setLoading(true);
 
-      const [{ data: profileRows }, { data: roleRows }, { data: taskRows }] = await Promise.all([
+      const [{ data: profileRows }, { data: roleRows }, { data: taskRows }, { data: reviewRows }, { data: ratingRows }] = await Promise.all([
         supabase.rpc("get_public_profile", { _user_id: userId }),
         supabase.from("user_roles").select("role").eq("user_id", userId),
         supabase
@@ -63,6 +73,17 @@ const PublicProfile = () => {
           .eq("creator_id", userId)
           .is("archived_at", null)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("reviews")
+          .select("id, rating, body, created_at, reviewer_id")
+          .eq("reviewee_id", userId)
+          .eq("status", "approved")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("user_avg_ratings")
+          .select("avg_rating")
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
       const profileData = Array.isArray(profileRows) ? profileRows[0] : profileRows;
 
@@ -70,6 +91,8 @@ const PublicProfile = () => {
       setProfile(profileData ?? null);
       setRoles((roleRows ?? []).map((r) => r.role as string));
       setTasks(taskRows ?? []);
+      setReviews((reviewRows ?? []) as Review[]);
+      setAvgRating(ratingRows?.avg_rating ? Number(ratingRows.avg_rating) : null);
       setLoading(false);
     };
 
@@ -204,6 +227,44 @@ const PublicProfile = () => {
         {!isTasker && (
           <div className="bg-card rounded-3xl border border-border p-5 text-center text-sm text-muted-foreground">
             אין עדיין פעילות ציבורית להצגה.
+          </div>
+        )}
+
+        {/* Reviews section */}
+        {(avgRating !== null || reviews.length > 0) && (
+          <div className="bg-card rounded-3xl border border-border p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="font-bold text-foreground">ביקורות</h2>
+              {avgRating !== null && (
+                <span className="flex items-center gap-1 text-sm font-bold text-yellow-500">
+                  <Star size={14} className="fill-yellow-400 text-yellow-400" aria-hidden="true" />
+                  {avgRating.toFixed(1)}
+                  <span className="text-muted-foreground font-normal">({reviews.length})</span>
+                </span>
+              )}
+            </div>
+            {reviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">אין עדיין ביקורות מאושרות.</p>
+            ) : (
+              <ul className="space-y-3">
+                {reviews.map((r) => (
+                  <li key={r.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+                    <div className="flex items-center gap-1 mb-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={12}
+                          aria-hidden="true"
+                          className={s <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}
+                        />
+                      ))}
+                    </div>
+                    {r.body && <p className="text-sm text-foreground">{r.body}</p>}
+                    <p className="text-xs text-muted-foreground mt-1">{new Date(r.created_at).toLocaleDateString("he-IL")}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </div>

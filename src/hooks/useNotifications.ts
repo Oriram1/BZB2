@@ -94,5 +94,28 @@ export function useNotifications() {
       .is("read_at", null);
   }, [user]);
 
-  return { items, loading, unreadCount, markRead, markAllRead, reload: load };
+  const markConversationNotificationsRead = useCallback(async (conversationId: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    // Optimistic update in state
+    setItems((prev) =>
+      prev.map((item) =>
+        item.event_type === "message_received" &&
+        (item.data as { conversation_id?: string }).conversation_id === conversationId &&
+        !item.read_at
+          ? { ...item, read_at: now }
+          : item,
+      ),
+    );
+    // Update DB — filter by conversation_id inside the JSONB data column
+    await supabase
+      .from("notifications")
+      .update({ read_at: now })
+      .eq("user_id", user.id)
+      .eq("event_type", "message_received")
+      .is("read_at", null)
+      .filter("data->>conversation_id", "eq", conversationId);
+  }, [user]);
+
+  return { items, loading, unreadCount, markRead, markAllRead, markConversationNotificationsRead, reload: load };
 }

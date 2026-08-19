@@ -23,6 +23,7 @@ import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDateTime } from "@/lib/format";
+import ReviewDialog from "@/components/reviews/ReviewDialog";
 
 type ApplicationStatus = "pending" | "accepted" | "rejected";
 /** The task_status enum, so a screen cannot invent a state the database rejects. */
@@ -313,6 +314,7 @@ const MyTasks = () => {
   };
 
   const [confirmTask, setConfirmTask] = useState<PublishedTask | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{ taskId: string; taskName: string; revieweeId: string; revieweeName: string } | null>(null);
   /** Kept apart from `confirmTask`: closing a task and deleting it are different decisions. */
   const [confirmComplete, setConfirmComplete] = useState<PublishedTask | null>(null);
   const touchStartRef = useRef<{ x: number; y: number; id: string } | null>(null);
@@ -370,6 +372,17 @@ const MyTasks = () => {
     );
     logUserActivity(user?.id, "task_completed", { entityType: "task", entityId: task.id, details: { name: task.name } });
     toast.success("המטלה סומנה כהושלמה. התשלום נרשם לעובדים שביצעו אותה");
+
+    // Prompt publisher to review accepted workers
+    const accepted = applications.filter((a) => a.taskId === task.id && a.status === "accepted");
+    if (accepted.length > 0) {
+      setReviewTarget({
+        taskId: task.id,
+        taskName: task.name,
+        revieweeId: accepted[0].applicantId,
+        revieweeName: `${accepted[0].firstName} ${accepted[0].lastName}`.trim(),
+      });
+    }
   };
 
   const archiveTask = async (task: PublishedTask) => {
@@ -696,6 +709,17 @@ const MyTasks = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {reviewTarget && (
+          <ReviewDialog
+            open
+            onClose={() => setReviewTarget(null)}
+            taskId={reviewTarget.taskId}
+            taskName={reviewTarget.taskName}
+            revieweeId={reviewTarget.revieweeId}
+            revieweeName={reviewTarget.revieweeName}
+          />
+        )}
       </div>
     </div>
   );
