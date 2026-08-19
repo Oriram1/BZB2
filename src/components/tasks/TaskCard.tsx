@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, MapPin, Calendar, Hourglass, type LucideIcon } from "lucide-react";
+import { Users, MapPin, Calendar, Hourglass, Pencil, type LucideIcon } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import { formatCurrency, formatDateTime, formatDuration, formatDistance } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,7 +136,17 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
           {formatCurrency(task.payment)}
           <span className="text-sm font-bold text-muted-foreground"> / {task.paymentType === "hour" ? "שעה" : "משימה"}</span>
         </p>
-        {user && isBee && (
+        {user && task.creatorId === user.id ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => { e.stopPropagation(); navigate(`/task/${task.dbId}`, { state: { openEdit: true } }); }}
+            className="rounded-full min-h-11 font-bold shrink-0 gap-1"
+          >
+            <Pencil size={14} />
+            עריכה
+          </Button>
+        ) : user && isBee && (
           <Button
             size="sm"
             disabled={applying}
