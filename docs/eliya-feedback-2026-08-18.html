@@ -68,9 +68,17 @@
   .done { background: #22c55e; color: #fff; }
   .skip { background: #94a3b8; color: #fff; }
   .needs-check { background: #f59e0b; color: #fff; }
+  .broken { background: #ef4444; color: #fff; }
   .card.is-done { border-color: #22c55e; }
   .card.is-skip { opacity: 0.7; }
   .card.is-needs-check { border-color: #f59e0b; }
+  .card.is-broken { border-color: #ef4444; }
+  .fail-note { background: #fee2e2; border: 1px solid #ef4444; border-radius: 6px; padding: 0.6rem 0.9rem; font-size: 0.88rem; margin-top: 0.8rem; color: #991b1b; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fail-note { background: #3f1414; color: #fca5a5; border-color: #ef4444; } }
+  :root[data-theme="dark"] .fail-note { background: #3f1414; color: #fca5a5; border-color: #ef4444; }
+  .ok-note { background: #dcfce7; border: 1px solid #22c55e; border-radius: 6px; padding: 0.6rem 0.9rem; font-size: 0.88rem; margin-top: 0.8rem; color: #14532d; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ok-note { background: #10291a; color: #86efac; border-color: #22c55e; } }
+  :root[data-theme="dark"] .ok-note { background: #10291a; color: #86efac; border-color: #22c55e; }
   .check-note { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 0.6rem 0.9rem; font-size: 0.88rem; margin-top: 0.8rem; color: #92400e; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .check-note { background: #3a2e10; color: #fbbf24; border-color: #f59e0b; } }
   :root[data-theme="dark"] .check-note { background: #3a2e10; color: #fbbf24; border-color: #f59e0b; }
@@ -116,23 +124,23 @@
 </div>
 
 <!-- 3 -->
-<div class="card is-needs-check">
-  <div class="card-header"><span class="card-num">3</span><span class="card-title">סימון הודעה כנקראה</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
+<div class="card is-broken">
+  <div class="card-header"><span class="card-num">3</span><span class="card-title">סימון הודעה כנקראה</span><span class="status broken">נבדק — עדיין שבור</span></div>
   <div class="original">כשאתה מתכתב עם מישהו שהסימון של ההודעה ירד אחרי שפתחת את ההודעה.</div>
   <div class="field"><span class="field-label">מה</span> כשנכנסים לצ'אט ופותחים שיחה, הסימון של "הודעה חדשה" (הנקודה או המספר) צריך להיעלם. כרגע הוא כנראה נשאר גם אחרי שקראת.</div>
   <div class="field"><span class="field-label">איפה</span> במסך הצ'אט — רשימת השיחות והאייקון של ההתראות.</div>
   <div class="field"><span class="field-label">איך</span> ברגע שהמשתמש פותח שיחה, לסמן את כל ההודעות בה כ"נקראו" ולהוריד את הסימון.</div>
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> הלוגיקה תוקנה — גם messages.read וגם notifications.read_at מתעדכנים כשפותחים שיחה. צריך לאמת שהנקודה/מספר נעלמים בפועל בשני המקומות: רשימת השיחות + פעמון ההתראות.</div>
+  <div class="fail-note">❌ <strong>נבדק על אתר החי (20.08.2026) — לא עובד:</strong> פתחתי שיחה עם 2 הודעות שלא נקראו. אחרי הפתיחה הן עדיין <code>read = false</code> ב-DB. הסיבה: לטבלת <code>messages</code> אין policy מסוג UPDATE ב-RLS, ולכן ה-<code>update({read:true})</code> ב-Chat.tsx מעדכן 0 שורות בשקט (בלי שגיאה). ה-UI נראה תקין רק כי ה-state המקומי מתאפס — אחרי ריפרש הסימון חוזר. צד ההתראות (פעמון) כן תקין: ל-<code>notifications</code> יש policy UPDATE. תיקון: RPC מסוג security definer לסימון שיחה כנקראה, או policy UPDATE ממוקד ל-messages.</div>
 </div>
 
 <!-- 4 -->
-<div class="card is-needs-check">
-  <div class="card-header"><span class="card-num">4</span><span class="card-title">מטלה נעלמת כשמלאה</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">4</span><span class="card-title">מטלה נעלמת כשמלאה</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
   <div class="original">אחרי שכמות האנשים הנדרשים למשימה נרשמים המשימה צריכה להעלם.</div>
   <div class="field"><span class="field-label">מה</span> כשכל המקומות במטלה תפוסים (למשל נדרשו 2 מבצעים ו-2 נרשמו) — המטלה צריכה להיעלם מהפיד הציבורי.</div>
   <div class="field"><span class="field-label">איפה</span> בדף המטלות (הפיד הראשי).</div>
   <div class="field"><span class="field-label">איך</span> ברגע שמספר הנרשמים שווה למספר הנדרש, להסתיר את המטלה מהרשימה הציבורית (היא עדיין תופיע למפרסם ולמבצעים שנרשמו).
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> הסינון קיים בקוד (TaskList.tsx) — מטלה שמספר accepted שווה ל-workers_needed לא מוצגת בפיד. צריך לאמת שזה עובד בפועל.</div></div>
+  <div class="ok-note">✅ <strong>נבדק ותוקן (20.08.2026):</strong> הפיד אכן הציג מטלות מלאות. הסיבה: הספירה של המועמדויות רצה בצד הלקוח, אבל RLS על <code>task_applications</code> חושף שורות רק למועמד עצמו ולמפרסם — כל שאר המבקרים קיבלו 0, ולכן שום מטלה לא נראתה מלאה. התיקון: עמודת <code>accepted_count</code> על <code>tasks</code> שמתוחזקת ב-trigger וקריאה לכולם (מבטלת גם query לכל מטלה בכל טעינה). אומת על האתר החי: הפיד ירד מ-16 ל-8 מטלות, וכל 8 המלאות נעלמו.</div></div>
 </div>
 
 <!-- 5 -->
@@ -142,7 +150,7 @@
   <div class="field"><span class="field-label">מה</span> מסנן המרחק בדף המטלות לא מסנן כמו שצריך — ייתכן שהוא מציג מטלות רחוקות או לא מגיב לשינויים.</div>
   <div class="field"><span class="field-label">איפה</span> בדף המטלות — מסנן המרחק.</div>
   <div class="field"><span class="field-label">איך</span> לבדוק את חישוב המרחק ולתקן את הבאג. יכול להיות קשור למיקום המשתמש, ליחידות המרחק, או לבעיה בשאילתה.
-  <div class="check-note">✅ <strong>נבדק ותוקן (20.08.2026):</strong> חישוב distanceKm היה תקין. השורש: מטלות נשמרו עם latitude/longitude = null, ולכן distance היה undefined והן עקפו את הפילטר לגמרי. הסיבה — geocoding רץ רק ב-onBlur של שדה הכתובת, ולחיצה ישירה על "הבא" דילגה עליו. תוקן ב-CreateTask.tsx: לפני מעבר משלב 4 מריצים geocoding אם אין עדיין קואורדינטות. בנוסף בוצע backfill ל-10 המטלות הקיימות שהיו ללא קואורדינטות.</div></div>
+  <div class="ok-note">✅ <strong>נבדק ותוקן (20.08.2026):</strong> חישוב distanceKm היה תקין. השורש: מטלות נשמרו עם latitude/longitude = null, ולכן distance היה undefined והן עקפו את הפילטר לגמרי. הסיבה — geocoding רץ רק ב-onBlur של שדה הכתובת, ולחיצה ישירה על "הבא" דילגה עליו. תוקן ב-CreateTask.tsx: לפני מעבר משלב 4 מריצים geocoding אם אין עדיין קואורדינטות. בנוסף בוצע backfill ל-10 המטלות הקיימות.<br><br><strong>אומת על האתר החי</strong> ממיקום בתל אביב: 5 ק״מ → מטלה אחת, 7 ק״מ → 3, 25 ק״מ → 3, 51 ק״מ (ללא הגבלה) → 8. המרחקים שמוצגים על הכרטיסים (1.5 / 5.2 / 6.4 ק״מ) תואמים בדיוק לחישוב מול ה-DB, והמטלות שהוסתרו כולן מעל 55 ק״מ.</div></div>
 </div>
 
 <!-- 6 -->
@@ -152,7 +160,7 @@
   <div class="field"><span class="field-label">מה</span> בסיום מטלה, שני הצדדים (מפרסם ומבצע) צריכים לדרג אחד את השני — כוכבים + טקסט חופשי.</div>
   <div class="field"><span class="field-label">איפה</span> מסך סיום מטלה + פרופיל המשתמש.</div>
   <div class="field"><span class="field-label">איך</span> להוסיף מסך דירוג בסיום מטלה, ולהציג את הדירוג הממוצע והביקורות בפרופיל של כל משתמש.
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> מיגרציה reviews + user_avg_ratings view עלו ל-remote. ReviewDialog נפתח אחרי complete_task. ביקורות מוצגות בפרופיל הציבורי. צריך לאמת flow מלא: השלמת מטלה → דיאלוג → ביקורת נשמרת כ-pending → אדמין מאשר → מופיע בפרופיל.</div></div>
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> מיגרציה reviews + user_avg_ratings view עלו ל-remote. <br><br><em>בדיקה 20.08: לא ניתן לאמת — טבלת reviews ריקה לגמרי (0 ביקורות). דורש השלמת מטלה משני הצדדים.</em> ReviewDialog נפתח אחרי complete_task. ביקורות מוצגות בפרופיל הציבורי. צריך לאמת flow מלא: השלמת מטלה → דיאלוג → ביקורת נשמרת כ-pending → אדמין מאשר → מופיע בפרופיל.</div></div>
 </div>
 
 <!-- 7 -->
@@ -165,13 +173,13 @@
 </div>
 
 <!-- 8 -->
-<div class="card is-needs-check">
-  <div class="card-header"><span class="card-num">8</span><span class="card-title">שמירת מרחק אחרי ריפרש</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">8</span><span class="card-title">שמירת מרחק אחרי ריפרש</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
   <div class="original">אם עושים ריפרש לעמוד מטלות זה לא צריך לאפס את המרחק ששמת חזרה ל-10 ק"מ.</div>
   <div class="field"><span class="field-label">מה</span> כשמרעננים את דף המטלות, המרחק שהמשתמש בחר (למשל 25 ק"מ) חוזר ל-10 ק"מ. צריך לשמור את הבחירה.</div>
   <div class="field"><span class="field-label">איפה</span> בדף המטלות — מסנן המרחק.</div>
   <div class="field"><span class="field-label">איך</span> לשמור את ערך המרחק שהמשתמש בחר (בזיכרון הדפדפן או בפרופיל), כך שאחרי ריפרש הוא לא מתאפס.
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> תוקן ב-TaskList.tsx — ערך נשמר ב-localStorage (bzb_max_distance) ונטען בפתיחה. צריך לאמת שאחרי ריפרש הערך נשמר.</div></div>
+  <div class="ok-note">✅ <strong>נבדק על האתר החי (20.08.2026):</strong> הזזתי את המרחק ל-25 ק״מ, עשיתי ריפרש מלא — הערך נשאר 25 (<code>bzb_max_distance</code> ב-localStorage), לא חזר ל-10.</div></div>
 </div>
 
 <!-- 9 -->
@@ -190,7 +198,7 @@
   <div class="field"><span class="field-label">מה</span> בפרופיל הציבורי של משתמש, צריך להציג את הדירוג הממוצע שלו ואת רשימת המטלות שביצע או פרסם.</div>
   <div class="field"><span class="field-label">איפה</span> במסך הפרופיל הציבורי.</div>
   <div class="field"><span class="field-label">איך</span> להוסיף אזור עם כוכבי דירוג ממוצע ורשימת משימות קודמות (שם + תאריך + דירוג).
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> PublicProfile.tsx מציג כעת section עם avg_rating ורשימת ביקורות מאושרות. תלוי בפריט 6 — אחרי שיש ביקורות מאושרות לבדוק שהן מוצגות נכון.</div></div>
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> PublicProfile.tsx מציג כעת section עם avg_rating ורשימת ביקורות מאושרות. <br><br><em>בדיקה 20.08: הפרופיל הציבורי נטען תקין (מטלות שפורסמו/הושלמו מוצגים, אין שגיאות קונסול), אבל אזור הדירוג מוסתר בכוונה כשאין ביקורות — ואין אף ביקורת במערכת. חסום עד פריט 6.</em> תלוי בפריט 6 — אחרי שיש ביקורות מאושרות לבדוק שהן מוצגות נכון.</div></div>
 </div>
 
 <!-- 11 -->
@@ -200,7 +208,7 @@
   <div class="field"><span class="field-label">מה</span> כשמשתמש כותב ביקורת על מישהו, הביקורת לא מתפרסמת מיד — היא ממתינה לאישור אדמין.</div>
   <div class="field"><span class="field-label">איפה</span> מערכת הביקורות + פאנל האדמין.</div>
   <div class="field"><span class="field-label">איך</span> ביקורת חדשה נשמרת בסטטוס "ממתינה". אדמין רואה אותה בפאנל, יכול לאשר או לדחות. רק אחרי אישור היא מופיעה בפרופיל.
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> AdminReviewsPanel קיים בפאנל אדמין (Tab "ביקורות"). ביקורות נשמרות עם status=pending, אדמין יכול לאשר/לדחות. צריך לאמת שהpanel טוען נכון ושאישור מביא את הביקורת לפרופיל.</div></div>
+  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> AdminReviewsPanel קיים בפאנל אדמין (Tab "ביקורות"). <br><br><em>בדיקה 20.08: לא ניתן לאמת — החשבון המחובר בדפדפן הוא tasker ולא אדמין.</em> ביקורות נשמרות עם status=pending, אדמין יכול לאשר/לדחות. צריך לאמת שהpanel טוען נכון ושאישור מביא את הביקורת לפרופיל.</div></div>
 </div>
 
 <!-- 12 -->
