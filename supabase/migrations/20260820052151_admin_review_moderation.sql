@@ -3,6 +3,7 @@
 -- panel listed nothing and approving silently updated zero rows. Reads open up to
 -- admins; the status change goes through a definer function so the only field a
 -- moderator can touch is the status, and every decision lands in the audit log.
+DROP POLICY IF EXISTS "admins can read all reviews" ON public.reviews;
 CREATE POLICY "admins can read all reviews"
   ON public.reviews
   FOR SELECT
