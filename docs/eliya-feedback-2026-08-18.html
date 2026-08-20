@@ -219,3 +219,14 @@
   <div class="field"><span class="field-label">איפה</span> פאנל האדמין — ניהול משתמשים.</div>
   <div class="field"><span class="field-label">איך</span> כפתור "חסימת משתמש" קיים בפאנל (block/unblock דרך Supabase Auth). כרגע חסימה היא לצמיתות — duration picker עדיין לא קיים.</div>
 </div>
+
+<hr>
+<span class="section-label">נמצא תוך כדי הבדיקה — לא מרשימת אליה</span>
+
+<!-- X1 -->
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">+</span><span class="card-title">הודעות קוליות בצ׳אט לא עבדו</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
+  <div class="field"><span class="field-label">מה</span> הקלטה קולית בצ׳אט לא ניתנת להקלטה ולא ניתנת להאזנה באתר החי. שני חסמים נפרדים, שניהם בכותרות שנשלחות מ-<code>vercel.json</code>.</div>
+  <div class="field"><span class="field-label">איפה</span> מסך הצ׳אט — כפתור ההקלטה ונגן ההודעה הקולית.</div>
+  <div class="ok-note">✅ <strong>נבדק ותוקן (20.08.2026):</strong> (1) <code>Permissions-Policy</code> הכיל <code>microphone=()</code> — כלומר חסימה מוחלטת של המיקרופון, כך ש-<code>getUserMedia</code> ב-ChatComposer לא יכול היה לרוץ בכלל. שונה ל-<code>microphone=(self)</code>. (2) ל-CSP לא היה <code>media-src</code>, ולכן קובצי האודיו נפלו ל-<code>default-src 'self'</code> ונחסמו בהאזנה. נוסף <code>media-src 'self' blob: https://nrqgoaxraywprlbyzrso.supabase.co</code>.<br><br><strong>אומת על האתר החי:</strong> הכותרות מגיעות מעודכנות, <code>allowsFeature('microphone')</code> חזר ל-<code>true</code>, וההודעה הקולית הקיימת בשיחה נטענת עכשיו במלואה (<code>readyState 4</code>, אורך 3.4 שניות) במקום להיחסם. נוספו בדיקות ל-<code>architecture-invariants.test.ts</code> כדי שזה לא ייסוג.</div>
+</div>
