@@ -51,21 +51,10 @@ const TaskList = () => {
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        const acceptedCounts = await Promise.all(
-          data.map(async (t) => {
-            const { count } = await supabase
-              .from("task_applications")
-              .select("*", { count: "exact", head: true })
-              .eq("task_id", t.id)
-              .eq("status", "accepted")
-              .is("archived_at", null);
-            return { id: t.id, accepted: count ?? 0 };
-          }),
-        );
-        const countMap = new Map(acceptedCounts.map((c) => [c.id, c.accepted]));
-
+        // accepted_count lives on the task itself: RLS hides other people's
+        // applications, so counting them here returned 0 and full tasks stayed up.
         const mapped: Task[] = data
-          .filter((t) => (countMap.get(t.id) ?? 0) < t.workers_needed)
+          .filter((t) => (t.accepted_count ?? 0) < t.workers_needed)
           .map((t, i) => ({
             id: i + 1,
             dbId: t.id,

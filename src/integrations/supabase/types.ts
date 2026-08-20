@@ -648,6 +648,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          accepted_count: number
           archived_at: string | null
           category: Database["public"]["Enums"]["task_category"]
           created_at: string
@@ -673,6 +674,7 @@ export type Database = {
           workers_needed: number
         }
         Insert: {
+          accepted_count?: number
           archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
           created_at?: string
@@ -698,6 +700,7 @@ export type Database = {
           workers_needed?: number
         }
         Update: {
+          accepted_count?: number
           archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
           created_at?: string
