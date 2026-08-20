@@ -136,13 +136,13 @@
 </div>
 
 <!-- 5 -->
-<div class="card is-needs-check">
-  <div class="card-header"><span class="card-num">5</span><span class="card-title">באג במסנן מרחק</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">5</span><span class="card-title">באג במסנן מרחק</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
   <div class="original">המרחק בדף משימות הפסיק לעבוד כמו שצריך.</div>
   <div class="field"><span class="field-label">מה</span> מסנן המרחק בדף המטלות לא מסנן כמו שצריך — ייתכן שהוא מציג מטלות רחוקות או לא מגיב לשינויים.</div>
   <div class="field"><span class="field-label">איפה</span> בדף המטלות — מסנן המרחק.</div>
   <div class="field"><span class="field-label">איך</span> לבדוק את חישוב המרחק ולתקן את הבאג. יכול להיות קשור למיקום המשתמש, ליחידות המרחק, או לבעיה בשאילתה.
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> הלוגיקה קיימת (TaskList.tsx) — distanceKm מחשב ומסנן. כעת גם ערך המרחק נשמר ב-localStorage אחרי פריט 8. צריך לוודא שהמרחק אכן מסנן נכון בפועל.</div></div>
+  <div class="check-note">✅ <strong>נבדק ותוקן (20.08.2026):</strong> חישוב distanceKm היה תקין. השורש: מטלות נשמרו עם latitude/longitude = null, ולכן distance היה undefined והן עקפו את הפילטר לגמרי. הסיבה — geocoding רץ רק ב-onBlur של שדה הכתובת, ולחיצה ישירה על "הבא" דילגה עליו. תוקן ב-CreateTask.tsx: לפני מעבר משלב 4 מריצים geocoding אם אין עדיין קואורדינטות. בנוסף בוצע backfill ל-10 המטלות הקיימות שהיו ללא קואורדינטות.</div></div>
 </div>
 
 <!-- 6 -->
