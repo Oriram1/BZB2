@@ -24,14 +24,11 @@ export default function AdminReviewsPanel() {
 
   const load = async () => {
     setLoading(true);
+    // Names are fetched separately: reviewer_id/reviewee_id are foreign keys into
+    // auth.users, not profiles, so PostgREST cannot embed a profile from here.
     const { data, error } = await supabase
       .from("reviews")
-      .select(`
-        id, task_id, reviewer_id, reviewee_id, rating, body, created_at,
-        tasks!task_id (name),
-        reviewer:profiles!reviewer_id (first_name, last_name),
-        reviewee:profiles!reviewee_id (first_name, last_name)
-      `)
+      .select("id, task_id, reviewer_id, reviewee_id, rating, body, created_at, tasks!task_id (name)")
       .eq("status", "pending")
       .order("created_at", { ascending: true });
 
@@ -41,22 +38,27 @@ export default function AdminReviewsPanel() {
       return;
     }
 
+    const rows = data ?? [];
+    const userIds = [...new Set(rows.flatMap((r) => [r.reviewer_id, r.reviewee_id]))];
+    const { data: profileRows } = userIds.length
+      ? await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", userIds)
+      : { data: [] };
+    const nameOf = new Map(
+      (profileRows ?? []).map((p) => [p.user_id, `${p.first_name} ${p.last_name}`.trim()]),
+    );
+
     setReviews(
-      (data ?? []).map((r: Record<string, unknown>) => ({
-        id: r.id as string,
-        task_id: r.task_id as string,
-        reviewer_id: r.reviewer_id as string,
-        reviewee_id: r.reviewee_id as string,
-        rating: r.rating as number,
-        body: r.body as string | null,
-        created_at: r.created_at as string,
+      rows.map((r) => ({
+        id: r.id,
+        task_id: r.task_id,
+        reviewer_id: r.reviewer_id,
+        reviewee_id: r.reviewee_id,
+        rating: r.rating,
+        body: r.body,
+        created_at: r.created_at,
         task_name: (r.tasks as { name: string } | null)?.name ?? null,
-        reviewer_name: r.reviewer
-          ? `${(r.reviewer as { first_name: string; last_name: string }).first_name} ${(r.reviewer as { first_name: string; last_name: string }).last_name}`.trim()
-          : null,
-        reviewee_name: r.reviewee
-          ? `${(r.reviewee as { first_name: string; last_name: string }).first_name} ${(r.reviewee as { first_name: string; last_name: string }).last_name}`.trim()
-          : null,
+        reviewer_name: nameOf.get(r.reviewer_id) ?? null,
+        reviewee_name: nameOf.get(r.reviewee_id) ?? null,
       })),
     );
     setLoading(false);
