@@ -124,13 +124,13 @@
 </div>
 
 <!-- 3 -->
-<div class="card is-broken">
-  <div class="card-header"><span class="card-num">3</span><span class="card-title">סימון הודעה כנקראה</span><span class="status broken">נבדק — עדיין שבור</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">3</span><span class="card-title">סימון הודעה כנקראה</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
   <div class="original">כשאתה מתכתב עם מישהו שהסימון של ההודעה ירד אחרי שפתחת את ההודעה.</div>
   <div class="field"><span class="field-label">מה</span> כשנכנסים לצ'אט ופותחים שיחה, הסימון של "הודעה חדשה" (הנקודה או המספר) צריך להיעלם. כרגע הוא כנראה נשאר גם אחרי שקראת.</div>
   <div class="field"><span class="field-label">איפה</span> במסך הצ'אט — רשימת השיחות והאייקון של ההתראות.</div>
   <div class="field"><span class="field-label">איך</span> ברגע שהמשתמש פותח שיחה, לסמן את כל ההודעות בה כ"נקראו" ולהוריד את הסימון.</div>
-  <div class="fail-note">❌ <strong>נבדק על אתר החי (20.08.2026) — לא עובד:</strong> פתחתי שיחה עם 2 הודעות שלא נקראו. אחרי הפתיחה הן עדיין <code>read = false</code> ב-DB. הסיבה: לטבלת <code>messages</code> אין policy מסוג UPDATE ב-RLS, ולכן ה-<code>update({read:true})</code> ב-Chat.tsx מעדכן 0 שורות בשקט (בלי שגיאה). ה-UI נראה תקין רק כי ה-state המקומי מתאפס — אחרי ריפרש הסימון חוזר. צד ההתראות (פעמון) כן תקין: ל-<code>notifications</code> יש policy UPDATE. תיקון: RPC מסוג security definer לסימון שיחה כנקראה, או policy UPDATE ממוקד ל-messages.</div>
+  <div class="ok-note">✅ <strong>נבדק ותוקן (20.08.2026):</strong> בבדיקה ראשונה זה לא עבד — פתחתי שיחה עם 2 הודעות שלא נקראו והן נשארו <code>read = false</code> ב-DB. הסיבה: לטבלת <code>messages</code> יש policy ל-SELECT ול-INSERT בלבד, אין UPDATE — ולכן ה-<code>update({read:true})</code> ב-Chat.tsx עדכן 0 שורות בשקט, בלי שגיאה. ה-UI נראה תקין רק כי ה-state המקומי התאפס, ואחרי ריפרש הסימון חזר. (צד הפעמון תמיד היה תקין — ל-<code>notifications</code> יש policy UPDATE.)<br><br><strong>התיקון:</strong> פונקציית <code>mark_conversation_messages_read</code> מסוג security definer, שמוודאת שהקורא הוא משתתף בשיחה ומסמנת רק הודעות שהצד השני שלח. לא ניתן policy UPDATE רחב — הוא היה מאפשר גם לערוך תוכן של הודעות.<br><br><strong>אומת על האתר החי:</strong> החזרתי את 2 ההודעות ל-unread, פתחתי את הצ׳אט — שתיהן עברו ל-<code>read = true</code> ב-DB (לא רק ב-UI). בנוסף נבדקה האבטחה: קריאה לפונקציה על שיחה של מישהו אחר מוחזרת עם <code>not_a_participant</code>, וניסיון PATCH ישיר לשינוי תוכן הודעה מעדכן 0 שורות.</div>
 </div>
 
 <!-- 4 -->
