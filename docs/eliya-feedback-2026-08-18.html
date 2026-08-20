@@ -154,13 +154,13 @@
 </div>
 
 <!-- 6 -->
-<div class="card is-needs-check">
-  <div class="card-header"><span class="card-num">6</span><span class="card-title">דירוג וביקורות</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">6</span><span class="card-title">דירוג וביקורות</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
   <div class="original">צריך להיות אפשרות לתת ולראות דירוג וביקורת של המציעים והמבצעים.</div>
   <div class="field"><span class="field-label">מה</span> בסיום מטלה, שני הצדדים (מפרסם ומבצע) צריכים לדרג אחד את השני — כוכבים + טקסט חופשי.</div>
   <div class="field"><span class="field-label">איפה</span> מסך סיום מטלה + פרופיל המשתמש.</div>
   <div class="field"><span class="field-label">איך</span> להוסיף מסך דירוג בסיום מטלה, ולהציג את הדירוג הממוצע והביקורות בפרופיל של כל משתמש.
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> מיגרציה reviews + user_avg_ratings view עלו ל-remote. <br><br><em>בדיקה 20.08: לא ניתן לאמת — טבלת reviews ריקה לגמרי (0 ביקורות). דורש השלמת מטלה משני הצדדים.</em> ReviewDialog נפתח אחרי complete_task. ביקורות מוצגות בפרופיל הציבורי. צריך לאמת flow מלא: השלמת מטלה → דיאלוג → ביקורת נשמרת כ-pending → אדמין מאשר → מופיע בפרופיל.</div></div>
+  <div class="ok-note">✅ <strong>נבדק end-to-end על האתר החי (20.08.2026):</strong> פרסמתי מטלה, סימנתי כהושלמה — ReviewDialog נפתח אוטומטית, דירגתי 5 כוכבים עם טקסט ושלחתי. הביקורת נשמרה ב-DB עם <code>status = pending</code>, reviewer ו-reviewee נכונים. כל נתוני הבדיקה נמחקו בסיום.</div></div>
 </div>
 
 <!-- 7 -->
@@ -192,23 +192,23 @@
 </div>
 
 <!-- 10 -->
-<div class="card is-needs-check">
-  <div class="card-header"><span class="card-num">10</span><span class="card-title">דירוג והיסטוריה בפרופיל</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">10</span><span class="card-title">דירוג והיסטוריה בפרופיל</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
   <div class="original">כשנכנסים לפרופיל של מישהו צריך לראות את הדירוג שלו ואת ההיסטורית משימות.</div>
   <div class="field"><span class="field-label">מה</span> בפרופיל הציבורי של משתמש, צריך להציג את הדירוג הממוצע שלו ואת רשימת המטלות שביצע או פרסם.</div>
   <div class="field"><span class="field-label">איפה</span> במסך הפרופיל הציבורי.</div>
   <div class="field"><span class="field-label">איך</span> להוסיף אזור עם כוכבי דירוג ממוצע ורשימת משימות קודמות (שם + תאריך + דירוג).
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> PublicProfile.tsx מציג כעת section עם avg_rating ורשימת ביקורות מאושרות. <br><br><em>בדיקה 20.08: הפרופיל הציבורי נטען תקין (מטלות שפורסמו/הושלמו מוצגים, אין שגיאות קונסול), אבל אזור הדירוג מוסתר בכוונה כשאין ביקורות — ואין אף ביקורת במערכת. חסום עד פריט 6.</em> תלוי בפריט 6 — אחרי שיש ביקורות מאושרות לבדוק שהן מוצגות נכון.</div></div>
+  <div class="ok-note">✅ <strong>נבדק על האתר החי (20.08.2026):</strong> אחרי שהביקורת אושרה, הפרופיל הציבורי הציג "ביקורות ⭐ 5.0 (1)" עם הכוכבים, גוף הביקורת והתאריך. ה-view <code>user_avg_ratings</code> מסנן נכון ל-<code>approved</code> בלבד, כך שביקורת ממתינה לא דולפת לפרופיל.</div></div>
 </div>
 
 <!-- 11 -->
-<div class="card is-needs-check">
-  <div class="card-header"><span class="card-num">11</span><span class="card-title">אישור אדמין לביקורות</span><span class="status needs-check">תוקן — דורש בדיקה ידנית</span></div>
+<div class="card is-done">
+  <div class="card-header"><span class="card-num">11</span><span class="card-title">אישור אדמין לביקורות</span><span class="status done">טופל ונבדק ✓ (20.08.2026)</span></div>
   <div class="original">במידה ומתקבלת ביקורת היא צריכה להישלח לאדמין לאישור לפני שהיא מתפרסמת על הפרופיל.</div>
   <div class="field"><span class="field-label">מה</span> כשמשתמש כותב ביקורת על מישהו, הביקורת לא מתפרסמת מיד — היא ממתינה לאישור אדמין.</div>
   <div class="field"><span class="field-label">איפה</span> מערכת הביקורות + פאנל האדמין.</div>
   <div class="field"><span class="field-label">איך</span> ביקורת חדשה נשמרת בסטטוס "ממתינה". אדמין רואה אותה בפאנל, יכול לאשר או לדחות. רק אחרי אישור היא מופיעה בפרופיל.
-  <div class="check-note">⚠️ <strong>דורש בדיקה ידנית (אני):</strong> AdminReviewsPanel קיים בפאנל אדמין (Tab "ביקורות"). <br><br><em>בדיקה 20.08: לא ניתן לאמת — החשבון המחובר בדפדפן הוא tasker ולא אדמין.</em> ביקורות נשמרות עם status=pending, אדמין יכול לאשר/לדחות. צריך לאמת שהpanel טוען נכון ושאישור מביא את הביקורת לפרופיל.</div></div>
+  <div class="ok-note">✅ <strong>נבדק ותוקן (20.08.2026) — היו כאן שני באגים נפרדים:</strong> (1) לטבלת <code>reviews</code> היה SELECT רק ל-<code>approved</code> ולביקורות של הכותב עצמו, ולא היה policy מסוג UPDATE כלל — כך שהאדמין ראה רשימה ריקה ולחיצה על "אשר" עדכנה 0 שורות בשקט. נוסף policy קריאה לאדמינים, והאישור עובר דרך <code>admin_set_review_status</code> מסוג security definer שמאמת תפקיד, מגביל את הערך ורושם ל-<code>admin_audit_log</code>. (2) השאילתה ניסתה embed של <code>profiles!reviewer_id</code>, אבל ה-FK מצביע ל-<code>auth.users</code> ולא ל-<code>profiles</code> — PostgREST החזיר <code>PGRST200</code> וכל השאילתה נפלה. השמות נטענים כעת בשאילתה נפרדת.<br><br><strong>אומת:</strong> הפאנל הציג את הביקורת הממתינה עם שמות ומטלה, לחיצה על "אשר" העבירה אותה ל-<code>approved</code>, ונרשמה שורת <code>admin_approved_review</code> ב-audit log.</div></div>
 </div>
 
 <!-- 12 -->
