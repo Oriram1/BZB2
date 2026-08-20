@@ -584,8 +584,20 @@ const CreateTask = () => {
 
             {step < 6 ? (
               <Button
-                onClick={() => setStep((s) => s + 1)}
-                disabled={!canProceed()}
+                onClick={async () => {
+                  if (step === 4 && form.location.trim() && selectedLat === null) {
+                    setLocationLoading(true);
+                    const result = await geocodeAddress(form.location);
+                    if (result) {
+                      updateForm("location", result.formattedAddress);
+                      setSelectedLat(result.lat);
+                      setSelectedLng(result.lng);
+                    }
+                    setLocationLoading(false);
+                  }
+                  setStep((s) => s + 1);
+                }}
+                disabled={!canProceed() || locationLoading}
                 className="gradient-honey text-primary-foreground rounded-full px-7 h-12 border-none font-extrabold min-w-[110px] hover:scale-105 transition-transform"
               >
                 הבא
