@@ -809,6 +809,10 @@ export type Database = {
         Args: { _applicant_id: string; _task_id: string }
         Returns: string
       }
+      mark_conversation_messages_read: {
+        Args: { p_conversation_id: string }
+        Returns: number
+      }
       get_public_profile: {
         Args: { _user_id: string }
         Returns: {

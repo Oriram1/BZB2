@@ -150,12 +150,11 @@ const Chat = () => {
         .order("created_at", { ascending: true });
       setMessages((data as Message[]) || []);
 
-      await supabase
-        .from("messages")
-        .update({ read: true })
-        .eq("conversation_id", activeChat)
-        .eq("read", false)
-        .neq("sender_id", user.id);
+      // Goes through an RPC because messages has no UPDATE policy: a direct
+      // update() here matched zero rows and the badge silently came back on reload.
+      await supabase.rpc("mark_conversation_messages_read", {
+        p_conversation_id: activeChat,
+      });
 
       setConversations((prev) =>
         prev.map((c) => c.id === activeChat ? { ...c, unread: 0 } : c),
