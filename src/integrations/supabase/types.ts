@@ -809,6 +809,13 @@ export type Database = {
         Args: { _applicant_id: string; _task_id: string }
         Returns: string
       }
+      admin_set_review_status: {
+        Args: {
+          _review_id: string
+          _status: Database["public"]["Enums"]["review_status"]
+        }
+        Returns: undefined
+      }
       mark_conversation_messages_read: {
         Args: { p_conversation_id: string }
         Returns: number

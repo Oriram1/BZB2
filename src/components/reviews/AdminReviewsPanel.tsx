@@ -65,7 +65,12 @@ export default function AdminReviewsPanel() {
   useEffect(() => { void load(); }, []);
 
   const decide = async (id: string, status: "approved" | "rejected") => {
-    const { error } = await supabase.from("reviews").update({ status }).eq("id", id);
+    // Goes through an RPC because reviews has no UPDATE policy: a direct update()
+    // here matched zero rows, so the decision never left the browser.
+    const { error } = await supabase.rpc("admin_set_review_status", {
+      _review_id: id,
+      _status: status,
+    });
     if (error) { toast.error("שגיאה בעדכון"); return; }
     toast.success(status === "approved" ? "ביקורת אושרה" : "ביקורת נדחתה");
     setReviews((prev) => prev.filter((r) => r.id !== id));
