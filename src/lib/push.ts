@@ -59,6 +59,34 @@ export async function registerServiceWorker() {
   }
 }
 
+/** Keep an installed PWA on the newest worker after launch or resume. */
+export function keepServiceWorkerFresh() {
+  if (!("serviceWorker" in navigator)) return () => {};
+
+  let reloading = false;
+  const hadControllerAtLaunch = Boolean(navigator.serviceWorker.controller);
+  const reloadForNewController = () => {
+    if (!hadControllerAtLaunch || reloading) return;
+    reloading = true;
+    window.location.reload();
+  };
+  const checkForUpdate = () => {
+    if (document.visibilityState !== "visible" || !navigator.onLine) return;
+    void navigator.serviceWorker.getRegistration().then((registration) => registration?.update());
+  };
+
+  navigator.serviceWorker.addEventListener("controllerchange", reloadForNewController);
+  window.addEventListener("online", checkForUpdate);
+  document.addEventListener("visibilitychange", checkForUpdate);
+  checkForUpdate();
+
+  return () => {
+    navigator.serviceWorker.removeEventListener("controllerchange", reloadForNewController);
+    window.removeEventListener("online", checkForUpdate);
+    document.removeEventListener("visibilitychange", checkForUpdate);
+  };
+}
+
 export async function currentSubscription() {
   if (!pushSupported()) return null;
   const registration = await navigator.serviceWorker.getRegistration();

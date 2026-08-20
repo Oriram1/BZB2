@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "lucide-react";
 import { useGoogleMaps } from "./GoogleMapsProvider";
+import GoogleMapsLoadState from "./GoogleMapsLoadState";
 
 const defaultCenter = { lat: 32.08, lng: 34.78 };
 
@@ -13,7 +14,7 @@ interface GoogleMapPickerProps {
 }
 
 const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleMapPickerProps) => {
-  const { isLoaded, error } = useGoogleMaps();
+  const { isLoaded, error, retry } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
@@ -99,14 +100,7 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleM
   };
 
   if (!isLoaded) {
-    return (
-      <div className="h-[250px] rounded-2xl bg-muted flex items-center justify-center text-center px-4">
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">טוען מפה...</p>
-          {error && <p className="text-xs text-destructive leading-relaxed">{error}</p>}
-        </div>
-      </div>
-    );
+    return <GoogleMapsLoadState error={error} retry={retry} className="h-[250px] rounded-2xl bg-muted flex items-center justify-center px-4" />;
   }
 
   return (

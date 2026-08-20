@@ -5,13 +5,14 @@ import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import type { Task } from "./TaskCard";
 import { useGoogleMaps } from "./GoogleMapsProvider";
+import GoogleMapsLoadState from "./GoogleMapsLoadState";
 import { useAuth } from "@/contexts/AuthContext";
 import { formFor, RECIPIENT, say } from "@/lib/gender";
 
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
-  const { isLoaded, error } = useGoogleMaps();
+  const { isLoaded, error, retry } = useGoogleMaps();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const isOwnTask = !!selected && !!user && selected.creatorId === user.id;
@@ -76,14 +77,7 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
   }, [isLoaded, located]);
 
   if (!isLoaded) {
-    return (
-      <div className="rounded-3xl overflow-hidden border border-border shadow-lg h-[500px] flex items-center justify-center bg-muted text-center px-4">
-        <div className="space-y-2">
-          <p className="text-muted-foreground">טוען מפה...</p>
-          {error && <p className="text-xs text-destructive leading-relaxed">{error}</p>}
-        </div>
-      </div>
-    );
+    return <GoogleMapsLoadState error={error} retry={retry} className="rounded-3xl overflow-hidden border border-border shadow-lg h-[500px] flex items-center justify-center bg-muted px-4" />;
   }
 
   return (

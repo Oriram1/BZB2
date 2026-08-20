@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { useGoogleMaps } from "./GoogleMapsProvider";
+import GoogleMapsLoadState from "./GoogleMapsLoadState";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 
 interface TaskLocationMapProps {
@@ -32,7 +33,7 @@ const WazeLogo = () => (
 );
 
 const TaskLocationMap = ({ location, latitude, longitude, taskName }: TaskLocationMapProps) => {
-  const { isLoaded, error } = useGoogleMaps();
+  const { isLoaded, error, retry } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(
@@ -93,7 +94,7 @@ const TaskLocationMap = ({ location, latitude, longitude, taskName }: TaskLocati
     </div>
   );
 
-  if (!isLoaded) return <div className="flex h-64 items-center justify-center rounded-2xl bg-muted px-4 text-center text-sm text-muted-foreground">{error || "טוען מפה..."}</div>;
+  if (!isLoaded) return <GoogleMapsLoadState error={error} retry={retry} className="flex h-64 items-center justify-center rounded-2xl bg-muted px-4" />;
   if (!position) return <div><div className="rounded-2xl border border-border/60 bg-muted/40 p-4 text-sm"><div className="flex items-center gap-2 text-muted-foreground"><MapPin size={16} />לא הצלחנו לאתר את המיקום במפה.</div></div>{navigationLinks}</div>;
   return <div><div ref={containerRef} className="h-64 w-full rounded-2xl" aria-label={`מפה של ${location}`} />{navigationLinks}</div>;
 };

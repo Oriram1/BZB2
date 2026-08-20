@@ -1,12 +1,19 @@
 /* eslint-disable react-refresh/only-export-components -- provider and consumer are one integration boundary. */
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
-const GoogleMapsContext = createContext<{ isLoaded: boolean; error: string | null }>({
+type GoogleMapsContextValue = {
+  isLoaded: boolean;
+  error: string | null;
+  retry: () => void;
+};
+
+const GoogleMapsContext = createContext<GoogleMapsContextValue>({
   isLoaded: false,
   error: null,
+  retry: () => {},
 });
 
 export const useGoogleMaps = () => useContext(GoogleMapsContext);
@@ -24,7 +31,14 @@ function loadMaps(): Promise<void> {
       language: "he",
       region: "IL",
     });
-    loaderPromise = importLibrary("maps").then(() => {});
+    loaderPromise = importLibrary("maps")
+      .then(() => {})
+      .catch((error: unknown) => {
+        // A PWA can resume before its network is ready. Never keep a rejected
+        // promise forever: the next retry must be allowed to load Maps again.
+        loaderPromise = null;
+        throw error;
+      });
   }
   return loaderPromise;
 }
@@ -32,15 +46,29 @@ function loadMaps(): Promise<void> {
 export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const retry = useCallback(() => {
+    if (!GOOGLE_MAPS_API_KEY) return;
+    setError(null);
+    setAttempt((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) {
       setError("מפת Google Maps זמינה רק במסכים שמוגדר להם מפתח ציבורי.");
       return;
     }
+    let cancelled = false;
     loadMaps()
-      .then(() => setIsLoaded(true))
+      .then(() => {
+        if (!cancelled) {
+          setError(null);
+          setIsLoaded(true);
+        }
+      })
       .catch((err: unknown) => {
+        if (cancelled) return;
         console.error("Failed to load Google Maps", err);
         setError(
           !GOOGLE_MAPS_API_KEY
@@ -48,10 +76,29 @@ export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
             : "Google Maps לא נטען. כדאי לבדוק שהמפתח תקין, שה-Maps JavaScript API פעיל ושיש חיוב/הרשאות מתאימות."
         );
       });
-  }, []);
+    return () => { cancelled = true; };
+  }, [attempt]);
+
+  useEffect(() => {
+    if (!error) return;
+
+    const retryWhenReady = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) retry();
+    };
+
+    window.addEventListener("online", retryWhenReady);
+    document.addEventListener("visibilitychange", retryWhenReady);
+    const timer = attempt === 0 ? window.setTimeout(retryWhenReady, 2_000) : undefined;
+
+    return () => {
+      window.removeEventListener("online", retryWhenReady);
+      document.removeEventListener("visibilitychange", retryWhenReady);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [attempt, error, retry]);
 
   return (
-    <GoogleMapsContext.Provider value={{ isLoaded, error }}>
+    <GoogleMapsContext.Provider value={{ isLoaded, error, retry }}>
       {children}
     </GoogleMapsContext.Provider>
   );
