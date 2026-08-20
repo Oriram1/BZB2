@@ -115,6 +115,10 @@ describe("architecture invariants", () => {
     expect(vercel).toContain("object-src 'none'");
     expect(vercel).toContain("script-src 'self' https://accounts.google.com https://maps.googleapis.com");
     expect(vercel).toContain("wss://nrqgoaxraywprlbyzrso.supabase.co");
+    // Voice messages are recorded through getUserMedia and played back from
+    // storage: without these two the composer silently fails in production.
+    expect(vercel).toContain("microphone=(self)");
+    expect(vercel).toContain("media-src 'self' blob: https://nrqgoaxraywprlbyzrso.supabase.co");
   });
 
   it("does not expose raw Edge Function exceptions", () => {
