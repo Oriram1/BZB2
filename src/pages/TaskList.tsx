@@ -194,7 +194,7 @@ const TaskList = () => {
         <div className="glass rounded-3xl border border-border mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           {/* A single row that scrolls sideways instead of wrapping into three fixed rows. */}
           <div
-            className="flex gap-2 overflow-x-auto px-4 pt-4 pb-4"
+            className="flex gap-2 overflow-x-auto px-4 pt-4 pb-4 [mask-image:linear-gradient(to_left,#000_calc(100%-1.5rem),transparent)]"
             role="group"
             aria-label="קטגוריה"
           >
