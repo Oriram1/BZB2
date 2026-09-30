@@ -4,10 +4,16 @@
 
 > ## סטטוס: הקוד כתוב ונבדק מקומית, עוד לא הופעל
 >
-> - מיגרציות: נבדקו על Postgres מקומי (pglite), לא הוחלו על הפרויקט.
+> - מיגרציות: הוחלו על הפרויקט ב־30 בספטמבר 2026 (גרסאות 20260930160155 ו־20260930160226).
 > - פונקציות: `deno check` ובדיקות יחידה עוברים. לא נפרסו.
 > - לא בוצעה אף קריאה אמיתית ל־Cardcom. שמות השדות נלקחו מסכמת ה־OpenAPI הרשמית
 >   (`https://secure.cardcom.solutions/swagger/v11/swagger.json`) ויש לאמת אותם מול מסוף בדיקה.
+
+## מצב טסט / לייב
+
+`BILLING_ENABLED` הוא מתג ראשי. כשהוא לא `true`, `billing-create-checkout` מחזיר 503 ו־`billing-renew` לא עושה דבר.
+לבדיקות: `BILLING_ENABLED=true` יחד עם פרטי **מסוף הבדיקה** של Cardcom (לא המסוף החי). למעבר לייב מחליפים את שלושת ערכי המסוף
+ומאשרים ללקוח. אין מצב "טסט" בקוד עצמו: ההפרדה היא לפי איזה מסוף מוגדר ב־secrets.
 
 ## מה נבנה
 
@@ -26,7 +32,7 @@
 ## הפעלה — לפי הסדר
 
 1. **מיגרציות.** להחיל את שתיהן לפי סדר:
-   `20260930100000_billing_notification_events.sql` (ערכי enum בלבד) ואז `20260930100100_billing.sql`.
+   `20260930160155_billing_notification_events.sql` (ערכי enum בלבד) ואז `20260930160226_billing.sql`.
 2. **Secrets לפונקציות** (הערכים במייל של Cardcom; לא להדביק בצ'אט ולא ל־git):
    ```bash
    supabase secrets set CARDCOM_TERMINAL=… CARDCOM_API_NAME=… CARDCOM_API_PASSWORD=…

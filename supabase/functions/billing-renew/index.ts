@@ -14,7 +14,7 @@
  */
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 import { requireSecret } from "../_shared/auth.ts";
-import { cardcomConfig, chargeToken, getTransactionByExternalId, type TransactionInfo } from "../_shared/cardcom.ts";
+import { billingEnabled, cardcomConfig, chargeToken, getTransactionByExternalId, type TransactionInfo } from "../_shared/cardcom.ts";
 import {
   applyVerdict,
   buildDocument,
@@ -273,6 +273,8 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
+  // Nothing to do while billing is off: no subscriptions exist to renew.
+  if (!billingEnabled()) return json({ ok: true, skipped: "billing_disabled" });
   try { cardcomConfig(); } catch { return json({ error: "cardcom_not_configured" }, 500); }
 
   const admin = createClient(supabaseUrl, serviceKey);

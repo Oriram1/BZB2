@@ -15,6 +15,14 @@ const REQUEST_TIMEOUT_MS = 20_000;
 /** Duplicate `ExternalUniqTranId`: the earlier attempt already reached Cardcom. */
 export const CODE_DUPLICATE_TRANSACTION = 608;
 
+/**
+ * Master switch. Off unless BILLING_ENABLED is exactly "true", so deploying the
+ * code, or pointing it at a live terminal, never starts charging by accident.
+ */
+export function billingEnabled() {
+  return Deno.env.get("BILLING_ENABLED") === "true";
+}
+
 export type CardcomConfig = {
   terminal: number;
   apiName: string;

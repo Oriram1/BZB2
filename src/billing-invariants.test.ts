@@ -5,8 +5,8 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const migration = read("supabase/migrations/20260930100100_billing.sql");
-const eventsMigration = read("supabase/migrations/20260930100000_billing_notification_events.sql");
+const migration = read("supabase/migrations/20260930160226_billing.sql");
+const eventsMigration = read("supabase/migrations/20260930160155_billing_notification_events.sql");
 
 describe("billing invariants", () => {
   it("keeps Cardcom's unauthenticated callbacks off the gateway JWT and everything else on it", () => {
@@ -48,6 +48,12 @@ describe("billing invariants", () => {
     expect(checkout).not.toMatch(/body\.amount/);
     // Automatic renewal needs recorded consent before any card page opens.
     expect(checkout).toContain('body.accept_renewal !== true');
+  });
+
+  it("refuses to start or renew a charge unless billing is switched on", () => {
+    expect(read("supabase/functions/billing-create-checkout/index.ts")).toContain("billing_disabled");
+    expect(read("supabase/functions/billing-renew/index.ts")).toContain("billingEnabled()");
+    expect(read("supabase/functions/_shared/cardcom.ts")).toContain('=== "true"');
   });
 
   it("charges a renewal with an idempotency key and reconciles unknown outcomes", () => {

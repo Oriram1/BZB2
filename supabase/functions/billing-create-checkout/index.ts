@@ -7,7 +7,7 @@
  */
 import { authenticatedClients, errorResponse, hasRole, json, readJsonObject, withCors } from "../_shared/auth.ts";
 import { siteUrl } from "../_shared/email.ts";
-import { createLowProfile } from "../_shared/cardcom.ts";
+import { billingEnabled, createLowProfile } from "../_shared/cardcom.ts";
 import { buildDocument, loadPlan, markOrderFailed } from "../_shared/billing.ts";
 
 /** Stops one account from minting hosted pages (each is a Cardcom API call). */
@@ -18,6 +18,7 @@ Deno.serve(withCors(async (req) => {
 
   try {
     const { user, admin } = await authenticatedClients(req);
+    if (!billingEnabled()) return json({ error: "billing_disabled" }, 503);
     const body = await readJsonObject(req);
 
     // Renewal is automatic, so the customer must have seen and accepted that

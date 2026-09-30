@@ -24,6 +24,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   tasker_only: "מנויים זמינים למציעי מטלות בלבד",
   already_subscribed: "כבר יש לכם מנוי פעיל",
   too_many_attempts: "יותר מדי ניסיונות תשלום. כדאי לנסות שוב בעוד שעה",
+  billing_disabled: "התשלומים עדיין לא נפתחו. נעדכן כשהמנויים יהיו זמינים",
   payment_unavailable: "שירות התשלום לא זמין כרגע. נסו שוב בעוד כמה דקות",
   no_active_subscription: "לא נמצא מנוי פעיל",
   cannot_resume: "אי אפשר לחדש את המנוי הזה. אפשר לרכוש מנוי חדש",
