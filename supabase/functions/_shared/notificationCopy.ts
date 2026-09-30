@@ -28,7 +28,15 @@ export type NotificationEvent =
   // moments the child is already told about, worded for someone watching from
   // the outside. Copy-only, like the two above: no row in notification_event.
   | "parent_child_completed"
-  | "parent_child_cancelled";
+  | "parent_child_cancelled"
+  // Subscription billing. Transactional: raised by the billing functions, never
+  // by a user action, so they sit outside the per-event settings screen.
+  | "billing_renewal_reminder"
+  | "billing_payment_succeeded"
+  | "billing_payment_failed"
+  | "billing_subscription_canceled"
+  | "billing_subscription_ended"
+  | "billing_refunded";
 
 export type NotificationRow = {
   id: string;
@@ -47,6 +55,26 @@ function shekels(data: Record<string, unknown>) {
   if (!Number.isFinite(amount) || amount <= 0) return "";
   const unit = data.payment_type === "hour" ? "לשעה" : "למשימה";
   return `₪${amount.toLocaleString("he-IL")} ${unit}`;
+}
+
+/** Billing amounts: ₪30, ₪99.90. */
+function price(value: unknown) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return "";
+  return `₪${amount.toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;
+}
+
+/** An ISO instant as a calendar date in Israel: 30.12.2026. */
+function dateHe(value: unknown) {
+  if (typeof value !== "string") return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat("he-IL", {
+    timeZone: "Asia/Jerusalem",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
 }
 
 function when(data: Record<string, unknown>) {
@@ -294,6 +322,119 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       };
     }
 
+    case "billing_renewal_reminder": {
+      const plan = str(data.plan_name, "המנוי");
+      const amount = price(data.amount);
+      const date = dateHe(data.renews_at);
+      return {
+        subject: `המנוי ${say(to, RECIPIENT.yours)} ל־BZB מתחדש בקרוב`,
+        preheader: date ? `חיוב ${amount} ב־${date}` : "תזכורת לפני חידוש",
+        heading: "המנוי מתחדש בקרוב",
+        paragraphs: [
+          `מנוי ${plan} יתחדש אוטומטית${date ? ` ב־${date}` : ""}${amount ? ` ויחויב בסך ${amount}` : ""} בכרטיס השמור.`,
+          "אפשר לבטל בכל עת לפני החיוב, ישירות מההגדרות.",
+        ],
+        action: { label: "ניהול המנוי", url: `${base}/subscription` },
+        manageUrl,
+      };
+    }
+
+    case "billing_payment_succeeded": {
+      const plan = str(data.plan_name, "המנוי");
+      const amount = price(data.amount);
+      const until = dateHe(data.period_end);
+      const invoice = str(data.document_url);
+      return {
+        subject: `התשלום התקבל – מנוי ${plan}`,
+        preheader: until ? `המנוי בתוקף עד ${until}` : "תודה!",
+        heading: "התשלום התקבל, תודה!",
+        paragraphs: [
+          data.kind === "renewal" ? `המנוי ${plan} חודש בהצלחה.` : `המנוי ${plan} פעיל.`,
+        ],
+        bullets: [
+          `מסלול: ${plan}`,
+          ...(amount ? [`סכום: ${amount}`] : []),
+          ...(until ? [`בתוקף עד: ${until}`] : []),
+        ],
+        action: invoice.startsWith("https://")
+          ? { label: "לצפייה בחשבונית", url: invoice }
+          : { label: "ניהול המנוי", url: `${base}/subscription` },
+        manageUrl,
+      };
+    }
+
+    case "billing_payment_failed": {
+      const plan = str(data.plan_name, "המנוי");
+      const amount = price(data.amount);
+      const next = dateHe(data.next_attempt_at);
+      const until = dateHe(data.access_until);
+      const expired = data.reason === "card_expired";
+      return {
+        subject: `לא הצלחנו לחייב את הכרטיס – מנוי ${plan}`,
+        preheader: until ? `הגישה נשארת פעילה עד ${until}` : "נדרשת פעולה",
+        heading: "החיוב נכשל",
+        paragraphs: [
+          expired
+            ? `תוקף הכרטיס השמור פג, ולכן לא הצלחנו לחדש את מנוי ${plan}${amount ? ` (${amount})` : ""}.`
+            : `החיוב של מנוי ${plan}${amount ? ` (${amount})` : ""} נדחה על ידי חברת האשראי.`,
+          next ? `ננסה שוב ב־${next}. אפשר גם לשלם עכשיו בכרטיס אחר.` : "אפשר לשלם עכשיו בכרטיס אחר.",
+          until ? `המנוי ממשיך לפעול עד ${until}. אם החיוב לא יצליח עד אז, המנוי יסתיים.` : "",
+        ].filter(Boolean),
+        action: { label: "לתשלום ועדכון כרטיס", url: `${base}/subscription` },
+        manageUrl,
+      };
+    }
+
+    case "billing_subscription_canceled": {
+      const plan = str(data.plan_name, "המנוי");
+      const ends = dateHe(data.ends_at);
+      return {
+        subject: "ביטול המנוי התקבל",
+        preheader: ends ? `המנוי פעיל עד ${ends}` : "המנוי לא יתחדש",
+        heading: "המנוי בוטל",
+        paragraphs: [
+          `מנוי ${plan} לא יתחדש ולא יחויב שוב.`,
+          ends ? `אפשר להמשיך להשתמש בו עד ${ends}.` : "",
+          "התחרטתם? עד סוף התקופה אפשר לחזור בלחיצה אחת.",
+        ].filter(Boolean),
+        action: { label: "ניהול המנוי", url: `${base}/subscription` },
+        manageUrl,
+      };
+    }
+
+    case "billing_subscription_ended": {
+      const plan = str(data.plan_name, "המנוי");
+      const failed = data.reason === "payment_failed";
+      return {
+        subject: `מנוי ${plan} הסתיים`,
+        preheader: "חזרתם למסלול החינמי",
+        heading: "המנוי הסתיים",
+        paragraphs: [
+          failed
+            ? `לא הצלחנו לגבות את התשלום על מנוי ${plan}, ולכן המנוי הסתיים.`
+            : `מנוי ${plan} הסתיים כפי שביקשתם.`,
+          "החשבון נשאר פעיל במסלול החינמי, ושום דבר לא נמחק. אפשר לחדש בכל עת.",
+        ],
+        action: { label: "לחידוש המנוי", url: `${base}/pricing` },
+        manageUrl,
+      };
+    }
+
+    case "billing_refunded": {
+      const amount = price(data.amount);
+      return {
+        subject: "בוצע זיכוי על המנוי",
+        preheader: amount ? `זיכוי של ${amount}` : "הזיכוי בדרך",
+        heading: "בוצע זיכוי",
+        paragraphs: [
+          `זיכינו את הכרטיס${amount ? ` בסך ${amount}` : ""}. הסכום יופיע בדף החשבון בדרך כלל תוך כמה ימי עסקים.`,
+          "המנוי הסתיים והחשבון עבר למסלול החינמי.",
+        ],
+        action: { label: "למסלולים", url: `${base}/pricing` },
+        manageUrl,
+      };
+    }
+
     case "task_cancelled": {
       const task = str(data.task_name, "המטלה");
       const canceller = str(data.canceller_name, "מפרסם המטלה");
@@ -436,6 +577,54 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
       };
     }
 
+    case "billing_renewal_reminder":
+      return {
+        title: "המנוי מתחדש בקרוב",
+        body: `${str(data.plan_name, "המנוי")} יתחדש ב־${dateHe(data.renews_at) || "בקרוב"}${price(data.amount) ? ` (${price(data.amount)})` : ""}`,
+        url,
+        tag: "billing-reminder",
+      };
+
+    case "billing_payment_succeeded":
+      return {
+        title: "התשלום התקבל ✅",
+        body: `מנוי ${str(data.plan_name, "BZB")} בתוקף עד ${dateHe(data.period_end) || "סוף התקופה"}`,
+        url,
+        tag: "billing-paid",
+      };
+
+    case "billing_payment_failed":
+      return {
+        title: "החיוב נכשל ⚠️",
+        body: `לא הצלחנו לחייב את הכרטיס. אפשר לעדכן ולשלם מההגדרות`,
+        url,
+        tag: "billing-failed",
+      };
+
+    case "billing_subscription_canceled":
+      return {
+        title: "המנוי בוטל",
+        body: `לא יתחדש. פעיל עד ${dateHe(data.ends_at) || "סוף התקופה"}`,
+        url,
+        tag: "billing-canceled",
+      };
+
+    case "billing_subscription_ended":
+      return {
+        title: "המנוי הסתיים",
+        body: data.reason === "payment_failed" ? "לא הצלחנו לגבות תשלום, חזרתם למסלול החינמי" : "חזרתם למסלול החינמי",
+        url,
+        tag: "billing-ended",
+      };
+
+    case "billing_refunded":
+      return {
+        title: "בוצע זיכוי",
+        body: `${price(data.amount) ? `${price(data.amount)} ` : ""}זוכו לכרטיס, והמנוי הסתיים`,
+        url,
+        tag: "billing-refunded",
+      };
+
     case "task_cancelled":
       return {
         title: "המטלה בוטלה ❌",
@@ -468,4 +657,12 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   parent_contact_requested: { email: true, push: true },
   parent_child_completed: { email: true, push: false },
   parent_child_cancelled: { email: true, push: false },
+  // Billing is transactional: about money the user is charged, so both
+  // channels default on. They are not on the settings screen.
+  billing_renewal_reminder: { email: true, push: true },
+  billing_payment_succeeded: { email: true, push: true },
+  billing_payment_failed: { email: true, push: true },
+  billing_subscription_canceled: { email: true, push: true },
+  billing_subscription_ended: { email: true, push: true },
+  billing_refunded: { email: true, push: true },
 };

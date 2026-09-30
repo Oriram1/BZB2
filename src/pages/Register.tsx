@@ -292,15 +292,21 @@ const Register = () => {
     // Email confirmation is currently off, so signUp returns a live session and
     // the user is already signed in. Branch on the session rather than assuming:
     // when confirmation is turned back on, this same code sends them to log in.
+    // A paid plan picked before registering continues to the consent step and
+    // the card page rather than dropping the customer on their home screen.
+    const afterSignup = isPaidPlan && appRole === "tasker"
+      ? `/pricing?plan=${planId}&checkout=1`
+      : getRoleHomePath(appRole);
+
     if (isGoogleSignup) {
       toast.success("ברוכים הבאים ל־BZB! 🐝");
-      navigate(getRoleHomePath(appRole), { replace: true });
+      navigate(afterSignup, { replace: true });
       return;
     }
 
     if (data.session) {
       toast.success("ברוכים הבאים ל־BZB! 🐝");
-      navigate(getRoleHomePath(appRole), { replace: true });
+      navigate(afterSignup, { replace: true });
       return;
     }
 

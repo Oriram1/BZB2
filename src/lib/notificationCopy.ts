@@ -19,7 +19,14 @@ export type NotificationEvent =
   | "quiet_hours_digest"
   | "task_cancelled"
   // Raised by a parent from the public view page; the child approves it.
-  | "parent_contact_requested";
+  | "parent_contact_requested"
+  // Subscription billing, raised by the billing functions.
+  | "billing_renewal_reminder"
+  | "billing_payment_succeeded"
+  | "billing_payment_failed"
+  | "billing_subscription_canceled"
+  | "billing_subscription_ended"
+  | "billing_refunded";
 
 export type AppRole = "tasker" | "bee" | "parent";
 
@@ -34,6 +41,18 @@ export type NotificationRow = {
 
 const text = (value: unknown, fallback = "") =>
   typeof value === "string" && value.trim() ? value.trim() : fallback;
+
+const dateHe = (value: unknown) => {
+  if (typeof value !== "string") return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat("he-IL", {
+    timeZone: "Asia/Jerusalem",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
+};
 
 /**
  * Single line shown in the bell dropdown.
@@ -126,6 +145,44 @@ export function notificationLine(
         body: `"${text(data.task_name, "המטלה")}" בוטלה על ידי ${text(data.canceller_name, "המפרסם")}`,
       };
 
+    case "billing_renewal_reminder":
+      return {
+        emoji: "🔔",
+        title: "המנוי מתחדש בקרוב",
+        body: `${text(data.plan_name, "המנוי")} יתחדש ב־${dateHe(data.renews_at) || "בקרוב"}`,
+      };
+
+    case "billing_payment_succeeded":
+      return {
+        emoji: "✅",
+        title: "התשלום התקבל",
+        body: `מנוי ${text(data.plan_name, "BZB")} בתוקף עד ${dateHe(data.period_end) || "סוף התקופה"}`,
+      };
+
+    case "billing_payment_failed":
+      return {
+        emoji: "⚠️",
+        title: "החיוב נכשל",
+        body: "לא הצלחנו לחייב את הכרטיס. אפשר לעדכן ולשלם מההגדרות",
+      };
+
+    case "billing_subscription_canceled":
+      return {
+        emoji: "🛑",
+        title: "המנוי בוטל",
+        body: `לא יתחדש. פעיל עד ${dateHe(data.ends_at) || "סוף התקופה"}`,
+      };
+
+    case "billing_subscription_ended":
+      return {
+        emoji: "🐝",
+        title: "המנוי הסתיים",
+        body: data.reason === "payment_failed" ? "לא הצלחנו לגבות תשלום, חזרתם למסלול החינמי" : "חזרתם למסלול החינמי",
+      };
+
+    case "billing_refunded":
+      return { emoji: "💸", title: "בוצע זיכוי", body: "הסכום זוכה לכרטיס והמנוי הסתיים" };
+
     default:
       return { emoji: "🔔", title: "התראה", body: "" };
   }
@@ -143,6 +200,12 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   quiet_hours_digest: { email: true, push: true },
   task_cancelled: { email: true, push: true },
   parent_contact_requested: { email: true, push: true },
+  billing_renewal_reminder: { email: true, push: true },
+  billing_payment_succeeded: { email: true, push: true },
+  billing_payment_failed: { email: true, push: true },
+  billing_subscription_canceled: { email: true, push: true },
+  billing_subscription_ended: { email: true, push: true },
+  billing_refunded: { email: true, push: true },
 };
 
 /**

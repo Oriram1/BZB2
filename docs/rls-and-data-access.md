@@ -103,6 +103,17 @@ Participants only, on both read and write.
 `auth.uid() = user_id`. Rows are created by triggers via `enqueue_notification`,
 never by the client.
 
+### Billing tables
+
+`subscriptions`, `payment_orders` — the owner can read their own rows
+(`auth.uid() = user_id`) and nothing else. There is **no** INSERT/UPDATE/DELETE
+policy: every write comes from a billing Edge Function running as `service_role`,
+or from `apply_paid_order`, whose EXECUTE is granted to `service_role` only.
+`billing_plans` is world-readable (prices are public). `payment_methods` (the
+saved-card token) and `payment_events` (raw webhook log) have RLS on and **no
+policy at all**, so the browser cannot read them. `src/billing-invariants.test.ts`
+pins all of this.
+
 ### Log tables
 
 - `user_activity_log` — you may insert your own rows and read your own; admins
@@ -200,6 +211,8 @@ does, and each was verified live with an unauthenticated request:
 | `notify-dispatch` | shared secret in `x-notify-secret` | `401 unauthorized` |
 | `send-parent-digest` | same secret | `401 unauthorized` |
 | `send-quiet-digest` | same secret | `401 unauthorized` |
+| `billing-renew` | same secret | `401 unauthorized` |
+| `billing-webhook` | none in the request; nothing in the body is trusted, the function asks Cardcom (`GetLpResult`) and compares to our own order | unknown page id → `200 ok`, no state change |
 
 Two properties of this arrangement are worth knowing before extending it:
 

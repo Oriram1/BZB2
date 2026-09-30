@@ -20,6 +20,8 @@ import CreateTask from "./pages/CreateTask";
 import TaskList from "./pages/TaskList";
 import MyTasks from "./pages/MyTasks";
 import Pricing from "./pages/Pricing";
+import Subscription from "./pages/Subscription";
+import BillingReturn from "./pages/BillingReturn";
 import ParentalHub from "./pages/ParentalHub";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
@@ -116,6 +118,8 @@ const App = () => (
                 <Route path="/task/:id" element={<TaskDetail />} />
                 <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker", "bee"]}><MyTasks /></RoleGuard>} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/subscription" element={<RoleGuard allowedRoles={["tasker"]}><Subscription /></RoleGuard>} />
+                <Route path="/billing/return" element={<RoleGuard allowedRoles={["tasker"]}><BillingReturn /></RoleGuard>} />
                 <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
                 <Route path="/parent/report/:date" element={<RoleGuard allowedRoles={["parent"]}><ParentReport /></RoleGuard>} />
                 <Route path="/parent/view/:token" element={<ParentView />} />

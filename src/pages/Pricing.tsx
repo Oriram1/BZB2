@@ -1,8 +1,12 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
+import CheckoutConsentDialog from "@/components/billing/CheckoutConsentDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { hasAccess, useSubscription } from "@/hooks/useSubscription";
+import { billingErrorMessage, isPaidPlan, startCheckout, type PlanId } from "@/lib/billing";
 import { toast } from "sonner";
 
 const plans = [
@@ -21,19 +25,57 @@ const plans = [
 ];
 
 const Pricing = () => {
-  const { user } = useAuth();
-  
+  const { user, roles, loading: authLoading } = useAuth();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
+  const [params, setParams] = useSearchParams();
+  const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
+  const [busy, setBusy] = useState(false);
+
   const navigate = useNavigate();
   const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
+
+  const isTasker = roles.includes("tasker");
+  const subscribed = hasAccess(subscription);
+
+  // Registering for a paid plan lands here with ?plan=…&checkout=1 so the
+  // consent step is the same one a signed-in visitor sees. Wait for roles and
+  // the existing subscription to load: a subscriber must not be offered a
+  // second purchase.
+  useEffect(() => {
+    const planParam = params.get("plan");
+    if (params.get("checkout") !== "1" || !isPaidPlan(planParam)) return;
+    if (authLoading || subscriptionLoading || !user || roles.length === 0) return;
+    if (isTasker && !subscribed) setCheckoutPlan(planParam);
+    setParams({}, { replace: true });
+  }, [params, setParams, authLoading, subscriptionLoading, user, roles, isTasker, subscribed]);
 
   const handlePlanClick = (planId: string) => {
     if (!user) {
       navigate(`/register/proposer?plan=${planId}`);
     } else if (planId === "free") {
       toast.info("אתם כבר רשומים בתוכנית החינמית");
+    } else if (!isPaidPlan(planId)) {
+      return;
+    } else if (subscribed) {
+      navigate("/subscription");
+    } else if (!isTasker) {
+      toast.info("מנויים זמינים למציעי מטלות בלבד");
     } else {
-      navigate(`/register/proposer?plan=${planId}`);
+      setCheckoutPlan(planId);
     }
+  };
+
+  const confirmCheckout = async () => {
+    if (!checkoutPlan) return;
+    setBusy(true);
+    const result = await startCheckout(checkoutPlan);
+    if (!result.ok) {
+      setBusy(false);
+      toast.error(billingErrorMessage(result.code));
+      return;
+    }
+    // Off to the hosted card page; busy stays on until the browser leaves.
+    window.location.assign(result.data.url);
   };
 
   return (
@@ -49,6 +91,15 @@ const Pricing = () => {
           <h1 className="text-5xl font-extrabold text-foreground mb-3">תוכניות מנוי 🐝</h1>
           <p className="text-muted-foreground text-lg font-medium">בחרו את התוכנית שמתאימה לכם</p>
         </div>
+
+        {subscribed && (
+          <p className="text-center mb-8 text-sm">
+            יש לכם מנוי פעיל.{" "}
+            <Link to="/subscription" className="font-bold underline text-primary-ink">
+              לניהול המנוי
+            </Link>
+          </p>
+        )}
 
         <div className="grid md:grid-cols-3 gap-6 mb-10">
           {plans.map((plan) => (
@@ -88,7 +139,11 @@ const Pricing = () => {
                     : "bg-muted text-foreground hover:bg-muted/80"
                 }`}
               >
-                {plan.id === "free" ? "התחילו בחינם" : "הירשמו עכשיו"}
+                {plan.id === "free"
+                  ? "התחילו בחינם"
+                  : subscribed && subscription?.plan_id === plan.id
+                    ? "המנוי שלכם"
+                    : "הירשמו עכשיו"}
               </Button>
             </div>
           ))}
@@ -99,6 +154,14 @@ const Pricing = () => {
           🛡️ למנויים בתשלום — אפשרות להוסיף ביטוח מטלות (5 ₪/חודש) זמינה בעת ההרשמה ובמסך יצירת מטלה.
         </p>
       </div>
+
+      <CheckoutConsentDialog
+        open={checkoutPlan !== null}
+        plan={checkoutPlan}
+        busy={busy}
+        onOpenChange={(open) => !open && setCheckoutPlan(null)}
+        onConfirm={confirmCheckout}
+      />
     </div>
   );
 };

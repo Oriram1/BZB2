@@ -17,9 +17,20 @@ verify_jwt = false
 [functions.send-quiet-digest]
 verify_jwt = false
 
+# Cardcom calls this after a hosted-page payment. It sends no JWT and the
+# published API defines no signature for it, so nothing in the body is trusted: the function only takes the page
+# id from it and asks Cardcom what happened (see billing-webhook/index.ts).
+[functions.billing-webhook]
+verify_jwt = false
+
+# Invoked by pg_cron every hour, same shared-secret authentication as the
+# digests. Charges renewals, retries failures and sends billing reminders.
+[functions.billing-renew]
+verify_jwt = false
+
 # All other functions use Supabase JWT verification at the gateway. Keep this
 # explicit so a future config change cannot silently make user endpoints
-# public. The four exceptions above are machine-to-machine integrations and
+# public. The exceptions above are machine-to-machine integrations and
 # must authenticate with their own webhook/shared-secret checks.
 [functions.admin-manage-users]
 verify_jwt = true
@@ -47,3 +58,13 @@ verify_jwt = false
 verify_jwt = false
 [functions.request-parent-contact]
 verify_jwt = false
+
+# Subscription purchase, confirmation, cancellation and (admin) refund.
+[functions.billing-create-checkout]
+verify_jwt = true
+[functions.billing-confirm]
+verify_jwt = true
+[functions.billing-cancel]
+verify_jwt = true
+[functions.billing-refund]
+verify_jwt = true

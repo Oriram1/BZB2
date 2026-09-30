@@ -99,6 +99,33 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_plans: {
+        Row: {
+          active: boolean
+          amount: number
+          id: string
+          name: string
+          period_months: number
+          renewal_reminder_days: number
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          id: string
+          name: string
+          period_months: number
+          renewal_reminder_days: number
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          id?: string
+          name?: string
+          period_months?: number
+          renewal_reminder_days?: number
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -432,6 +459,77 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_orders: {
+        Row: {
+          amount: number
+          applied_at: string | null
+          created_at: string
+          deal_number: number | null
+          document_number: number | null
+          document_url: string | null
+          error: string | null
+          external_uniq_id: string | null
+          for_period_end: string | null
+          id: string
+          kind: Database["public"]["Enums"]["payment_order_kind"]
+          low_profile_id: string | null
+          paid_at: string | null
+          plan_id: string
+          refunded_at: string | null
+          response_code: number | null
+          status: Database["public"]["Enums"]["payment_order_status"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          applied_at?: string | null
+          created_at?: string
+          deal_number?: number | null
+          document_number?: number | null
+          document_url?: string | null
+          error?: string | null
+          external_uniq_id?: string | null
+          for_period_end?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["payment_order_kind"]
+          low_profile_id?: string | null
+          paid_at?: string | null
+          plan_id: string
+          refunded_at?: string | null
+          response_code?: number | null
+          status?: Database["public"]["Enums"]["payment_order_status"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          applied_at?: string | null
+          created_at?: string
+          deal_number?: number | null
+          document_number?: number | null
+          document_url?: string | null
+          error?: string | null
+          external_uniq_id?: string | null
+          for_period_end?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["payment_order_kind"]
+          low_profile_id?: string | null
+          paid_at?: string | null
+          plan_id?: string
+          refunded_at?: string | null
+          response_code?: number | null
+          status?: Database["public"]["Enums"]["payment_order_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_orders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           address: string | null
@@ -548,6 +646,71 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          canceled_at: string | null
+          card_expiry: string | null
+          card_last4: string | null
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          first_paid_at: string | null
+          id: string
+          next_attempt_at: string | null
+          plan_id: string
+          reminder_for_period_end: string | null
+          renewal_attempts: number
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          card_expiry?: string | null
+          card_last4?: string | null
+          created_at?: string
+          current_period_end: string
+          current_period_start: string
+          first_paid_at?: string | null
+          id?: string
+          next_attempt_at?: string | null
+          plan_id: string
+          reminder_for_period_end?: string | null
+          renewal_attempts?: number
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
+          card_expiry?: string | null
+          card_last4?: string | null
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          first_paid_at?: string | null
+          id?: string
+          next_attempt_at?: string | null
+          plan_id?: string
+          reminder_for_period_end?: string | null
+          renewal_attempts?: number
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_applications: {
         Row: {
@@ -869,6 +1032,14 @@ export type Database = {
         | "quiet_hours_digest"
         | "task_cancelled"
         | "parent_contact_requested"
+        | "billing_renewal_reminder"
+        | "billing_payment_succeeded"
+        | "billing_payment_failed"
+        | "billing_subscription_canceled"
+        | "billing_subscription_ended"
+        | "billing_refunded"
+      payment_order_kind: "initial" | "renewal"
+      payment_order_status: "pending" | "paid" | "failed" | "refunded"
       payment_type: "task" | "hour"
       task_category:
         | "housework"
@@ -878,6 +1049,7 @@ export type Database = {
         | "pets"
         | "gardening"
         | "other"
+      subscription_status: "active" | "past_due" | "canceled" | "expired"
       task_status:
         | "open"
         | "accepted"
@@ -1030,7 +1202,15 @@ export const Constants = {
         "quiet_hours_digest",
         "task_cancelled",
         "parent_contact_requested",
+        "billing_renewal_reminder",
+        "billing_payment_succeeded",
+        "billing_payment_failed",
+        "billing_subscription_canceled",
+        "billing_subscription_ended",
+        "billing_refunded",
       ],
+      payment_order_kind: ["initial", "renewal"],
+      payment_order_status: ["pending", "paid", "failed", "refunded"],
       payment_type: ["task", "hour"],
       task_category: [
         "housework",
@@ -1041,6 +1221,7 @@ export const Constants = {
         "gardening",
         "other",
       ],
+      subscription_status: ["active", "past_due", "canceled", "expired"],
       task_status: [
         "open",
         "accepted",
