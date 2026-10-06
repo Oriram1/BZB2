@@ -10,32 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -459,6 +434,60 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_events: {
+        Row: {
+          created_at: string
+          id: string
+          low_profile_id: string | null
+          order_id: string | null
+          outcome: string | null
+          payload: Json | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          low_profile_id?: string | null
+          order_id?: string | null
+          outcome?: string | null
+          payload?: Json | null
+          source: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          low_profile_id?: string | null
+          order_id?: string | null
+          outcome?: string | null
+          payload?: Json | null
+          source?: string
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          card_expiry: string | null
+          card_last4: string | null
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_expiry?: string | null
+          card_last4?: string | null
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          card_expiry?: string | null
+          card_last4?: string | null
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_orders: {
         Row: {
           amount: number
@@ -535,6 +564,8 @@ export type Database = {
           address: string | null
           age: number | null
           avatar_url: string | null
+          block_reason: string | null
+          blocked_until: string | null
           created_at: string
           first_name: string
           gender: Database["public"]["Enums"]["gender"]
@@ -552,6 +583,8 @@ export type Database = {
           address?: string | null
           age?: number | null
           avatar_url?: string | null
+          block_reason?: string | null
+          blocked_until?: string | null
           created_at?: string
           first_name?: string
           gender?: Database["public"]["Enums"]["gender"]
@@ -569,6 +602,8 @@ export type Database = {
           address?: string | null
           age?: number | null
           avatar_url?: string | null
+          block_reason?: string | null
+          blocked_until?: string | null
           created_at?: string
           first_name?: string
           gender?: Database["public"]["Enums"]["gender"]
@@ -646,6 +681,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reviews: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          status: Database["public"]["Enums"]["review_status"]
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          status?: Database["public"]["Enums"]["review_status"]
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          reviewee_id?: string
+          reviewer_id?: string
+          status?: Database["public"]["Enums"]["review_status"]
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -940,10 +1019,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_avg_ratings: {
+        Row: {
+          avg_rating: number | null
+          review_count: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_archive_task: { Args: { _task_id: string }; Returns: undefined }
+      admin_set_review_status: {
+        Args: {
+          _review_id: string
+          _status: Database["public"]["Enums"]["review_status"]
+        }
+        Returns: undefined
+      }
+      apply_paid_order: {
+        Args: {
+          _card_expiry: string
+          _card_last4: string
+          _deal_number: number
+          _document_number: number
+          _document_url: string
+          _order_id: string
+          _token: string
+        }
+        Returns: Json
+      }
       archive_record: {
         Args: {
           _record_data: Json
@@ -956,6 +1061,71 @@ export type Database = {
       archive_task: {
         Args: { _task_id: string; _user_id: string }
         Returns: undefined
+      }
+      billing_claim_due_renewals: {
+        Args: { _limit?: number }
+        Returns: {
+          cancel_at_period_end: boolean
+          canceled_at: string | null
+          card_expiry: string | null
+          card_last4: string | null
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          first_paid_at: string | null
+          id: string
+          next_attempt_at: string | null
+          plan_id: string
+          reminder_for_period_end: string | null
+          renewal_attempts: number
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      billing_claim_reminders: {
+        Args: never
+        Returns: {
+          amount: number
+          current_period_end: string
+          plan_id: string
+          plan_name: string
+          subscription_id: string
+          user_id: string
+        }[]
+      }
+      billing_finish_canceled: {
+        Args: never
+        Returns: {
+          cancel_at_period_end: boolean
+          canceled_at: string | null
+          card_expiry: string | null
+          card_last4: string | null
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          first_paid_at: string | null
+          id: string
+          next_attempt_at: string | null
+          plan_id: string
+          reminder_for_period_end: string | null
+          renewal_attempts: number
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       cancel_task: { Args: { _task_id: string }; Returns: undefined }
       complete_task: { Args: { _task_id: string }; Returns: undefined }
@@ -972,17 +1142,6 @@ export type Database = {
         Args: { _applicant_id: string; _task_id: string }
         Returns: string
       }
-      admin_set_review_status: {
-        Args: {
-          _review_id: string
-          _status: Database["public"]["Enums"]["review_status"]
-        }
-        Returns: undefined
-      }
-      mark_conversation_messages_read: {
-        Args: { p_conversation_id: string }
-        Returns: number
-      }
       get_public_profile: {
         Args: { _user_id: string }
         Returns: {
@@ -998,16 +1157,24 @@ export type Database = {
         Args: { _user_id: string }
         Returns: number
       }
+      has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       is_chat_media_participant: {
         Args: { object_name: string }
         Returns: boolean
       }
+      is_user_blocked: { Args: { uid: string }; Returns: boolean }
+      mark_conversation_messages_read: {
+        Args: { p_conversation_id: string }
+        Returns: number
+      }
+      normalize_email: { Args: { p_email: string }; Returns: string }
       purge_expired_archives: { Args: never; Returns: number }
       record_task_view: { Args: { _task_id: string }; Returns: number }
       redeem_family_link_code: {
         Args: { _code_hash: string; _parent_user_id: string }
         Returns: string
       }
+      run_billing_renew: { Args: never; Returns: undefined }
       run_parent_digest: { Args: never; Returns: undefined }
       run_quiet_digest: { Args: never; Returns: undefined }
       switch_my_role: {
@@ -1041,6 +1208,8 @@ export type Database = {
       payment_order_kind: "initial" | "renewal"
       payment_order_status: "pending" | "paid" | "failed" | "refunded"
       payment_type: "task" | "hour"
+      review_status: "pending" | "approved" | "rejected"
+      subscription_status: "active" | "past_due" | "canceled" | "expired"
       task_category:
         | "housework"
         | "handyman"
@@ -1049,7 +1218,6 @@ export type Database = {
         | "pets"
         | "gardening"
         | "other"
-      subscription_status: "active" | "past_due" | "canceled" | "expired"
       task_status:
         | "open"
         | "accepted"
@@ -1071,12 +1239,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1100,11 +1268,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1125,11 +1293,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1150,11 +1318,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1167,11 +1335,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1181,9 +1349,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["tasker", "bee", "parent", "admin"],
@@ -1212,6 +1377,8 @@ export const Constants = {
       payment_order_kind: ["initial", "renewal"],
       payment_order_status: ["pending", "paid", "failed", "refunded"],
       payment_type: ["task", "hour"],
+      review_status: ["pending", "approved", "rejected"],
+      subscription_status: ["active", "past_due", "canceled", "expired"],
       task_category: [
         "housework",
         "handyman",
@@ -1221,7 +1388,6 @@ export const Constants = {
         "gardening",
         "other",
       ],
-      subscription_status: ["active", "past_due", "canceled", "expired"],
       task_status: [
         "open",
         "accepted",
