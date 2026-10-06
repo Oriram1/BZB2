@@ -32,6 +32,9 @@ const hebrewAuthError = (message: string): string => {
   const m = message.toLowerCase();
   if (m.includes("already registered") || m.includes("already been registered"))
     return "כתובת האימייל הזו כבר רשומה. אפשר להתחבר איתה או לבחור כתובת אחרת";
+  // Our normalized-email trigger rejects Gmail dot/+ aliases; GoTrue surfaces it as a generic DB error.
+  if (m.includes("database error saving new user"))
+    return "כבר קיים חשבון על תיבת המייל הזו (גם בגרסה עם נקודות או +). אפשר להתחבר עם הכתובת המקורית";
   if (m.includes("invalid format") || m.includes("validate email"))
     return "כתובת האימייל לא נראית תקינה";
   if (m.includes("password") && m.includes("6"))
