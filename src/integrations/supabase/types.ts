@@ -1162,6 +1162,7 @@ export type Database = {
         Args: { object_name: string }
         Returns: boolean
       }
+      is_email_alias_taken: { Args: { p_email: string }; Returns: boolean }
       is_user_blocked: { Args: { uid: string }; Returns: boolean }
       mark_conversation_messages_read: {
         Args: { p_conversation_id: string }

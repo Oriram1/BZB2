@@ -32,9 +32,6 @@ const hebrewAuthError = (message: string): string => {
   const m = message.toLowerCase();
   if (m.includes("already registered") || m.includes("already been registered"))
     return "כתובת האימייל הזו כבר רשומה. אפשר להתחבר איתה או לבחור כתובת אחרת";
-  // Our normalized-email trigger rejects Gmail dot/+ aliases; GoTrue surfaces it as a generic DB error.
-  if (m.includes("database error saving new user"))
-    return "כבר קיים חשבון על תיבת המייל הזו (גם בגרסה עם נקודות או +). אפשר להתחבר עם הכתובת המקורית";
   if (m.includes("invalid format") || m.includes("validate email"))
     return "כתובת האימייל לא נראית תקינה";
   if (m.includes("password") && m.includes("6"))
@@ -249,7 +246,15 @@ const Register = () => {
     }
 
     if (error) {
-      toast.error(hebrewAuthError(error.message));
+      // The normalized-email trigger surfaces as a generic DB error; confirm the cause before saying so.
+      const aliasTaken =
+        error.message.toLowerCase().includes("database error saving new user") &&
+        (await supabase.rpc("is_email_alias_taken", { p_email: form.email })).data === true;
+      toast.error(
+        aliasTaken
+          ? "כבר קיים חשבון על תיבת המייל הזו (גם בגרסה עם נקודות או +). אפשר להתחבר עם הכתובת המקורית"
+          : hebrewAuthError(error.message),
+      );
       setLoading(false);
       return;
     }
