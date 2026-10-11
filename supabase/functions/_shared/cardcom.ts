@@ -10,11 +10,11 @@
  */
 
 const BASE_URL = "https://secure.cardcom.solutions/api/v11";
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "host.docker.internal"]);
 
 /**
  * `CARDCOM_BASE_URL` points the client at a local stand-in for tests. It is
- * honoured for loopback addresses only, so a stray value can never send a real
+ * honoured for loopback addresses (and Docker's alias for the host) only, so a stray value can never send a real
  * terminal's credentials somewhere else.
  */
 function baseUrl() {

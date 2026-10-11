@@ -32,14 +32,14 @@ function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-export function startMockCardcom(): MockCardcom {
+export function startMockCardcom(port = 0): MockCardcom {
   const pages = new Map<string, MockPayment>();
   const charges = new Map<string, number>();
   const requests: MockCardcom["requests"] = [];
   let nextPage = 1;
   let nextTransaction = 9000;
 
-  const server = Deno.serve({ hostname: "127.0.0.1", port: 0, onListen() {} }, async (req) => {
+  const server = Deno.serve({ hostname: "127.0.0.1", port, onListen() {} }, async (req) => {
     const path = new URL(req.url).pathname.replace(/^\/api\/v11/, "");
     const body = await req.json() as Record<string, unknown>;
     requests.push({ path, body });
