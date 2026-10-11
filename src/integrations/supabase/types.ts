@@ -81,7 +81,10 @@ export type Database = {
           id: string
           name: string
           period_months: number
+          price_signature: string | null
           renewal_reminder_days: number
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           active?: boolean
@@ -89,7 +92,10 @@ export type Database = {
           id: string
           name: string
           period_months: number
+          price_signature?: string | null
           renewal_reminder_days: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           active?: boolean
@@ -97,9 +103,50 @@ export type Database = {
           id?: string
           name?: string
           period_months?: number
+          price_signature?: string | null
           renewal_reminder_days?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
+      }
+      billing_plan_price_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: number
+          new_amount: number
+          old_amount: number
+          plan_id: string
+          source: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          new_amount: number
+          old_amount: number
+          plan_id: string
+          source: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          new_amount?: number
+          old_amount?: number
+          plan_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_plan_price_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversations: {
         Row: {

@@ -14,6 +14,7 @@ import {
   type LowProfileResult,
   type TransactionInfo,
 } from "./cardcom.ts";
+import { PlanIntegrityError, verifyPlan } from "./planPrice.ts";
 
 /**
  * Idempotency key for one renewal attempt, stable per (subscription, period,
@@ -196,15 +197,33 @@ export async function notifyBilling(
   if (error) console.error("billing_notify_failed", { event, error: error.message });
 }
 
-export async function loadPlan(admin: SupabaseClient, planId: string) {
+/**
+ * Loads a plan. By default the row's price signature is verified first, and a
+ * plan that does not verify throws `PlanIntegrityError`: a charge never uses an
+ * amount that did not come through the admin function. Pass `verify: false` only
+ * where the price is not used (a name for a notification).
+ */
+export async function loadPlan(admin: SupabaseClient, planId: string, options: { verify?: boolean } = {}) {
   const { data } = await admin
     .from("billing_plans")
-    .select("id, name, amount, period_months, renewal_reminder_days, active")
+    .select("id, name, amount, period_months, renewal_reminder_days, active, price_signature")
     .eq("id", planId)
     .maybeSingle();
-  return data as
-    | { id: string; name: string; amount: number | string; period_months: number; renewal_reminder_days: number; active: boolean }
-    | null;
+  if (!data) return null;
+
+  if (options.verify !== false && !(await verifyPlan(data))) {
+    console.error("billing_plan_integrity_failed", { planId });
+    throw new PlanIntegrityError(planId);
+  }
+  const { price_signature: _signature, ...plan } = data;
+  return plan as {
+    id: string;
+    name: string;
+    amount: number | string;
+    period_months: number;
+    renewal_reminder_days: number;
+    active: boolean;
+  };
 }
 
 /** Grants the paid period (idempotently) and tells the user, once. */

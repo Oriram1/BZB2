@@ -30,6 +30,7 @@ import {
   type SubscriptionRow,
   type Verdict,
 } from "../_shared/billing.ts";
+import { PlanIntegrityError } from "../_shared/planPrice.ts";
 
 /** pg_net gives this function 55s; stop starting new charges well before that. */
 const TIME_BUDGET_MS = 40_000;
@@ -71,7 +72,7 @@ async function recordFailure(
 ) {
   await markOrderFailed(admin, orderId, reason, code);
 
-  const plan = await loadPlan(admin, sub.plan_id);
+  const plan = await loadPlan(admin, sub.plan_id, { verify: false });
   const outcome = planFailure(sub.renewal_attempts, new Date(sub.current_period_end));
   const graceEnd = new Date(
     new Date(sub.current_period_end).getTime() + RETRY_OFFSETS_DAYS[RETRY_OFFSETS_DAYS.length - 1] * 86_400_000,
@@ -133,7 +134,15 @@ async function settleRenewal(
 }
 
 async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promise<string> {
-  const plan = await loadPlan(admin, sub.plan_id);
+  let plan: Awaited<ReturnType<typeof loadPlan>>;
+  try {
+    plan = await loadPlan(admin, sub.plan_id);
+  } catch (error) {
+    // A price that does not verify is not charged. The subscription is left as it
+    // is; the failure is logged by loadPlan and shows up in the worker summary.
+    if (error instanceof PlanIntegrityError) return "price_integrity_error";
+    throw error;
+  }
   if (!plan) return "unknown_plan";
 
   // Stable per (subscription, period, attempt): a crashed run that comes back
@@ -286,7 +295,7 @@ Deno.serve(async (req) => {
 
   const { data: ended } = await admin.rpc("billing_finish_canceled");
   for (const sub of (ended ?? []) as SubscriptionRow[]) {
-    const plan = await loadPlan(admin, sub.plan_id);
+    const plan = await loadPlan(admin, sub.plan_id, { verify: false });
     await notifyBilling(admin, sub.user_id, "billing_subscription_ended", { plan_name: plan?.name, reason: "canceled" });
     summary.ended += 1;
   }

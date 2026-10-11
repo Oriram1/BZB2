@@ -9,6 +9,7 @@ import { authenticatedClients, errorResponse, hasRole, json, readJsonObject, wit
 import { siteUrl } from "../_shared/email.ts";
 import { billingEnabled, createLowProfile } from "../_shared/cardcom.ts";
 import { buildDocument, loadPlan, markOrderFailed } from "../_shared/billing.ts";
+import { PlanIntegrityError } from "../_shared/planPrice.ts";
 
 /** Stops one account from minting hosted pages (each is a Cardcom API call). */
 const MAX_PENDING_PER_HOUR = 5;
@@ -40,7 +41,14 @@ Deno.serve(withCors(async (req) => {
     // card becomes the saved one. The plan is the one they already have.
     const overdue = existing?.status === "past_due" ? existing : null;
     const planId = overdue ? overdue.plan_id : String(body.plan_id ?? "");
-    const plan = await loadPlan(admin, planId);
+    let plan: Awaited<ReturnType<typeof loadPlan>>;
+    try {
+      plan = await loadPlan(admin, planId);
+    } catch (error) {
+      // The stored price does not carry a valid signature: never charge it.
+      if (error instanceof PlanIntegrityError) return json({ error: "price_integrity_error" }, 503);
+      throw error;
+    }
     if (!plan || !plan.active) return json({ error: "unknown_plan" }, 400);
 
     const since = new Date(Date.now() - 3_600_000).toISOString();

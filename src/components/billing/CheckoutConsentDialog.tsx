@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PAID_PLANS, type PlanId } from "@/lib/billing";
+import { formatPrice, periodShort, usePlans, type PlanId } from "@/lib/billing";
 
 interface Props {
   open: boolean;
@@ -30,7 +30,8 @@ interface Props {
  */
 const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange, onConfirm }: Props) => {
   const [agreed, setAgreed] = useState(false);
-  const info = plan ? PAID_PLANS[plan] : null;
+  const { plans } = usePlans();
+  const info = plan ? plans[plan] ?? null : null;
 
   // Never carry a previous tick into the next purchase.
   useEffect(() => {
@@ -45,7 +46,7 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
             {overdue ? "תשלום עבור החידוש" : `מנוי ${info?.name ?? ""}`}
           </DialogTitle>
           <DialogDescription className="text-center text-base pt-1">
-            {info ? `${info.price} ₪ ל${info.period}` : ""}
+            {info ? `${formatPrice(info.price)} ₪ ${periodShort(info.periodMonths)}` : ""}
           </DialogDescription>
         </DialogHeader>
 

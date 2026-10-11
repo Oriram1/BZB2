@@ -1,16 +1,90 @@
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type PlanId = "quarterly" | "annual";
 
-/**
- * What the screens show. The amount actually charged always comes from the
- * `billing_plans` table on the server, so a wrong number here can mislead a
- * reader but never change what a card is charged.
- */
-export const PAID_PLANS: Record<PlanId, { name: string; price: number; period: string }> = {
-  quarterly: { name: "רבעוני", price: 30, period: "3 חודשים" },
-  annual: { name: "שנתי", price: 100, period: "שנה" },
+export type PlanInfo = { name: string; price: number; periodMonths: number; period: string };
+
+/** Everything the screens say about a cadence comes from the plan's period, so a price change is the only edit needed. */
+export const periodLabel = (months: number) => {
+  if (months === 12) return "שנה";
+  if (months === 1) return "חודש";
+  return `${months} חודשים`;
 };
+
+/** Short form for a price line: "₪30 ל-3 חודשים" reads as "ל-3 חודשים" / "לשנה". */
+export const periodShort = (months: number) => {
+  if (months === 12) return "לשנה";
+  if (months === 1) return "לחודש";
+  return `ל-${months} חודשים`;
+};
+
+/** `29.9` -> "29.90", `30` -> "30": no trailing zeros unless there are agorot. */
+export const formatPrice = (price: number) =>
+  Number.isInteger(price) ? String(price) : price.toFixed(2);
+
+type PlanRow = { id: string; name: string; amount: number | string; period_months: number; active: boolean };
+
+let plansCache: Partial<Record<PlanId, PlanInfo>> | null = null;
+let plansRequest: Promise<Partial<Record<PlanId, PlanInfo>>> | null = null;
+
+const loadPlans = () => {
+  plansRequest ??= (async () => {
+    const { data } = await supabase
+      .from("billing_plans")
+      .select("id, name, amount, period_months, active")
+      .eq("active", true);
+    const result: Partial<Record<PlanId, PlanInfo>> = {};
+    for (const row of (data ?? []) as PlanRow[]) {
+      if (!isPaidPlan(row.id)) continue;
+      result[row.id] = {
+        name: row.name,
+        price: Number(row.amount),
+        periodMonths: row.period_months,
+        period: periodLabel(row.period_months),
+      };
+    }
+    plansCache = result;
+    return result;
+  })().catch(() => {
+    // Allow a later screen to try again instead of caching a failure.
+    plansRequest = null;
+    return {} as Partial<Record<PlanId, PlanInfo>>;
+  });
+  return plansRequest;
+};
+
+/** Forget what was loaded, e.g. after an admin changes a price. */
+export const invalidatePlans = () => {
+  plansCache = null;
+  plansRequest = null;
+};
+
+/**
+ * The plans as the server has them. The price shown here and the amount
+ * charged come from the same `billing_plans` row, and the charge additionally
+ * verifies that row's signature, so this is for display only: it cannot change
+ * what a card is charged.
+ */
+export function usePlans() {
+  const [plans, setPlans] = useState<Partial<Record<PlanId, PlanInfo>>>(plansCache ?? {});
+  const [loading, setLoading] = useState(plansCache === null);
+
+  useEffect(() => {
+    if (plansCache) return;
+    let active = true;
+    void loadPlans().then((loaded) => {
+      if (!active) return;
+      setPlans(loaded);
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { plans, loading };
+}
 
 export const isPaidPlan = (value: string | null | undefined): value is PlanId =>
   value === "quarterly" || value === "annual";

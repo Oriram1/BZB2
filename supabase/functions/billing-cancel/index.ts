@@ -53,7 +53,7 @@ Deno.serve(withCors(async (req) => {
       })
       .eq("id", sub.id);
 
-    const plan = await loadPlan(admin, sub.plan_id);
+    const plan = await loadPlan(admin, sub.plan_id, { verify: false });
     await notifyBilling(admin, user.id, "billing_subscription_canceled", {
       plan_name: plan?.name,
       ends_at: endsNow ? new Date().toISOString() : sub.current_period_end,

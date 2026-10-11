@@ -101,4 +101,38 @@ describe("billing invariants", () => {
       expect(read("src/lib/notificationCopy.ts"), `${event} client copy`).toContain(`${event}: {`);
     }
   });
+
+  it("charges only a price that carries a valid signature", () => {
+    const billing = read("supabase/functions/_shared/billing.ts");
+    // loadPlan verifies by default; the callers that charge must not opt out.
+    expect(billing).toContain("verifyPlan(data)");
+    expect(billing).toContain("PlanIntegrityError");
+    expect(read("supabase/functions/billing-create-checkout/index.ts")).toContain("price_integrity_error");
+    const renew = read("supabase/functions/billing-renew/index.ts");
+    const chargeRenewal = renew.slice(renew.indexOf("async function chargeRenewal"));
+    expect(chargeRenewal.slice(0, 600)).not.toContain("verify: false");
+    expect(read("supabase/functions/billing-create-checkout/index.ts")).not.toContain("verify: false");
+  });
+
+  it("changes prices only through the admin function, and keeps the signing key out of the database", () => {
+    const fn = read("supabase/functions/admin-set-plan-price/index.ts");
+    expect(fn).toContain('.eq("role", "admin")');
+    expect(fn).toContain("signPlan(");
+    expect(fn).toContain('admin.rpc("admin_set_plan_price"');
+    expect(read("supabase/config.toml")).toContain("[functions.admin-set-plan-price]\nverify_jwt = true");
+
+    const migration = read("supabase/migrations/20261011170000_plan_price_integrity.sql");
+    expect(migration).toContain("REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.billing_plans FROM anon, authenticated");
+    expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.admin_set_plan_price(TEXT, NUMERIC, TEXT, UUID) TO service_role");
+    // The key is an Edge Function secret, not something a migration or a table stores.
+    expect(migration).not.toContain("BILLING_PRICE_SIGNING_KEY");
+    expect(read("supabase/functions/_shared/planPrice.ts")).toContain('Deno.env.get("BILLING_PRICE_SIGNING_KEY")');
+  });
+
+  it("does not hardcode a plan price in the screens", () => {
+    for (const file of ["src/pages/Pricing.tsx", "src/pages/Register.tsx", "src/pages/Subscription.tsx", "src/components/billing/CheckoutConsentDialog.tsx"]) {
+      expect(read(file), file).not.toMatch(/\b(30|100) ₪/);
+    }
+    expect(read("src/lib/billing.ts")).not.toContain("PAID_PLANS");
+  });
 });

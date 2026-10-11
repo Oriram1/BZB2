@@ -6,20 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAccess, useSubscription } from "@/hooks/useSubscription";
-import { billingErrorMessage, isPaidPlan, startCheckout, type PlanId } from "@/lib/billing";
+import { billingErrorMessage, formatPrice, isPaidPlan, periodShort, startCheckout, usePlans, type PlanId } from "@/lib/billing";
 import { toast } from "sonner";
 
-const plans = [
+const basePlans = [
   {
     id: "free", name: "חינם", price: "0 ₪", period: "", description: "עמלה של 3 ₪ לכל משימה",
     features: ["הרשמה חינם", "גישה לכל המטלות", "3 ₪ עמלה למשימה"], popular: false,
   },
   {
-    id: "quarterly", name: "רבעוני", price: "30 ₪", period: "ל-3 חודשים", description: "ללא עמלה על משימות",
+    id: "quarterly", name: "רבעוני", price: "", period: "", description: "ללא עמלה על משימות",
     features: ["ללא עמלות", "גישה לכל המטלות", "תמיכה בדוא״ל", "עדיפות בתוצאות"], popular: true,
   },
   {
-    id: "annual", name: "שנתי", price: "100 ₪", period: "לשנה", description: "החיסכון הגדול ביותר",
+    id: "annual", name: "שנתי", price: "", period: "", description: "החיסכון הגדול ביותר",
     features: ["ללא עמלות", "גישה לכל המטלות", "תמיכה מועדפת", "עדיפות בתוצאות", "סטטיסטיקות מתקדמות"], popular: false,
   },
 ];
@@ -30,6 +30,22 @@ const Pricing = () => {
   const [params, setParams] = useSearchParams();
   const [checkoutPlan, setCheckoutPlan] = useState<PlanId | null>(null);
   const [busy, setBusy] = useState(false);
+  const { plans: livePlans, loading: plansLoading } = usePlans();
+
+  // Prices and cadence come from the plans table, so changing a price in the
+  // admin screen is the only edit. A paid plan whose price has not loaded shows
+  // a placeholder rather than a number that might be stale.
+  const plans = basePlans.map((plan) => {
+    if (!isPaidPlan(plan.id)) return plan;
+    const live = livePlans[plan.id];
+    if (!live) return { ...plan, price: plansLoading ? "…" : "—", period: "" };
+    return {
+      ...plan,
+      name: live.name,
+      price: `${formatPrice(live.price)} ₪`,
+      period: periodShort(live.periodMonths),
+    };
+  });
 
   const navigate = useNavigate();
   const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };

@@ -36,6 +36,8 @@ verify_jwt = false
 verify_jwt = true
 [functions.admin-reset-password]
 verify_jwt = true
+[functions.admin-set-plan-price]
+verify_jwt = true
 [functions.create-family-link-code]
 verify_jwt = true
 [functions.geocode-address]

@@ -20,12 +20,9 @@ import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRoleHomePath } from "@/lib/roleNavigation";
 import { logUserActivity } from "@/lib/activityLog";
+import { formatPrice, periodShort, usePlans } from "@/lib/billing";
 import { formFor, GENDER_LABEL, GENDER_OPTIONS, RECIPIENT, say, type Gender } from "@/lib/gender";
 
-const planLabels: Record<string, string> = {
-  quarterly: "רבעוני (30 ₪ ל-3 חודשים)",
-  annual: "שנתי (100 ₪ לשנה)",
-};
 
 /** Supabase returns English auth errors; show the common ones in Hebrew. */
 const hebrewAuthError = (message: string): string => {
@@ -54,6 +51,12 @@ const Register = () => {
   const [searchParams] = useSearchParams();
   const planId = searchParams.get("plan") || "";
   const isPaidPlan = planId === "quarterly" || planId === "annual";
+  const { plans: livePlans } = usePlans();
+  const selectedPlan = isPaidPlan ? livePlans[planId] : undefined;
+  // The price comes from the plans table; until it loads the plan is named without one.
+  const planLabel = selectedPlan
+    ? `${selectedPlan.name} (${formatPrice(selectedPlan.price)} ₪ ${periodShort(selectedPlan.periodMonths)})`
+    : planId === "annual" ? "שנתי" : "רבעוני";
   const navigate = useNavigate();
   const { user, roles, refreshUserState } = useAuth();
   const isGoogleSignup =
@@ -68,7 +71,7 @@ const Register = () => {
     : isParent
     ? "הרשמה להורים 🛡️"
     : isPaidPlan
-    ? `הרשמה למנוי ${planLabels[planId]}`
+    ? `הרשמה למנוי ${planLabel}`
     : "הרשמה למציעי מטלות 📋";
   const [agreed, setAgreed] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);

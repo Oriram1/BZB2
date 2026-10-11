@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import PlanPricing from "@/components/admin/PlanPricing";
 import {
   Dialog,
   DialogContent,
@@ -956,7 +957,7 @@ export default function Admin() {
 
       <div className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-6 rounded-xl p-1">
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-7 rounded-xl p-1">
             {[
               { value: "overview", label: "סקירה" },
               { value: "users", label: "משתמשים" },
@@ -964,6 +965,7 @@ export default function Admin() {
               { value: "activity", label: "פעילות" },
               { value: "log", label: "לוג אדמין" },
               { value: "reviews", label: "ביקורות" },
+              { value: "pricing", label: "מחירים" },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -1633,6 +1635,10 @@ export default function Admin() {
           {/* ─── Reviews Tab ─── */}
           <TabsContent value="reviews" className="space-y-6">
             <AdminReviewsPanel />
+          </TabsContent>
+                  {/* ─── Pricing Tab ─── */}
+          <TabsContent value="pricing" className="space-y-6">
+            <PlanPricing />
           </TabsContent>
         </Tabs>
       </div>

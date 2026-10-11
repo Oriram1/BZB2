@@ -26,7 +26,8 @@ import {
   formatDate,
   graceEnd,
   isPaidPlan,
-  PAID_PLANS,
+  formatPrice,
+  usePlans,
   resumeSubscription,
   startCheckout,
 } from "@/lib/billing";
@@ -69,7 +70,8 @@ const Subscription = () => {
       .then(({ data }) => setOrders((data ?? []) as OrderRow[]));
   }, [user, subscription?.current_period_end]);
 
-  const plan = subscription && isPaidPlan(subscription.plan_id) ? PAID_PLANS[subscription.plan_id] : null;
+  const { plans } = usePlans();
+  const plan = subscription && isPaidPlan(subscription.plan_id) ? plans[subscription.plan_id] ?? null : null;
 
   const cancel = async () => {
     setBusy(true);
@@ -153,7 +155,7 @@ const Subscription = () => {
                 <p className="text-muted-foreground">
                   {subscription.cancel_at_period_end
                     ? `המנוי פעיל עד ${formatDate(subscription.current_period_end)} ולא יתחדש.`
-                    : `המנוי מתחדש ב־${formatDate(subscription.current_period_end)}${plan ? ` בסך ${plan.price} ₪` : ""}.`}
+                    : `המנוי מתחדש ב־${formatDate(subscription.current_period_end)}${plan ? ` בסך ${formatPrice(plan.price)} ₪` : ""}.`}
                 </p>
               )}
 
