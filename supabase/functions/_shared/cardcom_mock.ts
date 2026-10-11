@@ -57,6 +57,18 @@ export function startMockCardcom(port = 0, publicBase = `http://127.0.0.1:${port
       const page = pages.get(payMatch[1]);
       if (!page) return new Response("unknown page", { status: 404 });
       const outcome = requestUrl.searchParams.get("outcome");
+      if (!outcome) {
+        // A stand-in for Cardcom's card page: three buttons instead of a card form.
+        const link = (value: string, label: string) =>
+          `<p><a href="${requestUrl.pathname}?outcome=${value}" style="font:20px sans-serif">${label}</a></p>`;
+        return new Response(
+          `<!doctype html><meta charset="utf-8"><title>Cardcom mock</title><body dir="rtl" style="padding:40px">` +
+            `<h1>Cardcom (mock)</h1><p>סכום: ${page.amount} ₪</p>` +
+            link("paid", "שלם (כרטיס מאושר)") + link("declined", "כרטיס נדחה") + link("cancel", "בטל") +
+            `</body>`,
+          { headers: { "Content-Type": "text/html; charset=utf-8" } },
+        );
+      }
       if (outcome === "paid" || outcome === "declined") page.outcome = outcome;
       const target = outcome === "paid" ? page.successUrl : outcome === "declined" ? page.failedUrl : page.cancelUrl;
       if (!target) return new Response("no redirect", { status: 404 });
