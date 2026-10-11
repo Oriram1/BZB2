@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { chargeToken, createLowProfile, getLpResult, getTransactionByExternalId, refundTransaction } from "./cardcom.ts";
+import { cardcomConfig, cardcomMode, chargeToken, createLowProfile, getLpResult, getTransactionByExternalId, refundTransaction } from "./cardcom.ts";
 import {
   MOCK_API_NAME,
   MOCK_API_PASSWORD,
@@ -14,9 +14,10 @@ const ORDER_ID = "22222222-2222-2222-2222-222222222222";
 function useMock(apiName = MOCK_API_NAME) {
   const mock = startMockCardcom();
   Deno.env.set("CARDCOM_BASE_URL", mock.url);
-  Deno.env.set("CARDCOM_TERMINAL", String(MOCK_TERMINAL));
-  Deno.env.set("CARDCOM_API_NAME", apiName);
-  Deno.env.set("CARDCOM_API_PASSWORD", MOCK_API_PASSWORD);
+  Deno.env.delete("CARDCOM_MODE");
+  Deno.env.set("CARDCOM_TEST_TERMINAL", String(MOCK_TERMINAL));
+  Deno.env.set("CARDCOM_TEST_API_NAME", apiName);
+  Deno.env.set("CARDCOM_TEST_API_PASSWORD", MOCK_API_PASSWORD);
   return mock;
 }
 
@@ -74,9 +75,9 @@ async function createPage(amount = 30) {
 
 Deno.test("the override refuses a non-loopback host, so credentials cannot be redirected", async () => {
   Deno.env.set("CARDCOM_BASE_URL", "https://evil.example.com/api/v11");
-  Deno.env.set("CARDCOM_TERMINAL", "1000");
-  Deno.env.set("CARDCOM_API_NAME", "x");
-  Deno.env.set("CARDCOM_API_PASSWORD", "y");
+  Deno.env.set("CARDCOM_TEST_TERMINAL", "1000");
+  Deno.env.set("CARDCOM_TEST_API_NAME", "x");
+  Deno.env.set("CARDCOM_TEST_API_PASSWORD", "y");
   try {
     await assertRejects(() => getLpResult("lp-1"), Error, "cardcom_base_url_not_local");
   } finally {
@@ -200,9 +201,43 @@ Deno.test("refund needs the API password", async () => {
   try {
     assertEquals((await refundTransaction({ transactionId: 9000, partialSum: 10 })).ok, true);
 
-    Deno.env.set("CARDCOM_API_PASSWORD", "wrong");
+    Deno.env.set("CARDCOM_TEST_API_PASSWORD", "wrong");
     await assertRejects(() => refundTransaction({ transactionId: 9000 }), Error, "cardcom_http_401");
   } finally {
     await mock.close();
+  }
+});
+
+Deno.test("the mode picks which terminal is used, and anything but 'live' is test", () => {
+  const set = (k: string, v?: string) => (v === undefined ? Deno.env.delete(k) : Deno.env.set(k, v));
+  const saved = ["CARDCOM_MODE", "CARDCOM_TERMINAL", "CARDCOM_API_NAME", "CARDCOM_API_PASSWORD",
+    "CARDCOM_TEST_TERMINAL", "CARDCOM_TEST_API_NAME", "CARDCOM_TEST_API_PASSWORD"].map((k) => [k, Deno.env.get(k)] as const);
+  try {
+    set("CARDCOM_TERMINAL", "197542");
+    set("CARDCOM_API_NAME", "live-name");
+    set("CARDCOM_API_PASSWORD", "live-pw");
+    set("CARDCOM_TEST_TERMINAL", "1000");
+    set("CARDCOM_TEST_API_NAME", "test-name");
+    set("CARDCOM_TEST_API_PASSWORD", "test-pw");
+
+    set("CARDCOM_MODE");
+    assertEquals([cardcomMode(), cardcomConfig().terminal], ["test", 1000]);
+    set("CARDCOM_MODE", "Live ");
+    assertEquals(cardcomMode(), "test");
+    set("CARDCOM_MODE", "live");
+    assertEquals([cardcomMode(), cardcomConfig().terminal, cardcomConfig().apiName], ["live", 197542, "live-name"]);
+
+    // Live selected but the test credentials are the only ones set: never fall back.
+    set("CARDCOM_TERMINAL");
+    set("CARDCOM_API_NAME");
+    set("CARDCOM_API_PASSWORD");
+    try {
+      cardcomConfig();
+      throw new Error("should have thrown");
+    } catch (error) {
+      assertEquals((error as Error).message, "cardcom_not_configured");
+    }
+  } finally {
+    for (const [k, v] of saved) set(k, v);
   }
 });

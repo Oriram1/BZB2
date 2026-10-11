@@ -12,8 +12,20 @@
 ## מצב טסט / לייב
 
 `BILLING_ENABLED` הוא מתג ראשי. כשהוא לא `true`, `billing-create-checkout` מחזיר 503 ו־`billing-renew` לא עושה דבר.
-לבדיקות: `BILLING_ENABLED=true` יחד עם פרטי **מסוף הבדיקה** של Cardcom (לא המסוף החי). למעבר לייב מחליפים את שלושת ערכי המסוף
-ומאשרים ללקוח. אין מצב "טסט" בקוד עצמו: ההפרדה היא לפי איזה מסוף מוגדר ב־secrets.
+
+שני המסופים מוגדרים במקביל, ו־`CARDCOM_MODE` בוחר ביניהם:
+
+| Secret | מסוף |
+|---|---|
+| `CARDCOM_TEST_TERMINAL`, `CARDCOM_TEST_API_NAME`, `CARDCOM_TEST_API_PASSWORD` | בדיקה (מסוף 1000) |
+| `CARDCOM_TERMINAL`, `CARDCOM_API_NAME`, `CARDCOM_API_PASSWORD` | חי |
+| `CARDCOM_MODE` | `live` = חי. כל ערך אחר, כולל חסר, = בדיקה |
+
+מצב ברירת המחדל הוא בדיקה, כך שמעבר לחי הוא תמיד פעולה מכוונת. אם נבחר `live` ופרטי החי חסרים, הקוד נכשל (`cardcom_not_configured`) ולא נופל חזרה למסוף הבדיקה.
+
+למעבר לחי: `supabase secrets set CARDCOM_MODE=live`. חשוב: מנויים והזמנות שנוצרו במסוף הבדיקה לא ישרדו מעבר. הטוקנים שלהם שייכים למסוף הבדיקה ולכן חידוש מול החי ייכשל. לפני המעבר כדאי לבטל או לאפס את מנויי הבדיקה.
+
+מפתח ה־API של מסוף הבדיקה מנוהל בפאנל, ב־`Definition/APIKey.aspx` ("ניהול מפתחות API לממשקים"), והוא מורשה למסוף 1000.
 
 ## מה נבנה
 
@@ -35,7 +47,8 @@
    `20260930160155_billing_notification_events.sql` (ערכי enum בלבד) ואז `20260930160226_billing.sql`.
 2. **Secrets לפונקציות** (הערכים במייל של Cardcom; לא להדביק בצ'אט ולא ל־git):
    ```bash
-   supabase secrets set CARDCOM_TERMINAL=… CARDCOM_API_NAME=… CARDCOM_API_PASSWORD=…
+   supabase secrets set CARDCOM_TEST_TERMINAL=… CARDCOM_TEST_API_NAME=… CARDCOM_TEST_API_PASSWORD=…
+   supabase secrets set CARDCOM_TERMINAL=… CARDCOM_API_NAME=… CARDCOM_API_PASSWORD=…   # חי, כשמוכנים
    ```
    `CARDCOM_API_PASSWORD` נדרש רק לזיכויים. אחרי העלייה לאוויר מומלץ להחליף את הסיסמאות,
    כי הן עברו במייל בטקסט גלוי.

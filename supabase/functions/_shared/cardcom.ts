@@ -45,10 +45,27 @@ export type CardcomConfig = {
   issueDocuments: boolean;
 };
 
+/**
+ * Which terminal the code charges. `CARDCOM_MODE` is "test" or "live"; anything
+ * else, including unset, is test, so going live is always a deliberate secret
+ * change and never a missing one.
+ */
+export type CardcomMode = "test" | "live";
+
+export function cardcomMode(): CardcomMode {
+  return Deno.env.get("CARDCOM_MODE") === "live" ? "live" : "test";
+}
+
+/**
+ * Both terminals can be configured at once; the mode picks one. The live
+ * terminal keeps the original secret names (`CARDCOM_TERMINAL`, `CARDCOM_API_NAME`,
+ * `CARDCOM_API_PASSWORD`) and the test one is `CARDCOM_TEST_*`.
+ */
 export function cardcomConfig(): CardcomConfig {
-  const terminal = Number(Deno.env.get("CARDCOM_TERMINAL"));
-  const apiName = Deno.env.get("CARDCOM_API_NAME");
-  const apiPassword = Deno.env.get("CARDCOM_API_PASSWORD");
+  const prefix = cardcomMode() === "live" ? "CARDCOM_" : "CARDCOM_TEST_";
+  const terminal = Number(Deno.env.get(`${prefix}TERMINAL`));
+  const apiName = Deno.env.get(`${prefix}API_NAME`);
+  const apiPassword = Deno.env.get(`${prefix}API_PASSWORD`);
   if (!Number.isInteger(terminal) || terminal <= 0 || !apiName || !apiPassword) {
     throw new Error("cardcom_not_configured");
   }
