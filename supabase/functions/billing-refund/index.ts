@@ -24,7 +24,7 @@ Deno.serve(withCors(async (req) => {
 
     const { data: order } = await admin
       .from("payment_orders")
-      .select("id, user_id, plan_id, amount, status, deal_number")
+      .select("id, user_id, plan_id, amount, status, deal_number, error")
       .eq("id", orderId)
       .maybeSingle();
     if (!order) return json({ error: "not_found" }, 404);
@@ -46,16 +46,20 @@ Deno.serve(withCors(async (req) => {
       .select("id");
 
     if (flipped?.length) {
-      await admin
-        .from("subscriptions")
-        .update({
-          status: "canceled",
-          cancel_at_period_end: true,
-          canceled_at: new Date().toISOString(),
-          next_attempt_at: null,
-        })
-        .eq("user_id", order.user_id)
-        .in("status", ["active", "past_due"]);
+      // A duplicate charge granted nothing, so refunding it must not end the
+      // subscription that the original payment paid for.
+      if (order.error !== "period_already_paid") {
+        await admin
+          .from("subscriptions")
+          .update({
+            status: "canceled",
+            cancel_at_period_end: true,
+            canceled_at: new Date().toISOString(),
+            next_attempt_at: null,
+          })
+          .eq("user_id", order.user_id)
+          .in("status", ["active", "past_due"]);
+      }
 
       await notifyBilling(admin, order.user_id, "billing_refunded", { amount: order.amount });
     }
