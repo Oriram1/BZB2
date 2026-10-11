@@ -10,6 +10,20 @@
  */
 
 const BASE_URL = "https://secure.cardcom.solutions/api/v11";
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * `CARDCOM_BASE_URL` points the client at a local stand-in for tests. It is
+ * honoured for loopback addresses only, so a stray value can never send a real
+ * terminal's credentials somewhere else.
+ */
+function baseUrl() {
+  const override = Deno.env.get("CARDCOM_BASE_URL");
+  if (!override) return BASE_URL;
+  const url = new URL(override);
+  if (!LOCAL_HOSTS.has(url.hostname)) throw new Error("cardcom_base_url_not_local");
+  return override.replace(/\/+$/, "");
+}
 const REQUEST_TIMEOUT_MS = 20_000;
 
 /** Duplicate `ExternalUniqTranId`: the earlier attempt already reached Cardcom. */
@@ -84,7 +98,7 @@ export type LowProfileResult = {
 };
 
 async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${baseUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
