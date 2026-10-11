@@ -13,6 +13,9 @@ export const MOCK_API_PASSWORD = "mock-password";
 
 export type MockPayment = {
   returnValue: string;
+  successUrl?: string;
+  failedUrl?: string;
+  cancelUrl?: string;
   /** What the hosted page ended up as. `none` = customer has not paid yet. */
   outcome: "none" | "paid" | "declined";
   amount: number;
@@ -32,15 +35,34 @@ function reply(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-export function startMockCardcom(port = 0): MockCardcom {
+/**
+ * `publicBase` is how a browser reaches this server, for the hosted-page URL it
+ * hands out. Visiting `<publicBase>/pay/<id>?outcome=paid|declined|cancel` plays
+ * the customer finishing the page and redirects like Cardcom would.
+ */
+export function startMockCardcom(port = 0, publicBase = `http://127.0.0.1:${port}`): MockCardcom {
   const pages = new Map<string, MockPayment>();
   const charges = new Map<string, number>();
   const requests: MockCardcom["requests"] = [];
   let nextPage = 1;
+  const pagePrefix = `lp${Date.now().toString(36)}-`;
   let nextTransaction = 9000;
+  // A long-lived database would otherwise see the same ids again after a restart.
+  nextTransaction += Math.floor(Date.now() / 1000) % 1_000_000;
 
   const server = Deno.serve({ hostname: "127.0.0.1", port, onListen() {} }, async (req) => {
-    const path = new URL(req.url).pathname.replace(/^\/api\/v11/, "");
+    const requestUrl = new URL(req.url);
+    const payMatch = req.method === "GET" && requestUrl.pathname.match(/^\/pay\/([^/]+)$/);
+    if (payMatch) {
+      const page = pages.get(payMatch[1]);
+      if (!page) return new Response("unknown page", { status: 404 });
+      const outcome = requestUrl.searchParams.get("outcome");
+      if (outcome === "paid" || outcome === "declined") page.outcome = outcome;
+      const target = outcome === "paid" ? page.successUrl : outcome === "declined" ? page.failedUrl : page.cancelUrl;
+      if (!target) return new Response("no redirect", { status: 404 });
+      return Response.redirect(`${target}${target.includes("?") ? "&" : "?"}lowprofilecode=${payMatch[1]}`, 302);
+    }
+    const path = requestUrl.pathname.replace(/^\/api\/v11/, "");
     const body = await req.json() as Record<string, unknown>;
     requests.push({ path, body });
 
@@ -50,9 +72,16 @@ export function startMockCardcom(port = 0): MockCardcom {
 
     switch (path) {
       case "/LowProfile/Create": {
-        const id = `lp-${nextPage++}`;
-        pages.set(id, { returnValue: String(body.ReturnValue), outcome: "none", amount: Number(body.Amount) });
-        return reply({ ResponseCode: 0, LowProfileId: id, Url: `http://127.0.0.1/pay/${id}` });
+        const id = `${pagePrefix}${nextPage++}`;
+        pages.set(id, {
+          returnValue: String(body.ReturnValue),
+          successUrl: String(body.SuccessRedirectUrl ?? ""),
+          failedUrl: String(body.FailedRedirectUrl ?? ""),
+          cancelUrl: String(body.CancelRedirectUrl ?? ""),
+          outcome: "none",
+          amount: Number(body.Amount),
+        });
+        return reply({ ResponseCode: 0, LowProfileId: id, Url: `${publicBase}/pay/${id}` });
       }
       case "/LowProfile/GetLpResult": {
         const page = pages.get(String(body.LowProfileId));
