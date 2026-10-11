@@ -1,6 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { LowProfileResult } from "./cardcom.ts";
-import { evaluateLowProfileResult, evaluateTransaction, planFailure, RETRY_OFFSETS_DAYS } from "./billing.ts";
+import { evaluateLowProfileResult, evaluateTransaction, planFailure, renewalExternalId, RETRY_OFFSETS_DAYS } from "./billing.ts";
 
 const order = { id: "11111111-1111-1111-1111-111111111111", amount: "30.00" };
 const TERMINAL = 197542;
@@ -86,4 +86,13 @@ Deno.test("retries land on days 3 and 7 after the period ended, then the subscri
   if (!afterSecond.expired) assertEquals(afterSecond.nextAttemptAt.toISOString(), "2027-01-06T10:00:00.000Z");
 
   assertEquals(planFailure(2, periodEnd), { expired: true });
+});
+
+Deno.test("the renewal idempotency key fits Cardcom's 50 character limit and is stable per attempt", () => {
+  const sub = "0fd1a8c6-1d26-42aa-a6e4-ae91aef0e269";
+  const end = "2027-01-11T13:49:44.260612+00:00";
+  const key = renewalExternalId(sub, end, 2);
+  assertEquals(key.length <= 50, true);
+  assertEquals(key, renewalExternalId(sub, end, 2));
+  assertEquals(key === renewalExternalId(sub, end, 3), false);
 });

@@ -23,6 +23,7 @@ import {
   markOrderFailed,
   notifyBilling,
   planFailure,
+  renewalExternalId,
   RETRY_OFFSETS_DAYS,
   settleLowProfileOrder,
   type OrderRow,
@@ -138,7 +139,7 @@ async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promi
   // Stable per (subscription, period, attempt): a crashed run that comes back
   // to this attempt reuses the same order and the same key, so a charge that
   // did reach Cardcom is found again instead of repeated.
-  const externalId = `renew:${sub.id}:${Date.parse(sub.current_period_end)}:${sub.renewal_attempts}`;
+  const externalId = renewalExternalId(sub.id, sub.current_period_end, sub.renewal_attempts);
 
   let { data: order } = await admin.from("payment_orders").select(ORDER_COLUMNS).eq("external_uniq_id", externalId).maybeSingle();
   if (!order) {

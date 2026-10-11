@@ -15,6 +15,15 @@ import {
   type TransactionInfo,
 } from "./cardcom.ts";
 
+/**
+ * Idempotency key for one renewal attempt, stable per (subscription, period,
+ * attempt). Cardcom's `ExternalUniqTranId` is at most 50 characters, so the id
+ * is packed: 2 + 32 + 1 + 10 + 1 + digits = 47 for a single-digit attempt.
+ */
+export function renewalExternalId(subscriptionId: string, periodEnd: string, attempt: number) {
+  return `r:${subscriptionId.replaceAll("-", "")}:${Math.floor(Date.parse(periodEnd) / 1000)}:${attempt}`;
+}
+
 /** Days after the period ended that each renewal attempt is made. */
 export const RETRY_OFFSETS_DAYS = [0, 3, 7] as const;
 

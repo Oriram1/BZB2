@@ -120,6 +120,8 @@ export function startMockCardcom(port = 0, publicBase = `http://127.0.0.1:${port
       }
       case "/Transactions/Transaction": {
         const key = String(body.ExternalUniqTranId);
+        // Cardcom rejects anything longer; the real terminal said "UniqAsmachta Maxlen is 50".
+        if (key.length > 50) return reply({ ResponseCode: 1, Description: "UniqAsmachta Maxlen is 50" });
         if (charges.has(key)) return reply({ ResponseCode: 608, Description: "duplicate" });
         if (body.Token === "tok-decline") return reply({ ResponseCode: 39, Description: "no funds" });
         const id = nextTransaction++;
