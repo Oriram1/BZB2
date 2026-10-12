@@ -1,6 +1,14 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { LowProfileResult } from "./cardcom.ts";
-import { evaluateLowProfileResult, evaluateTransaction, planFailure, renewalExternalId, RETRY_OFFSETS_DAYS } from "./billing.ts";
+import {
+  evaluateLowProfileResult,
+  evaluateTransaction,
+  hardDeclineCodes,
+  isHardDecline,
+  planFailure,
+  renewalExternalId,
+  RETRY_OFFSETS_DAYS,
+} from "./billing.ts";
 
 const order = { id: "11111111-1111-1111-1111-111111111111", amount: "30.00" };
 const TERMINAL = 197542;
@@ -95,4 +103,14 @@ Deno.test("the renewal idempotency key fits Cardcom's 50 character limit and is 
   assertEquals(key.length <= 50, true);
   assertEquals(key, renewalExternalId(sub, end, 2));
   assertEquals(key === renewalExternalId(sub, end, 3), false);
+});
+
+Deno.test("with no configured list every decline is soft; a configured list marks only its codes hard", () => {
+  assertEquals(isHardDecline(5004, hardDeclineCodes("")), false);
+  const codes = hardDeclineCodes(" 5001, 5043,abc,,-1,0 ");
+  assertEquals([...codes].sort(), [5001, 5043]);
+  assertEquals(isHardDecline(5043, codes), true);
+  assertEquals(isHardDecline(5033, codes), false);
+  assertEquals(isHardDecline(null, codes), false);
+  assertEquals(isHardDecline(undefined, codes), false);
 });

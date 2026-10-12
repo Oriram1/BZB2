@@ -26,6 +26,23 @@ export function renewalExternalId(subscriptionId: string, periodEnd: string, att
   return `r:${subscriptionId.replaceAll("-", "")}:${Math.floor(Date.parse(periodEnd) / 1000)}:${attempt}`;
 }
 
+/**
+ * Issuer response codes that mean the card will not recover: reported stolen,
+ * lost or blocked. Charging it again helps nobody and counts against the
+ * merchant, so a hard decline stops the retries. The list comes from Cardcom's
+ * code table and is configured, not guessed, as `BILLING_HARD_DECLINE_CODES`
+ * (comma separated). Empty means every decline is treated as soft.
+ */
+export function hardDeclineCodes(raw = Deno.env.get("BILLING_HARD_DECLINE_CODES") ?? ""): Set<number> {
+  return new Set(
+    raw.split(",").map((part) => Number(part.trim())).filter((value) => Number.isInteger(value) && value > 0),
+  );
+}
+
+export function isHardDecline(code: number | null | undefined, codes = hardDeclineCodes()): boolean {
+  return code !== null && code !== undefined && codes.has(code);
+}
+
 /** Days after the period ended that each renewal attempt is made. */
 export const RETRY_OFFSETS_DAYS = [0, 3, 7] as const;
 

@@ -369,6 +369,9 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       const next = dateHe(data.next_attempt_at);
       const until = dateHe(data.access_until);
       const expired = data.reason === "card_expired";
+      // The card will not be charged again. Say so, and say what to do, without
+      // repeating the issuer's reason: it is not ours to disclose.
+      const hard = data.reason === "card_declined_hard";
       return {
         subject: `לא הצלחנו לחייב את הכרטיס – מנוי ${plan}`,
         preheader: until ? `הגישה נשארת פעילה עד ${until}` : "נדרשת פעולה",
@@ -376,9 +379,19 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
         paragraphs: [
           expired
             ? `תוקף הכרטיס השמור פג, ולכן לא הצלחנו לחדש את מנוי ${plan}${amount ? ` (${amount})` : ""}.`
-            : `החיוב של מנוי ${plan}${amount ? ` (${amount})` : ""} נדחה על ידי חברת האשראי.`,
-          next ? `ננסה שוב ב־${next}. אפשר גם לשלם עכשיו בכרטיס אחר.` : "אפשר לשלם עכשיו בכרטיס אחר.",
-          until ? `המנוי ממשיך לפעול עד ${until}. אם החיוב לא יצליח עד אז, המנוי יסתיים.` : "",
+            : hard
+              ? `הכרטיס השמור לא ניתן לחיוב, ולכן לא הצלחנו לחדש את מנוי ${plan}${amount ? ` (${amount})` : ""}. לא ננסה לחייב אותו שוב.`
+              : `החיוב של מנוי ${plan}${amount ? ` (${amount})` : ""} נדחה על ידי חברת האשראי.`,
+          hard
+            ? "כדי להמשיך צריך להשתמש בכרטיס אחר, או לפנות לחברת האשראי."
+            : next
+              ? `ננסה שוב ב־${next}. אפשר גם לשלם עכשיו בכרטיס אחר.`
+              : "אפשר לשלם עכשיו בכרטיס אחר.",
+          until
+            ? hard
+              ? `המנוי ממשיך לפעול עד ${until}. אם לא יוזן כרטיס אחר עד אז, המנוי יסתיים.`
+              : `המנוי ממשיך לפעול עד ${until}. אם החיוב לא יצליח עד אז, המנוי יסתיים.`
+            : "",
         ].filter(Boolean),
         action: { label: "לתשלום ועדכון כרטיס", url: `${base}/subscription` },
         manageUrl,
@@ -596,7 +609,9 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
     case "billing_payment_failed":
       return {
         title: "החיוב נכשל ⚠️",
-        body: `לא הצלחנו לחייב את הכרטיס. אפשר לעדכן ולשלם מההגדרות`,
+        body: data.reason === "card_declined_hard"
+          ? "הכרטיס לא ניתן לחיוב. צריך להשתמש בכרטיס אחר"
+          : `לא הצלחנו לחייב את הכרטיס. אפשר לעדכן ולשלם מההגדרות`,
         url,
         tag: "billing-failed",
       };

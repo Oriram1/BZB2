@@ -19,6 +19,7 @@ import {
   applyVerdict,
   buildDocument,
   evaluateTransaction,
+  isHardDecline,
   loadPlan,
   markOrderFailed,
   notifyBilling,
@@ -77,6 +78,34 @@ async function recordFailure(
   const graceEnd = new Date(
     new Date(sub.current_period_end).getTime() + RETRY_OFFSETS_DAYS[RETRY_OFFSETS_DAYS.length - 1] * 86_400_000,
   );
+
+  // A card that will not recover is not charged again. The customer keeps access
+  // until the end of the grace window, then the subscription ends (see the
+  // billing_finish_canceled note in the hard_decline_grace migration).
+  if (isHardDecline(code)) {
+    const { data } = await admin
+      .from("subscriptions")
+      .update({
+        status: "past_due",
+        renewal_attempts: RETRY_OFFSETS_DAYS.length,
+        next_attempt_at: graceEnd.toISOString(),
+        cancel_at_period_end: true,
+        canceled_at: new Date().toISOString(),
+      })
+      .eq("id", sub.id)
+      .eq("renewal_attempts", sub.renewal_attempts)
+      .select("id");
+    if (data?.length) {
+      await notifyBilling(admin, sub.user_id, "billing_payment_failed", {
+        plan_name: plan?.name,
+        amount: plan?.amount,
+        next_attempt_at: null,
+        access_until: graceEnd.toISOString(),
+        reason: "card_declined_hard",
+      });
+    }
+    return;
+  }
 
   if (outcome.expired) {
     const { data } = await admin
