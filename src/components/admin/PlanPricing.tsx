@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice, invalidatePlans, periodLabel } from "@/lib/billing";
+import { formatPrice, invalidatePlans, periodShort } from "@/lib/billing";
 
 type PlanRow = { id: string; name: string; amount: number | string; period_months: number; price_signature: string | null };
 type HistoryRow = {
@@ -134,7 +134,7 @@ const PlanPricing = () => {
               <div key={plan.id} className="rounded-2xl border border-border bg-card p-5 space-y-3">
                 <div className="flex items-baseline justify-between">
                   <h3 className="text-lg font-extrabold">{plan.name}</h3>
-                  <span className="text-sm text-muted-foreground">ל-{periodLabel(plan.period_months)}</span>
+                  <span className="text-sm text-muted-foreground">{periodShort(plan.period_months)}</span>
                 </div>
                 <p className="text-sm">
                   מחיר נוכחי: <strong>{formatPrice(Number(plan.amount))} ₪</strong>
