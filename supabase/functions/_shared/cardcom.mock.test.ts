@@ -1,13 +1,13 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { cardcomConfig, cardcomMode, chargeToken, createLowProfile, getLpResult, getTransactionByExternalId, refundTransaction } from "./cardcom.ts";
+import { cardcomConfig, cardcomMode, chargeToken, getDocumentUrl, createLowProfile, getLpResult, getTransactionByExternalId, refundTransaction } from "./cardcom.ts";
 import {
   MOCK_API_NAME,
   MOCK_API_PASSWORD,
   MOCK_TERMINAL,
   startMockCardcom,
 } from "./cardcom_mock.ts";
-import { evaluateTransaction, settleLowProfileOrder, type OrderRow } from "./billing.ts";
+import { applyVerdict, evaluateTransaction, settleLowProfileOrder, type OrderRow } from "./billing.ts";
 
 const ORDER_ID = "22222222-2222-2222-2222-222222222222";
 
@@ -239,5 +239,53 @@ Deno.test("the mode picks which terminal is used, and anything but 'live' is tes
     }
   } finally {
     for (const [k, v] of saved) set(k, v);
+  }
+});
+
+Deno.test("an issued document is linked: the URL is requested when the result has none", async () => {
+  const mock = useMock();
+  try {
+    assertEquals(
+      await getDocumentUrl("TaxInvoiceAndReceipt", 662756),
+      `${new URL(mock.url).origin}/doc/TaxInvoiceAndReceipt/662756`,
+    );
+
+    const { admin, calls } = fakeAdmin();
+    await applyVerdict(admin, pendingOrder("lp-x"), {
+      dealNumber: 1,
+      token: "t",
+      last4: "4580",
+      expiry: "1230",
+      documentNumber: 662756,
+      documentType: "TaxInvoiceAndReceipt",
+      documentUrl: null,
+    });
+    const args = calls.find((c) => c.kind === "rpc")!.args as Record<string, unknown>;
+    assertEquals(args._document_number, 662756);
+    assertEquals(String(args._document_url).endsWith("/doc/TaxInvoiceAndReceipt/662756"), true);
+  } finally {
+    await mock.close();
+  }
+});
+
+Deno.test("a document link that cannot be fetched never blocks granting the subscription", async () => {
+  const mock = useMock();
+  Deno.env.set("CARDCOM_TEST_API_PASSWORD", "wrong");
+  try {
+    assertEquals(await getDocumentUrl("TaxInvoiceAndReceipt", 1), null);
+    const { admin, calls } = fakeAdmin();
+    const result = await applyVerdict(admin, pendingOrder("lp-y"), {
+      dealNumber: 2,
+      token: null,
+      last4: null,
+      expiry: null,
+      documentNumber: 5,
+      documentType: "TaxInvoiceAndReceipt",
+      documentUrl: null,
+    });
+    assertEquals(result.applied, true);
+    assertEquals((calls.find((c) => c.kind === "rpc")!.args as Record<string, unknown>)._document_url, null);
+  } finally {
+    await mock.close();
   }
 });

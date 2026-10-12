@@ -9,6 +9,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.
 import {
   cardcomConfig,
   expiryMMYY,
+  getDocumentUrl,
   getLpResult,
   type CardcomDocument,
   type LowProfileResult,
@@ -66,6 +67,7 @@ export type PaidDetails = {
   last4: string | null;
   expiry: string | null;
   documentNumber: number | null;
+  documentType: string | null;
   documentUrl: string | null;
 };
 
@@ -121,6 +123,7 @@ export function evaluateLowProfileResult(
       last4: tx.Last4CardDigitsString ?? null,
       expiry: expiryMMYY(result.TokenInfo?.CardMonth ?? tx.CardMonth, result.TokenInfo?.CardYear ?? tx.CardYear),
       documentNumber: result.DocumentInfo?.DocumentNumber ?? tx.DocumentNumber ?? null,
+      documentType: result.DocumentInfo?.DocumentType ?? tx.DocumentType ?? null,
       documentUrl: result.DocumentInfo?.DocumentUrl ?? null,
     },
   };
@@ -147,6 +150,7 @@ export function evaluateTransaction(info: TransactionInfo, order: Pick<OrderRow,
       last4: info.Last4CardDigitsString ?? null,
       expiry: expiryMMYY(info.CardMonth, info.CardYear),
       documentNumber: info.DocumentNumber ?? null,
+      documentType: info.DocumentType ?? null,
       documentUrl: null,
     },
   };
@@ -232,6 +236,13 @@ export async function applyVerdict(
   order: OrderRow,
   details: PaidDetails,
 ): Promise<{ applied: boolean }> {
+  // The result names the document but does not always link it. Ask for a link
+  // so the customer's payment history can open the invoice.
+  let documentUrl = details.documentUrl;
+  if (!documentUrl && details.documentNumber && details.documentType) {
+    documentUrl = await getDocumentUrl(details.documentType, details.documentNumber);
+  }
+
   const { data, error } = await admin.rpc("apply_paid_order", {
     _order_id: order.id,
     _deal_number: details.dealNumber,
@@ -239,7 +250,7 @@ export async function applyVerdict(
     _card_last4: details.last4,
     _card_expiry: details.expiry,
     _document_number: details.documentNumber,
-    _document_url: details.documentUrl,
+    _document_url: documentUrl,
   });
   if (error) throw error;
 
@@ -259,7 +270,7 @@ export async function applyVerdict(
     amount: result.amount,
     period_end: result.period_end,
     kind: order.kind,
-    document_url: details.documentUrl,
+    document_url: documentUrl,
   });
   return { applied: true };
 }

@@ -40,7 +40,9 @@ function reply(body: unknown, status = 200) {
  * hands out. Visiting `<publicBase>/pay/<id>?outcome=paid|declined|cancel` plays
  * the customer finishing the page and redirects like Cardcom would.
  */
-export function startMockCardcom(port = 0, publicBase = `http://127.0.0.1:${port}`): MockCardcom {
+export function startMockCardcom(port = 0, publicBaseOverride?: string): MockCardcom {
+  // With port 0 the real port is only known once the server is listening.
+  let publicBase = publicBaseOverride ?? `http://127.0.0.1:${port}`;
   const pages = new Map<string, MockPayment>();
   const charges = new Map<string, number>();
   const requests: MockCardcom["requests"] = [];
@@ -137,10 +139,16 @@ export function startMockCardcom(port = 0, publicBase = `http://127.0.0.1:${port
         if (body.ApiPassword !== MOCK_API_PASSWORD) return reply({ ResponseCode: 603, Description: "bad password" }, 401);
         return reply({ ResponseCode: 0, NewTranzactionId: nextTransaction++ });
       }
+      case "/Documents/CreateDocumentUrl": {
+        if (body.ApiPassword !== MOCK_API_PASSWORD) return reply({ ResponseCode: 603, Description: "bad password" }, 401);
+        return reply({ ResponseCode: 0, DocUrl: `${publicBase}/doc/${body.DocumentType}/${body.DocumentNumber}` });
+      }
       default:
         return reply({ ResponseCode: 404, Description: "unknown endpoint" }, 404);
     }
   });
+
+  if (!publicBaseOverride) publicBase = `http://127.0.0.1:${server.addr.port}`;
 
   return {
     url: `http://127.0.0.1:${server.addr.port}/api/v11`,

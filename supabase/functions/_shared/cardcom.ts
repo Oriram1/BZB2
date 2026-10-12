@@ -99,6 +99,7 @@ export type TransactionInfo = {
   ApprovalNumber?: string;
   Token?: string;
   DocumentNumber?: number;
+  DocumentType?: string;
 };
 
 export type LowProfileResult = {
@@ -109,7 +110,7 @@ export type LowProfileResult = {
   TranzactionId?: number;
   ReturnValue?: string;
   Operation?: string;
-  DocumentInfo?: { ResponseCode?: number; DocumentNumber?: number; DocumentUrl?: string } | null;
+  DocumentInfo?: { ResponseCode?: number; DocumentType?: string; DocumentNumber?: number; DocumentUrl?: string | null } | null;
   TokenInfo?: { Token?: string; CardYear?: number; CardMonth?: number } | null;
   TranzactionInfo?: TransactionInfo | null;
 };
@@ -237,4 +238,25 @@ export async function refundTransaction(params: {
     description: result.Description,
     newTransactionId: result.NewTranzactionId,
   };
+}
+
+/**
+ * A link to an issued document. The payment result carries the document number
+ * and type but not always a URL, so this asks for one. Best effort: a missing
+ * link never fails a payment that has already been taken.
+ */
+export async function getDocumentUrl(documentType: string, documentNumber: number): Promise<string | null> {
+  try {
+    const config = cardcomConfig();
+    const result = await post<{ ResponseCode?: number; DocUrl?: string }>("/Documents/CreateDocumentUrl", {
+      ApiName: config.apiName,
+      ApiPassword: config.apiPassword,
+      DocumentType: documentType,
+      DocumentNumber: documentNumber,
+    });
+    return result.ResponseCode === 0 && result.DocUrl ? result.DocUrl : null;
+  } catch (error) {
+    console.error("cardcom_document_url_failed", error instanceof Error ? error.message : error);
+    return null;
+  }
 }
