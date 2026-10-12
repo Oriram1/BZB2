@@ -135,4 +135,15 @@ describe("billing invariants", () => {
     }
     expect(read("src/lib/billing.ts")).not.toContain("PAID_PLANS");
   });
+
+  it("can open every admin tab, including pricing, from the URL", () => {
+    const admin = read("src/pages/Admin.tsx");
+    const values = admin.match(/const TAB_VALUES = \[([^\]]+)\]/)?.[1] ?? "";
+    // Each trigger in the tab bar must be a value the URL is allowed to select,
+    // otherwise the tab highlights but the content falls back to the overview.
+    const triggers = [...admin.matchAll(/\{ value: "([a-z]+)", label:/g)].map((match) => match[1]);
+    expect(triggers).toContain("pricing");
+    for (const value of triggers) expect(values, value).toContain(`"${value}"`);
+    for (const value of triggers) expect(admin, value).toContain(`<TabsContent value="${value}"`);
+  });
 });
