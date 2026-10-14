@@ -11,6 +11,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 import { readJsonObject } from "../_shared/auth.ts";
 import { settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
+import { CHARGE_COLUMNS, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -54,6 +55,30 @@ Deno.serve(async (req) => {
     .select("id, user_id, plan_id, kind, amount, status, low_profile_id, external_uniq_id, deal_number")
     .eq("low_profile_id", lowProfileId)
     .maybeSingle();
+
+  // Not a subscription page: it may be a task payment or a card saved for later.
+  if (!order) {
+    const { data: charge } = await admin
+      .from("billing_charges")
+      .select(CHARGE_COLUMNS)
+      .eq("low_profile_id", lowProfileId)
+      .maybeSingle();
+    if (charge) {
+      try {
+        const settled = await settleChargePage(admin, charge as ChargeRow);
+        await admin.from("payment_events").insert({
+          source: "webhook",
+          low_profile_id: lowProfileId,
+          outcome: `charge_${settled.status}`,
+          payload: { ResponseCode: body.ResponseCode ?? null, ReturnValue: body.ReturnValue ?? null },
+        });
+        return json({ ok: true, status: settled.status });
+      } catch (error) {
+        console.error("billing_webhook_charge_failed", error instanceof Error ? error.message : error);
+        return json({ error: "temporarily_unavailable" }, 500);
+      }
+    }
+  }
 
   // Unknown page id: acknowledge so Cardcom stops retrying, keep a trace.
   if (!order) {

@@ -90,7 +90,7 @@ export const isPaidPlan = (value: string | null | undefined): value is PlanId =>
   value === "quarterly" || value === "annual";
 
 /** Days after a period ends that a failed renewal keeps being retried. Mirrors RETRY_OFFSETS_DAYS on the server. */
-export const GRACE_DAYS = 7;
+export const GRACE_DAYS = 14;
 
 const ERROR_MESSAGES: Record<string, string> = {
   consent_required: "צריך לאשר את תנאי החידוש האוטומטי כדי להמשיך",

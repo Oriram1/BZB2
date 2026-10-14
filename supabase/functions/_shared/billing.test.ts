@@ -79,9 +79,9 @@ Deno.test("a token charge: 0 is paid, 608 is a repeat to look up, anything else 
   });
 });
 
-Deno.test("retries land on days 3 and 7 after the period ended, then the subscription expires", () => {
+Deno.test("retries land on days 3, 7 and 14 after the period ended, then the subscription expires", () => {
   const periodEnd = new Date("2026-12-30T10:00:00Z");
-  assertEquals(RETRY_OFFSETS_DAYS, [0, 3, 7]);
+  assertEquals(RETRY_OFFSETS_DAYS, [0, 3, 7, 14]);
 
   const afterFirst = planFailure(0, periodEnd);
   assertEquals(afterFirst.expired, false);
@@ -93,7 +93,10 @@ Deno.test("retries land on days 3 and 7 after the period ended, then the subscri
   const afterSecond = planFailure(1, periodEnd);
   if (!afterSecond.expired) assertEquals(afterSecond.nextAttemptAt.toISOString(), "2027-01-06T10:00:00.000Z");
 
-  assertEquals(planFailure(2, periodEnd), { expired: true });
+  const afterThird = planFailure(2, periodEnd);
+  if (!afterThird.expired) assertEquals(afterThird.nextAttemptAt.toISOString(), "2027-01-13T10:00:00.000Z");
+
+  assertEquals(planFailure(3, periodEnd), { expired: true });
 });
 
 Deno.test("the renewal idempotency key fits Cardcom's 50 character limit and is stable per attempt", () => {

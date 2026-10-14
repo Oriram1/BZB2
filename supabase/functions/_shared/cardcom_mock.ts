@@ -19,6 +19,8 @@ export type MockPayment = {
   /** What the hosted page ended up as. `none` = customer has not paid yet. */
   outcome: "none" | "paid" | "declined";
   amount: number;
+  /** Cardcom's `Operation`; `CreateTokenOnly` saves the card and charges nothing. */
+  operation: string;
 };
 
 export type MockCardcom = {
@@ -94,6 +96,7 @@ export function startMockCardcom(port = 0, publicBaseOverride?: string): MockCar
           cancelUrl: String(body.CancelRedirectUrl ?? ""),
           outcome: "none",
           amount: Number(body.Amount),
+          operation: String(body.Operation ?? "ChargeOnly"),
         });
         return reply({ ResponseCode: 0, LowProfileId: id, Url: `${publicBase}/pay/${id}` });
       }
@@ -105,7 +108,11 @@ export function startMockCardcom(port = 0, publicBaseOverride?: string): MockCar
           TerminalNumber: MOCK_TERMINAL,
           ReturnValue: page.returnValue,
         };
-        if (page.outcome === "paid") {
+        if (page.outcome === "paid" && page.operation === "CreateTokenOnly") {
+          // Card saved, nothing charged: a token and no transaction.
+          const id = nextTransaction++;
+          result.TokenInfo = { Token: `tok-${id}`, CardMonth: 4, CardYear: 2029 };
+        } else if (page.outcome === "paid") {
           const id = nextTransaction++;
           result.TranzactionId = id;
           result.TokenInfo = { Token: `tok-${id}`, CardMonth: 4, CardYear: 2029 };

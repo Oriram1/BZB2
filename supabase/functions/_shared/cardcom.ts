@@ -137,8 +137,16 @@ export function expiryMMYY(month?: number, year?: number): string | null {
   return `${String(month).padStart(2, "0")}${yy}`;
 }
 
+export type LowProfileOperation = "ChargeAndCreateToken" | "CreateTokenOnly";
+
 export async function createLowProfile(params: {
   amount: number;
+  /**
+   * `ChargeAndCreateToken` (default) charges now and keeps a token.
+   * `CreateTokenOnly` saves the card without charging: used for the free month
+   * and for a task that is charged only after an admin approves it.
+   */
+  operation?: LowProfileOperation;
   returnValue: string;
   productName: string;
   successUrl: string;
@@ -158,7 +166,7 @@ export async function createLowProfile(params: {
     TerminalNumber: config.terminal,
     ApiName: config.apiName,
     // Charge now and keep a token, which is what renewals charge against.
-    Operation: "ChargeAndCreateToken",
+    Operation: params.operation ?? "ChargeAndCreateToken",
     ReturnValue: params.returnValue,
     Amount: params.amount,
     ProductName: params.productName,

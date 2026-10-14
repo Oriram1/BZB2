@@ -44,7 +44,7 @@ export function isHardDecline(code: number | null | undefined, codes = hardDecli
 }
 
 /** Days after the period ended that each renewal attempt is made. */
-export const RETRY_OFFSETS_DAYS = [0, 3, 7] as const;
+export const RETRY_OFFSETS_DAYS = [0, 3, 7, 14] as const;
 
 export type BillingEvent =
   | "billing_renewal_reminder"
@@ -52,7 +52,14 @@ export type BillingEvent =
   | "billing_payment_failed"
   | "billing_subscription_canceled"
   | "billing_subscription_ended"
-  | "billing_refunded";
+  | "billing_refunded"
+  | "billing_plan_changed"
+  | "task_approved"
+  | "task_rejected"
+  | "task_payment_failed"
+  | "task_payment_reminder"
+  | "task_returned_to_draft"
+  | "tasks_hidden";
 
 export type OrderRow = {
   id: string;
@@ -76,6 +83,8 @@ export type SubscriptionRow = {
   cancel_at_period_end: boolean;
   renewal_attempts: number;
   next_attempt_at: string | null;
+  /** A plan change that waits for the period end (downgrade). */
+  pending_plan_id?: string | null;
 };
 
 export type PaidDetails = {

@@ -32,6 +32,7 @@ import {
   type Verdict,
 } from "../_shared/billing.ts";
 import { PlanIntegrityError } from "../_shared/planPrice.ts";
+import { CHARGE_COLUMNS, chargeTask, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
 /** pg_net gives this function 55s; stop starting new charges well before that. */
 const TIME_BUDGET_MS = 40_000;
@@ -165,7 +166,8 @@ async function settleRenewal(
 async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promise<string> {
   let plan: Awaited<ReturnType<typeof loadPlan>>;
   try {
-    plan = await loadPlan(admin, sub.plan_id);
+    // A downgrade chosen earlier takes effect here, at the period end.
+    plan = await loadPlan(admin, sub.pending_plan_id ?? sub.plan_id);
   } catch (error) {
     // A price that does not verify is not charged. The subscription is left as it
     // is; the failure is logged by loadPlan and shows up in the worker summary.
@@ -305,6 +307,53 @@ async function reconcileStaleOrders(admin: SupabaseClient) {
   return settled;
 }
 
+/**
+ * Task and card-setup charges that never settled: tasks stuck between approval
+ * and a charge answer, and hosted pages nobody finished.
+ */
+async function reconcileCharges(admin: SupabaseClient) {
+  let swept = 0;
+
+  // Approved tasks whose charge did not finish (the function died, Cardcom timed out).
+  const staleBefore = new Date(Date.now() - STALE_CHARGE_MS).toISOString();
+  const { data: stuck } = await admin
+    .from("tasks")
+    .select("id")
+    .eq("publish_state", "awaiting_charge")
+    .lt("reviewed_at", staleBefore)
+    .limit(20);
+  for (const task of stuck ?? []) {
+    try {
+      await chargeTask(admin, task.id);
+      swept += 1;
+    } catch (error) {
+      console.error("billing_task_sweep_failed", { taskId: task.id, error: error instanceof Error ? error.message : error });
+    }
+  }
+
+  // Pages nobody finished. Ask once more before giving up.
+  const abandonBefore = new Date(Date.now() - ABANDON_AFTER_MS).toISOString();
+  const { data: pages } = await admin
+    .from("billing_charges")
+    .select(CHARGE_COLUMNS)
+    .eq("status", "pending")
+    .not("low_profile_id", "is", null)
+    .lt("created_at", abandonBefore)
+    .limit(20);
+  for (const charge of (pages ?? []) as ChargeRow[]) {
+    try {
+      const { status } = await settleChargePage(admin, charge);
+      if (status === "pending") {
+        await admin.rpc("billing_charge_failed", { _charge_id: charge.id, _reason: "abandoned", _code: null });
+      }
+      swept += 1;
+    } catch (error) {
+      console.error("billing_charge_abandon_failed", { chargeId: charge.id, error: error instanceof Error ? error.message : error });
+    }
+  }
+  return swept;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   try { requireSecret(req, "NOTIFY_DISPATCH_SECRET"); } catch { return json({ error: "unauthorized" }, 401); }
@@ -312,15 +361,21 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
-  // Nothing to do while billing is off: no subscriptions exist to renew.
-  if (!billingEnabled()) return json({ ok: true, skipped: "billing_disabled" });
-  try { cardcomConfig(); } catch { return json({ error: "cardcom_not_configured" }, 500); }
-
   const admin = createClient(supabaseUrl, serviceKey);
+
+  // Task upkeep is pure database work (reminders, drafts, hidden tasks), so it
+  // runs even when charging is off. It does nothing unless tasks are in those states.
+  const { data: upkeep, error: upkeepError } = await admin.rpc("task_billing_maintenance");
+  if (upkeepError) console.error("task_billing_maintenance_failed", upkeepError.message);
+
+  // Nothing to charge while billing is off.
+  if (!billingEnabled()) return json({ ok: true, skipped: "billing_disabled", tasks: upkeep ?? null });
+  try { cardcomConfig(); } catch { return json({ error: "cardcom_not_configured" }, 500); }
   const started = Date.now();
   const summary = { reconciled: 0, ended: 0, charged: 0, failed: 0, unknown: 0, reminders: 0 };
 
   summary.reconciled = await reconcileStaleOrders(admin);
+  summary.reconciled += await reconcileCharges(admin);
 
   const { data: ended } = await admin.rpc("billing_finish_canceled");
   for (const sub of (ended ?? []) as SubscriptionRow[]) {
@@ -355,5 +410,5 @@ Deno.serve(async (req) => {
     summary.reminders += 1;
   }
 
-  return json({ ok: true, ...summary });
+  return json({ ok: true, ...summary, tasks: upkeep ?? null });
 });
