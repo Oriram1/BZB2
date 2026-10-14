@@ -36,7 +36,14 @@ export type NotificationEvent =
   | "billing_payment_failed"
   | "billing_subscription_canceled"
   | "billing_subscription_ended"
-  | "billing_refunded";
+  | "billing_refunded"
+  | "task_approved"
+  | "task_rejected"
+  | "task_payment_failed"
+  | "task_payment_reminder"
+  | "task_returned_to_draft"
+  | "tasks_hidden"
+  | "billing_plan_changed";
 
 export type NotificationRow = {
   id: string;
@@ -448,6 +455,115 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       };
     }
 
+    case "task_approved": {
+      const task = str(data.task_name, "המטלה");
+      const amount = price(data.amount);
+      return {
+        subject: `המטלה "${task}" אושרה ופורסמה`,
+        preheader: "המטלה כבר גלויה לעוזרים",
+        heading: "המטלה פורסמה",
+        paragraphs: [
+          amount ? `אישרנו את המטלה "${task}" וחייבנו את הכרטיס ב־${amount}.` : `אישרנו את המטלה "${task}". המטלה הראשונה שלכם חינם.`,
+          "המטלה כבר גלויה לעוזרים באזור.",
+        ],
+        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        manageUrl,
+      };
+    }
+
+    case "task_rejected": {
+      const task = str(data.task_name, "המטלה");
+      const note = str(data.note);
+      return {
+        subject: `המטלה "${task}" לא אושרה`,
+        preheader: "לא חויבתם",
+        heading: "המטלה לא אושרה",
+        paragraphs: [
+          `המטלה "${task}" לא אושרה לפרסום. לא חויבתם, והיא לא נספרה כמטלה החינמית שלכם.`,
+          ...(note ? [`הערה מהצוות: ${note}`] : []),
+        ],
+        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        manageUrl,
+      };
+    }
+
+    case "task_payment_failed": {
+      const task = str(data.task_name, "המטלה");
+      const amount = price(data.amount);
+      return {
+        subject: `החיוב על המטלה "${task}" נדחה`,
+        preheader: "המטלה ממתינה לתשלום",
+        heading: "החיוב נדחה",
+        paragraphs: [
+          `החיוב${amount ? ` (${amount})` : ""} על המטלה "${task}" נדחה, כדאי לנסות כרטיס אחר או לפנות לחברת האשראי.`,
+          "המטלה אושרה וממתינה לתשלום. אם לא ישולם תוך 7 ימים היא תחזור לטיוטה, בלי חיוב ובלי מחיקה.",
+        ],
+        action: { label: "לתשלום", url: `${base}/my-tasks?tab=published` },
+        manageUrl,
+      };
+    }
+
+    case "task_payment_reminder": {
+      const task = str(data.task_name, "המטלה");
+      return {
+        subject: `המטלה "${task}" עדיין ממתינה לתשלום`,
+        preheader: "נשארו כמה ימים",
+        heading: "המטלה ממתינה לתשלום",
+        paragraphs: [
+          `המטלה "${task}" אושרה אבל עדיין לא שולמה. נשארו 4 ימים לפני שהיא חוזרת לטיוטה.`,
+        ],
+        action: { label: "לתשלום", url: `${base}/my-tasks?tab=published` },
+        manageUrl,
+      };
+    }
+
+    case "task_returned_to_draft": {
+      const task = str(data.task_name, "המטלה");
+      return {
+        subject: `המטלה "${task}" חזרה לטיוטה`,
+        preheader: "לא חויבתם",
+        heading: "המטלה חזרה לטיוטה",
+        paragraphs: [
+          `לא קיבלנו תשלום על המטלה "${task}" תוך 7 ימים, ולכן היא חזרה לטיוטה. לא חויבתם ולא נמחק כלום.`,
+          "אפשר לחזור אליה ולפרסם אותה שוב בכל עת.",
+        ],
+        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        manageUrl,
+      };
+    }
+
+    case "tasks_hidden": {
+      const count = Number(data.count) || 0;
+      return {
+        subject: "משימות הוסתרו כי המנוי הסתיים",
+        preheader: "אפשר להחזיר אותן בחידוש המנוי",
+        heading: "המשימות הוסתרו",
+        paragraphs: [
+          `${count > 0 ? `${count} משימות פתוחות` : "משימות פתוחות"} שעדיין לא התחילו הוסתרו כי המנוי הסתיים. המשימה הראשונה שפרסמתם נשארת.`,
+          "אם תחדשו את המנוי הן יחזרו מיד. משימות שהוסתרו נמחקות לצמיתות אחרי 60 יום.",
+        ],
+        action: { label: "למסלולים", url: `${base}/pricing` },
+        manageUrl,
+      };
+    }
+
+    case "billing_plan_changed": {
+      const kind = str(data.kind);
+      const paragraphs = kind === "trial_started"
+        ? ["החודש החינם התחיל. הכרטיס יחויב רק בסופו, ואפשר לבטל עד אז."]
+        : kind === "scheduled"
+          ? [`המעבר ל${str(data.to, "מסלול החדש")} ייכנס לתוקף בתום התקופה הנוכחית (${dateHe(data.effective) || "בקרוב"}). לא חויבתם ולא זוכיתם.`]
+          : [`עברתם ל${str(data.to, "מסלול החדש")}.${price(data.amount) ? ` חויבתם ב־${price(data.amount)} אחרי קיזוז הזמן שנשאר.` : ""}`];
+      return {
+        subject: kind === "trial_started" ? "החודש החינם התחיל" : "המסלול שלכם עודכן",
+        preheader: "פרטים בדף המנוי",
+        heading: kind === "trial_started" ? "ברוכים הבאים" : "המסלול עודכן",
+        paragraphs,
+        action: { label: "לדף המנוי", url: `${base}/subscription` },
+        manageUrl,
+      };
+    }
+
     case "task_cancelled": {
       const task = str(data.task_name, "המטלה");
       const canceller = str(data.canceller_name, "מפרסם המטלה");
@@ -640,6 +756,32 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
         tag: "billing-refunded",
       };
 
+    case "task_approved":
+      return { title: "המטלה פורסמה ✅", body: `"${str(data.task_name, "המטלה")}" אושרה וגלויה לעוזרים`, url, tag: `task-approved-${str(data.task_id)}` };
+
+    case "task_rejected":
+      return { title: "המטלה לא אושרה", body: `"${str(data.task_name, "המטלה")}" לא אושרה. לא חויבתם`, url, tag: `task-rejected-${str(data.task_id)}` };
+
+    case "task_payment_failed":
+      return {
+        title: "החיוב נדחה ⚠️",
+        body: `המטלה "${str(data.task_name, "המטלה")}" ממתינה לתשלום, כדאי לנסות כרטיס אחר`,
+        url,
+        tag: `task-payment-${str(data.task_id)}`,
+      };
+
+    case "task_payment_reminder":
+      return { title: "המטלה ממתינה לתשלום", body: `"${str(data.task_name, "המטלה")}" תחזור לטיוטה בעוד כמה ימים`, url, tag: `task-reminder-${str(data.task_id)}` };
+
+    case "task_returned_to_draft":
+      return { title: "המטלה חזרה לטיוטה", body: `"${str(data.task_name, "המטלה")}" לא שולמה. לא חויבתם`, url, tag: `task-draft-${str(data.task_id)}` };
+
+    case "tasks_hidden":
+      return { title: "משימות הוסתרו", body: "המנוי הסתיים. חידוש יחזיר אותן מיד", url, tag: "tasks-hidden" };
+
+    case "billing_plan_changed":
+      return { title: "המסלול עודכן", body: "פרטים בדף המנוי", url, tag: "billing-plan-changed" };
+
     case "task_cancelled":
       return {
         title: "המטלה בוטלה ❌",
@@ -680,4 +822,11 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   billing_subscription_canceled: { email: true, push: true },
   billing_subscription_ended: { email: true, push: true },
   billing_refunded: { email: true, push: true },
+  task_approved: { email: true, push: true },
+  task_rejected: { email: true, push: true },
+  task_payment_failed: { email: true, push: true },
+  task_payment_reminder: { email: true, push: false },
+  task_returned_to_draft: { email: true, push: false },
+  tasks_hidden: { email: true, push: true },
+  billing_plan_changed: { email: true, push: false },
 };

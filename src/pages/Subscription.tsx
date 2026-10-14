@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, CreditCard, Receipt } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import CheckoutConsentDialog from "@/components/billing/CheckoutConsentDialog";
+import RefundCancelDialog from "@/components/billing/RefundCancelDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   billingErrorMessage,
   cancelSubscription,
+  changePlan,
+  previewRefundCancellation,
   formatDate,
   graceEnd,
   isPaidPlan,
@@ -57,6 +60,26 @@ const Subscription = () => {
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [canRefund, setCanRefund] = useState(false);
+  const [switchTo, setSwitchTo] = useState<"quarterly" | "annual" | null>(null);
+
+  // Whether the 14-day cancellation applies decides which button is shown.
+  const subscriptionStatus = subscription?.status;
+  const subscriptionEnd = subscription?.current_period_end;
+  useEffect(() => {
+    if (subscriptionStatus !== "active") {
+      setCanRefund(false);
+      return;
+    }
+    let active = true;
+    void previewRefundCancellation().then((result) => {
+      if (active) setCanRefund(result.ok);
+    });
+    return () => {
+      active = false;
+    };
+  }, [subscriptionStatus, subscriptionEnd]);
 
   useEffect(() => {
     if (!user) return;
@@ -95,6 +118,26 @@ const Subscription = () => {
       return;
     }
     toast.success("המנוי ימשיך להתחדש");
+    await reload();
+  };
+
+  const switchPlan = async () => {
+    if (!switchTo) return;
+    setBusy(true);
+    const result = await changePlan(switchTo);
+    setBusy(false);
+    setSwitchTo(null);
+    if (!result.ok) {
+      toast.error(billingErrorMessage(result.code));
+      return;
+    }
+    toast.success(
+      result.data.status === "scheduled"
+        ? "המעבר ייכנס לתוקף בסוף התקופה הנוכחית"
+        : result.data.status === "schedule_cleared"
+          ? "המעבר המתוכנן בוטל"
+          : "המסלול עודכן",
+    );
     await reload();
   };
 
@@ -151,6 +194,19 @@ const Subscription = () => {
             </CardHeader>
 
             <CardContent className="space-y-4 text-sm">
+              {subscription.status === "active" && subscription.is_trial && (
+                <p className="rounded-2xl bg-primary/10 p-3 font-bold text-primary-ink">
+                  החודש החינם שלכם פעיל עד {formatDate(subscription.current_period_end)}.
+                  {plan ? ` אחריו הכרטיס יחויב ב־${formatPrice(plan.price)} ₪, ואפשר לבטל עד אז.` : ""}
+                </p>
+              )}
+
+              {subscription.status === "active" && subscription.pending_plan_id && (
+                <p className="text-muted-foreground">
+                  בסוף התקופה תעברו למסלול {plans[subscription.pending_plan_id as "quarterly" | "annual"]?.name ?? subscription.pending_plan_id}.
+                </p>
+              )}
+
               {subscription.status === "active" && (
                 <p className="text-muted-foreground">
                   {subscription.cancel_at_period_end
@@ -203,8 +259,25 @@ const Subscription = () => {
                       חזרה למנוי מתחדש
                     </Button>
                   ) : (
-                    <Button variant="outline" onClick={() => setConfirmCancel(true)} disabled={busy} className="rounded-2xl font-bold">
-                      ביטול מנוי
+                    <>
+                      <Button variant="outline" onClick={() => setConfirmCancel(true)} disabled={busy} className="rounded-2xl font-bold">
+                        ביטול מנוי
+                      </Button>
+                      {canRefund && !subscription.is_trial && (
+                        <Button variant="outline" onClick={() => setRefundOpen(true)} disabled={busy} className="rounded-2xl font-bold">
+                          ביטול עם החזר (עד 14 יום)
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {!subscription.cancel_at_period_end && isPaidPlan(subscription.plan_id) && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setSwitchTo(subscription.plan_id === "annual" ? "quarterly" : "annual")}
+                      disabled={busy}
+                      className="rounded-2xl font-bold"
+                    >
+                      {subscription.plan_id === "annual" ? "מעבר למסלול רבעוני" : "מעבר למסלול שנתי"}
                     </Button>
                   )}
                 </div>
@@ -264,6 +337,35 @@ const Subscription = () => {
             <AlertDialogCancel disabled={busy}>חזרה</AlertDialogCancel>
             <AlertDialogAction onClick={cancel} disabled={busy}>
               כן, לבטל
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <RefundCancelDialog
+        open={refundOpen}
+        onOpenChange={setRefundOpen}
+        onDone={() => {
+          void reload();
+        }}
+      />
+
+      <AlertDialog open={switchTo !== null} onOpenChange={(open) => !open && setSwitchTo(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מעבר למסלול {switchTo ? plans[switchTo]?.name : ""}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {switchTo === "annual" && !subscription?.is_trial
+                ? "המעבר מיידי. הזמן שנשאר במסלול הנוכחי יקוזז ממחיר המסלול השנתי, ויחויב רק ההפרש."
+                : switchTo === "annual"
+                  ? "המסלול ישתנה עכשיו. עדיין לא חויבתם, והכרטיס יחויב בסוף החודש החינם."
+                  : `המעבר ייכנס לתוקף בסוף התקופה הנוכחית (${formatDate(subscription?.current_period_end)}). לא יהיה חיוב או החזר עכשיו.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel disabled={busy}>חזרה</AlertDialogCancel>
+            <AlertDialogAction onClick={switchPlan} disabled={busy}>
+              אישור
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

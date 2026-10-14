@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAccess, useSubscription } from "@/hooks/useSubscription";
-import { billingErrorMessage, formatPrice, isPaidPlan, periodShort, startCheckout, usePlans, type PlanId } from "@/lib/billing";
+import { billingErrorMessage, formatPrice, isPaidPlan, periodShort, startCheckout, startTrial, usePlans, type PlanId } from "@/lib/billing";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const basePlans = [
   {
-    id: "free", name: "חינם", price: "0 ₪", period: "", description: "עמלה של 3 ₪ לכל משימה",
-    features: ["הרשמה חינם", "גישה לכל המטלות", "3 ₪ עמלה למשימה"], popular: false,
+    id: "free", name: "חינם", price: "0 ₪", period: "", description: "המטלה הראשונה חינם, ואחריה 3 ₪ למשימה",
+    features: ["הרשמה חינם, בלי כרטיס אשראי", "המטלה הראשונה שלכם חינם", "3 ₪ על כל משימה נוספת", "גישה לכל המטלות"], popular: false,
   },
   {
     id: "quarterly", name: "רבעוני", price: "", period: "", description: "ללא עמלה על משימות",
@@ -46,6 +47,27 @@ const Pricing = () => {
       period: periodShort(live.periodMonths),
     };
   });
+
+  // The free month is once per user; the server decides, this only hides the offer.
+  const [trialAvailable, setTrialAvailable] = useState(false);
+  useEffect(() => {
+    if (!user) {
+      setTrialAvailable(false);
+      return;
+    }
+    let active = true;
+    void supabase
+      .from("billing_user_state")
+      .select("free_month_used_at")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setTrialAvailable(!data?.free_month_used_at);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const navigate = useNavigate();
   const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
@@ -94,6 +116,18 @@ const Pricing = () => {
     window.location.assign(result.data.url);
   };
 
+  const confirmTrial = async () => {
+    if (!checkoutPlan) return;
+    setBusy(true);
+    const result = await startTrial(checkoutPlan);
+    if (!result.ok) {
+      setBusy(false);
+      toast.error(billingErrorMessage(result.code));
+      return;
+    }
+    window.location.assign(result.data.url);
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
       <div className="absolute inset-0 bg-muted" />
@@ -106,6 +140,13 @@ const Pricing = () => {
         <div className="text-center mb-14">
           <h1 className="text-5xl font-extrabold text-foreground mb-3">תוכניות מנוי 🐝</h1>
           <p className="text-muted-foreground text-lg font-medium">בחרו את התוכנית שמתאימה לכם</p>
+          <p
+            className="mx-auto mt-6 max-w-xl rounded-3xl gradient-honey px-6 py-4 text-2xl font-black text-primary-foreground shadow-glow"
+            data-testid="first-task-free"
+          >
+            🎁 המשימה הראשונה שלכם חינם
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">פעם אחת לכל משתמש, ובלי כרטיס אשראי.</p>
         </div>
 
         {subscribed && (
@@ -167,7 +208,7 @@ const Pricing = () => {
 
         {/* Insurance info note */}
         <p className="text-center text-muted-foreground text-sm max-w-lg mx-auto">
-          🛡️ למנויים בתשלום — אפשרות להוסיף ביטוח מטלות (5 ₪/חודש) זמינה בעת ההרשמה ובמסך יצירת מטלה.
+          🛡️ אפשר להוסיף ביטוח מטלות ב־5 ₪ למשימה, בעת פרסום המטלה. זמין בכל מסלול.
         </p>
       </div>
 
@@ -177,6 +218,7 @@ const Pricing = () => {
         busy={busy}
         onOpenChange={(open) => !open && setCheckoutPlan(null)}
         onConfirm={confirmCheckout}
+        onStartTrial={trialAvailable && !subscribed ? confirmTrial : undefined}
       />
     </div>
   );

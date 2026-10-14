@@ -6,7 +6,11 @@ const root = resolve(import.meta.dirname, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
 const migration = read("supabase/migrations/20260930160226_billing.sql");
-const eventsMigration = read("supabase/migrations/20260930160155_billing_notification_events.sql");
+// Event values are added by more than one migration (subscription events, then
+// per-task billing events); an event is declared if any of them adds it.
+const eventsMigration =
+  read("supabase/migrations/20260930160155_billing_notification_events.sql") +
+  read("supabase/migrations/20261014090000_task_billing_events.sql");
 
 describe("billing invariants", () => {
   it("keeps Cardcom's unauthenticated callbacks off the gateway JWT and everything else on it", () => {

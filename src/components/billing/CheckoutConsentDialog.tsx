@@ -21,6 +21,8 @@ interface Props {
   overdue?: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  /** When set, the first month is free: the card is saved now and charged at its end. */
+  onStartTrial?: () => void;
 }
 
 /**
@@ -28,7 +30,7 @@ interface Props {
  * has to see the price, the cadence and how to stop it, and tick a box, before
  * they are sent to pay. The server refuses to create a payment without this.
  */
-const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange, onConfirm }: Props) => {
+const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange, onConfirm, onStartTrial }: Props) => {
   const [agreed, setAgreed] = useState(false);
   const { plans } = usePlans();
   const info = plan ? plans[plan] ?? null : null;
@@ -51,9 +53,13 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
         </DialogHeader>
 
         <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pr-5">
+          {onStartTrial && (
+            <li>החודש הראשון חינם, פעם אחת בלבד. הכרטיס נשמר עכשיו ויחויב רק בסוף החודש.</li>
+          )}
           <li>המנוי מתחדש אוטומטית בסוף כל תקופה, בכרטיס שתזינו עכשיו, עד שתבטלו.</li>
           <li>שולחים תזכורת במייל ובהודעה לפני כל חיוב.</li>
           <li>אפשר לבטל בכל עת מתוך האפליקציה. המנוי נשאר פעיל עד סוף התקופה ששולמה, ולא מתבצע החזר יחסי.</li>
+          <li>בתוך 14 יום מהתשלום אפשר לבטל ולקבל החזר, פעם אחת בלבד לכל משתמש.</li>
           <li>פרטי הכרטיס מוזנים בדף מאובטח של חברת הסליקה ולא נשמרים אצלנו.</li>
         </ul>
 
@@ -74,12 +80,26 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-col gap-2">
+          {onStartTrial && (
+            <Button
+              onClick={onStartTrial}
+              disabled={!agreed || busy}
+              className="w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none"
+            >
+              {busy ? <Loader2 className="animate-spin" size={18} /> : "התחילו חודש חינם 🎁"}
+            </Button>
+          )}
           <Button
             onClick={onConfirm}
             disabled={!agreed || busy}
-            className="w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none"
+            variant={onStartTrial ? "outline" : "default"}
+            className={
+              onStartTrial
+                ? "w-full py-5 text-base font-bold rounded-2xl"
+                : "w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none"
+            }
           >
-            {busy ? <Loader2 className="animate-spin" size={18} /> : "המשך לתשלום"}
+            {busy && !onStartTrial ? <Loader2 className="animate-spin" size={18} /> : onStartTrial ? "או לשלם עכשיו" : "המשך לתשלום"}
           </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy} className="w-full rounded-2xl">
             ביטול

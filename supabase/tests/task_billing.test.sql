@@ -3,6 +3,9 @@
 -- Everything runs in one transaction that is rolled back, so it leaves nothing.
 BEGIN;
 
+-- Start from the shipped default, whatever an earlier run left behind.
+UPDATE public.billing_settings SET value = 'off' WHERE key = 'task_billing';
+
 CREATE FUNCTION pg_temp.expect(_what TEXT, _ok BOOLEAN) RETURNS VOID LANGUAGE plpgsql AS $$
 BEGIN
   IF NOT _ok THEN RAISE EXCEPTION 'FAILED: %', _what; END IF;

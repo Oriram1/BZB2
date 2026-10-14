@@ -74,41 +74,86 @@ export type Database = {
         }
         Relationships: []
       }
-      billing_plans: {
+      billing_charges: {
         Row: {
-          active: boolean
           amount: number
+          applied_at: string | null
+          created_at: string
+          deal_number: number | null
+          document_number: number | null
+          document_url: string | null
+          error: string | null
+          external_uniq_id: string | null
           id: string
-          name: string
-          period_months: number
-          price_signature: string | null
-          renewal_reminder_days: number
-          updated_at: string
-          updated_by: string | null
+          low_profile_id: string | null
+          meta: Json | null
+          paid_at: string | null
+          plan_id: string | null
+          purpose: string
+          refunded_at: string | null
+          response_code: number | null
+          status: Database["public"]["Enums"]["payment_order_status"]
+          task_id: string | null
+          user_id: string
         }
         Insert: {
-          active?: boolean
           amount: number
-          id: string
-          name: string
-          period_months: number
-          price_signature?: string | null
-          renewal_reminder_days: number
-          updated_at?: string
-          updated_by?: string | null
+          applied_at?: string | null
+          created_at?: string
+          deal_number?: number | null
+          document_number?: number | null
+          document_url?: string | null
+          error?: string | null
+          external_uniq_id?: string | null
+          id?: string
+          low_profile_id?: string | null
+          meta?: Json | null
+          paid_at?: string | null
+          plan_id?: string | null
+          purpose: string
+          refunded_at?: string | null
+          response_code?: number | null
+          status?: Database["public"]["Enums"]["payment_order_status"]
+          task_id?: string | null
+          user_id: string
         }
         Update: {
-          active?: boolean
           amount?: number
+          applied_at?: string | null
+          created_at?: string
+          deal_number?: number | null
+          document_number?: number | null
+          document_url?: string | null
+          error?: string | null
+          external_uniq_id?: string | null
           id?: string
-          name?: string
-          period_months?: number
-          price_signature?: string | null
-          renewal_reminder_days?: number
-          updated_at?: string
-          updated_by?: string | null
+          low_profile_id?: string | null
+          meta?: Json | null
+          paid_at?: string | null
+          plan_id?: string | null
+          purpose?: string
+          refunded_at?: string | null
+          response_code?: number | null
+          status?: Database["public"]["Enums"]["payment_order_status"]
+          task_id?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "billing_charges_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_charges_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       billing_plan_price_history: {
         Row: {
@@ -147,6 +192,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      billing_plans: {
+        Row: {
+          active: boolean
+          amount: number
+          id: string
+          name: string
+          period_months: number
+          price_signature: string | null
+          renewal_reminder_days: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          id: string
+          name: string
+          period_months: number
+          price_signature?: string | null
+          renewal_reminder_days: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          id?: string
+          name?: string
+          period_months?: number
+          price_signature?: string | null
+          renewal_reminder_days?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      billing_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      billing_user_state: {
+        Row: {
+          created_at: string
+          first_task_id: string | null
+          free_month_used_at: string | null
+          free_task_used_at: string | null
+          refund_14d_used_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_task_id?: string | null
+          free_month_used_at?: string | null
+          free_task_used_at?: string | null
+          refund_14d_used_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          first_task_id?: string | null
+          free_month_used_at?: string | null
+          free_task_used_at?: string | null
+          refund_14d_used_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       conversations: {
         Row: {
@@ -784,7 +913,9 @@ export type Database = {
           current_period_start: string
           first_paid_at: string | null
           id: string
+          is_trial: boolean
           next_attempt_at: string | null
+          pending_plan_id: string | null
           plan_id: string
           reminder_for_period_end: string | null
           renewal_attempts: number
@@ -802,7 +933,9 @@ export type Database = {
           current_period_start: string
           first_paid_at?: string | null
           id?: string
+          is_trial?: boolean
           next_attempt_at?: string | null
+          pending_plan_id?: string | null
           plan_id: string
           reminder_for_period_end?: string | null
           renewal_attempts?: number
@@ -820,7 +953,9 @@ export type Database = {
           current_period_start?: string
           first_paid_at?: string | null
           id?: string
+          is_trial?: boolean
           next_attempt_at?: string | null
+          pending_plan_id?: string | null
           plan_id?: string
           reminder_for_period_end?: string | null
           renewal_attempts?: number
@@ -829,6 +964,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "subscriptions_pending_plan_id_fkey"
+            columns: ["pending_plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subscriptions_plan_id_fkey"
             columns: ["plan_id"]
@@ -940,25 +1082,36 @@ export type Database = {
           accepted_count: number
           archived_at: string | null
           category: Database["public"]["Enums"]["task_category"]
+          charged_at: string | null
           created_at: string
           creator_id: string
           duration_hours: number | null
           expiry_hours: number
           full_desc: string | null
+          hidden_at: string | null
           id: string
           image_url: string | null
+          insurance: boolean
           latitude: number | null
           location: string | null
           longitude: number | null
           name: string
           notes: string | null
           payment: number
+          payment_due: number
+          payment_reminded_at: string | null
           payment_type: Database["public"]["Enums"]["payment_type"]
+          pending_payment_since: string | null
+          publish_state: Database["public"]["Enums"]["task_publish_state"]
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           scheduled_date: string | null
           scheduled_time: string | null
           short_desc: string
           status: Database["public"]["Enums"]["task_status"]
           updated_at: string
+          uses_free_slot: boolean
           views_count: number
           workers_needed: number
         }
@@ -966,25 +1119,36 @@ export type Database = {
           accepted_count?: number
           archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
+          charged_at?: string | null
           created_at?: string
           creator_id: string
           duration_hours?: number | null
           expiry_hours?: number
           full_desc?: string | null
+          hidden_at?: string | null
           id?: string
           image_url?: string | null
+          insurance?: boolean
           latitude?: number | null
           location?: string | null
           longitude?: number | null
           name: string
           notes?: string | null
           payment?: number
+          payment_due?: number
+          payment_reminded_at?: string | null
           payment_type?: Database["public"]["Enums"]["payment_type"]
+          pending_payment_since?: string | null
+          publish_state?: Database["public"]["Enums"]["task_publish_state"]
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           short_desc: string
           status?: Database["public"]["Enums"]["task_status"]
           updated_at?: string
+          uses_free_slot?: boolean
           views_count?: number
           workers_needed?: number
         }
@@ -992,25 +1156,36 @@ export type Database = {
           accepted_count?: number
           archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
+          charged_at?: string | null
           created_at?: string
           creator_id?: string
           duration_hours?: number | null
           expiry_hours?: number
           full_desc?: string | null
+          hidden_at?: string | null
           id?: string
           image_url?: string | null
+          insurance?: boolean
           latitude?: number | null
           location?: string | null
           longitude?: number | null
           name?: string
           notes?: string | null
           payment?: number
+          payment_due?: number
+          payment_reminded_at?: string | null
           payment_type?: Database["public"]["Enums"]["payment_type"]
+          pending_payment_since?: string | null
+          publish_state?: Database["public"]["Enums"]["task_publish_state"]
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           short_desc?: string
           status?: Database["public"]["Enums"]["task_status"]
           updated_at?: string
+          uses_free_slot?: boolean
           views_count?: number
           workers_needed?: number
         }
@@ -1077,6 +1252,15 @@ export type Database = {
     }
     Functions: {
       admin_archive_task: { Args: { _task_id: string }; Returns: undefined }
+      admin_set_plan_price: {
+        Args: {
+          _actor: string
+          _amount: number
+          _plan_id: string
+          _signature: string
+        }
+        Returns: Json
+      }
       admin_set_review_status: {
         Args: {
           _review_id: string
@@ -1096,6 +1280,14 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_plan_upgrade: {
+        Args: { _plan_id: string; _user_id: string }
+        Returns: Json
+      }
+      apply_refund_cancellation: {
+        Args: { _delete_task_ids: string[]; _user_id: string }
+        Returns: Json
+      }
       archive_record: {
         Args: {
           _record_data: Json
@@ -1109,6 +1301,19 @@ export type Database = {
         Args: { _task_id: string; _user_id: string }
         Returns: undefined
       }
+      billing_charge_failed: {
+        Args: { _charge_id: string; _code: number; _reason: string }
+        Returns: Json
+      }
+      billing_charge_paid: {
+        Args: {
+          _charge_id: string
+          _deal_number: number
+          _document_number: number
+          _document_url: string
+        }
+        Returns: Json
+      }
       billing_claim_due_renewals: {
         Args: { _limit?: number }
         Returns: {
@@ -1121,7 +1326,9 @@ export type Database = {
           current_period_start: string
           first_paid_at: string | null
           id: string
+          is_trial: boolean
           next_attempt_at: string | null
+          pending_plan_id: string | null
           plan_id: string
           reminder_for_period_end: string | null
           renewal_attempts: number
@@ -1159,7 +1366,9 @@ export type Database = {
           current_period_start: string
           first_paid_at: string | null
           id: string
+          is_trial: boolean
           next_attempt_at: string | null
+          pending_plan_id: string | null
           plan_id: string
           reminder_for_period_end: string | null
           renewal_attempts: number
@@ -1174,7 +1383,21 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      billing_setting_number: {
+        Args: { _fallback: number; _key: string }
+        Returns: number
+      }
+      cancel_refund_eligibility: { Args: { _user_id: string }; Returns: Json }
       cancel_task: { Args: { _task_id: string }; Returns: undefined }
+      cancel_task_plan: {
+        Args: { _user_id: string }
+        Returns: {
+          is_first: boolean
+          locked: boolean
+          name: string
+          task_id: string
+        }[]
+      }
       complete_task: { Args: { _task_id: string }; Returns: undefined }
       enqueue_notification: {
         Args: {
@@ -1215,6 +1438,7 @@ export type Database = {
         Args: { p_conversation_id: string }
         Returns: number
       }
+      my_publish_quote: { Args: { _insurance?: boolean }; Returns: Json }
       normalize_email: { Args: { p_email: string }; Returns: string }
       purge_expired_archives: { Args: never; Returns: number }
       record_task_view: { Args: { _task_id: string }; Returns: number }
@@ -1222,12 +1446,52 @@ export type Database = {
         Args: { _code_hash: string; _parent_user_id: string }
         Returns: string
       }
+      resubmit_draft_task: { Args: { _task_id: string }; Returns: Json }
       run_billing_renew: { Args: never; Returns: undefined }
       run_parent_digest: { Args: never; Returns: undefined }
       run_quiet_digest: { Args: never; Returns: undefined }
+      save_payment_method: {
+        Args: {
+          _card_expiry: string
+          _card_last4: string
+          _token: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      start_trial: {
+        Args: {
+          _card_expiry?: string
+          _card_last4?: string
+          _plan_id: string
+          _trial_days?: number
+          _user_id: string
+        }
+        Returns: Json
+      }
       switch_my_role: {
         Args: { target_role: Database["public"]["Enums"]["app_role"] }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      task_billing_enabled: { Args: never; Returns: boolean }
+      task_billing_maintenance: { Args: never; Returns: Json }
+      task_is_live: { Args: { _task_id: string }; Returns: boolean }
+      task_publish_quote: {
+        Args: { _insurance: boolean; _user_id: string }
+        Returns: Json
+      }
+      task_review_decide: {
+        Args: {
+          _admin_id: string
+          _approve: boolean
+          _note?: string
+          _task_id: string
+        }
+        Returns: Json
+      }
+      task_went_live: {
+        Args: { _task: Database["public"]["Tables"]["tasks"]["Row"] }
+        Returns: undefined
       }
     }
     Enums: {
@@ -1253,6 +1517,13 @@ export type Database = {
         | "billing_subscription_canceled"
         | "billing_subscription_ended"
         | "billing_refunded"
+        | "task_approved"
+        | "task_rejected"
+        | "task_payment_failed"
+        | "task_payment_reminder"
+        | "task_returned_to_draft"
+        | "tasks_hidden"
+        | "billing_plan_changed"
       payment_order_kind: "initial" | "renewal"
       payment_order_status: "pending" | "paid" | "failed" | "refunded"
       payment_type: "task" | "hour"
@@ -1266,6 +1537,14 @@ export type Database = {
         | "pets"
         | "gardening"
         | "other"
+      task_publish_state:
+        | "live"
+        | "pending_review"
+        | "awaiting_charge"
+        | "pending_payment"
+        | "draft"
+        | "rejected"
+        | "hidden"
       task_status:
         | "open"
         | "accepted"
@@ -1287,12 +1566,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1316,11 +1595,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1341,11 +1620,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1366,11 +1645,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1383,11 +1662,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1421,6 +1700,13 @@ export const Constants = {
         "billing_subscription_canceled",
         "billing_subscription_ended",
         "billing_refunded",
+        "task_approved",
+        "task_rejected",
+        "task_payment_failed",
+        "task_payment_reminder",
+        "task_returned_to_draft",
+        "tasks_hidden",
+        "billing_plan_changed",
       ],
       payment_order_kind: ["initial", "renewal"],
       payment_order_status: ["pending", "paid", "failed", "refunded"],
@@ -1436,6 +1722,15 @@ export const Constants = {
         "gardening",
         "other",
       ],
+      task_publish_state: [
+        "live",
+        "pending_review",
+        "awaiting_charge",
+        "pending_payment",
+        "draft",
+        "rejected",
+        "hidden",
+      ],
       task_status: [
         "open",
         "accepted",
@@ -1446,3 +1741,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminReviewsPanel from "@/components/reviews/AdminReviewsPanel";
+import TaskReviewPanel from "@/components/admin/TaskReviewPanel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -274,7 +275,7 @@ function Timestamp({ value }: { value: string }) {
   );
 }
 
-const TAB_VALUES = ["overview", "users", "family", "activity", "log", "reviews", "pricing"] as const;
+const TAB_VALUES = ["overview", "users", "family", "activity", "log", "tasks", "reviews", "pricing"] as const;
 
 export default function Admin() {
   const { user, roles, loading } = useAuth();
@@ -957,13 +958,14 @@ export default function Admin() {
 
       <div className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-7 rounded-xl p-1">
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-4 sm:grid-cols-8 rounded-xl p-1">
             {[
               { value: "overview", label: "סקירה" },
               { value: "users", label: "משתמשים" },
               { value: "family", label: "משפחה" },
               { value: "activity", label: "פעילות" },
               { value: "log", label: "לוג אדמין" },
+              { value: "tasks", label: "אישור משימות" },
               { value: "reviews", label: "ביקורות" },
               { value: "pricing", label: "מחירים" },
             ].map((tab) => (
@@ -1630,6 +1632,11 @@ export default function Admin() {
                 </ul>
               )}
             </Card>
+          </TabsContent>
+
+          {/* ─── Task review queue ─── */}
+          <TabsContent value="tasks" className="space-y-6">
+            <TaskReviewPanel />
           </TabsContent>
 
           {/* ─── Reviews Tab ─── */}

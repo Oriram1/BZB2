@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { normalizePhone, isValidPhone } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
-import { ShieldCheck, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { geocodeAddress } from "@/lib/geocodeAddress";
@@ -75,8 +73,6 @@ const Register = () => {
     : "הרשמה למציעי מטלות 📋";
   const [agreed, setAgreed] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
-  const [insurance, setInsurance] = useState(false);
-  const [showInsurancePopup, setShowInsurancePopup] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: "", lastName: "", age: "", address: "", gender: "" as Gender | "",
@@ -345,11 +341,6 @@ const Register = () => {
       return;
     }
 
-    // For paid plans, if insurance not yet selected, show popup offer first
-    if (isPaidPlan && !insurance) {
-      setShowInsurancePopup(true);
-      return;
-    }
     await finishRegistration(resolvedPosition);
   };
 
@@ -500,28 +491,6 @@ const Register = () => {
             </Label>
           </div>
 
-          {isPaidPlan && (
-            <div className="bg-primary/5 border-2 border-primary/30 rounded-2xl p-4 mt-2">
-              <div className="flex items-start gap-3">
-                <Checkbox id="insurance" checked={insurance} onCheckedChange={(v) => setInsurance(v === true)} className="mt-1" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <ShieldCheck size={18} className="text-primary-ink" />
-                    <Label htmlFor="insurance" className="text-base font-extrabold text-foreground cursor-pointer">
-                      ביטוח מטלות
-                    </Label>
-                    <Badge className="bg-primary/10 text-primary-ink border-none rounded-full text-xs font-bold">
-                      5 ₪/חודש
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 font-medium">
-                    כיסוי נזקים שעלולים להתרחש במהלך ביצוע המטלה. מומלץ במיוחד למנויים בתשלום.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
             {loading ? "נרשמים..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "הירשמו 🐝"}
           </Button>
@@ -535,45 +504,6 @@ const Register = () => {
         </form>
       </div>
 
-      {/* Insurance popup banner after confirm */}
-      <Dialog open={showInsurancePopup} onOpenChange={setShowInsurancePopup}>
-        <DialogContent className="max-w-md rounded-3xl border-2 border-primary/40 shadow-glow" dir="rtl">
-          <DialogHeader>
-            <div className="mx-auto mb-2 w-16 h-16 rounded-full gradient-honey flex items-center justify-center animate-pop-in">
-              <ShieldCheck size={32} className="text-primary-foreground" />
-            </div>
-            <DialogTitle className="text-center text-2xl font-extrabold">
-              להוסיף ביטוח מטלות? 🛡️
-            </DialogTitle>
-            <DialogDescription className="text-center text-base font-medium text-muted-foreground pt-2">
-              לפני סיום, מומלץ להוסיף ביטוח מטלות בעלות של <span className="font-extrabold text-primary-ink">5 ₪ בלבד לחודש</span> —
-              כיסוי לנזקים שעלולים להתרחש במהלך ביצוע המטלות.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-col gap-2 mt-4">
-            <Button
-              onClick={async () => {
-                setInsurance(true);
-                setShowInsurancePopup(false);
-                await finishRegistration();
-              }}
-              className="w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform"
-            >
-              כן, הוסף ביטוח (5 ₪/חודש) 🛡️
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={async () => {
-                setShowInsurancePopup(false);
-                await finishRegistration();
-              }}
-              className="w-full py-5 text-sm font-bold text-muted-foreground rounded-2xl"
-            >
-              לא תודה, המשך ללא ביטוח
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

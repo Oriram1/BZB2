@@ -103,6 +103,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   no_active_subscription: "לא נמצא מנוי פעיל",
   cannot_resume: "אי אפשר לחדש את המנוי הזה. אפשר לרכוש מנוי חדש",
   not_found: "ההזמנה לא נמצאה",
+  trial_already_used: "החודש החינם כבר נוצל",
+  same_plan: "זה כבר המסלול שלכם",
+  refund_already_used: "ביטול עם החזר ל־14 יום כבר נוצל, והמנוי הבא הוא עד הסוף",
+  window_passed: "עברו יותר מ־14 יום מהתשלום, ולכן אי אפשר לבטל עם החזר",
+  charge_failed: "החיוב על המשימות שנשארו נדחה. אפשר לנסות כרטיס אחר",
+  nothing_to_refund: "אין תשלום שאפשר להחזיר",
+  no_active_subscription_refund: "אין מנוי פעיל",
 };
 
 export const billingErrorMessage = (code: string) =>
@@ -140,6 +147,39 @@ export const startCheckout = (planId: PlanId | null) =>
 
 export const confirmOrder = (orderId: string) =>
   call<{ status: "pending" | "paid" | "failed" | "refunded" }>("billing-confirm", { order_id: orderId });
+
+export type ChargeStatus = "pending" | "paid" | "failed" | "refunded";
+
+/** A task payment or a saved card (not a subscription order). */
+export const confirmCharge = (chargeId: string) =>
+  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean }>("billing-confirm", { charge_id: chargeId });
+
+/** The free month: saves a card on Cardcom's page, charges nothing now. */
+export const startTrial = (planId: PlanId) =>
+  call<{ url: string; charge_id: string }>("billing-start-trial", { plan_id: planId, accept_renewal: true });
+
+export const changePlan = (planId: PlanId) =>
+  call<{ status: "upgraded" | "scheduled" | "changed" | "schedule_cleared"; charged?: number; credit?: number; effective?: string }>(
+    "billing-change-plan",
+    { plan_id: planId },
+  );
+
+export type CancelPreview = {
+  eligible: true;
+  refund_amount: number;
+  task_fee: number;
+  tasks: { id: string; name: string; locked: boolean; is_first: boolean }[];
+  difference_if_keep_all: number;
+};
+
+export const previewRefundCancellation = () =>
+  call<CancelPreview>("billing-cancel-refund", { action: "preview" });
+
+export const confirmRefundCancellation = (deleteTaskIds: string[]) =>
+  call<{ status: "refunded"; refunded: number; difference_charged: number; tasks_kept: number; tasks_removed: number }>(
+    "billing-cancel-refund",
+    { action: "confirm", delete_task_ids: deleteTaskIds },
+  );
 
 export const cancelSubscription = () =>
   call<{ status: string; cancel_at_period_end: boolean; ends_at?: string }>("billing-cancel", {});

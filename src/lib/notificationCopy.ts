@@ -26,7 +26,14 @@ export type NotificationEvent =
   | "billing_payment_failed"
   | "billing_subscription_canceled"
   | "billing_subscription_ended"
-  | "billing_refunded";
+  | "billing_refunded"
+  | "task_approved"
+  | "task_rejected"
+  | "task_payment_failed"
+  | "task_payment_reminder"
+  | "task_returned_to_draft"
+  | "tasks_hidden"
+  | "billing_plan_changed";
 
 export type AppRole = "tasker" | "bee" | "parent";
 
@@ -183,6 +190,31 @@ export function notificationLine(
     case "billing_refunded":
       return { emoji: "💸", title: "בוצע זיכוי", body: "הסכום זוכה לכרטיס והמנוי הסתיים" };
 
+    case "task_approved":
+      return { emoji: "✅", title: "המטלה פורסמה", body: `"${text(data.task_name, "המטלה")}" אושרה וגלויה לעוזרים` };
+
+    case "task_rejected":
+      return { emoji: "🚫", title: "המטלה לא אושרה", body: `"${text(data.task_name, "המטלה")}" לא אושרה. לא חויבתם` };
+
+    case "task_payment_failed":
+      return { emoji: "⚠️", title: "החיוב נדחה", body: `"${text(data.task_name, "המטלה")}" ממתינה לתשלום. אפשר לנסות כרטיס אחר` };
+
+    case "task_payment_reminder":
+      return { emoji: "⏳", title: "המטלה ממתינה לתשלום", body: `"${text(data.task_name, "המטלה")}" תחזור לטיוטה בעוד כמה ימים` };
+
+    case "task_returned_to_draft":
+      return { emoji: "📝", title: "המטלה חזרה לטיוטה", body: `"${text(data.task_name, "המטלה")}" לא שולמה, ולא חויבתם` };
+
+    case "tasks_hidden":
+      return { emoji: "🙈", title: "משימות הוסתרו", body: "המנוי הסתיים. חידוש יחזיר אותן מיד" };
+
+    case "billing_plan_changed":
+      return {
+        emoji: "🔁",
+        title: data.kind === "trial_started" ? "החודש החינם התחיל" : "המסלול עודכן",
+        body: "פרטים בדף המנוי",
+      };
+
     default:
       return { emoji: "🔔", title: "התראה", body: "" };
   }
@@ -206,6 +238,13 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   billing_subscription_canceled: { email: true, push: true },
   billing_subscription_ended: { email: true, push: true },
   billing_refunded: { email: true, push: true },
+  task_approved: { email: true, push: true },
+  task_rejected: { email: true, push: true },
+  task_payment_failed: { email: true, push: true },
+  task_payment_reminder: { email: true, push: false },
+  task_returned_to_draft: { email: true, push: false },
+  tasks_hidden: { email: true, push: true },
+  billing_plan_changed: { email: true, push: false },
 };
 
 /**

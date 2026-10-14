@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
@@ -22,6 +22,7 @@ import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { logUserActivity } from "@/lib/activityLog";
+import { startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 
 /** Kept in step with the tasks_short_desc_length constraint on public.tasks. */
 const SHORT_DESC_MAX = 120;
@@ -52,10 +53,52 @@ const CreateTask = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [insurance, setInsurance] = useState(false);
+  const [quote, setQuote] = useState<PublishQuote | null>(null);
+  const [searchParams] = useSearchParams();
+  const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
   const today = new Date();
   const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  // What this task will cost, from the database. The same function the insert
+  // trigger uses, so the preview and the charge cannot disagree.
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    void (async () => {
+      const { data, error } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
+      if (active && !error && data) setQuote(data as unknown as PublishQuote);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user, insurance]);
+
+  // Coming back from Cardcom after saving a card: put the form back and let the
+  // person press publish.
+  useEffect(() => {
+    if (searchParams.get("resume") !== "1") return;
+    try {
+      const raw = sessionStorage.getItem(TASK_DRAFT_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        form: typeof form; lat: number | null; lng: number | null; insurance: boolean; imageUrl: string | null;
+      };
+      setForm(saved.form);
+      setSelectedLat(saved.lat);
+      setSelectedLng(saved.lng);
+      setInsurance(saved.insurance);
+      setRestoredImageUrl(saved.imageUrl);
+      setStep(6);
+      sessionStorage.removeItem(TASK_DRAFT_KEY);
+      toast.success("הכרטיס נשמר. אפשר לפרסם את המטלה");
+    } catch {
+      /* storage unavailable: the person starts again */
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLocationBlur = async () => {
     if (!form.location.trim()) return;
@@ -123,10 +166,32 @@ const CreateTask = () => {
       return;
     }
     setLoading(true);
-    let imageUrl: string | null = null;
+    let imageUrl: string | null = restoredImageUrl;
     if (imageFile) {
       imageUrl = await uploadImage();
     }
+
+    // A paid task is charged to a saved card once it is approved, so the card
+    // has to be on file before it can be submitted.
+    if (quote && !quote.billing_off && quote.due > 0 && !quote.has_card) {
+      try {
+        sessionStorage.setItem(
+          TASK_DRAFT_KEY,
+          JSON.stringify({ form, lat: selectedLat, lng: selectedLng, insurance, imageUrl }),
+        );
+      } catch {
+        /* the person re-enters the form if storage is blocked */
+      }
+      const setup = await startTaskCardSetup();
+      if (setup.ok) {
+        window.location.assign(setup.url);
+        return;
+      }
+      setLoading(false);
+      toast.error("לא הצלחנו לפתוח את דף התשלום. נסו שוב בעוד רגע");
+      return;
+    }
+
     const { data: created, error } = await supabase.from("tasks").insert({
       creator_id: user.id,
       category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
@@ -145,6 +210,7 @@ const CreateTask = () => {
       expiry_hours: (parseInt(form.expiry) || 3) * 24,
       notes: form.notes || null,
       image_url: imageUrl,
+      insurance,
     }).select("id").maybeSingle();
     setLoading(false);
     if (error) {
@@ -155,7 +221,11 @@ const CreateTask = () => {
         entityId: created?.id ?? null,
         details: { name: form.taskName, category: form.category },
       });
-      toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
+      if (quote && !quote.billing_off) {
+        toast.success("המטלה נשלחה לאישור. תעלה לאפליקציה אחרי שנאשר אותה 🐝");
+      } else {
+        toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
+      }
       navigate("/my-tasks?tab=published");
     }
   };
@@ -481,13 +551,18 @@ const CreateTask = () => {
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-xl">🛡️</span>
                   <h3 className="text-sm font-extrabold text-foreground">ביטוח מטלות</h3>
-                  <span className="text-xs bg-primary/10 text-primary-ink font-bold px-2 py-0.5 rounded-full">למנויים בתשלום</span>
+                  <span className="text-xs bg-primary/10 text-primary-ink font-bold px-2 py-0.5 rounded-full">5 ₪ למשימה</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3 text-start">
-                  כיסוי לנזק ישיר לרכוש עד 2,000 ₪ למשימה (5 ₪/חודש)
+                  כיסוי לנזק ישיר לרכוש עד 2,000 ₪ למשימה. התוספת היא 5 ₪ על המטלה הזאת בלבד.
                 </p>
                 <div className="flex items-center gap-3">
-                  <Checkbox id="insurance" className="h-5 w-5" />
+                  <Checkbox
+                    id="insurance"
+                    className="h-5 w-5"
+                    checked={insurance}
+                    onCheckedChange={(value) => setInsurance(value === true)}
+                  />
                   <label htmlFor="insurance" className="text-sm font-bold text-foreground cursor-pointer select-none">
                     הפעל ביטוח למטלה זו
                   </label>
@@ -570,6 +645,39 @@ const CreateTask = () => {
             </div>
           )}
 
+          {step === 6 && quote && !quote.billing_off && (
+            <div
+              className="mt-5 rounded-3xl border border-border/60 bg-card/40 p-5 text-start"
+              data-testid="publish-quote"
+            >
+              <h3 className="font-extrabold text-foreground text-base mb-3">עלות הפרסום</h3>
+              {quote.free_slot && (
+                <p className="text-sm font-bold text-primary-ink">המטלה הראשונה שלכם חינם 🎁</p>
+              )}
+              {quote.subscriber && quote.insurance_fee === 0 && (
+                <p className="text-sm font-bold text-primary-ink">המנוי שלכם כולל פרסום ללא עלות</p>
+              )}
+              {!quote.free_slot && !quote.subscriber && (
+                <p className="text-sm text-foreground">עמלת פרסום: {formatCurrency(quote.task_fee)}</p>
+              )}
+              {quote.insurance_fee > 0 && (
+                <p className="text-sm text-foreground">ביטוח מטלות: {formatCurrency(quote.insurance_fee)}</p>
+              )}
+              <p className="mt-2 text-base font-extrabold text-foreground">
+                סה״כ: {quote.due > 0 ? formatCurrency(quote.due) : "חינם"}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                המטלה נשלחת לאישור. הכרטיס יחויב רק אחרי שאישרנו אותה, והיא תעלה לאפליקציה אחרי שהחיוב עבר.
+                {!quote.free_slot && !quote.subscriber && " אפשר גם לעבור למנוי ולפרסם בלי עמלה."}
+              </p>
+              {quote.due > 0 && !quote.has_card && (
+                <p className="mt-2 text-xs font-bold text-foreground">
+                  בלחיצה על פרסום תועברו לשמירת כרטיס אשראי, בלי חיוב בשלב הזה.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 gap-4">
             <Button
@@ -631,6 +739,9 @@ const publishErrorMessage = (error: { message: string; code?: string }) => {
   if (error.code === "42501") {
     return "רק משתמש מסוג מציע מטלות יכול לפרסם מטלה.";
   }
+  if (error.message === "card_required") return "צריך לשמור כרטיס אשראי לפני פרסום מטלה בתשלום.";
+  if (error.message === "too_many_submissions") return "שלחתם הרבה מטלות בשעה האחרונה. אפשר לנסות שוב בעוד כמה דקות.";
+  if (error.message === "too_many_pending_payment") return "יש כבר 3 מטלות שממתינות לתשלום. כדאי להסדיר אותן קודם.";
   return "שגיאה בפרסום המטלה: " + error.message;
 };
 

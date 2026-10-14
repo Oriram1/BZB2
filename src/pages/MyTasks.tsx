@@ -24,6 +24,14 @@ import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDateTime } from "@/lib/format";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
+import {
+  billingErrorText,
+  payTaskWithNewCard,
+  publishStateLabel,
+  resubmitTask,
+  retryTaskPayment,
+  type TaskPublishState,
+} from "@/lib/taskBilling";
 
 type ApplicationStatus = "pending" | "accepted" | "rejected";
 /** The task_status enum, so a screen cannot invent a state the database rejects. */
@@ -36,6 +44,8 @@ interface PublishedTask {
   views_count: number;
   status: TaskStatus;
   workers_needed: number;
+  publish_state: TaskPublishState;
+  payment_due: number;
 }
 
 interface CandidateApplication {
@@ -146,7 +156,7 @@ const MyTasks = () => {
       {
         const { data: taskRows, error: taskError } = await supabase
           .from("tasks")
-          .select("id, name, short_desc, views_count, status, workers_needed")
+          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due")
           .eq("creator_id", user.id)
           .is("archived_at", null)
           .order("created_at", { ascending: false });
@@ -154,7 +164,7 @@ const MyTasks = () => {
         if (taskError) {
           toast.error("לא הצלחנו לטעון את המטלות שפרסמתם");
         } else {
-          nextPublishedTasks.push(...(taskRows ?? []));
+          nextPublishedTasks.push(...((taskRows ?? []) as unknown as PublishedTask[]));
 
           const applicationGroups = await Promise.all(
             (taskRows ?? []).map(async (task) => {
@@ -311,6 +321,49 @@ const MyTasks = () => {
       toast.error("לא הצלחנו לפתוח את השיחה");
       setActionId(null);
     }
+  };
+
+  const [payingTask, setPayingTask] = useState<string | null>(null);
+
+  const setPublishState = (taskId: string, publish_state: TaskPublishState) =>
+    setPublishedTasks((current) => current.map((t) => (t.id === taskId ? { ...t, publish_state } : t)));
+
+  /** Charges the saved card again for a task that was approved but not paid. */
+  const retryPayment = async (task: PublishedTask) => {
+    setPayingTask(task.id);
+    const result = await retryTaskPayment(task.id);
+    setPayingTask(null);
+    if (!result.ok) {
+      toast.error(billingErrorText(result.code));
+      return;
+    }
+    setPublishState(task.id, result.data.state);
+    if (result.data.state === "live") toast.success("התשלום עבר והמטלה פורסמה 🐝");
+    else toast.error("החיוב נדחה. אפשר לנסות כרטיס אחר");
+  };
+
+  /** Opens Cardcom's page to pay this task with a different card. */
+  const payWithOtherCard = async (task: PublishedTask) => {
+    setPayingTask(task.id);
+    const result = await payTaskWithNewCard(task.id);
+    if (!result.ok) {
+      setPayingTask(null);
+      toast.error(billingErrorText(result.code));
+      return;
+    }
+    window.location.assign(result.url);
+  };
+
+  const sendAgain = async (task: PublishedTask) => {
+    setPayingTask(task.id);
+    const result = await resubmitTask(task.id);
+    setPayingTask(null);
+    if (!result.ok) {
+      toast.error(billingErrorText(result.code));
+      return;
+    }
+    setPublishState(task.id, "pending_review");
+    toast.success("המטלה נשלחה שוב לאישור");
   };
 
   const [confirmTask, setConfirmTask] = useState<PublishedTask | null>(null);
@@ -563,12 +616,54 @@ const MyTasks = () => {
                       {/* A closed task has to read as closed at a glance, or the
                           list looks identical before and after completing one. */}
                       <Badge
-                        variant={closed ? "secondary" : undefined}
-                        className={`rounded-full ${closed ? "" : "gradient-honey text-primary-foreground border-0"}`}
+                        variant={closed || task.publish_state !== "live" ? "secondary" : undefined}
+                        className={`rounded-full ${closed || task.publish_state !== "live" ? "" : "gradient-honey text-primary-foreground border-0"}`}
                       >
-                        {taskStatusLabel(task.status)}
+                        {task.publish_state === "live" ? taskStatusLabel(task.status) : publishStateLabel[task.publish_state]}
                       </Badge>
                     </div>
+                    {task.publish_state === "pending_review" && (
+                      <p className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm text-foreground">
+                        המטלה ממתינה לאישור. {Number(task.payment_due) > 0
+                          ? `הכרטיס יחויב ב־${Number(task.payment_due)} ₪ רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
+                          : "היא תעלה לאפליקציה מיד אחרי האישור."}
+                      </p>
+                    )}
+                    {(task.publish_state === "pending_payment" || task.publish_state === "awaiting_charge") && (
+                      <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                        <p className="font-bold text-foreground">
+                          המטלה אושרה אבל החיוב ({Number(task.payment_due)} ₪) לא עבר.
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          כדאי לנסות כרטיס אחר או לפנות לחברת האשראי. אם לא ישולם תוך 7 ימים המטלה תחזור לטיוטה, בלי חיוב.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button size="sm" disabled={payingTask === task.id} onClick={() => retryPayment(task)} className="rounded-full font-bold">
+                            לנסות שוב
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => payWithOtherCard(task)} className="rounded-full font-bold">
+                            לשלם בכרטיס אחר
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {(task.publish_state === "draft" || task.publish_state === "rejected") && (
+                      <div className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm">
+                        <p className="text-foreground">
+                          {task.publish_state === "draft"
+                            ? "לא התקבל תשלום והמטלה חזרה לטיוטה. לא חויבתם."
+                            : "המטלה לא אושרה, ולא חויבתם."}
+                        </p>
+                        <Button size="sm" disabled={payingTask === task.id} onClick={() => sendAgain(task)} className="mt-2 rounded-full font-bold">
+                          לשלוח שוב לאישור
+                        </Button>
+                      </div>
+                    )}
+                    {task.publish_state === "hidden" && (
+                      <p className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm text-foreground">
+                        המטלה מוסתרת כי המנוי הסתיים. חידוש המנוי יחזיר אותה מיד.
+                      </p>
+                    )}
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>

@@ -434,6 +434,9 @@ Deno.test({
       await admin.from("billing_settings").update({ value: "on" }).eq("key", "task_billing");
     });
 
+    // Leave the switch the way it ships, so the next run starts from the default.
+    await admin.from("billing_settings").update({ value: "off" }).eq("key", "task_billing");
+
     for (const child of children) {
       try { child.kill(); } catch { /* already gone */ }
     }
