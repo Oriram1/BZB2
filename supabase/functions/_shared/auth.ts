@@ -5,6 +5,7 @@ const ALLOWED_ORIGINS = [
   "https://bzb-web.com",
   "https://www.bzb-web.com",
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "http://localhost:8080",
 ];
 

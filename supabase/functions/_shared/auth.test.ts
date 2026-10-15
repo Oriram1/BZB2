@@ -1,8 +1,12 @@
 import { assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1";
-import { readJsonObject, requireSecret } from "./auth.ts";
+import { corsOrigin, readJsonObject, requireSecret } from "./auth.ts";
 
 const post = (body?: string, headers?: HeadersInit) =>
   new Request("https://example.test", { method: "POST", body, headers });
+
+Deno.test("corsOrigin allows the local Vite address", () => {
+  assertEquals(corsOrigin(post(undefined, { Origin: "http://127.0.0.1:5173" })), "http://127.0.0.1:5173");
+});
 
 Deno.test("readJsonObject accepts bounded JSON objects", async () => {
   assertEquals(await readJsonObject(post(JSON.stringify({ ok: true }))), { ok: true });

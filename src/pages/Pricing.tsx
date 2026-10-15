@@ -61,8 +61,8 @@ const Pricing = () => {
       .select("free_month_used_at")
       .eq("user_id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (active) setTrialAvailable(!data?.free_month_used_at);
+      .then(({ data, error }) => {
+        if (active) setTrialAvailable(!error && !data?.free_month_used_at);
       });
     return () => {
       active = false;
@@ -74,6 +74,7 @@ const Pricing = () => {
 
   const isTasker = roles.includes("tasker");
   const subscribed = hasAccess(subscription);
+  const trialEligible = !subscriptionLoading && trialAvailable && !subscription?.first_paid_at && !subscribed;
 
   // Registering for a paid plan lands here with ?plan=…&checkout=1 so the
   // consent step is the same one a signed-in visitor sees. Wait for roles and
@@ -218,7 +219,7 @@ const Pricing = () => {
         busy={busy}
         onOpenChange={(open) => !open && setCheckoutPlan(null)}
         onConfirm={confirmCheckout}
-        onStartTrial={trialAvailable && !subscribed ? confirmTrial : undefined}
+        onStartTrial={trialEligible ? confirmTrial : undefined}
       />
     </div>
   );
