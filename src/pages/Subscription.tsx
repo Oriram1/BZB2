@@ -61,25 +61,31 @@ const Subscription = () => {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [cancelOptionsOpen, setCancelOptionsOpen] = useState(false);
+  const [cancelChoice, setCancelChoice] = useState<"period_end" | "refund">("period_end");
   const [canRefund, setCanRefund] = useState(false);
+  const [refundChecking, setRefundChecking] = useState(false);
+  const [refundCheckError, setRefundCheckError] = useState(false);
   const [switchTo, setSwitchTo] = useState<"quarterly" | "annual" | null>(null);
 
-  // Whether the 14-day cancellation applies decides which button is shown.
-  const subscriptionStatus = subscription?.status;
-  const subscriptionEnd = subscription?.current_period_end;
-  useEffect(() => {
-    if (subscriptionStatus !== "active") {
-      setCanRefund(false);
+  const openCancellation = async () => {
+    if (subscription?.is_trial || subscription?.status === "past_due") {
+      setConfirmCancel(true);
       return;
     }
-    let active = true;
-    void previewRefundCancellation().then((result) => {
-      if (active) setCanRefund(result.ok);
-    });
-    return () => {
-      active = false;
-    };
-  }, [subscriptionStatus, subscriptionEnd]);
+    setCancelChoice("period_end");
+    setCanRefund(false);
+    setRefundCheckError(false);
+    setRefundChecking(true);
+    setCancelOptionsOpen(true);
+    const result = await previewRefundCancellation();
+    setRefundChecking(false);
+    if (!result.ok && !["refund_already_used", "window_passed", "nothing_to_refund", "no_active_subscription"].includes(result.code)) {
+      setRefundCheckError(true);
+      return;
+    }
+    setCanRefund(result.ok);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -260,14 +266,9 @@ const Subscription = () => {
                     </Button>
                   ) : (
                     <>
-                      <Button variant="outline" onClick={() => setConfirmCancel(true)} disabled={busy} className="rounded-2xl font-bold">
+                      <Button variant="outline" onClick={() => void openCancellation()} disabled={busy} className="rounded-2xl font-bold">
                         ביטול מנוי
                       </Button>
-                      {canRefund && !subscription.is_trial && (
-                        <Button variant="outline" onClick={() => setRefundOpen(true)} disabled={busy} className="rounded-2xl font-bold">
-                          ביטול עם החזר (עד 14 יום)
-                        </Button>
-                      )}
                     </>
                   )}
                   {!subscription.cancel_at_period_end && isPaidPlan(subscription.plan_id) && (
@@ -322,6 +323,37 @@ const Subscription = () => {
           </Card>
         )}
       </div>
+
+      <AlertDialog open={cancelOptionsOpen} onOpenChange={setCancelOptionsOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>איך לבטל את המנוי?</AlertDialogTitle>
+            <AlertDialogDescription>בחרו מתי המנוי יסתיים. שום שינוי לא יבוצע לפני האישור הבא.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div role="radiogroup" aria-label="מועד ביטול המנוי" className="space-y-2">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border p-3 text-sm">
+              <input type="radio" name="cancel-choice" checked={cancelChoice === "period_end"} onChange={() => setCancelChoice("period_end")} className="mt-1" />
+              <span><strong className="block">בסוף התקופה</strong>המנוי יישאר פעיל עד {formatDate(subscription?.current_period_end)} ולא יתחדש. אין החזר.</span>
+            </label>
+            {canRefund && (
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border p-3 text-sm">
+                <input type="radio" name="cancel-choice" checked={cancelChoice === "refund"} onChange={() => setCancelChoice("refund")} className="mt-1" />
+                <span><strong className="block">עכשיו, עם החזר</strong>המנוי יסתיים מיד. במסך הבא יוצגו סכום ההחזר והמטלות לבחירה.</span>
+              </label>
+            )}
+            {refundChecking && <p className="text-sm text-muted-foreground">בודקים זכאות להחזר…</p>}
+            {refundCheckError && <p role="alert" className="text-sm text-destructive">לא הצלחנו לבדוק זכאות להחזר. אפשר לנסות שוב מאוחר יותר. ביטול בסוף התקופה עדיין זמין.</p>}
+          </div>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel>חזרה</AlertDialogCancel>
+            <Button disabled={refundChecking} onClick={() => {
+              setCancelOptionsOpen(false);
+              if (cancelChoice === "refund") setRefundOpen(true);
+              else setConfirmCancel(true);
+            }}>המשך</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
         <AlertDialogContent dir="rtl">
