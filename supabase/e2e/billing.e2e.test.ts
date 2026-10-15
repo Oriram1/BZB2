@@ -319,6 +319,11 @@ Deno.test({
         current_period_start: start.toISOString(), current_period_end: end.toISOString(), first_paid_at: start.toISOString(),
       });
       await admin.from("payment_methods").upsert({ user_id: payer.id, token: "tok-payer", card_expiry: "1230", card_last4: "4580" });
+      const order = await admin.from("payment_orders").insert({
+        user_id: payer.id, plan_id: "quarterly", kind: "initial", amount: 30, status: "paid",
+        deal_number: DEAL_BASE + 3, paid_at: new Date().toISOString(),
+      });
+      assert(!order.error, order.error?.message);
 
       const before = chargeRequests().length;
       const r = await call("billing-change-plan", payer.token, { plan_id: "annual" });
@@ -340,6 +345,35 @@ Deno.test({
       const sub = await admin.from("subscriptions").select("plan_id, pending_plan_id").eq("user_id", payer.id).single();
       assertEquals(sub.data!.plan_id, "annual");
       assertEquals(sub.data!.pending_plan_id, "quarterly");
+    });
+
+    await t.step("refund after upgrade returns both payments once and cancels the subscription", async () => {
+      const preview = await call("billing-cancel-refund", payer.token, { action: "preview" });
+      assertEquals(preview.status, 200, JSON.stringify(preview.data));
+      assertEquals(Number(preview.data.refund_amount), 110);
+
+      const before = mock.requests.filter((request) => request.path === "/Transactions/RefundByTransactionId").length;
+      const [first, secondRequest] = await Promise.all([
+        call("billing-cancel-refund", payer.token, { action: "confirm", delete_task_ids: [] }),
+        call("billing-cancel-refund", payer.token, { action: "confirm", delete_task_ids: [] }),
+      ]);
+      const result = first.status === 200 ? first : secondRequest;
+      assertEquals(result.status, 200, JSON.stringify(result.data));
+      assertEquals(first.status === 200 ? secondRequest.status : first.status, 409);
+      assertEquals(Number(result.data.refunded), 110);
+      const refunds = mock.requests.filter((request) => request.path === "/Transactions/RefundByTransactionId").slice(before);
+      assertEquals(refunds.length, 2);
+      assertEquals(Number(refunds[1].body.TransactionId), DEAL_BASE + 3);
+
+      const charge = await admin.from("billing_charges").select("status").eq("user_id", payer.id).eq("purpose", "plan_change").single();
+      assertEquals(charge.data!.status, "refunded");
+      const sub = await admin.from("subscriptions").select("status, pending_plan_id").eq("user_id", payer.id).single();
+      assertEquals(sub.data!.status, "canceled");
+      assertEquals(sub.data!.pending_plan_id, null);
+
+      const second = await call("billing-cancel-refund", payer.token, { action: "confirm", delete_task_ids: [] });
+      assertEquals(second.status, 409);
+      assertEquals(mock.requests.filter((request) => request.path === "/Transactions/RefundByTransactionId").length, before + 2);
     });
 
     // ---- 14-day cancellation with refund ---------------------------------

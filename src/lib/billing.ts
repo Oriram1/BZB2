@@ -109,6 +109,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   window_passed: "עברו יותר מ־14 יום מהתשלום, ולכן אי אפשר לבטל עם החזר",
   charge_failed: "החיוב על המשימות שנשארו נדחה. אפשר לנסות כרטיס אחר",
   nothing_to_refund: "אין תשלום שאפשר להחזיר",
+  refund_requires_review: "אי אפשר להשלים את ההחזר אוטומטית כרגע. פנו לתמיכה לבדיקת החיובים",
   no_active_subscription_refund: "אין מנוי פעיל",
 };
 

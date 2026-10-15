@@ -65,7 +65,7 @@ const Subscription = () => {
   const [cancelChoice, setCancelChoice] = useState<"period_end" | "refund">("period_end");
   const [canRefund, setCanRefund] = useState(false);
   const [refundChecking, setRefundChecking] = useState(false);
-  const [refundCheckError, setRefundCheckError] = useState(false);
+  const [refundCheckError, setRefundCheckError] = useState<string | null>(null);
   const [switchTo, setSwitchTo] = useState<"quarterly" | "annual" | null>(null);
 
   const openCancellation = async () => {
@@ -75,13 +75,13 @@ const Subscription = () => {
     }
     setCancelChoice("period_end");
     setCanRefund(false);
-    setRefundCheckError(false);
+    setRefundCheckError(null);
     setRefundChecking(true);
     setCancelOptionsOpen(true);
     const result = await previewRefundCancellation();
     setRefundChecking(false);
     if (!result.ok && !["refund_already_used", "window_passed", "nothing_to_refund", "no_active_subscription"].includes(result.code)) {
-      setRefundCheckError(true);
+      setRefundCheckError(billingErrorMessage(result.code));
       return;
     }
     setCanRefund(result.ok);
@@ -342,7 +342,7 @@ const Subscription = () => {
               </label>
             )}
             {refundChecking && <p className="text-sm text-muted-foreground">בודקים זכאות להחזר…</p>}
-            {refundCheckError && <p role="alert" className="text-sm text-destructive">לא הצלחנו לבדוק זכאות להחזר. אפשר לנסות שוב מאוחר יותר. ביטול בסוף התקופה עדיין זמין.</p>}
+            {refundCheckError && <p role="alert" className="text-sm text-destructive">{refundCheckError} ביטול בסוף התקופה עדיין זמין.</p>}
           </div>
           <AlertDialogFooter className="gap-2 sm:gap-2">
             <AlertDialogCancel>חזרה</AlertDialogCancel>
