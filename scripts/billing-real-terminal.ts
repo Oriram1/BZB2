@@ -97,6 +97,42 @@ if (step === "users") {
   if (state.cardSetup?.charge_id) out.cardSetup = (await fn("billing-confirm", state.owner.token, { charge_id: state.cardSetup.charge_id }, anon)).data;
   if (state.subscribe?.order_id) out.subscribe = (await fn("billing-confirm", state.payer.token, { order_id: state.subscribe.order_id }, anon)).data;
   console.log(JSON.stringify(out));
+} else if (step === "tasks") {
+  // Free task, then a paid task and a paid + insured task, all approved by the
+  // admin user, charged to the card saved on the real test terminal.
+  const owner = state.owner;
+  const post = async (path: string, body: unknown, token: string) =>
+    (await fetch(`${URL_}${path}`, {
+      method: "POST",
+      headers: { apikey: anon, Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) })));
+  const create = async (name: string, insurance: boolean) =>
+    await post("/rest/v1/tasks", {
+      creator_id: owner.id, category: "housework", name, short_desc: "real terminal e2e", payment: 50, insurance,
+    }, owner.token);
+  const stateOf = async (id: string) =>
+    (await rest(service, `/rest/v1/tasks?id=eq.${id}&select=publish_state,payment_due,charged_at`)).body[0];
+
+  const results: Record<string, unknown> = {};
+  for (const [label, insurance] of [["free", false], ["paid", false], ["insured", true]] as const) {
+    const made = await create(`e2e ${label}`, insurance);
+    const id = made.body?.[0]?.id ?? made.body?.id;
+    if (!id) { results[label] = { created: made.status, error: made.body }; continue; }
+    const before = await stateOf(id);
+    const decided = await fn("task-review", state.admin.token, { task_id: id, approve: true }, anon);
+    results[label] = { due: before.payment_due, review: decided.data, after: await stateOf(id) };
+  }
+  const charges = await rest(service, `/rest/v1/billing_charges?user_id=eq.${owner.id}&select=purpose,amount,status,response_code,error&order=created_at`);
+  results.charges = charges.body;
+  console.log(JSON.stringify(results, null, 1));
+} else if (step === "cleanup") {
+  for (const key of ["admin", "owner", "payer"]) {
+    if (!state[key]?.id) continue;
+    await rest(service, `/rest/v1/tasks?creator_id=eq.${state[key].id}`, { method: "DELETE" });
+    await rest(service, `/auth/v1/admin/users/${state[key].id}`, { method: "DELETE" });
+  }
+  console.log("cleaned");
 } else {
   console.log("unknown step");
 }
