@@ -101,6 +101,10 @@ const Subscription = () => {
 
   const { plans } = usePlans();
   const plan = subscription && isPaidPlan(subscription.plan_id) ? plans[subscription.plan_id] ?? null : null;
+  const pendingPlan =
+    subscription?.pending_plan_id && isPaidPlan(subscription.pending_plan_id)
+      ? plans[subscription.pending_plan_id] ?? null
+      : null;
 
   const cancel = async () => {
     setBusy(true);
@@ -207,17 +211,13 @@ const Subscription = () => {
                 </p>
               )}
 
-              {subscription.status === "active" && subscription.pending_plan_id && (
-                <p className="text-muted-foreground">
-                  בסוף התקופה תעברו למסלול {plans[subscription.pending_plan_id as "quarterly" | "annual"]?.name ?? subscription.pending_plan_id}.
-                </p>
-              )}
-
               {subscription.status === "active" && (
                 <p className="text-muted-foreground">
                   {subscription.cancel_at_period_end
                     ? `המנוי פעיל עד ${formatDate(subscription.current_period_end)} ולא יתחדש.`
-                    : `המנוי מתחדש ב־${formatDate(subscription.current_period_end)}${plan ? ` בסך ${formatPrice(plan.price)} ₪` : ""}.`}
+                    : pendingPlan
+                      ? `ב־${formatDate(subscription.current_period_end)} תעברו למסלול ${pendingPlan.name} ותחויבו ב־${formatPrice(pendingPlan.price)} ₪.`
+                      : `המנוי מתחדש ב־${formatDate(subscription.current_period_end)}${plan ? ` בסך ${formatPrice(plan.price)} ₪` : ""}.`}
                 </p>
               )}
 
