@@ -25,7 +25,7 @@ type HistoryRow = {
   changed_at: string;
 };
 
-const MIN_AMOUNT = 1;
+const MIN_AMOUNT = 0.1;
 const MAX_AMOUNT = 1000;
 
 const ERRORS: Record<string, string> = {

@@ -54,6 +54,8 @@ export function PageHeader({
     <header
       className={cn(
         "relative gradient-honey py-3 px-4 sticky top-0 z-30 shadow-md",
+        // Reserve the back button's width plus a gap at every viewport size.
+        showBack && "pl-[4.25rem]",
         className,
       )}
     >

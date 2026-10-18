@@ -957,7 +957,7 @@ export default function Admin() {
       </header>
 
       <div className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs dir="rtl" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 grid h-auto w-full grid-cols-4 sm:grid-cols-8 rounded-xl p-1">
             {[
               { value: "overview", label: "סקירה" },
