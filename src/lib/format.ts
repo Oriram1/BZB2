@@ -28,6 +28,13 @@ const currencyFormatter = new Intl.NumberFormat("he-IL", {
   maximumFractionDigits: 0,
 });
 
+const currencyFormatterWithAgorot = new Intl.NumberFormat("he-IL", {
+  style: "currency",
+  currency: "ILS",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 /** Placeholder shown instead of an empty or unparsable value. */
 export const EMPTY = "לא צוין";
 
@@ -79,7 +86,8 @@ export function formatTime(value?: string | Date | null): string {
 /** 50 -> "₪50". */
 export function formatCurrency(amount?: number | null): string {
   if (amount === null || amount === undefined || Number.isNaN(amount)) return EMPTY;
-  return currencyFormatter.format(amount);
+  // Whole shekels stay whole; an amount like 0.10 must not round down to 0.
+  return (Number.isInteger(amount) ? currencyFormatter : currencyFormatterWithAgorot).format(amount);
 }
 
 /** 0.5 -> "חצי שעה", 1 -> "שעה", 2 -> "שעתיים", 0.38 -> "23 דקות". */
