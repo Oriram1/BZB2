@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
-import { normalizePhone, isValidPhone, phoneIssue } from "@/lib/format";
+import { normalizePhone, isValidPhone, phoneIssue, ageIssue, MAX_AGE } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
@@ -204,11 +204,14 @@ const Register = () => {
     phoneProblem === "invalid" || (phoneProblem === "incomplete" && phoneTouched)
       ? "מספר הטלפון לא תקין. לדוגמה: 050-000-0000"
       : undefined;
-  const typedAge = parseInt(form.age, 10);
-  const ageBelowMinimum = !Number.isNaN(typedAge) && typedAge < minAge;
-  const ageBlockMessage = ageBelowMinimum && (ageTouched || form.age.length >= 2)
-    ? `הגיל המינימלי להרשמה הוא ${minAge}`
-    : undefined;
+  const ageProblem = ageIssue(form.age, minAge);
+  const ageBelowMinimum = ageProblem === "below";
+  const ageAboveMaximum = ageProblem === "above";
+  const ageBlockMessage = ageAboveMaximum
+    ? "הגיל שהוזן לא נראה תקין"
+    : ageBelowMinimum && (ageTouched || form.age.length >= 2)
+      ? `הגיל המינימלי להרשמה הוא ${minAge}`
+      : undefined;
 
   /** Every rule in one place. Returns a message per invalid field. */
   const validate = () => {
@@ -219,7 +222,7 @@ const Register = () => {
     const age = parseInt(form.age, 10);
     if (!form.age.trim()) next.age = "חסר גיל";
     else if (Number.isNaN(age) || age < minAge) next.age = `הגיל המינימלי להרשמה הוא ${minAge}`;
-    else if (age > 120) next.age = "הגיל שהוזן לא נראה תקין";
+    else if (age > MAX_AGE) next.age = "הגיל שהוזן לא נראה תקין";
 
     if (!form.gender) next.gender = "צריך לבחור אחת מהאפשרויות";
 
@@ -404,7 +407,7 @@ const Register = () => {
           </div>
           <div>
             <Label htmlFor="age">גיל</Label>
-            <Input id="age" type="text" inputMode="numeric" dir="ltr" value={form.age} onBlur={() => setAgeTouched(true)} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" aria-invalid={!!(errors.age || ageBlockMessage)} aria-describedby={errors.age || ageBlockMessage ? "age-error" : "age-hint"} />
+            <Input id="age" type="text" inputMode="numeric" maxLength={3} dir="ltr" value={form.age} onBlur={() => setAgeTouched(true)} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" aria-invalid={!!(errors.age || ageBlockMessage)} aria-describedby={errors.age || ageBlockMessage ? "age-error" : "age-hint"} />
             {errors.age || ageBlockMessage
               ? <FieldError id="age" message={errors.age || ageBlockMessage} />
               : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}</p>}
@@ -512,7 +515,7 @@ const Register = () => {
             </Label>
           </div>
 
-          <Button type="submit" disabled={loading || ageBelowMinimum} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
+          <Button type="submit" disabled={loading || ageBelowMinimum || ageAboveMaximum} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
             {loading ? "נרשמים..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "הירשמו 🐝"}
           </Button>
 

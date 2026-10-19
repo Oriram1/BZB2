@@ -169,6 +169,22 @@ export function isValidPhone(input: string): boolean {
   return /^05\d{8}$/.test(phone) || /^0[2-489]\d{7}$/.test(phone);
 }
 
+/** The oldest age we accept: past the oldest person ever recorded, so only typos are caught. */
+export const MAX_AGE = 120;
+
+/**
+ * Whether a typed age is out of range. "above" can be said as soon as it is
+ * typed (no extra digit can fix 345); "below" is judged by the caller, because
+ * "1" may still become "18".
+ */
+export function ageIssue(raw: string, minAge: number): "below" | "above" | null {
+  const age = parseInt(raw, 10);
+  if (Number.isNaN(age)) return null;
+  if (age > MAX_AGE) return "above";
+  if (age < minAge) return "below";
+  return null;
+}
+
 /**
  * What is wrong with a phone number while it is still being typed.
  *   null          empty, or already a valid number
