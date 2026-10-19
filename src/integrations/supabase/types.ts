@@ -1521,6 +1521,7 @@ export type Database = {
         | "billing_subscription_ended"
         | "billing_refunded"
         | "task_approved"
+        | "task_refunded"
         | "task_rejected"
         | "task_payment_failed"
         | "task_payment_reminder"
@@ -1704,6 +1705,7 @@ export const Constants = {
         "billing_subscription_ended",
         "billing_refunded",
         "task_approved",
+        "task_refunded",
         "task_rejected",
         "task_payment_failed",
         "task_payment_reminder",

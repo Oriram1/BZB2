@@ -5,6 +5,9 @@ BEGIN;
 
 -- Start from the shipped default, whatever an earlier run left behind.
 UPDATE public.billing_settings SET value = 'off' WHERE key = 'task_billing';
+-- The scenarios below assume the shipped fees, whatever an admin set since.
+UPDATE public.billing_settings SET value = '3.00' WHERE key = 'task_fee';
+UPDATE public.billing_settings SET value = '5.00' WHERE key = 'insurance_fee';
 
 CREATE FUNCTION pg_temp.expect(_what TEXT, _ok BOOLEAN) RETURNS VOID LANGUAGE plpgsql AS $$
 BEGIN
@@ -195,6 +198,136 @@ BEGIN
   UPDATE public.tasks SET hidden_at = now() - interval '61 days' WHERE id = t2;
   PERFORM public.task_billing_maintenance();
   PERFORM pg_temp.expect('hidden 61 days: deleted', NOT EXISTS (SELECT 1 FROM public.tasks WHERE id = t2));
+END $$;
+
+-- 13. The free task goes to the first task APPROVED, not the first submitted.
+DO $$
+DECLARE u UUID; a UUID; b UUID; r JSONB; row_ public.tasks%ROWTYPE;
+BEGIN
+  UPDATE public.billing_settings SET value = 'on' WHERE key = 'task_billing';
+  u := pg_temp.mk_user('f@test.local');
+  a := pg_temp.mk_task(u);
+  INSERT INTO public.payment_methods (user_id, token, card_expiry, card_last4) VALUES (u, 'tok-f', '1230', '4242');
+  b := pg_temp.mk_task(u);
+  PERFORM pg_temp.expect('submit: first looks free, second looks paid',
+    (SELECT payment_due FROM public.tasks WHERE id = a) = 0 AND (SELECT payment_due FROM public.tasks WHERE id = b) = 3);
+  PERFORM pg_temp.expect('submit: the fee is stored on both',
+    (SELECT fee_amount FROM public.tasks WHERE id = a) = 3 AND (SELECT fee_amount FROM public.tasks WHERE id = b) = 3);
+
+  -- The admin approves the SECOND one first: it is the free one.
+  r := public.task_review_decide(b, u, true, null);
+  PERFORM pg_temp.expect('approved first is free and live even if submitted second',
+    r->>'state' = 'live' AND (r->>'due')::NUMERIC = 0);
+  SELECT * INTO row_ FROM public.tasks WHERE id = b;
+  PERFORM pg_temp.expect('it holds the free slot', row_.uses_free_slot AND row_.payment_due = 0);
+
+  -- The first one, approved later, now pays.
+  r := public.task_review_decide(a, u, true, null);
+  PERFORM pg_temp.expect('approved second pays the fee', r->>'state' = 'awaiting_charge' AND (r->>'due')::NUMERIC = 3);
+  SELECT * INTO row_ FROM public.tasks WHERE id = a;
+  PERFORM pg_temp.expect('and does not hold the free slot', NOT row_.uses_free_slot AND row_.payment_due = 3);
+END $$;
+
+DO $$
+DECLARE u UUID; a UUID; b UUID; r JSONB;
+BEGIN
+  -- Two waiting tasks: rejecting the one that looked free hands the slot over.
+  u := pg_temp.mk_user('g@test.local');
+  a := pg_temp.mk_task(u);
+  INSERT INTO public.payment_methods (user_id, token, card_expiry, card_last4) VALUES (u, 'tok-g', '1230', '4242');
+  b := pg_temp.mk_task(u);
+  r := public.task_review_decide(a, u, false, 'no');
+  r := public.task_review_decide(b, u, true, null);
+  PERFORM pg_temp.expect('rejecting the free-looking one makes the other free',
+    r->>'state' = 'live' AND (r->>'due')::NUMERIC = 0);
+
+  -- Insurance is always charged, even on the free task.
+  u := pg_temp.mk_user('h@test.local');
+  INSERT INTO public.payment_methods (user_id, token, card_expiry, card_last4) VALUES (u, 'tok-h', '1230', '4242');
+  a := pg_temp.mk_task(u, true);
+  b := pg_temp.mk_task(u);
+  r := public.task_review_decide(b, u, true, null);
+  PERFORM pg_temp.expect('free task approved first: fee waived', r->>'state' = 'live');
+  r := public.task_review_decide(a, u, true, null);
+  PERFORM pg_temp.expect('insurance task approved second: fee 3 + insurance 5 = 8',
+    r->>'state' = 'awaiting_charge' AND (r->>'due')::NUMERIC = 8);
+
+  -- Insurance on the task that takes the free slot: only the insurance is due.
+  u := pg_temp.mk_user('i@test.local');
+  INSERT INTO public.payment_methods (user_id, token, card_expiry, card_last4) VALUES (u, 'tok-i', '1230', '4242');
+  a := pg_temp.mk_task(u, true);
+  r := public.task_review_decide(a, u, true, null);
+  PERFORM pg_temp.expect('free task with insurance: pays only 5', r->>'state' = 'awaiting_charge' AND (r->>'due')::NUMERIC = 5);
+  PERFORM pg_temp.expect('and holds the free slot', (SELECT uses_free_slot FROM public.tasks WHERE id = a));
+
+  -- A subscriber never takes the free slot.
+  u := pg_temp.mk_user('j@test.local');
+  INSERT INTO public.subscriptions (user_id, plan_id, status, current_period_start, current_period_end)
+  VALUES (u, 'quarterly', 'active', now(), now() + interval '90 days');
+  a := pg_temp.mk_task(u);
+  r := public.task_review_decide(a, u, true, null);
+  PERFORM pg_temp.expect('subscriber task: live, no free slot used',
+    r->>'state' = 'live' AND NOT (SELECT uses_free_slot FROM public.tasks WHERE id = a));
+END $$;
+
+-- 14. A paid task that is deleted or rejected is queued for a refund, once.
+DO $$
+DECLARE u UUID; t UUID; t2 UUID; t3 UUID; charge UUID; claimed JSONB; rid UUID; r JSONB;
+BEGIN
+  UPDATE public.billing_settings SET value = 'on' WHERE key = 'task_billing';
+  u := pg_temp.mk_user('k@test.local');
+  INSERT INTO public.payment_methods (user_id, token, card_expiry, card_last4) VALUES (u, 'tok-k', '1230', '4242');
+  INSERT INTO public.billing_user_state (user_id, free_task_used_at) VALUES (u, now());
+
+  t := pg_temp.mk_task(u);
+  r := public.task_review_decide(t, u, true, null);
+  INSERT INTO public.billing_charges (user_id, purpose, task_id, amount) VALUES (u, 'task', t, 3) RETURNING id INTO charge;
+  PERFORM public.billing_charge_paid(charge, 4242, null, null);
+  PERFORM pg_temp.expect('paid task is live', (SELECT publish_state FROM public.tasks WHERE id = t) = 'live');
+
+  UPDATE public.tasks SET archived_at = now() WHERE id = t;
+  PERFORM pg_temp.expect('deleting a paid task queues one refund of 3',
+    (SELECT count(*) FROM public.task_refunds WHERE task_id = t AND status = 'requested' AND amount = 3 AND reason = 'deleted') = 1);
+
+  -- Touching the task again does not queue a second refund.
+  UPDATE public.tasks SET archived_at = now() + interval '1 second' WHERE id = t;
+  UPDATE public.tasks SET name = 'renamed' WHERE id = t;
+  PERFORM pg_temp.expect('never two refunds for one task', (SELECT count(*) FROM public.task_refunds WHERE task_id = t) = 1);
+
+  -- The worker claims it once; a second claim gets nothing.
+  SELECT id INTO rid FROM public.task_refunds WHERE task_id = t;
+  claimed := public.task_refund_claim(rid);
+  PERFORM pg_temp.expect('claim returns the paid charge', jsonb_array_length(claimed->'charges') = 1);
+  PERFORM pg_temp.expect('a second claim gets nothing', public.task_refund_claim(rid) IS NULL);
+
+  PERFORM public.task_refund_charge_done(charge);
+  PERFORM public.task_refund_finish(rid, true, 0, null);
+  PERFORM pg_temp.expect('charge marked refunded',
+    (SELECT status = 'refunded' AND refunded_at IS NOT NULL FROM public.billing_charges WHERE id = charge));
+  PERFORM pg_temp.expect('refund marked succeeded', (SELECT status = 'succeeded' FROM public.task_refunds WHERE id = rid));
+  PERFORM public.task_refund_finish(rid, false, 5, 'late');
+  PERFORM pg_temp.expect('a finished refund cannot be rewritten', (SELECT status = 'succeeded' FROM public.task_refunds WHERE id = rid));
+
+  -- Nothing was charged -> nothing to refund.
+  t2 := pg_temp.mk_task(u);
+  r := public.task_review_decide(t2, u, false, 'no');
+  UPDATE public.tasks SET archived_at = now() WHERE id = t2;
+  PERFORM pg_temp.expect('rejected or deleted without a charge queues no refund',
+    NOT EXISTS (SELECT 1 FROM public.task_refunds WHERE task_id = t2));
+
+  -- A paid task rejected after the charge (state moved to rejected) is queued too.
+  t3 := pg_temp.mk_task(u);
+  r := public.task_review_decide(t3, u, true, null);
+  INSERT INTO public.billing_charges (user_id, purpose, task_id, amount) VALUES (u, 'task', t3, 3) RETURNING id INTO charge;
+  PERFORM public.billing_charge_paid(charge, 5151, null, null);
+  PERFORM set_config('app.task_billing_write', '1', true);
+  UPDATE public.tasks SET publish_state = 'rejected' WHERE id = t3;
+  PERFORM pg_temp.expect('rejection after the charge queues a refund',
+    (SELECT count(*) FROM public.task_refunds WHERE task_id = t3 AND reason = 'rejected') = 1);
+
+  -- Only the confirmed deal counts: a charge without a Cardcom deal is not refundable.
+  PERFORM pg_temp.expect('refunds are not readable by a client',
+    NOT has_table_privilege('authenticated', 'public.task_refunds', 'INSERT'));
 END $$;
 
 -- 12. Free month once, refund once.

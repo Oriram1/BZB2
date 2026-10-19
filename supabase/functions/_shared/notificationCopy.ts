@@ -43,6 +43,7 @@ export type NotificationEvent =
   | "task_payment_reminder"
   | "task_returned_to_draft"
   | "tasks_hidden"
+  | "task_refunded"
   | "billing_plan_changed";
 
 export type NotificationRow = {
@@ -471,6 +472,22 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       };
     }
 
+    case "task_refunded": {
+      const task = str(data.task_name, "המטלה");
+      const amount = price(data.amount);
+      return {
+        subject: `זיכינו אתכם על המטלה "${task}"`,
+        preheader: "עמלת הפרסום הוחזרה לכרטיס",
+        heading: "עמלת הפרסום הוחזרה",
+        paragraphs: [
+          `המטלה "${task}" הוסרה, ולכן זיכינו את הכרטיס${amount ? ` בסך ${amount}` : ""}.`,
+          "הסכום יופיע בדף החשבון בדרך כלל תוך כמה ימי עסקים.",
+        ],
+        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        manageUrl,
+      };
+    }
+
     case "task_rejected": {
       const task = str(data.task_name, "המטלה");
       const note = str(data.note);
@@ -759,6 +776,9 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
     case "task_approved":
       return { title: "המטלה פורסמה ✅", body: `"${str(data.task_name, "המטלה")}" אושרה וגלויה לעוזרים`, url, tag: `task-approved-${str(data.task_id)}` };
 
+    case "task_refunded":
+      return { title: "עמלת הפרסום הוחזרה", body: `"${str(data.task_name, "המטלה")}" הוסרה, והכרטיס זוכה`, url, tag: `task-refunded-${str(data.task_id)}` };
+
     case "task_rejected":
       return { title: "המטלה לא אושרה", body: `"${str(data.task_name, "המטלה")}" לא אושרה. לא חויבתם`, url, tag: `task-rejected-${str(data.task_id)}` };
 
@@ -824,6 +844,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   billing_refunded: { email: true, push: true },
   task_approved: { email: true, push: true },
   task_rejected: { email: true, push: true },
+  task_refunded: { email: true, push: true },
   task_payment_failed: { email: true, push: true },
   task_payment_reminder: { email: true, push: false },
   task_returned_to_draft: { email: true, push: false },

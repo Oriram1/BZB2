@@ -687,6 +687,11 @@ export default function Admin() {
         return;
       }
 
+      // If the owner had already paid the fee for this task, give it back now
+      // rather than waiting for the next scheduled run. Best effort: the queue
+      // is in the database, so a failure here only delays the refund.
+      void supabase.functions.invoke("task-refund");
+
       toast.success("המטלה נמחקה");
       setPendingTaskDeletion(null);
       await openDrilldown(activeDrilldown);

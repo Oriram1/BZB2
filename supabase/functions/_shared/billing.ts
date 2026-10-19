@@ -59,7 +59,8 @@ export type BillingEvent =
   | "task_payment_failed"
   | "task_payment_reminder"
   | "task_returned_to_draft"
-  | "tasks_hidden";
+  | "tasks_hidden"
+  | "task_refunded";
 
 export type OrderRow = {
   id: string;

@@ -32,6 +32,8 @@ verify_jwt = false
 # explicit so a future config change cannot silently make user endpoints
 # public. The exceptions above are machine-to-machine integrations and
 # must authenticate with their own webhook/shared-secret checks.
+[functions.task-refund]
+verify_jwt = false
 [functions.task-review]
 verify_jwt = true
 [functions.task-pay]
