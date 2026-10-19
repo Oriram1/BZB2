@@ -192,6 +192,16 @@ const Register = () => {
 
   const minAge = isWorker ? 13 : 18;
 
+  // Below the minimum age the form cannot be submitted at all. The message
+  // waits until a second digit or until the field loses focus, so typing "18"
+  // does not flash a warning at "1".
+  const [ageTouched, setAgeTouched] = useState(false);
+  const typedAge = parseInt(form.age, 10);
+  const ageBelowMinimum = !Number.isNaN(typedAge) && typedAge < minAge;
+  const ageBlockMessage = ageBelowMinimum && (ageTouched || form.age.length >= 2)
+    ? `הגיל המינימלי להרשמה הוא ${minAge}`
+    : undefined;
+
   /** Every rule in one place. Returns a message per invalid field. */
   const validate = () => {
     const next: Record<string, string> = {};
@@ -386,9 +396,9 @@ const Register = () => {
           </div>
           <div>
             <Label htmlFor="age">גיל</Label>
-            <Input id="age" type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.age} aria-describedby={errors.age ? "age-error" : "age-hint"} />
-            {errors.age
-              ? <FieldError id="age" message={errors.age} />
+            <Input id="age" type="text" inputMode="numeric" dir="ltr" value={form.age} onBlur={() => setAgeTouched(true)} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" aria-invalid={!!(errors.age || ageBlockMessage)} aria-describedby={errors.age || ageBlockMessage ? "age-error" : "age-hint"} />
+            {errors.age || ageBlockMessage
+              ? <FieldError id="age" message={errors.age || ageBlockMessage} />
               : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}</p>}
           </div>
           <div>
@@ -494,7 +504,7 @@ const Register = () => {
             </Label>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
+          <Button type="submit" disabled={loading || ageBelowMinimum} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
             {loading ? "נרשמים..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "הירשמו 🐝"}
           </Button>
 
