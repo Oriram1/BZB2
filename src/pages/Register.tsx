@@ -294,6 +294,9 @@ const Register = () => {
       }
     }
 
+    // The auth listener may have read roles before the insert above landed.
+    if (data.session || isGoogleSignup) await refreshUserState();
+
     setLoading(false);
 
     // Email confirmation is currently off, so signUp returns a live session and

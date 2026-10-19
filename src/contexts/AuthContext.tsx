@@ -96,10 +96,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .from("user_roles")
       .insert({ user_id: nextUser.id, role: metadataRole });
 
-    // Never treat client metadata as an authority. If the database rejected
-    // the repair, the user has no verified role until the next successful
-    // reload. Metadata is only an input for the signup repair path.
-    if (error && error.code !== "23505") return currentRoles;
+    // Never treat client metadata as an authority. A rejected insert is not
+    // proof the user has no role: signup inserts the same row concurrently, and
+    // the one-role trigger rejects the loser of that race with a non-23505
+    // error. Re-read instead of trusting the stale empty list; only the
+    // database's answer counts.
+    if (error) console.warn("role repair insert rejected", error.code);
 
     const repaired = await fetchRoles(nextUser.id);
     return repaired.roles;
