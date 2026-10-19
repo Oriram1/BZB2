@@ -235,7 +235,11 @@ export async function settleChargePage(
   admin: SupabaseClient,
   charge: ChargeRow,
 ): Promise<{ status: ChargeRow["status"]; taskId?: string | null; trial?: boolean }> {
-  if (charge.status !== "pending" || !charge.low_profile_id) return { status: charge.status, taskId: charge.task_id };
+  // Already settled (the webhook usually gets there first). Say whether it was a
+  // free-month card, so the page the customer lands on describes what happened.
+  if (charge.status !== "pending" || !charge.low_profile_id) {
+    return { status: charge.status, taskId: charge.task_id, trial: charge.status === "paid" && charge.meta?.trial === true };
+  }
 
   const result = await getLpResult(charge.low_profile_id);
   const terminal = cardcomConfig().terminal;
@@ -272,7 +276,9 @@ export async function settleChargePage(
       _document_number: null,
       _document_url: null,
     });
-    if (!(applied as { applied?: boolean } | null)?.applied) return { status: "paid", taskId: charge.task_id };
+    if (!(applied as { applied?: boolean } | null)?.applied) {
+      return { status: "paid", taskId: charge.task_id, trial: charge.meta?.trial === true };
+    }
 
     await admin.rpc("save_payment_method", {
       _user_id: charge.user_id,

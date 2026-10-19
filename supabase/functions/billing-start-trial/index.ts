@@ -70,7 +70,7 @@ Deno.serve(withCors(async (req) => {
         cardCheckAmount: cardCheckAmount(Deno.env.get("CARDCOM_CARD_CHECK_AMOUNT")),
         operation: "CreateTokenOnly",
         returnValue: id,
-        productName: `חודש חינם – ${plan.name}`,
+        productName: `חודש חינם – ${plan.name} (אימות כרטיס בלבד, לא תחויבו)`,
         successUrl: returnUrl("success"),
         failedUrl: returnUrl("failed"),
         cancelUrl: returnUrl("cancel"),

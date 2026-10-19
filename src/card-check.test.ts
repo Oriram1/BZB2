@@ -67,3 +67,16 @@ describe("card check wiring", () => {
     expect(trial).toMatch(/purpose: "card_setup",\s*plan_id: plan\.id,\s*amount: 0/);
   });
 });
+
+describe("free month return message", () => {
+  it("still says the free month started when the webhook settled the card first", () => {
+    const settle = read("supabase/functions/_shared/taskBilling.ts");
+    // Both early exits (already settled, and settled while we were looking) carry the trial flag.
+    expect(settle).toContain('trial: charge.status === "paid" && charge.meta?.trial === true');
+    expect(settle).toContain('return { status: "paid", taskId: charge.task_id, trial: charge.meta?.trial === true };');
+  });
+
+  it("tells the customer on Cardcom's page that the 1 shekel is a card check, not a charge", () => {
+    expect(read("supabase/functions/billing-start-trial/index.ts")).toContain("אימות כרטיס בלבד, לא תחויבו");
+  });
+});
