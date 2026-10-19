@@ -203,3 +203,54 @@ export const formatDate = (value: string | null | undefined) => {
 /** Last day a past-due subscription is still honoured. */
 export const graceEnd = (periodEnd: string) =>
   new Date(new Date(periodEnd).getTime() + GRACE_DAYS * 86_400_000).toISOString();
+
+export type HistoryStatus = "pending" | "paid" | "failed" | "refunded";
+
+/** One line of the payment history: a subscription payment or any other charge. */
+export type HistoryRow = {
+  id: string;
+  label: string;
+  amount: number;
+  status: HistoryStatus;
+  date: string;
+  document_url: string | null;
+};
+
+type OrderInput = { id: string; amount: number | string; status: HistoryStatus; kind: string; paid_at: string | null; created_at: string; document_url: string | null };
+type ChargeInput = { id: string; amount: number | string; status: HistoryStatus; purpose: string; paid_at: string | null; created_at: string; document_url: string | null };
+
+const ORDER_LABEL: Record<string, string> = { initial: "מנוי: תשלום ראשון", renewal: "חידוש מנוי" };
+const CHARGE_LABEL: Record<string, string> = {
+  task: "עמלת פרסום מטלה",
+  plan_change: "מעבר מסלול",
+  cancel_difference: "הפרש על מטלות בביטול",
+};
+
+/**
+ * Everything the customer was charged, newest first: subscription payments
+ * (`payment_orders`) together with task fees, plan changes and the like
+ * (`billing_charges`). Showing only the first kind hid money they had paid.
+ */
+export function mergePaymentHistory(orders: OrderInput[], charges: ChargeInput[], limit = 24): HistoryRow[] {
+  const rows: HistoryRow[] = [
+    ...orders.map((order) => ({
+      id: `order-${order.id}`,
+      label: ORDER_LABEL[order.kind] ?? "תשלום מנוי",
+      amount: Number(order.amount),
+      status: order.status,
+      date: order.paid_at ?? order.created_at,
+      document_url: order.document_url,
+    })),
+    ...charges
+      .filter((charge) => CHARGE_LABEL[charge.purpose])
+      .map((charge) => ({
+        id: `charge-${charge.id}`,
+        label: CHARGE_LABEL[charge.purpose],
+        amount: Number(charge.amount),
+        status: charge.status,
+        date: charge.paid_at ?? charge.created_at,
+        document_url: charge.document_url,
+      })),
+  ];
+  return rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, limit);
+}

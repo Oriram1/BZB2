@@ -33,20 +33,12 @@ import {
   usePlans,
   resumeSubscription,
   startCheckout,
+  mergePaymentHistory,
+  type HistoryRow,
 } from "@/lib/billing";
 import { toast } from "sonner";
 
-type OrderRow = {
-  id: string;
-  amount: number;
-  status: "pending" | "paid" | "failed" | "refunded";
-  kind: "initial" | "renewal";
-  paid_at: string | null;
-  created_at: string;
-  document_url: string | null;
-};
-
-const ORDER_STATUS: Record<OrderRow["status"], string> = {
+const ORDER_STATUS: Record<HistoryRow["status"], string> = {
   pending: "בתהליך",
   paid: "שולם",
   failed: "נכשל",
@@ -56,7 +48,7 @@ const ORDER_STATUS: Record<OrderRow["status"], string> = {
 const Subscription = () => {
   const { user } = useAuth();
   const { subscription, loading, failed, reload } = useSubscription();
-  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [orders, setOrders] = useState<HistoryRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
@@ -89,14 +81,31 @@ const Subscription = () => {
 
   useEffect(() => {
     if (!user) return;
-    void supabase
-      .from("payment_orders")
-      .select("id, amount, status, kind, paid_at, created_at, document_url")
-      .eq("user_id", user.id)
-      .in("status", ["paid", "refunded"])
-      .order("created_at", { ascending: false })
-      .limit(24)
-      .then(({ data }) => setOrders((data ?? []) as OrderRow[]));
+    // Subscription payments and every other charge (task fees, plan changes).
+    void Promise.all([
+      supabase
+        .from("payment_orders")
+        .select("id, amount, status, kind, paid_at, created_at, document_url")
+        .eq("user_id", user.id)
+        .in("status", ["paid", "refunded"])
+        .order("created_at", { ascending: false })
+        .limit(24),
+      supabase
+        .from("billing_charges")
+        .select("id, amount, status, purpose, paid_at, created_at, document_url")
+        .eq("user_id", user.id)
+        .in("status", ["paid", "refunded"])
+        .gt("amount", 0)
+        .order("created_at", { ascending: false })
+        .limit(24),
+    ]).then(([orderResult, chargeResult]) =>
+      setOrders(
+        mergePaymentHistory(
+          (orderResult.data ?? []) as Parameters<typeof mergePaymentHistory>[0],
+          (chargeResult.data ?? []) as Parameters<typeof mergePaymentHistory>[1],
+        ),
+      ),
+    );
   }, [user, subscription?.current_period_end]);
 
   const { plans } = usePlans();
@@ -306,7 +315,7 @@ const Subscription = () => {
                 {orders.map((order) => (
                   <li key={order.id} className="flex items-center justify-between gap-3 py-2.5">
                     <span>
-                      {formatDate(order.paid_at ?? order.created_at)} · {Number(order.amount).toLocaleString("he-IL")} ₪
+                      {formatDate(order.date)} · {order.label} · {Number(order.amount).toLocaleString("he-IL", { minimumFractionDigits: Number.isInteger(order.amount) ? 0 : 2 })} ₪
                     </span>
                     <span className="flex items-center gap-3 text-muted-foreground">
                       {ORDER_STATUS[order.status]}
