@@ -162,7 +162,8 @@ describe("charge confirmation before publishing", () => {
   });
 
   it("gets the card digits only from the signed-in user's own row, never the token", () => {
-    const sql = read("supabase/migrations/20261019130000_quote_card_last4.sql");
+    // Comments aside, the statement never selects the token column.
+    const sql = read("supabase/migrations/20261019130000_quote_card_last4.sql").replace(/--.*$/gm, "");
     expect(sql).toContain("WHERE user_id = auth.uid()");
     expect(sql).not.toMatch(/\btoken\b/);
   });
