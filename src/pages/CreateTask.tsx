@@ -171,9 +171,19 @@ const CreateTask = () => {
       imageUrl = await uploadImage();
     }
 
+    // The quote on screen can be stale (billing switched on, or the free task
+    // used elsewhere, since the page loaded). Ask again before deciding whether
+    // a card is needed; the insert trigger enforces the same answer.
+    let currentQuote = quote;
+    const { data: fresh } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
+    if (fresh) {
+      currentQuote = fresh as unknown as PublishQuote;
+      setQuote(currentQuote);
+    }
+
     // A paid task is charged to a saved card once it is approved, so the card
     // has to be on file before it can be submitted.
-    if (quote && !quote.billing_off && quote.due > 0 && !quote.has_card) {
+    if (currentQuote && !currentQuote.billing_off && currentQuote.due > 0 && !currentQuote.has_card) {
       try {
         sessionStorage.setItem(
           TASK_DRAFT_KEY,
