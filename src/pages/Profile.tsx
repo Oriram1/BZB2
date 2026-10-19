@@ -22,6 +22,7 @@ import { formatCurrency } from "@/lib/format";
 import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@/lib/gender";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
+import { PasswordCard } from "@/components/profile/PasswordCard";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import QRCode from "qrcode";
 
@@ -898,6 +899,7 @@ const Profile = () => {
             </Card>
           </>
         )}
+        <PasswordCard />
         {/* Account deletion — privacy right (hidden for admins) */}
         {!roles.includes("admin") && <><Card className="border-destructive/30">
           <CardContent className="pt-5 pb-5">
