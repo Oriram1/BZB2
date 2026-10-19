@@ -27,6 +27,8 @@ type HistoryRow = {
 
 const MIN_AMOUNT = 0.1;
 const MAX_AMOUNT = 1000;
+// Original prices from the initial billing migration, independent of price history.
+const ORIGINAL_PRICES: Readonly<Record<string, number | undefined>> = { quarterly: 30, annual: 100 };
 
 const ERRORS: Record<string, string> = {
   invalid_amount: `הסכום חייב להיות בין ${MIN_AMOUNT} ל-${MAX_AMOUNT} ₪, עם עד שתי ספרות אחרי הנקודה`,
@@ -55,7 +57,7 @@ const PlanPricing = () => {
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [confirm, setConfirm] = useState<{ plan: PlanRow; amount: number } | null>(null);
+  const [confirm, setConfirm] = useState<{ plan: PlanRow; amount: number; reset?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -130,6 +132,7 @@ const PlanPricing = () => {
             const draft = drafts[plan.id] ?? "";
             const parsed = parseAmount(draft);
             const unchanged = parsed !== null && parsed === Number(plan.amount);
+            const originalAmount = ORIGINAL_PRICES[plan.id];
             return (
               <div key={plan.id} className="rounded-2xl border border-border bg-card p-5 space-y-3">
                 <div className="flex items-baseline justify-between">
@@ -152,12 +155,28 @@ const PlanPricing = () => {
                     className="max-w-[9rem]"
                   />
                   <Button
-                    disabled={parsed === null || (unchanged && !!plan.price_signature)}
+                    disabled={busy || parsed === null || (unchanged && !!plan.price_signature)}
                     onClick={() => parsed !== null && setConfirm({ plan, amount: parsed })}
                   >
                     שמירה
                   </Button>
                 </div>
+                {originalAmount !== undefined && (
+                  <Button
+                    variant="outline"
+                    className="h-auto min-h-11 whitespace-normal text-start"
+                    disabled={busy || (Number(plan.amount) === originalAmount && parsed === originalAmount && !!plan.price_signature)}
+                    onClick={() => {
+                      if (Number(plan.amount) === originalAmount && plan.price_signature) {
+                        setDrafts((current) => ({ ...current, [plan.id]: formatPrice(originalAmount) }));
+                      } else {
+                        setConfirm({ plan, amount: originalAmount, reset: true });
+                      }
+                    }}
+                  >
+                    איפוס למחיר המקורי ({formatPrice(originalAmount)} ₪)
+                  </Button>
+                )}
                 {draft !== "" && parsed === null && (
                   <p className="text-xs text-destructive">
                     סכום בין {MIN_AMOUNT} ל-{MAX_AMOUNT} ₪, עד שתי ספרות אחרי הנקודה
@@ -193,7 +212,7 @@ const PlanPricing = () => {
       <AlertDialog open={!!confirm} onOpenChange={(open) => !open && !busy && setConfirm(null)}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
-            <AlertDialogTitle>לשנות את מחיר המנוי?</AlertDialogTitle>
+            <AlertDialogTitle>{confirm?.reset ? "לאפס למחיר המקורי?" : "לשנות את מחיר המנוי?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {confirm &&
                 `המחיר של ${confirm.plan.name} ישתנה מ-${formatPrice(Number(confirm.plan.amount))} ₪ ל-${formatPrice(confirm.amount)} ₪. השינוי חל מיד על הזמנות חדשות, ועל חידושים עתידיים של מנויים קיימים.`}
@@ -208,7 +227,7 @@ const PlanPricing = () => {
                 void save();
               }}
             >
-              כן, לעדכן
+              {confirm?.reset ? "איפוס ושמירה" : "כן, לעדכן"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
