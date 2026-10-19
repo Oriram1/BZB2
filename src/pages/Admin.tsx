@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PlanPricing from "@/components/admin/PlanPricing";
+import TaskFeePricing from "@/components/admin/TaskFeePricing";
 import {
   Dialog,
   DialogContent,
@@ -1646,6 +1647,7 @@ export default function Admin() {
                   {/* ─── Pricing Tab ─── */}
           <TabsContent value="pricing" className="space-y-6">
             <PlanPricing />
+            <TaskFeePricing />
           </TabsContent>
         </Tabs>
       </div>

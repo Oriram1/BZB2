@@ -1252,6 +1252,8 @@ export type Database = {
     }
     Functions: {
       admin_archive_task: { Args: { _task_id: string }; Returns: undefined }
+      admin_get_task_fees: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_set_task_fee: { Args: { _amount: number; _key: string }; Returns: Json }
       admin_set_plan_price: {
         Args: {
           _actor: string
