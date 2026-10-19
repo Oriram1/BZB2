@@ -146,3 +146,24 @@ describe("refund wiring", () => {
     expect(migration).toContain("takes_free");
   });
 });
+
+describe("charge confirmation before publishing", () => {
+  const page = read("src/pages/CreateTask.tsx");
+
+  it("asks first when a paid task will be charged to a saved card", () => {
+    expect(page).toContain('data-testid="charge-confirm"');
+    expect(page).toMatch(/latest\.due > 0 && latest\.has_card/);
+    expect(page).toContain("setConfirmQuote(latest)");
+  });
+
+  it("states the amount and the card, and that a rejected task costs nothing", () => {
+    expect(page).toContain("card_last4");
+    expect(page).toContain("אם המטלה לא תאושר, לא תחויבו בכלום");
+  });
+
+  it("gets the card digits only from the signed-in user's own row, never the token", () => {
+    const sql = read("supabase/migrations/20261019130000_quote_card_last4.sql");
+    expect(sql).toContain("WHERE user_id = auth.uid()");
+    expect(sql).not.toMatch(/\btoken\b/);
+  });
+});

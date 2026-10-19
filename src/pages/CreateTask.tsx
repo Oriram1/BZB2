@@ -24,6 +24,16 @@ import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { logUserActivity } from "@/lib/activityLog";
 import { startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 import { feeText, useTaskFees } from "@/lib/taskFees";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /** Kept in step with the tasks_short_desc_length constraint on public.tasks. */
 const SHORT_DESC_MAX = 120;
@@ -41,6 +51,7 @@ const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const onSummary = step === 6;
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
@@ -57,6 +68,7 @@ const CreateTask = () => {
   const [insurance, setInsurance] = useState(false);
   const [quote, setQuote] = useState<PublishQuote | null>(null);
   const fees = useTaskFees();
+  const [confirmQuote, setConfirmQuote] = useState<PublishQuote | null>(null);
   const [searchParams] = useSearchParams();
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
   const today = new Date();
@@ -76,7 +88,7 @@ const CreateTask = () => {
     return () => {
       active = false;
     };
-  }, [user, insurance, step === 6]);
+  }, [user, insurance, onSummary]);
 
   // Coming back from Cardcom after saving a card: put the form back and let the
   // person press publish.
@@ -161,7 +173,28 @@ const CreateTask = () => {
     }
   };
 
+  /**
+   * What the publish button does. A paid task with a card already on file asks
+   * for a confirmation first, spelling out what will be charged and when;
+   * everything else goes straight to publishing.
+   */
   const handleSubmit = async () => {
+    if (!user) {
+      toast.error("יש להתחבר כדי לפרסם מטלה");
+      navigate("/login");
+      return;
+    }
+    const { data: fresh } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
+    const latest = (fresh as unknown as PublishQuote | null) ?? quote;
+    if (latest) setQuote(latest);
+    if (latest && !latest.billing_off && latest.due > 0 && latest.has_card) {
+      setConfirmQuote(latest);
+      return;
+    }
+    await publishTask();
+  };
+
+  const publishTask = async () => {
     if (!user) {
       toast.error("יש להתחבר כדי לפרסם מטלה");
       navigate("/login");
@@ -698,6 +731,41 @@ const CreateTask = () => {
               )}
             </div>
           )}
+
+          <AlertDialog open={!!confirmQuote} onOpenChange={(open) => !open && setConfirmQuote(null)}>
+            <AlertDialogContent dir="rtl" data-testid="charge-confirm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>לפני שמפרסמים</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-start text-sm text-muted-foreground">
+                    <p>
+                      המטלה תישלח לאישור. ברגע שנאשר אותה, נחייב את הכרטיס
+                      {confirmQuote?.card_last4 ? ` שמסתיים ב־${confirmQuote.card_last4}` : " ששמרתם"} ב־
+                      <strong className="text-foreground">{confirmQuote ? formatCurrency(confirmQuote.due) : ""}</strong>
+                      {confirmQuote && confirmQuote.task_fee > 0 && confirmQuote.insurance_fee > 0
+                        ? ` (עמלת פרסום ${formatCurrency(confirmQuote.task_fee)} + ביטוח ${formatCurrency(confirmQuote.insurance_fee)})`
+                        : confirmQuote && confirmQuote.insurance_fee > 0
+                          ? " (ביטוח מטלות)"
+                          : " (עמלת פרסום)"}
+                      , והמטלה תעלה לאפליקציה אחרי שהחיוב עבר.
+                    </p>
+                    <p>אם המטלה לא תאושר, לא תחויבו בכלום.</p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>חזרה</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setConfirmQuote(null);
+                    void publishTask();
+                  }}
+                >
+                  מאשרים ומפרסמים
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 gap-4">

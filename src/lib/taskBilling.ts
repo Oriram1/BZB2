@@ -10,6 +10,8 @@ export type PublishQuote = {
   free_slot: boolean;
   subscriber: boolean;
   has_card: boolean;
+  /** Last four digits of the saved card, when there is one. */
+  card_last4?: string | null;
   pending_payment_count: number;
   /** True while per-task billing is switched off: tasks go live as before. */
   billing_off?: boolean;
