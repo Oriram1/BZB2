@@ -286,8 +286,8 @@ const CreateTask = () => {
 
         {quote && !quote.billing_off && quote.free_slot && (
           <div className="mb-6 rounded-3xl gradient-honey text-primary-foreground shadow-honey px-5 py-4 text-center" data-testid="first-task-banner">
-            <p className="text-xl font-extrabold">🎁 זו המטלה הראשונה שלכם: חינם!</p>
-            <p className="text-sm mt-1 opacity-90">בלי כרטיס אשראי ובלי חיוב. מהמטלה הבאה יהיה מסך תשלום.</p>
+            <p className="text-xl font-extrabold">🎁 המטלה הראשונה עלינו!</p>
+            <p className="text-sm mt-1 opacity-90">כיף שהגעתם! אפשר לפרסם אותה בלי כרטיס אשראי ובלי שום חיוב. רק מהמטלה הבאה נבקש פרטי תשלום.</p>
           </div>
         )}
 

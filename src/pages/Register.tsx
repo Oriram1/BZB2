@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
-import { normalizePhone, isValidPhone } from "@/lib/format";
+import { normalizePhone, isValidPhone, phoneIssue } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
@@ -75,6 +75,7 @@ const Register = () => {
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ageTouched, setAgeTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [form, setForm] = useState({
     firstName: "", lastName: "", age: "", address: "", gender: "" as Gender | "",
     email: "", phone: "", password: "",
@@ -196,6 +197,13 @@ const Register = () => {
   // Below the minimum age the form cannot be submitted at all. The message
   // waits until a second digit or until the field loses focus, so typing "18"
   // does not flash a warning at "1".
+  // A phone number that can no longer become valid is flagged as it is typed;
+  // one that is merely short waits until the field loses focus.
+  const phoneProblem = phoneIssue(form.phone);
+  const phoneLiveError =
+    phoneProblem === "invalid" || (phoneProblem === "incomplete" && phoneTouched)
+      ? "מספר הטלפון לא תקין. לדוגמה: 050-000-0000"
+      : undefined;
   const typedAge = parseInt(form.age, 10);
   const ageBelowMinimum = !Number.isNaN(typedAge) && typedAge < minAge;
   const ageBlockMessage = ageBelowMinimum && (ageTouched || form.age.length >= 2)
@@ -458,9 +466,9 @@ const Register = () => {
           </div>
           <div>
             <Label htmlFor="phone">טלפון</Label>
-            <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className="mt-1 rounded-2xl h-12" dir="ltr" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} />
-            <FieldError id="phone" message={errors.phone} />
-            {phoneTaken && !errors.phone && (
+            <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onBlur={() => setPhoneTouched(true)} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className="mt-1 rounded-2xl h-12" dir="ltr" aria-invalid={!!(errors.phone || phoneLiveError)} aria-describedby={errors.phone || phoneLiveError ? "phone-error" : undefined} />
+            <FieldError id="phone" message={errors.phone || phoneLiveError} />
+            {phoneTaken && !errors.phone && !phoneLiveError && (
               <p className="mt-1.5 flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-500">
                 <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>המספר הזה כבר רשום במערכת. אפשר להמשיך — אבל אם זו טעות, כדאי לתקן עכשיו.</span>

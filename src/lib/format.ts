@@ -169,6 +169,32 @@ export function isValidPhone(input: string): boolean {
   return /^05\d{8}$/.test(phone) || /^0[2-489]\d{7}$/.test(phone);
 }
 
+/**
+ * What is wrong with a phone number while it is still being typed.
+ *   null          empty, or already a valid number
+ *   "incomplete"  the digits so far could still become a valid number
+ *   "invalid"     no continuation can make it valid (letters, a wrong prefix,
+ *                 too many digits), so it is worth saying so right away
+ */
+export function phoneIssue(input: string): "incomplete" | "invalid" | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  if (isValidPhone(raw)) return null;
+
+  const compact = raw.replace(/[\s\-()]/g, "");
+  // "+", "+9", "+97", "972": the start of an international prefix.
+  if (compact === "+" || /^\+?9(7(2)?)?$/.test(compact)) return "incomplete";
+  if (!/^\+?\d+$/.test(compact)) return "invalid";
+
+  const phone = normalizePhone(compact);
+  if (phone === "0") return "incomplete";
+  // 5xxxxxxx typed without the leading zero, not yet nine digits.
+  if (/^5\d{0,7}$/.test(phone)) return "incomplete";
+  if (/^05\d{0,8}$/.test(phone) && phone.length < 10) return "incomplete";
+  if (/^0[2-489]\d{0,7}$/.test(phone) && phone.length < 9) return "incomplete";
+  return "invalid";
+}
+
 /** "0501234567" -> "050-123-4567", for display only. */
 export function formatPhone(input: string): string {
   const phone = normalizePhone(input);
