@@ -330,6 +330,53 @@ BEGIN
     NOT has_table_privilege('authenticated', 'public.task_refunds', 'INSERT'));
 END $$;
 
+-- 15. Deleting an account keeps the payment records, without the person.
+DO $$
+DECLARE u UUID; t UUID; charge UUID; ord UUID; rid UUID; shown BIGINT;
+BEGIN
+  UPDATE public.billing_settings SET value = 'on' WHERE key = 'task_billing';
+  u := pg_temp.mk_user('del@test.local');
+  INSERT INTO public.payment_methods (user_id, token, card_expiry, card_last4) VALUES (u, 'tok-del', '1230', '4242');
+  INSERT INTO public.billing_user_state (user_id, free_task_used_at) VALUES (u, now());
+  t := pg_temp.mk_task(u);
+  PERFORM public.task_review_decide(t, u, true, null);
+
+  INSERT INTO public.billing_charges (user_id, purpose, task_id, amount, document_url, meta)
+  VALUES (u, 'task', t, 3, 'https://receipts.example/with-the-name', '{"note":"a name"}') RETURNING id INTO charge;
+  PERFORM public.billing_charge_paid(charge, 90210, 555, 'https://receipts.example/with-the-name');
+  UPDATE public.billing_charges SET document_url = 'https://receipts.example/with-the-name', meta = '{"note":"a name"}' WHERE id = charge;
+
+  INSERT INTO public.payment_orders (user_id, plan_id, kind, amount, status, deal_number, document_url)
+  VALUES (u, 'quarterly', 'initial', 30, 'paid', 80808, 'https://receipts.example/order') RETURNING id INTO ord;
+  INSERT INTO public.task_refunds (task_id, user_id, task_name, reason, amount, status)
+  VALUES (t, u, 'a private task title', 'deleted', 3, 'succeeded') RETURNING id INTO rid;
+  INSERT INTO public.billing_refund_attempts (user_id, target_kind, target_id, transaction_id, amount, status)
+  VALUES (u, 'payment_order', ord, 80808, 30, 'succeeded');
+
+  DELETE FROM auth.users WHERE id = u;
+
+  PERFORM pg_temp.expect('the account is gone', NOT EXISTS (SELECT 1 FROM auth.users WHERE id = u));
+  PERFORM pg_temp.expect('the saved card is gone with it', NOT EXISTS (SELECT 1 FROM public.payment_methods WHERE user_id = u));
+  PERFORM pg_temp.expect('benefit state is gone', NOT EXISTS (SELECT 1 FROM public.billing_user_state WHERE user_id = u));
+  PERFORM pg_temp.expect('the task is gone', NOT EXISTS (SELECT 1 FROM public.tasks WHERE id = t));
+
+  PERFORM pg_temp.expect('the charge stays, with its amount, deal and document number',
+    (SELECT amount = 3 AND status = 'paid' AND deal_number = 90210 AND document_number = 555
+       FROM public.billing_charges WHERE id = charge));
+  PERFORM pg_temp.expect('the charge no longer points at anyone',
+    (SELECT user_id IS NULL AND task_id IS NULL FROM public.billing_charges WHERE id = charge));
+  PERFORM pg_temp.expect('the receipt link and notes are removed from the charge',
+    (SELECT document_url IS NULL AND meta IS NULL FROM public.billing_charges WHERE id = charge));
+  PERFORM pg_temp.expect('the subscription order stays, anonymous',
+    (SELECT amount = 30 AND deal_number = 80808 AND user_id IS NULL AND document_url IS NULL
+       FROM public.payment_orders WHERE id = ord));
+  PERFORM pg_temp.expect('the refund record stays, without the task title',
+    (SELECT amount = 3 AND status = 'succeeded' AND user_id IS NULL AND task_name IS NULL
+       FROM public.task_refunds WHERE id = rid));
+  PERFORM pg_temp.expect('the refund attempt stays',
+    EXISTS (SELECT 1 FROM public.billing_refund_attempts WHERE target_id = ord AND user_id IS NULL AND transaction_id = 80808));
+END $$;
+
 -- 12. Free month once, refund once.
 DO $$
 DECLARE u UUID; r JSONB;

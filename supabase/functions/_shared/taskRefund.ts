@@ -23,7 +23,8 @@ export type RefundDeps = {
 
 type Claimed = {
   id: string;
-  user_id: string;
+  /** Empty when the account was deleted after the refund was queued. */
+  user_id: string | null;
   task_id: string;
   task_name: string | null;
   amount: number | string;
@@ -78,11 +79,14 @@ export async function processTaskRefunds(
     }
 
     await admin.rpc("task_refund_finish", { _refund_id: claimed.id, _ok: true, _code: 0, _error: null });
-    await deps.notify(claimed.user_id, {
-      task_id: claimed.task_id,
-      task_name: claimed.task_name,
-      amount: Number(claimed.amount),
-    });
+    // The money went back either way; there is just nobody left to tell.
+    if (claimed.user_id) {
+      await deps.notify(claimed.user_id, {
+        task_id: claimed.task_id,
+        task_name: claimed.task_name,
+        amount: Number(claimed.amount),
+      });
+    }
     summary.refunded++;
   }
   return summary;

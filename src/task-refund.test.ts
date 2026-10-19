@@ -98,6 +98,19 @@ describe("task fee refunds", () => {
     expect(asked).toEqual([1]);
   });
 
+  it("still refunds when the account was deleted, and tells no one", async () => {
+    const { admin } = fakeAdmin([request({ user_id: null as unknown as string })]);
+    let refunded = 0;
+    let notified = 0;
+    const summary = await processTaskRefunds(admin, {
+      refund: async () => (refunded++, { ok: true }),
+      notify: async () => void notified++,
+    });
+    expect(summary.refunded).toBe(1);
+    expect(refunded).toBe(1);
+    expect(notified).toBe(0);
+  });
+
   it("fails a request that has nothing refundable instead of pretending", async () => {
     const { admin, calls } = fakeAdmin([request({ charges: [] })]);
     const summary = await processTaskRefunds(admin, { refund: async () => ({ ok: true }), notify: async () => {} });
@@ -166,5 +179,37 @@ describe("charge confirmation before publishing", () => {
     const sql = read("supabase/migrations/20261019130000_quote_card_last4.sql").replace(/--.*$/gm, "");
     expect(sql).toContain("WHERE user_id = auth.uid()");
     expect(sql).not.toMatch(/\btoken\b/);
+  });
+});
+
+describe("payment records after an account is deleted", () => {
+  const sql = read("supabase/migrations/20261019140000_keep_payment_records_after_account_deletion.sql");
+  const code = sql.replace(/--.*$/gm, "");
+
+  it("keeps charges, orders, refund attempts and refunds, cutting only the link to the person", () => {
+    for (const table of ["billing_charges", "payment_orders", "billing_refund_attempts", "task_refunds"]) {
+      expect(code, table).toContain(`'${table}'`);
+    }
+    expect(code).toContain("ALTER COLUMN user_id DROP NOT NULL");
+    expect(code).toContain("ON DELETE SET NULL");
+    expect(code).not.toMatch(/ON DELETE CASCADE/);
+  });
+
+  it("strips what identifies the person before the account goes", () => {
+    expect(code).toContain("BEFORE DELETE ON auth.users");
+    expect(code).toContain("document_url = NULL, meta = NULL");
+    expect(code).toContain("task_name = NULL");
+  });
+
+  it("never keeps the saved card: the token table still cascades", () => {
+    const original = read("supabase/migrations/20260930160226_billing.sql");
+    const table = original.slice(original.indexOf("CREATE TABLE public.payment_methods"));
+    expect(table.slice(0, table.indexOf(");"))).toContain("ON DELETE CASCADE");
+    expect(code).not.toContain("payment_methods");
+  });
+
+  it("lets only admins read records that have no owner", () => {
+    expect(code).toContain('"Admins read payment records"');
+    expect(code).toContain("private.has_role(auth.uid(), 'admin'::public.app_role)");
   });
 });
