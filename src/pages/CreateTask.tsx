@@ -435,7 +435,7 @@ const CreateTask = () => {
                     id="time"
                     type="time"
                     dir="ltr"
-                    step={60}
+                    step={300}
                     value={form.time}
                     onChange={(event) => updateForm("time", event.target.value)}
                     aria-describedby="time-hint"
