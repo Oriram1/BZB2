@@ -8,12 +8,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { hasAccess, useSubscription } from "@/hooks/useSubscription";
 import { billingErrorMessage, formatPrice, isPaidPlan, periodShort, startCheckout, startTrial, usePlans, type PlanId } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
+import { feeText, useTaskFees } from "@/lib/taskFees";
 import { toast } from "sonner";
 
 const basePlans = [
   {
-    id: "free", name: "חינם", price: "0 ₪", period: "", description: "המטלה הראשונה חינם, ואחריה 3 ₪ למשימה",
-    features: ["הרשמה חינם, בלי כרטיס אשראי", "המטלה הראשונה שלכם חינם", "3 ₪ על כל משימה נוספת", "גישה לכל המטלות"], popular: false,
+    id: "free", name: "חינם", price: "0 ₪", period: "", description: "המטלה הראשונה חינם, ואחריה {fee} למשימה",
+    features: ["הרשמה חינם, בלי כרטיס אשראי", "המטלה הראשונה שלכם חינם", "{fee} על כל משימה נוספת", "גישה לכל המטלות"], popular: false,
   },
   {
     id: "quarterly", name: "רבעוני", price: "", period: "", description: "ללא עמלה על משימות",
@@ -36,8 +37,16 @@ const Pricing = () => {
   // Prices and cadence come from the plans table, so changing a price in the
   // admin screen is the only edit. A paid plan whose price has not loaded shows
   // a placeholder rather than a number that might be stale.
+  const fees = useTaskFees();
+  const taskFee = feeText(fees?.task_fee);
   const plans = basePlans.map((plan) => {
-    if (!isPaidPlan(plan.id)) return plan;
+    if (!isPaidPlan(plan.id)) {
+      return {
+        ...plan,
+        description: plan.description.replace("{fee}", taskFee),
+        features: plan.features.map((feature) => feature.replace("{fee}", taskFee)),
+      };
+    }
     const live = livePlans[plan.id];
     if (!live) return { ...plan, price: plansLoading ? "…" : "—", period: "" };
     return {
@@ -209,7 +218,7 @@ const Pricing = () => {
 
         {/* Insurance info note */}
         <p className="text-center text-muted-foreground text-sm max-w-lg mx-auto">
-          🛡️ אפשר להוסיף ביטוח מטלות ב־5 ₪ למשימה, בעת פרסום המטלה. זמין בכל מסלול.
+          🛡️ אפשר להוסיף ביטוח מטלות ב־{feeText(fees?.insurance_fee)} למשימה, בעת פרסום המטלה. זמין בכל מסלול.
         </p>
       </div>
 

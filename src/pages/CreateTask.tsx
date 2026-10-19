@@ -23,6 +23,7 @@ import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { logUserActivity } from "@/lib/activityLog";
 import { startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
+import { feeText, useTaskFees } from "@/lib/taskFees";
 
 /** Kept in step with the tasks_short_desc_length constraint on public.tasks. */
 const SHORT_DESC_MAX = 120;
@@ -55,6 +56,7 @@ const CreateTask = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [insurance, setInsurance] = useState(false);
   const [quote, setQuote] = useState<PublishQuote | null>(null);
+  const fees = useTaskFees();
   const [searchParams] = useSearchParams();
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
   const today = new Date();
@@ -568,10 +570,10 @@ const CreateTask = () => {
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-xl">🛡️</span>
                   <h3 className="text-sm font-extrabold text-foreground">ביטוח מטלות</h3>
-                  <span className="text-xs bg-primary/10 text-primary-ink font-bold px-2 py-0.5 rounded-full">5 ₪ למשימה</span>
+                  <span className="text-xs bg-primary/10 text-primary-ink font-bold px-2 py-0.5 rounded-full">{feeText(fees?.insurance_fee)} למשימה</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3 text-start">
-                  כיסוי לנזק ישיר לרכוש עד 2,000 ₪ למשימה. התוספת היא 5 ₪ על המטלה הזאת בלבד.
+                  כיסוי לנזק ישיר לרכוש עד 2,000 ₪ למשימה. התוספת היא {feeText(fees?.insurance_fee)} על המטלה הזאת בלבד.
                 </p>
                 <div className="flex items-center gap-3">
                   <Checkbox

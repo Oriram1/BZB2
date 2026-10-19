@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/billing";
+import { invalidateTaskFees } from "@/lib/taskFees";
 
 type FeeKey = "task_fee" | "insurance_fee";
 type Fees = { task_fee: number; insurance_fee: number; defaults: Record<FeeKey, number> };
@@ -51,6 +52,7 @@ const TaskFeePricing = () => {
       return;
     }
     toast.success(amount === null ? "העמלה אופסה לברירת המחדל" : "העמלה עודכנה");
+    invalidateTaskFees();
     await load();
   };
 
