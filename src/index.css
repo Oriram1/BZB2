@@ -147,8 +147,7 @@
   }
 
   /* Native date and time inputs WebKit/Blink shadow DOM RTL fixes */
-  input[type="date"],
-  input[type="time"] {
+  input[type="date"] {
     direction: rtl !important;
     text-align: right !important;
     display: flex !important;
@@ -158,15 +157,21 @@
   }
 
   input[type="date"]::-webkit-datetime-edit,
-  input[type="time"]::-webkit-datetime-edit,
   input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  input[type="time"]::-webkit-datetime-edit-fields-wrapper,
-  input[type="date"]::-webkit-date-and-time-value,
-  input[type="time"]::-webkit-date-and-time-value {
+  input[type="date"]::-webkit-date-and-time-value {
     direction: rtl !important;
     text-align: right !important;
     display: inline-flex !important;
     flex-direction: row !important;
+  }
+
+  /* Hours precede minutes even when the surrounding form is Hebrew. */
+  input[type="time"],
+  input[type="time"]::-webkit-datetime-edit,
+  input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  input[type="time"]::-webkit-date-and-time-value {
+    direction: ltr !important;
+    text-align: left !important;
   }
 
   input[type="date"]::-webkit-calendar-picker-indicator,

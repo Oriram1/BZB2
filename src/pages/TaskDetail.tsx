@@ -594,7 +594,7 @@ const TaskDetail = () => {
               </div>
               <div>
                 <Label className="text-right block mb-1 font-bold">שעה</Label>
-                <Input type="time" dir="rtl" value={editForm.time} onChange={(e) => setEditForm((f) => ({ ...f, time: e.target.value }))} className="rounded-xl" />
+                <Input type="time" dir="ltr" value={editForm.time} onChange={(e) => setEditForm((f) => ({ ...f, time: e.target.value }))} className="rounded-xl" />
               </div>
             </div>
             <div>
