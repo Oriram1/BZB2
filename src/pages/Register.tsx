@@ -74,6 +74,7 @@ const Register = () => {
   const [agreed, setAgreed] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [ageTouched, setAgeTouched] = useState(false);
   const [form, setForm] = useState({
     firstName: "", lastName: "", age: "", address: "", gender: "" as Gender | "",
     email: "", phone: "", password: "",
@@ -195,7 +196,6 @@ const Register = () => {
   // Below the minimum age the form cannot be submitted at all. The message
   // waits until a second digit or until the field loses focus, so typing "18"
   // does not flash a warning at "1".
-  const [ageTouched, setAgeTouched] = useState(false);
   const typedAge = parseInt(form.age, 10);
   const ageBelowMinimum = !Number.isNaN(typedAge) && typedAge < minAge;
   const ageBlockMessage = ageBelowMinimum && (ageTouched || form.age.length >= 2)
