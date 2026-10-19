@@ -137,6 +137,8 @@ export function expiryMMYY(month?: number, year?: number): string | null {
   return `${String(month).padStart(2, "0")}${yy}`;
 }
 
+import { J5 } from "./cardCheck.ts";
+
 export type LowProfileOperation = "ChargeAndCreateToken" | "CreateTokenOnly";
 
 export async function createLowProfile(params: {
@@ -155,6 +157,12 @@ export async function createLowProfile(params: {
   webhookUrl: string;
   document?: CardcomDocument;
   email?: string;
+  /**
+   * Ask the card issuer to authorize this small amount (J5) while the card is
+   * saved, so a card that cannot pay is refused now. Nothing is charged.
+   * Only meaningful with `CreateTokenOnly`.
+   */
+  cardCheckAmount?: number;
 }): Promise<{ lowProfileId: string; url: string }> {
   const config = cardcomConfig();
   const result = await post<{
@@ -168,7 +176,8 @@ export async function createLowProfile(params: {
     // Charge now and keep a token, which is what renewals charge against.
     Operation: params.operation ?? "ChargeAndCreateToken",
     ReturnValue: params.returnValue,
-    Amount: params.amount,
+    Amount: params.cardCheckAmount && params.cardCheckAmount > 0 ? params.cardCheckAmount : params.amount,
+    AdvancedDefinition: params.cardCheckAmount && params.cardCheckAmount > 0 ? { JValidateType: J5 } : undefined,
     ProductName: params.productName,
     Language: "he",
     ISOCoinId: 1,

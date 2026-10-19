@@ -6,6 +6,7 @@
 import { authenticatedClients, errorResponse, hasRole, json, readJsonObject, withCors } from "../_shared/auth.ts";
 import { siteUrl } from "../_shared/email.ts";
 import { billingEnabled, createLowProfile } from "../_shared/cardcom.ts";
+import { cardCheckAmount } from "../_shared/cardCheck.ts";
 import { loadPlan } from "../_shared/billing.ts";
 import { PlanIntegrityError } from "../_shared/planPrice.ts";
 
@@ -64,6 +65,9 @@ Deno.serve(withCors(async (req) => {
     try {
       const page = await createLowProfile({
         amount: 0,
+        // The card issuer is asked to authorize a small amount (nothing is
+        // captured), so a card that cannot pay is refused before the free month.
+        cardCheckAmount: cardCheckAmount(Deno.env.get("CARDCOM_CARD_CHECK_AMOUNT")),
         operation: "CreateTokenOnly",
         returnValue: id,
         productName: `חודש חינם – ${plan.name}`,

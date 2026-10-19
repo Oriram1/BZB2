@@ -17,6 +17,7 @@ import {
   type TransactionInfo,
 } from "./cardcom.ts";
 import { evaluateLowProfileResult, evaluateTransaction, isHardDecline, notifyBilling, type PaidDetails } from "./billing.ts";
+import { isCardCheckSuccess } from "./cardCheck.ts";
 
 export type ChargeRow = {
   id: string;
@@ -251,7 +252,8 @@ export async function settleChargePage(
   const tx = result.TranzactionInfo;
 
   if (charge.purpose === "card_setup") {
-    if (tx && tx.ResponseCode !== 0) {
+    // 700 and 701 are a successful J2 or J5 card check (see cardCheck.ts).
+    if (tx && !isCardCheckSuccess(tx.ResponseCode)) {
       await admin.rpc("billing_charge_failed", {
         _charge_id: charge.id,
         _reason: (tx.Description ?? result.Description ?? "declined").slice(0, 200),
