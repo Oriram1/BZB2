@@ -74,7 +74,7 @@ const CreateTask = () => {
     return () => {
       active = false;
     };
-  }, [user, insurance]);
+  }, [user, insurance, step === 6]);
 
   // Coming back from Cardcom after saving a card: put the form back and let the
   // person press publish.
@@ -238,6 +238,13 @@ const CreateTask = () => {
       <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
 
       <div className="relative z-10 w-full max-w-2xl mx-auto py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8">
+
+        {quote && !quote.billing_off && quote.free_slot && (
+          <div className="mb-6 rounded-3xl gradient-honey text-primary-foreground shadow-honey px-5 py-4 text-center" data-testid="first-task-banner">
+            <p className="text-xl font-extrabold">🎁 זו המטלה הראשונה שלכם: חינם!</p>
+            <p className="text-sm mt-1 opacity-90">בלי כרטיס אשראי ובלי חיוב. מהמטלה הבאה יהיה מסך תשלום.</p>
+          </div>
+        )}
 
         {/* Progress Steps */}
         <div className="flex items-center justify-between mb-8 px-1 sm:px-2 overflow-x-auto py-2" role="region" aria-label="שלבי התקדמות">
@@ -667,7 +674,9 @@ const CreateTask = () => {
                 סה״כ: {quote.due > 0 ? formatCurrency(quote.due) : "חינם"}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                המטלה נשלחת לאישור. הכרטיס יחויב רק אחרי שאישרנו אותה, והיא תעלה לאפליקציה אחרי שהחיוב עבר.
+                {quote.free_slot
+                  ? "המטלה נשלחת לאישור ותעלה לאפליקציה אחרי שנאשר אותה. אין חיוב."
+                  : "המטלה נשלחת לאישור. הכרטיס יחויב רק אחרי שאישרנו אותה, והיא תעלה לאפליקציה אחרי שהחיוב עבר."}
                 {!quote.free_slot && !quote.subscriber && " אפשר גם לעבור למנוי ולפרסם בלי עמלה."}
               </p>
               {quote.due > 0 && !quote.has_card && (
