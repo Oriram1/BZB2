@@ -457,7 +457,7 @@ const Register = () => {
               </p>
             )}
           </div>
-          <div>
+          {!isGoogleSignup && <div>
             <Label htmlFor="password">סיסמה</Label>
             <PasswordInput
               id="password"
@@ -472,7 +472,7 @@ const Register = () => {
             {errors.password
               ? <FieldError id="password" message={errors.password} />
               : <p id="password-hint" className="text-xs text-muted-foreground mt-1">{passwordRequirementsMessage}</p>}
-          </div>
+          </div>}
 
           <div className="mt-2">
             <div className="flex items-center gap-2">
