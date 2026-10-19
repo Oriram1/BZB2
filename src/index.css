@@ -165,13 +165,19 @@
     flex-direction: row !important;
   }
 
-  /* Hours precede minutes even when the surrounding form is Hebrew. */
+  /* Hours precede minutes even when the surrounding form is Hebrew, but the
+     LTR digits sit at the right edge of the field, where Hebrew readers look. */
   input[type="time"],
   input[type="time"]::-webkit-datetime-edit,
   input[type="time"]::-webkit-datetime-edit-fields-wrapper,
   input[type="time"]::-webkit-date-and-time-value {
     direction: ltr !important;
-    text-align: left !important;
+    text-align: right !important;
+  }
+
+  input[type="time"] {
+    display: flex !important;
+    justify-content: flex-end !important;
   }
 
   input[type="date"]::-webkit-calendar-picker-indicator,
