@@ -89,18 +89,18 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
               {busy ? <Loader2 className="animate-spin" size={18} /> : "התחילו חודש חינם 🎁"}
             </Button>
           )}
-          <Button
-            onClick={onConfirm}
-            disabled={!agreed || busy}
-            variant={onStartTrial ? "outline" : "default"}
-            className={
-              onStartTrial
-                ? "w-full py-5 text-base font-bold rounded-2xl"
-                : "w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none"
-            }
-          >
-            {busy && !onStartTrial ? <Loader2 className="animate-spin" size={18} /> : onStartTrial ? "או לשלם עכשיו" : "המשך לתשלום"}
-          </Button>
+          {/* While the free month is on offer, paying up front gives the customer
+              nothing extra, so the only way forward is the free month. Once it
+              is used (or never offered) this is the one button. */}
+          {!onStartTrial && (
+            <Button
+              onClick={onConfirm}
+              disabled={!agreed || busy}
+              className="w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none"
+            >
+              {busy ? <Loader2 className="animate-spin" size={18} /> : "המשך לתשלום"}
+            </Button>
+          )}
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy} className="w-full rounded-2xl">
             ביטול
           </Button>
