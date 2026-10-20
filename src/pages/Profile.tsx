@@ -25,6 +25,8 @@ import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { PasswordCard } from "@/components/profile/PasswordCard";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import QRCode from "qrcode";
+import { fetchAllPages } from "@/lib/fetchAllPages";
+import { loadBeeStats, loadPublishedTaskCounts, type BeeStats } from "@/lib/profileStats";
 
 /** Someone who asked, from the public view page, to be added to the list. */
 interface ParentRequest {
@@ -48,13 +50,6 @@ interface TaskStats {
   completed: number;
   cancelled: number;
   totalApplicants: number;
-}
-
-interface BeeStats {
-  applied: number;
-  accepted: number;
-  completed: number;
-  totalEarnings: number;
 }
 
 interface TaskWithApps {
@@ -98,10 +93,12 @@ const Profile = () => {
 
   // Tasker state
   const [taskerStats, setTaskerStats] = useState<TaskStats>({ total: 0, open: 0, inProgress: 0, completed: 0, cancelled: 0, totalApplicants: 0 });
+  const [taskerStatsError, setTaskerStatsError] = useState(false);
   const [myTasks, setMyTasks] = useState<TaskWithApps[]>([]);
 
   // Bee state
-  const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0 });
+  const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0, estimatedEarnings: false, missingHours: false });
+  const [beeStatsError, setBeeStatsError] = useState(false);
   const [familyCode, setFamilyCode] = useState<string | null>(null);
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
   const [familyQr, setFamilyQr] = useState<string | null>(null);
@@ -311,8 +308,8 @@ const Profile = () => {
     if (!user) return;
     const load = async () => {
       setLoadingData(true);
-      if (isTasker) await loadTaskerData();
-      if (isBee) await Promise.all([loadBeeData(), loadParentContacts(), loadParentRequests()]);
+      await Promise.all([loadTaskerData(), loadBeeData()]);
+      if (isBee) await Promise.all([loadParentContacts(), loadParentRequests()]);
       setLoadingData(false);
     };
     load();
@@ -322,24 +319,37 @@ const Profile = () => {
 
   const loadTaskerData = async () => {
     if (!user) return;
-    const { data: tasks } = await supabase
+    setTaskerStatsError(false);
+    const { data: tasks, error } = await fetchAllPages((from, to) => supabase
       .from("tasks")
       .select("id, name, short_desc, status, views_count, payment, payment_type, category, created_at")
       .eq("creator_id", user.id)
       .is("archived_at", null)
-      .order("created_at", { ascending: false });
-
-    if (!tasks) return;
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to));
+    if (error) {
+      setTaskerStatsError(true);
+      toast.error("לא הצלחנו לטעון את נתוני המטלות שפרסמתם");
+      return;
+    }
 
     const enriched: TaskWithApps[] = [];
     let totalApplicants = 0;
 
     for (const task of tasks) {
-      const { data: apps } = await supabase
+      const { data: apps, error: appsError } = await fetchAllPages((from, to) => supabase
         .from("task_applications")
         .select("id, status, applicant_id")
         .eq("task_id", task.id)
-        .is("archived_at", null);
+        .is("archived_at", null)
+        .order("id")
+        .range(from, to));
+      if (appsError) {
+        setTaskerStatsError(true);
+        toast.error("לא הצלחנו לטעון את מספר המועמדויות");
+        return;
+      }
 
       const enrichedApps = [];
       for (const app of apps || []) {
@@ -355,50 +365,23 @@ const Profile = () => {
     }
 
     setMyTasks(enriched);
-    setTaskerStats({
-      total: tasks.length,
-      open: tasks.filter(t => t.status === "open").length,
-      inProgress: tasks.filter(t => t.status === "in_progress").length,
-      completed: tasks.filter(t => t.status === "completed").length,
-      cancelled: tasks.filter(t => t.status === "cancelled").length,
-      totalApplicants,
-    });
+    try {
+      setTaskerStats({ ...await loadPublishedTaskCounts(user.id), totalApplicants });
+    } catch {
+      setTaskerStatsError(true);
+      toast.error("לא הצלחנו לטעון את נתוני המטלות שפרסמתם");
+    }
   };
 
   const loadBeeData = async () => {
     if (!user) return;
-    const { data: apps } = await supabase
-      .from("task_applications")
-      .select("id, status, task_id")
-      .eq("applicant_id", user.id)
-      .is("archived_at", null);
-
-    if (!apps) return;
-
-    const acceptedTaskIds = apps.filter(a => a.status === "accepted").map(a => a.task_id);
-    let completed = 0;
-    let totalEarnings = 0;
-
-    if (acceptedTaskIds.length > 0) {
-      const { data: acceptedTasks } = await supabase
-        .from("tasks")
-        .select("payment, status")
-        .in("id", acceptedTaskIds)
-        .is("archived_at", null);
-
-      // Being accepted is not being paid: only a task the publisher closed
-      // through complete_task counts towards either number.
-      const completedTasks = (acceptedTasks || []).filter(t => t.status === "completed");
-      completed = completedTasks.length;
-      totalEarnings = completedTasks.reduce((sum, t) => sum + Number(t.payment), 0);
+    setBeeStatsError(false);
+    try {
+      setBeeStats(await loadBeeStats(user.id));
+    } catch {
+      setBeeStatsError(true);
+      toast.error("לא הצלחנו לטעון את נתוני הביצוע וההכנסות");
     }
-
-    setBeeStats({
-      applied: apps.length,
-      accepted: apps.filter(a => a.status === "accepted").length,
-      completed,
-      totalEarnings,
-    });
   };
 
   const handleSave = async () => {
@@ -791,15 +774,16 @@ const Profile = () => {
         )}
 
         {/* Stats */}
-        {isTasker && (
+        {(isTasker || taskerStats.total > 0 || taskerStatsError) && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={taskerStats.total} color="text-primary-ink" to="/my-tasks?tab=published" />
-              <StatCard icon={Clock} label="פתוחות" value={taskerStats.open} color="text-amber-500" to="/my-tasks?tab=published" />
-              <StatCard icon={CheckCircle} label="הושלמו" value={taskerStats.completed} color="text-green-600" to="/my-tasks?tab=published" />
-              <StatCard icon={Users} label="נרשמים" value={taskerStats.totalApplicants} color="text-blue-500" to="/my-tasks?tab=applications" />
+              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.total} color="text-primary-ink" to="/my-tasks?tab=published" />
+              <StatCard icon={Clock} label="פתוחות" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.open} color="text-amber-500" to="/my-tasks?tab=published" />
+              <StatCard icon={CheckCircle} label="הושלמו" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.completed} color="text-green-600" to="/my-tasks?tab=published" />
+              <StatCard icon={Users} label="נרשמים" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.totalApplicants} color="text-blue-500" to="/my-tasks?tab=applications" />
             </div>
 
+            {taskerStatsError && <p role="alert" className="text-sm text-destructive">נתוני המטלות לא נטענו. יש לרענן ולנסות שוב.</p>}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -865,14 +849,22 @@ const Profile = () => {
           </>
         )}
 
-        {isBee && (
+        {(isBee || beeStats.applied > 0 || beeStatsError) && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={ClipboardList} label="הגשות" value={beeStats.applied} color="text-primary-ink" to="/my-tasks?tab=applications" />
-              <StatCard icon={CheckCircle} label="התקבלו" value={beeStats.accepted} color="text-green-600" to="/my-tasks?tab=performing" />
-              <StatCard icon={TrendingUp} label="הושלמו" value={beeStats.completed} color="text-blue-500" to="/my-tasks?tab=performing" />
-              <StatCard icon={DollarSign} label="הכנסות" value={formatCurrency(beeStats.totalEarnings)} color="text-amber-500" />
+              <StatCard icon={ClipboardList} label="הגשות" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.applied} color="text-primary-ink" to="/my-tasks?tab=performing" />
+              <StatCard icon={CheckCircle} label="התקבלו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.accepted} color="text-green-600" to="/my-tasks?tab=performing" />
+              <StatCard icon={TrendingUp} label="הושלמו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.completed} color="text-blue-500" to="/my-tasks?tab=performing" />
+              <StatCard icon={DollarSign} label={beeStats.estimatedEarnings ? "הכנסות משוערות" : "הכנסות"} value={loadingData ? "…" : beeStatsError ? "-" : formatCurrency(beeStats.totalEarnings)} color="text-amber-500" />
             </div>
+
+            {beeStatsError && <p role="alert" className="text-sm text-destructive">נתוני הביצוע וההכנסות לא נטענו. יש לרענן ולנסות שוב.</p>}
+            {!beeStatsError && (beeStats.estimatedEarnings || beeStats.missingHours) && (
+              <p className="text-xs text-muted-foreground">
+                הסכום כולל רק משימות שהושלמו. תשלום שעתי מחושב לפי משך המשימה המשוער.
+                {beeStats.missingHours && " משימות שעתיות ללא משך אינן כלולות בסכום."}
+              </p>
+            )}
 
             {/* The stats above answer "how am I doing". This answers "take me there". */}
             <Card>
@@ -884,7 +876,7 @@ const Profile = () => {
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-3">
                 <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold" asChild>
-<Link to="/my-tasks?tab=applications"><ClipboardList className="w-4 h-4" />
+<Link to="/my-tasks?tab=performing"><ClipboardList className="w-4 h-4" />
                     המועמדויות שלי</Link>
 </Button>
                 <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold" asChild>

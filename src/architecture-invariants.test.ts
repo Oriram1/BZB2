@@ -77,7 +77,9 @@ describe("architecture invariants", () => {
     // The old stat counted accepted applications, so a bee who was picked but
     // never paid still read as having completed the work.
     expect(profile).not.toContain("// approximation");
-    expect(profile).toContain('t.status === "completed"');
+    expect(profile).toContain("loadBeeStats(user.id)");
+    const stats = readFileSync(resolve(root, "src/lib/profileStats.ts"), "utf8");
+    expect(stats).toContain('application.tasks?.status === "completed"');
   });
 
   it("caps accepted workers at the number the task asked for", () => {

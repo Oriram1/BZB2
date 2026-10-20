@@ -382,6 +382,28 @@ const TaskDetail = () => {
           </div>
         </div>
 
+        {/* Detailed Description */}
+        {(task.full_desc || task.short_desc) && (
+          <div className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-6 border-2 border-primary/30 shadow-md space-y-3">
+            <div className="flex items-center gap-2 text-foreground font-black text-lg">
+              <FileText size={20} className="text-primary-ink" />
+              <h3>תיאור המשימה</h3>
+            </div>
+            <p className="text-foreground text-base leading-relaxed whitespace-pre-wrap dir-auto">{task.full_desc || task.short_desc}</p>
+          </div>
+        )}
+
+        {/* Notes Card */}
+        {task.notes && (
+          <div className="bg-amber-500/5 dark:bg-amber-500/10 rounded-3xl p-5 border border-amber-500/20 shadow-sm space-y-2">
+            <div className="flex items-center gap-2 text-foreground font-extrabold text-base mb-1">
+              <StickyNote size={18} className="text-amber-600 dark:text-amber-400" />
+              <h3>הערות מפרסם המשימה</h3>
+            </div>
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.notes}</p>
+          </div>
+        )}
+
         {/* Payment Hero Card */}
         <div className="gradient-honey rounded-3xl p-5 text-primary-foreground shadow-lg shadow-amber-500/10 flex items-center justify-between">
           <div>
@@ -455,28 +477,6 @@ const TaskDetail = () => {
             </div>
           </div>
         </div>
-
-        {/* Detailed Description */}
-        {task.full_desc && (
-          <div className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-6 border-2 border-primary/30 shadow-md space-y-3">
-            <div className="flex items-center gap-2 text-foreground font-black text-lg">
-              <FileText size={20} className="text-primary-ink" />
-              <h3>תיאור מפורט</h3>
-            </div>
-            <p className="text-foreground text-base leading-relaxed whitespace-pre-wrap dir-auto">{task.full_desc}</p>
-          </div>
-        )}
-
-        {/* Notes Card */}
-        {task.notes && (
-          <div className="bg-amber-500/5 dark:bg-amber-500/10 rounded-3xl p-5 border border-amber-500/20 shadow-sm space-y-2">
-            <div className="flex items-center gap-2 text-foreground font-extrabold text-base mb-1">
-              <StickyNote size={18} className="text-amber-600 dark:text-amber-400" />
-              <h3>הערות דגש</h3>
-            </div>
-            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.notes}</p>
-          </div>
-        )}
 
         {/* Creator Card */}
         {creator && (

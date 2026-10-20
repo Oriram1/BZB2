@@ -11,6 +11,7 @@ import VoiceNoteBubble from "@/components/chat/VoiceNoteBubble";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
+import { toast } from "sonner";
 import { useNotifications } from "@/hooks/useNotifications";
 
 const MEDIA_BUCKET = "chat-media";
@@ -74,29 +75,43 @@ const Chat = () => {
   // Load conversations
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
+    let loadVersion = 0;
+    let requestedHandled = false;
     const fetchConversations = async () => {
-      const { data } = await supabase
+      const version = ++loadVersion;
+      const { data, error } = await supabase
         .from("conversations")
         .select("*")
         .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
         .order("updated_at", { ascending: false });
 
+      if (error) {
+        toast.error("לא הצלחנו לטעון את השיחות");
+        return;
+      }
       if (!data) return;
 
       const convs: Conversation[] = [];
       for (const c of data) {
+        let taskName = "";
+        if (c.task_id) {
+          const { data: task, error: taskError } = await supabase.from("tasks")
+            .select("name, status, archived_at").eq("id", c.task_id).maybeSingle();
+          if (taskError) {
+            toast.error("לא הצלחנו לבדוק את מצב המשימה של השיחה");
+            continue;
+          }
+          if (!task || task.status === "completed" || task.status === "cancelled" || task.archived_at) continue;
+          taskName = task.name;
+        }
+
         const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
         const { data: profile } = await supabase
           .from("profiles")
           .select("first_name, last_name, phone")
           .eq("user_id", otherId)
           .single();
-
-        let taskName = "";
-        if (c.task_id) {
-          const { data: task } = await supabase.from("tasks").select("name").eq("id", c.task_id).single();
-          taskName = task?.name || "";
-        }
 
         const { data: lastMsg } = await supabase
           .from("messages")
@@ -128,26 +143,50 @@ const Chat = () => {
           unread: count || 0,
         });
       }
+      if (cancelled || version !== loadVersion) return;
       setConversations(convs);
-      if (requestedConversation && convs.some((conversation) => conversation.id === requestedConversation)) {
+      if (!requestedHandled && requestedConversation && convs.some((conversation) => conversation.id === requestedConversation)) {
         setActiveChat(requestedConversation);
         setShowSidebar(false);
-      } else if (convs.length > 0) {
-        setActiveChat((current) => current ?? convs[0].id);
+      } else {
+        const fallback = !requestedHandled && !requestedConversation ? convs[0]?.id ?? null : null;
+        setActiveChat((current) => convs.some((conversation) => conversation.id === current) ? current : fallback);
       }
+      requestedHandled = true;
     };
-    fetchConversations();
+    void fetchConversations();
+    const channel = supabase.channel(`chat-tasks-${user.id}-${Date.now()}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, () => void fetchConversations())
+      .subscribe();
+    const refresh = () => { if (document.visibilityState === "visible") void fetchConversations(); };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    // Poll too: realtime can disconnect and completion must still close the chat.
+    const timer = window.setInterval(refresh, 30000);
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(timer);
+    };
   }, [requestedConversation, user]);
 
   // Load messages for active chat + mark as read
   useEffect(() => {
-    if (!activeChat || !user) return;
+    if (!activeChat || !user) {
+      setMessages([]);
+      setShowSidebar(true);
+      return;
+    }
+    let cancelled = false;
     const fetchMessages = async () => {
       const { data } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", activeChat)
         .order("created_at", { ascending: true });
+      if (cancelled) return;
       setMessages((data as Message[]) || []);
 
       // Goes through an RPC because messages has no UPDATE policy: a direct
@@ -175,6 +214,7 @@ const Chat = () => {
         table: "messages",
         filter: `conversation_id=eq.${activeChat}`,
       }, (payload) => {
+        if (cancelled) return;
         const incoming = payload.new as Message;
         setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
       })
@@ -189,10 +229,11 @@ const Chat = () => {
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [activeChat, markConversationNotificationsRead]);
+  }, [activeChat, markConversationNotificationsRead, user]);
 
   // Attachments live in a private bucket, so each one needs a signed URL. They
   // are minted in one batch per render pass rather than one request per bubble.
@@ -223,6 +264,20 @@ const Chat = () => {
 
   const sendMessage = async ({ text, file, kind, duration }: OutgoingMessage) => {
     if (!user || !activeChat) return;
+
+    const conversation = conversations.find((item) => item.id === activeChat);
+    if (!conversation) throw new Error("השיחה נסגרה");
+    if (conversation.task_id) {
+      const { data: task, error } = await supabase.from("tasks")
+        .select("status, archived_at").eq("id", conversation.task_id).maybeSingle();
+      if (error) throw error;
+      if (!task || task.status === "completed" || task.status === "cancelled" || task.archived_at) {
+        setConversations((current) => current.filter((item) => item.id !== activeChat));
+        setActiveChat(null);
+        setShowSidebar(true);
+        throw new Error("המשימה הסתיימה והשיחה נסגרה");
+      }
+    }
 
     let attachmentPath: string | null = null;
     if (file && kind) {

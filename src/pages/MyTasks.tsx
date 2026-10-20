@@ -61,6 +61,7 @@ interface CandidateApplication {
   age: number | null;
   avatarUrl: string | null;
   completedTasks: number;
+  taskStatus: TaskStatus;
 }
 
 interface PerformingTask {
@@ -197,6 +198,7 @@ const MyTasks = () => {
                     age: profile?.age ?? null,
                     avatarUrl: profile?.avatar_url ?? null,
                     completedTasks: completedTasks ?? 0,
+                    taskStatus: task.status,
                   } satisfies CandidateApplication;
                 }),
               );
@@ -423,6 +425,7 @@ const MyTasks = () => {
     setPublishedTasks((current) =>
       current.map((t) => (t.id === task.id ? { ...t, status: "completed" } : t)),
     );
+    setApplications((current) => current.map((application) => application.taskId === task.id ? { ...application, taskStatus: "completed" } : application));
     logUserActivity(user?.id, "task_completed", { entityType: "task", entityId: task.id, details: { name: task.name } });
     toast.success("המטלה סומנה כהושלמה. התשלום נרשם לעובדים שביצעו אותה");
 
@@ -533,7 +536,7 @@ const MyTasks = () => {
                         </div>
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1"><Check size={13} /> {application.completedTasks} מטלות שהושלמו</span>
-                          <span className="inline-flex items-center gap-1"><Star size={13} /> אין דירוגים עדיין</span>
+                          <Link to={`/profile/${application.applicantId}`} className="inline-flex items-center gap-1 hover:underline"><Star size={13} /> דירוגים בפרופיל</Link>
                         </div>
                       </div>
                     </div>
@@ -570,7 +573,7 @@ const MyTasks = () => {
                           </Button>
                         </>
                       )}
-                      {application.status === "accepted" && (
+                      {application.status === "accepted" && application.taskStatus !== "completed" && application.taskStatus !== "cancelled" && (
                         <Button
                           onClick={() => openAcceptedConversation(application)}
                           disabled={actionId === application.id}
@@ -729,7 +732,7 @@ const MyTasks = () => {
                     <p>{task.location}</p>
                     {(task.scheduledDate || task.scheduledTime) && <p>{formatDateTime(task.scheduledDate, task.scheduledTime)}</p>}
                   </div>
-                  {task.applicationStatus === "accepted" && (
+                  {task.applicationStatus === "accepted" && task.status !== "completed" && task.status !== "cancelled" && (
                     <Button
                       onClick={async () => {
                         try {

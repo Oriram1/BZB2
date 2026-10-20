@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClipboardList, CheckCircle2, UserX, Pencil, Calendar, Star } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/format";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { categoryLabel } from "@/lib/categories";
 import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
 
@@ -54,7 +55,8 @@ const PublicProfile = () => {
   const [roles, setRoles] = useState<string[]>([]);
   const [tasks, setTasks] = useState<PublicTask[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [reviewsFailed, setReviewsFailed] = useState(false);
+  const avgRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : null;
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ const PublicProfile = () => {
     const load = async () => {
       setLoading(true);
 
-      const [{ data: profileRows }, { data: roleRows }, { data: taskRows }, { data: reviewRows }, { data: ratingRows }] = await Promise.all([
+      const [{ data: profileRows }, { data: roleRows }, { data: taskRows }, { data: reviewRows, error: reviewError }] = await Promise.all([
         supabase.rpc("get_public_profile", { _user_id: userId }),
         supabase.from("user_roles").select("role").eq("user_id", userId),
         supabase
@@ -73,17 +75,14 @@ const PublicProfile = () => {
           .eq("creator_id", userId)
           .is("archived_at", null)
           .order("created_at", { ascending: false }),
-        supabase
+        fetchAllPages((from, to) => supabase
           .from("reviews")
           .select("id, rating, body, created_at, reviewer_id")
           .eq("reviewee_id", userId)
           .eq("status", "approved")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("user_avg_ratings")
-          .select("avg_rating")
-          .eq("user_id", userId)
-          .maybeSingle(),
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to)),
       ]);
       const profileData = Array.isArray(profileRows) ? profileRows[0] : profileRows;
 
@@ -91,8 +90,8 @@ const PublicProfile = () => {
       setProfile(profileData ?? null);
       setRoles((roleRows ?? []).map((r) => r.role as string));
       setTasks(taskRows ?? []);
-      setReviews((reviewRows ?? []) as Review[]);
-      setAvgRating(ratingRows?.avg_rating ? Number(ratingRows.avg_rating) : null);
+      setReviews(reviewError ? [] : (reviewRows ?? []) as Review[]);
+      setReviewsFailed(Boolean(reviewError));
       setLoading(false);
     };
 
@@ -231,10 +230,10 @@ const PublicProfile = () => {
         )}
 
         {/* Reviews section */}
-        {(avgRating !== null || reviews.length > 0) && (
+        {(
           <div className="bg-card rounded-3xl border border-border p-5">
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="font-bold text-foreground">ביקורות</h2>
+              <h2 className="font-bold text-foreground">דירוג וביקורות</h2>
               {avgRating !== null && (
                 <span className="flex items-center gap-1 text-sm font-bold text-yellow-500">
                   <Star size={14} className="fill-yellow-400 text-yellow-400" aria-hidden="true" />
@@ -243,8 +242,10 @@ const PublicProfile = () => {
                 </span>
               )}
             </div>
-            {reviews.length === 0 ? (
-              <p className="text-sm text-muted-foreground">אין עדיין ביקורות מאושרות.</p>
+            {reviewsFailed ? (
+              <p role="alert" className="text-sm text-destructive">לא הצלחנו לטעון את הדירוגים. יש לרענן ולנסות שוב.</p>
+            ) : reviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">אין עדיין דירוגים. לאחר השלמת משימות, דירוגים שאושרו יופיעו כאן.</p>
             ) : (
               <ul className="space-y-3">
                 {reviews.map((r) => (
