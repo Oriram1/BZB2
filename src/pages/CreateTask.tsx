@@ -1,6 +1,7 @@
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED, type PaymentTab } from "@/lib/paymentTab";
 import { useEffect, useState } from "react";
+import { addDays, addMonths, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,6 +78,13 @@ const CreateTask = () => {
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
   const today = new Date();
   const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const dateShortcuts = [
+    { label: "מחר", value: format(addDays(today, 1), "yyyy-MM-dd") },
+    { label: "בעוד שבוע", value: format(addDays(today, 7), "yyyy-MM-dd") },
+    { label: "בעוד חודש", value: format(addMonths(today, 1), "yyyy-MM-dd") },
+  ];
+  const shortcutClass = (selected: boolean) => `h-11 min-w-0 gap-1 rounded-xl px-1.5 text-xs font-bold transition-colors ${selected ? "border-primary bg-primary/10 text-primary-ink hover:bg-primary/15" : "border-border bg-background/70 text-muted-foreground hover:text-foreground"}`;
 
   const updateForm = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -505,6 +513,15 @@ const CreateTask = () => {
                     className="h-12 rounded-2xl px-4 text-base font-medium"
                     maxLength={10}
                   />
+                  <div role="group" aria-label="בחירת תאריך מהירה" className="mt-2 grid grid-cols-3 gap-2">
+                    {dateShortcuts.map(({ label, value }) => (
+                      <Button key={label} type="button" variant="outline" aria-pressed={form.date === value}
+                        title={value.split("-").reverse().join("/")} className={shortcutClass(form.date === value)} onClick={() => updateForm("date", value)}>
+                        <Check size={14} aria-hidden="true" className={form.date === value ? "shrink-0" : "invisible shrink-0"} />
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
                   <p id="date-hint" className="mt-1 text-xs text-muted-foreground">הקלד בפורמט DD/MM/YYYY.</p>
                 </div>
                 <div>
@@ -520,6 +537,15 @@ const CreateTask = () => {
                     className="h-12 rounded-2xl px-4 text-base font-medium [direction:ltr]"
                     style={{ unicodeBidi: "plaintext" }}
                   />
+                  <div role="group" aria-label="בחירת שעה מהירה" className="mt-2 grid grid-cols-3 gap-2">
+                    {["09:00", "14:00", "18:00"].map((time) => (
+                      <Button key={time} type="button" variant="outline" aria-pressed={form.time === time}
+                        className={shortcutClass(form.time === time)} onClick={() => updateForm("time", time)}>
+                        <Check size={14} aria-hidden="true" className={form.time === time ? "shrink-0" : "invisible shrink-0"} />
+                        <span dir="ltr">{time}</span>
+                      </Button>
+                    ))}
+                  </div>
                   <p id="time-hint" className="mt-1 text-xs text-muted-foreground">אפשר להקליד שעה בפורמט HH:MM או להשתמש בבורר השעה.</p>
                 </div>
               </div>
