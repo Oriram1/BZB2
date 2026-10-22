@@ -163,13 +163,14 @@ export async function createLowProfile(params: {
    * Only meaningful with `CreateTokenOnly`.
    */
   cardCheckAmount?: number;
-}): Promise<{ lowProfileId: string; url: string }> {
+}): Promise<{ lowProfileId: string; url: string; bitUrl?: string }> {
   const config = cardcomConfig();
   const result = await post<{
     ResponseCode?: number;
     Description?: string;
     LowProfileId?: string;
     Url?: string;
+    UrlToBit?: string | null;
   }>("/LowProfile/Create", {
     TerminalNumber: config.terminal,
     ApiName: config.apiName,
@@ -193,7 +194,8 @@ export async function createLowProfile(params: {
     console.error("cardcom_create_failed", { code: result.ResponseCode, description: result.Description });
     throw new Error("cardcom_create_failed");
   }
-  return { lowProfileId: result.LowProfileId, url: result.Url };
+  return { lowProfileId: result.LowProfileId, url: result.Url,
+    bitUrl: params.operation === "ChargeOnly" && result.UrlToBit ? result.UrlToBit : undefined };
 }
 
 export async function getLpResult(lowProfileId: string): Promise<LowProfileResult> {

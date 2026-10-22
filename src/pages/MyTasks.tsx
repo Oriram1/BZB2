@@ -104,7 +104,7 @@ const MyTasks = () => {
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [performingTasks, setPerformingTasks] = useState<PerformingTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [paymentSummary, setPaymentSummary] = useState<{ task: PublishedTask; oneTime: boolean } | null>(null);
+  const [paymentSummary, setPaymentSummary] = useState<{ task: PublishedTask; oneTime: boolean; bit?: boolean } | null>(null);
   const [submittedReviews, setSubmittedReviews] = useState<Set<string>>(new Set());
   const [actionId, setActionId] = useState<string | null>(null);
 
@@ -364,11 +364,11 @@ const MyTasks = () => {
   };
 
   /** Opens Cardcom's page to pay this task with a different card. */
-  const payWithOtherCard = async (task: PublishedTask, oneTime = false) => {
+  const payWithOtherCard = async (task: PublishedTask, oneTime = false, bit = false) => {
     const paymentTab = openPaymentTab();
     if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
     setPayingTask(task.id);
-    const result = await (oneTime ? payTaskOnce(task.id) : payTaskWithNewCard(task.id));
+    const result = await (oneTime ? payTaskOnce(task.id, bit ? "bit" : "wallet") : payTaskWithNewCard(task.id));
     if (!result.ok) {
       paymentTab.close();
       setPayingTask(null);
@@ -693,8 +693,11 @@ const MyTasks = () => {
                           <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
                             תשלום חד-פעמי
                           </Button>
+                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true, bit: true })} className="rounded-full font-bold">
+                            תשלום ב-Bit
+                          </Button>
                         </div>
-                        <p className="mt-2 text-xs text-muted-foreground">בתשלום חד-פעמי לא נשמר כרטיס. Apple Pay ו-Google Pay זמינים בכפוף לתמיכת דף התשלום והמכשיר.</p>
+                        <p className="mt-2 text-xs text-muted-foreground">בתשלום חד-פעמי לא נשמר כרטיס. Apple Pay, Google Pay ו-Bit זמינים בכפוף להפעלתם אצל חברת הסליקה ולתמיכת המכשיר.</p>
                       </div>
                     )}
                     {(task.publish_state === "draft" || task.publish_state === "rejected") && (
@@ -864,12 +867,12 @@ const MyTasks = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        <PaymentSummaryDialog open={!!paymentSummary} title="סיכום תשלום למטלה"
+        <PaymentSummaryDialog open={!!paymentSummary} title={paymentSummary?.bit ? "סיכום תשלום ב-Bit" : "סיכום תשלום למטלה"}
           amount={Number(paymentSummary?.task.payment_due ?? 0)}
           description={`עמלת פרסום וביטוח, אם נבחר, עבור המטלה ״${paymentSummary?.task.name ?? ""}״. זו אינה התמורה לעובד.`}
           savesCard={!paymentSummary?.oneTime} busy={!!payingTask}
           onOpenChange={(open) => !open && setPaymentSummary(null)}
-          onConfirm={() => { if (paymentSummary) void payWithOtherCard(paymentSummary.task, paymentSummary.oneTime); }} />
+          onConfirm={() => { if (paymentSummary) void payWithOtherCard(paymentSummary.task, paymentSummary.oneTime, paymentSummary.bit); }} />
 
         {reviewTarget && (
           <ReviewDialog

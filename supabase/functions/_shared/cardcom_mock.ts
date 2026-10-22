@@ -42,7 +42,7 @@ function reply(body: unknown, status = 200) {
  * hands out. Visiting `<publicBase>/pay/<id>?outcome=paid|declined|cancel` plays
  * the customer finishing the page and redirects like Cardcom would.
  */
-export function startMockCardcom(port = 0, publicBaseOverride?: string): MockCardcom {
+export function startMockCardcom(port = 0, publicBaseOverride?: string, options: { bitEnabled?: boolean } = {}): MockCardcom {
   // With port 0 the real port is only known once the server is listening.
   let publicBase = publicBaseOverride ?? `http://127.0.0.1:${port}`;
   const pages = new Map<string, MockPayment>();
@@ -98,7 +98,8 @@ export function startMockCardcom(port = 0, publicBaseOverride?: string): MockCar
           amount: Number(body.Amount),
           operation: String(body.Operation ?? "ChargeOnly"),
         });
-        return reply({ ResponseCode: 0, LowProfileId: id, Url: `${publicBase}/pay/${id}` });
+        return reply({ ResponseCode: 0, LowProfileId: id, Url: `${publicBase}/pay/${id}`,
+          UrlToBit: options.bitEnabled && body.Operation === "ChargeOnly" ? `${publicBase}/pay/${id}?method=bit` : undefined });
       }
       case "/LowProfile/GetLpResult": {
         const page = pages.get(String(body.LowProfileId));

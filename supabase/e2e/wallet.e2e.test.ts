@@ -6,7 +6,8 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
   const url = Deno.env.get("LOCAL_SUPABASE_URL")!;
   assert(["localhost", "127.0.0.1"].includes(new URL(url).hostname), "Local database required");
   const admin = createClient(url, Deno.env.get("LOCAL_SERVICE_KEY")!, { auth: { persistSession: false } });
-  const mock = startMockCardcom();
+  const bitOptions = { bitEnabled: false };
+  const mock = startMockCardcom(0, undefined, bitOptions);
   const children: Deno.ChildProcess[] = [];
   let userId: string | undefined;
   let taskId: string | undefined;
@@ -57,6 +58,26 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
     assertEquals((await admin.from("tasks").select("publish_state").eq("id", taskId).single()).data?.publish_state, "live");
     assertEquals((await admin.from("payment_methods").select("token").eq("user_id", userId).single()).data?.token, "original-recurring-token");
     assertEquals((await admin.from("billing_charges").select("status").eq("id", page.charge_id).single()).data?.status, "paid");
+    // Bit uses the same settlement and never overwrites the recurring card.
+    assertEquals((await admin.from("tasks").update({ publish_state: "pending_payment", payment_due: 8 }).eq("id", taskId)).error, null);
+    const unavailable = await fetch("http://127.0.0.1:8291", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signed.data.session!.access_token}` }, body: JSON.stringify({ action: "bit", task_id: taskId }) });
+    assertEquals(unavailable.status, 409);
+    assertEquals((await unavailable.json()).error, "bit_unavailable");
+    assertEquals((await admin.from("tasks").select("publish_state").eq("id", taskId).single()).data?.publish_state, "pending_payment");
+    bitOptions.bitEnabled = true;
+    const bitResponse = await fetch("http://127.0.0.1:8291", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signed.data.session!.access_token}` }, body: JSON.stringify({ action: "bit", task_id: taskId }) });
+    assertEquals(bitResponse.status, 200);
+    const bitPage = await bitResponse.json();
+    assert(new URL(bitPage.url).searchParams.get("method") === "bit");
+    const bitCharge = await admin.from("billing_charges").select("low_profile_id,meta").eq("id", bitPage.charge_id).single();
+    assertEquals(bitCharge.error, null);
+    assertEquals(bitCharge.data!.meta.payment_mode, "one_time");
+    mock.pages.get(bitCharge.data!.low_profile_id)!.outcome = "paid";
+    const bitSettled = await fetch("http://127.0.0.1:8292", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ LowProfileId: bitCharge.data!.low_profile_id }) });
+    assertEquals(bitSettled.status, 200);
+    assertEquals((await bitSettled.json()).status, "paid");
+    assertEquals((await admin.from("tasks").select("publish_state").eq("id", taskId).single()).data?.publish_state, "live");
+    assertEquals((await admin.from("payment_methods").select("token").eq("user_id", userId).single()).data?.token, "original-recurring-token");
     // Card replacement must preserve cancellation, trial and renewal dates.
     const periodEnd = "2027-01-01T00:00:00+00:00";
     assertEquals((await admin.from("subscriptions").insert({ user_id: userId, plan_id: "quarterly", status: "active",

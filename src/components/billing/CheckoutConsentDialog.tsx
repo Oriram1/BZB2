@@ -55,7 +55,7 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
         <div className="rounded-2xl bg-muted p-4 text-sm space-y-2">
           <p className="font-bold">סה״כ עכשיו: {onStartTrial ? "0" : info ? formatPrice(info.price) : "טרם נטען"} ₪</p>
           {onStartTrial && info && <p>לאחר החודש החינם: {formatPrice(info.price)} ₪ {periodShort(info.periodMonths)}.</p>}
-          <p>הכרטיס יישמר אצל חברת הסליקה לחידוש המנוי. Apple Pay ו-Google Pay אינם זמינים לשמירת כרטיס למנוי.</p>
+          <p>הכרטיס יישמר אצל חברת הסליקה לחידוש המנוי. Apple Pay, Google Pay ו-Bit אינם זמינים לשמירת כרטיס למנוי.</p>
           <p>דף התשלום ייפתח בכרטיסייה נפרדת. המסך הזה יישאר פתוח.</p>
         </div>
 

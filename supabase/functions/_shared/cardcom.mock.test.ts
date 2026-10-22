@@ -312,3 +312,20 @@ Deno.test("one-time wallet payment settles without replacing the saved subscript
     await mock.close();
   }
 });
+
+Deno.test("Bit URL is available only for one-time charges on an enabled terminal", async () => {
+  const mock = startMockCardcom(0, undefined, { bitEnabled: true });
+  Deno.env.set("CARDCOM_BASE_URL", mock.url);
+  Deno.env.delete("CARDCOM_MODE");
+  Deno.env.set("CARDCOM_TEST_TERMINAL", String(MOCK_TERMINAL));
+  Deno.env.set("CARDCOM_TEST_API_NAME", MOCK_API_NAME);
+  Deno.env.set("CARDCOM_TEST_API_PASSWORD", MOCK_API_PASSWORD);
+  try {
+    for (const operation of ["ChargeOnly", "ChargeAndCreateToken", "CreateTokenOnly"] as const) {
+      const page = await createLowProfile({ amount: 8, operation, returnValue: ORDER_ID,
+        productName: "test", successUrl: "https://example.test/success", failedUrl: "https://example.test/failed",
+        cancelUrl: "https://example.test/cancel", webhookUrl: "https://example.test/webhook" });
+      assertEquals(Boolean(page.bitUrl), operation === "ChargeOnly");
+    }
+  } finally { await mock.close(); }
+});

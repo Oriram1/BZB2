@@ -24,6 +24,7 @@ export default function PaymentSummaryDialog({ open, title, amount, description,
         <div className="flex justify-between gap-3"><dt>סה״כ לתשלום עכשיו</dt><dd className="font-bold">{formatCurrency(amount)}</dd></div>
         <div><dt className="font-bold">שמירת הכרטיס</dt><dd>{savesCard ? "הכרטיס יישמר אצל חברת הסליקה לחיובים עתידיים." : "הכרטיס לא יישמר. זהו תשלום חד-פעמי."}</dd></div>
       </dl>
+      {savesCard && <p className="text-sm text-muted-foreground">שמירת כרטיס מחייבת כרטיס אשראי רגיל. Apple Pay, Google Pay ו-Bit זמינים לתשלום חד-פעמי בלבד.</p>}
       <p className="text-xs text-muted-foreground">דף Cardcom ייפתח בכרטיסייה נפרדת. המסך הזה יישאר פתוח.</p>
       <DialogFooter className="gap-2">
         <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>חזרה</Button>

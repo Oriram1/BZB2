@@ -78,8 +78,8 @@ export async function payTaskWithNewCard(taskId: string): Promise<PageResult> {
 }
 
 /** A one-time hosted charge; wallets require activation on the Cardcom terminal. */
-export async function payTaskOnce(taskId: string): Promise<PageResult> {
-  const result = await invoke<{ url: string }>("task-pay", { action: "wallet", task_id: taskId });
+export async function payTaskOnce(taskId: string, method: "wallet" | "bit" = "wallet"): Promise<PageResult> {
+  const result = await invoke<{ url: string }>("task-pay", { action: method, task_id: taskId });
   if (!result.ok) return { ok: false, code: result.code };
   return { ok: true, url: result.data.url };
 }
@@ -101,6 +101,8 @@ export async function resubmitTask(taskId: string) {
 
 export const billingErrorText = (code: string) => {
   switch (code) {
+    case "bit_unavailable":
+      return "תשלום ב-Bit עדיין לא זמין. אפשר לשלם בכרטיס או בארנק דיגיטלי";
     case "payment_unavailable":
       return "שירות התשלום לא זמין כרגע. אפשר לנסות שוב בעוד כמה דקות";
     case "network_error":

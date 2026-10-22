@@ -4,6 +4,7 @@
  *   retry     charge the saved card again for a task waiting on payment
  *   new_card  open Cardcom's page to pay that task with a different card
  *   wallet    charge once without saving a card (wallet-compatible hosted page)
+ *   bit       charge once using Cardcom's Bit URL, if enabled on the terminal
  *   card_setup open Cardcom's page to save a card without charging (needed
  *              before a paid task can be submitted for review)
  *
@@ -27,7 +28,7 @@ Deno.serve(withCors(async (req) => {
 
     const body = await readJsonObject(req);
     const action = String(body.action ?? "");
-    if (!["retry", "new_card", "wallet", "card_setup", "update_card"].includes(action)) return json({ error: "invalid_action" }, 400);
+    if (!["retry", "new_card", "wallet", "bit", "card_setup", "update_card"].includes(action)) return json({ error: "invalid_action" }, 400);
 
     if (action === "update_card") {
       const { data: subscription, error } = await admin.from("subscriptions")
@@ -90,7 +91,8 @@ Deno.serve(withCors(async (req) => {
       return json({ state: after?.publish_state, charge: outcome.status });
     }
 
-    // new_card
+    const oneTime = action === "wallet" || action === "bit";
+    // One-time methods never create or replace a recurring card.
     const id = crypto.randomUUID();
     const { error } = await admin.from("billing_charges").insert({
       id,
@@ -98,12 +100,13 @@ Deno.serve(withCors(async (req) => {
       purpose: "task",
       task_id: task.id,
       amount: task.payment_due,
-      meta: action === "wallet" ? { payment_mode: "one_time" } : {},
+      meta: oneTime ? { payment_mode: "one_time" } : {},
     });
     if (error) throw error;
     return await openPage(admin, id, {
       amount: Number(task.payment_due),
-      operation: action === "wallet" ? "ChargeOnly" : "ChargeAndCreateToken",
+      bit: action === "bit",
+      operation: oneTime ? "ChargeOnly" : "ChargeAndCreateToken",
       productName: `משימה: ${task.name}`,
       returnUrl: (result) => `${base}/billing/return?charge=${id}&result=${result}`,
       webhookUrl: functionsUrl,
@@ -119,6 +122,7 @@ async function openPage(
   chargeId: string,
   page: {
     amount: number;
+    bit?: boolean;
     operation: "ChargeOnly" | "ChargeAndCreateToken" | "CreateTokenOnly";
     productName: string;
     returnUrl: (result: string) => string;
@@ -138,8 +142,14 @@ async function openPage(
       webhookUrl: page.webhookUrl,
       email: page.email,
     });
-    await admin.from("billing_charges").update({ low_profile_id: created.lowProfileId }).eq("id", chargeId);
-    return json({ url: created.url, charge_id: chargeId });
+    const { error: linkError } = await admin.from("billing_charges").update({ low_profile_id: created.lowProfileId }).eq("id", chargeId);
+    if (linkError) throw linkError;
+    if (page.bit && !created.bitUrl) {
+      const { error } = await admin.from("billing_charges").update({ status: "failed", error: "bit_unavailable" }).eq("id", chargeId).eq("status", "pending");
+      if (error) throw error;
+      return json({ error: "bit_unavailable" }, 409);
+    }
+    return json({ url: page.bit ? created.bitUrl : created.url, charge_id: chargeId });
   } catch (error) {
     await admin.from("billing_charges").update({ status: "failed", error: "create_failed" }).eq("id", chargeId).eq("status", "pending");
     console.error("task_pay_page_failed", error instanceof Error ? error.message : error);
