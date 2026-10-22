@@ -1,5 +1,7 @@
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { PublishQuote } from "@/lib/taskBilling";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import CheckoutConsentDialog from "@/components/billing/CheckoutConsentDialog";
@@ -78,6 +80,18 @@ const Pricing = () => {
       active = false;
     };
   }, [user]);
+
+  const { data: publishQuote, error: quoteError, isFetching: quoteFetching } = useQuery({
+    queryKey: ["pricing-publish-quote", user?.id],
+    enabled: !authLoading && !!user && roles.includes("tasker"),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_publish_quote", { _insurance: false });
+      if (error) throw error;
+      if (!data) throw new Error("missing_publish_quote");
+      return data as PublishQuote;
+    },
+  });
+  const freeTaskAvailable = !authLoading && !!user && roles.includes("tasker") && !quoteFetching && !quoteError && publishQuote?.free_slot === true;
 
   const navigate = useNavigate();
   const goBack = () => { if (window.history.length > 2) { navigate(-1); } else { navigate("/"); } };
@@ -164,13 +178,18 @@ const Pricing = () => {
         <div className="text-center mb-14">
           <h1 className="text-5xl font-extrabold text-foreground mb-3">תוכניות מנוי 🐝</h1>
           <p className="text-muted-foreground text-lg font-medium">בחרו את התוכנית שמתאימה לכם</p>
-          <p
-            className="mx-auto mt-6 max-w-xl rounded-3xl gradient-honey px-6 py-4 text-2xl font-black text-primary-foreground shadow-glow"
-            data-testid="first-task-free"
-          >
-            🎁 המשימה הראשונה שלכם חינם
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">פעם אחת לכל משתמש, ובלי כרטיס אשראי.</p>
+          {freeTaskAvailable && (
+            <>
+              <p
+                className="mx-auto mt-6 max-w-xl rounded-3xl gradient-honey px-6 py-4 text-2xl font-black text-primary-foreground shadow-glow"
+                data-testid="first-task-free"
+              >
+                🎁 המשימה הראשונה שלכם חינם
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">פעם אחת לכל משתמש, ובלי כרטיס אשראי.</p>
+            </>
+          )}
+          {quoteError && <p role="status" className="mt-2 text-sm text-muted-foreground">לא הצלחנו לבדוק את הזכאות למשימה חינם. אפשר לרענן ולנסות שוב.</p>}
         </div>
 
         {subscribed && (
