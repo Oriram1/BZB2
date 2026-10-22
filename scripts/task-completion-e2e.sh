@@ -21,6 +21,10 @@ for attempt in {1..40}; do
   if curl -fsS "$E2E_BASE_URL" >/dev/null 2>&1; then break; fi
   sleep 1
 done
-npx playwright test e2e/task-completion.spec.ts --workers=1
+if (( $# > 0 )); then
+  npx playwright test "$@" --workers=1
+else
+  npx playwright test e2e/task-completion.spec.ts e2e/subscription-card.spec.ts --workers=1
+fi
 
 deno test -A --no-lock supabase/e2e/wallet.e2e.test.ts

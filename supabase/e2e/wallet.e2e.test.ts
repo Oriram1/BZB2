@@ -11,7 +11,7 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
   let userId: string | undefined;
   let taskId: string | undefined;
   try {
-    for (const [name, port] of [["task-pay", 8291], ["billing-webhook", 8292]] as const) {
+    for (const [name, port] of [["task-pay", 8291], ["billing-webhook", 8292], ["billing-confirm", 8293]] as const) {
       children.push(new Deno.Command(Deno.execPath(), { args: ["run", "-A", "--no-lock", `supabase/functions/${name}/index.ts`],
         env: { DENO_SERVE_ADDRESS: `tcp:127.0.0.1:${port}`, SUPABASE_URL: url,
           SUPABASE_ANON_KEY: Deno.env.get("LOCAL_ANON_KEY")!, SUPABASE_SERVICE_ROLE_KEY: Deno.env.get("LOCAL_SERVICE_KEY")!,
@@ -57,6 +57,36 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
     assertEquals((await admin.from("tasks").select("publish_state").eq("id", taskId).single()).data?.publish_state, "live");
     assertEquals((await admin.from("payment_methods").select("token").eq("user_id", userId).single()).data?.token, "original-recurring-token");
     assertEquals((await admin.from("billing_charges").select("status").eq("id", page.charge_id).single()).data?.status, "paid");
+    // Card replacement must preserve cancellation, trial and renewal dates.
+    const periodEnd = "2027-01-01T00:00:00+00:00";
+    assertEquals((await admin.from("subscriptions").insert({ user_id: userId, plan_id: "quarterly", status: "active",
+      current_period_start: "2026-10-01T00:00:00Z", current_period_end: periodEnd,
+      cancel_at_period_end: true, is_trial: true, card_last4: "1234", card_expiry: "1230" })).error, null);
+    const beforeSub = (await admin.from("subscriptions").select("plan_id,status,current_period_start,current_period_end,cancel_at_period_end,is_trial").eq("user_id", userId).single()).data;
+    const update = await fetch("http://127.0.0.1:8291", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signed.data.session!.access_token}` }, body: JSON.stringify({ action: "update_card" }) });
+    assertEquals(update.status, 200);
+    const updatePage = await update.json();
+    const updateRequest = mock.requests.filter(r => r.path === "/LowProfile/Create").at(-1)!;
+    assertEquals(updateRequest.body.Operation, "CreateTokenOnly");
+    assertEquals(updateRequest.body.Amount, 0);
+    assert(String(updateRequest.body.SuccessRedirectUrl).includes("flow=card-update"));
+    const updateCharge = await admin.from("billing_charges").select("low_profile_id").eq("id", updatePage.charge_id).single();
+    assertEquals(updateCharge.error, null);
+    assert((await client.rpc("complete_subscription_card_update", { _charge_id: updatePage.charge_id, _token: "forged", _card_last4: "9999", _card_expiry: "1230" })).error);
+    mock.pages.get(updateCharge.data!.low_profile_id)!.outcome = "paid";
+    for (let i = 0; i < 2; i++) {
+      const response = await fetch("http://127.0.0.1:8292", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ LowProfileId: updateCharge.data!.low_profile_id }) });
+      assertEquals(response.status, 200);
+      assertEquals((await response.json()).status, "paid");
+      const confirmed = await fetch("http://127.0.0.1:8293", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signed.data.session!.access_token}` }, body: JSON.stringify({ charge_id: updatePage.charge_id }) });
+      assertEquals(confirmed.status, 200);
+      assertEquals((await confirmed.json()).cardUpdated, true);
+    }
+    const updatedMethod = await admin.from("payment_methods").select("token,card_expiry").eq("user_id", userId).single();
+    assert(updatedMethod.data?.token !== "original-recurring-token");
+    assertEquals(updatedMethod.data?.card_expiry, "0429");
+    assertEquals((await admin.from("subscriptions").select("plan_id,status,current_period_start,current_period_end,cancel_at_period_end,is_trial").eq("user_id", userId).single()).data, beforeSub);
+    assertEquals((await admin.from("subscriptions").select("card_last4,card_expiry").eq("user_id", userId).single()).data, { card_last4: null, card_expiry: "0429" });
   } finally {
     for (const child of children) { child.kill("SIGTERM"); await child.status; }
     await mock.close();

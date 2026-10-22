@@ -1401,6 +1401,10 @@ export type Database = {
           task_id: string
         }[]
       }
+      complete_subscription_card_update: {
+        Args: { _charge_id: string; _token: string; _card_last4: string; _card_expiry: string }
+        Returns: undefined
+      }
       complete_task: { Args: { _task_id: string }; Returns: undefined }
       enqueue_notification: {
         Args: {

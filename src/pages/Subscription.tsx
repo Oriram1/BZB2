@@ -34,6 +34,7 @@ import {
   resumeSubscription,
   startCheckout,
   mergePaymentHistory,
+  updateSubscriptionCard,
   type HistoryRow,
 } from "@/lib/billing";
 import { toast } from "sonner";
@@ -160,6 +161,17 @@ const Subscription = () => {
     await reload();
   };
 
+  const replaceCard = async () => {
+    setBusy(true);
+    const result = await updateSubscriptionCard();
+    if (!result.ok) {
+      setBusy(false);
+      toast.error(billingErrorMessage(result.code));
+      return;
+    }
+    window.location.assign(result.data.url);
+  };
+
   const payOverdue = async () => {
     setBusy(true);
     const result = await startCheckout(null);
@@ -216,7 +228,9 @@ const Subscription = () => {
               {subscription.status === "active" && subscription.is_trial && (
                 <p className="rounded-2xl bg-primary/10 p-3 font-bold text-primary-ink">
                   החודש החינם שלכם פעיל עד {formatDate(subscription.current_period_end)}.
-                  {plan ? ` אחריו הכרטיס יחויב ב־${formatPrice(plan.price)} ₪, ואפשר לבטל עד אז.` : ""}
+                  {subscription.cancel_at_period_end
+                    ? " המנוי לא יתחדש ולא יהיה חיוב בסיום החודש החינם."
+                    : plan ? ` אחריו הכרטיס יחויב ב־${formatPrice(plan.price)} ₪, ואפשר לבטל עד אז.` : ""}
                 </p>
               )}
 
@@ -265,6 +279,16 @@ const Subscription = () => {
                   <CreditCard size={15} />
                   כרטיס שמסתיים ב־{subscription.card_last4}
                 </p>
+              )}
+
+              {(subscription.status === "active" || subscription.status === "past_due") && (
+                <div className="space-y-2">
+                  <Button variant="outline" onClick={replaceCard} disabled={busy} className="rounded-2xl font-bold">
+                    <CreditCard size={16} className="ms-1" />
+                    החלפת כרטיס אשראי
+                  </Button>
+                  <p className="text-xs text-muted-foreground">מעבר לדף מאובטח לשמירת כרטיס חדש, ללא חיוב כעת. מצב המנוי ומועד החידוש לא ישתנו.</p>
+                </div>
               )}
 
               {subscription.status === "active" && (

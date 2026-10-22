@@ -153,7 +153,11 @@ export type ChargeStatus = "pending" | "paid" | "failed" | "refunded";
 
 /** A task payment or a saved card (not a subscription order). */
 export const confirmCharge = (chargeId: string) =>
-  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean }>("billing-confirm", { charge_id: chargeId });
+  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean; cardUpdated?: boolean }>("billing-confirm", { charge_id: chargeId });
+
+/** Replace the saved card without renewing or charging the subscription. */
+export const updateSubscriptionCard = () =>
+  call<{ url: string; charge_id: string }>("task-pay", { action: "update_card" });
 
 /** The free month: saves a card on Cardcom's page, charges nothing now. */
 export const startTrial = (planId: PlanId) =>

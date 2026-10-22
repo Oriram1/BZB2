@@ -24,11 +24,21 @@ Deno.serve(withCors(async (req) => {
   try {
     const { user, admin } = await authenticatedClients(req);
     if (!billingEnabled()) return json({ error: "billing_disabled" }, 503);
-    if (!(await hasRole(admin, user.id, "tasker"))) return json({ error: "tasker_only" }, 403);
 
     const body = await readJsonObject(req);
     const action = String(body.action ?? "");
-    if (!["retry", "new_card", "wallet", "card_setup"].includes(action)) return json({ error: "invalid_action" }, 400);
+    if (!["retry", "new_card", "wallet", "card_setup", "update_card"].includes(action)) return json({ error: "invalid_action" }, 400);
+
+    if (action === "update_card") {
+      const { data: subscription, error } = await admin.from("subscriptions")
+        .select("status").eq("user_id", user.id).maybeSingle();
+      if (error) throw error;
+      if (!subscription || !["active", "past_due"].includes(subscription.status)) {
+        return json({ error: "no_active_subscription" }, 409);
+      }
+    } else if (!(await hasRole(admin, user.id, "tasker"))) {
+      return json({ error: "tasker_only" }, 403);
+    }
 
     const since = new Date(Date.now() - 3_600_000).toISOString();
     const { count } = await admin
@@ -41,20 +51,21 @@ Deno.serve(withCors(async (req) => {
     const base = siteUrl();
     const functionsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/billing-webhook`;
 
-    if (action === "card_setup") {
+    if (action === "card_setup" || action === "update_card") {
       const id = crypto.randomUUID();
       const { error } = await admin.from("billing_charges").insert({
         id,
         user_id: user.id,
         purpose: "card_setup",
         amount: 0,
+        meta: action === "update_card" ? { card_update: true } : {},
       });
       if (error) throw error;
       return await openPage(admin, id, {
         amount: 0,
         operation: "CreateTokenOnly",
-        productName: "שמירת כרטיס אשראי",
-        returnUrl: (result) => `${base}/billing/return?charge=${id}&result=${result}`,
+        productName: action === "update_card" ? "החלפת כרטיס אשראי - ללא חיוב" : "שמירת כרטיס אשראי",
+        returnUrl: (result) => `${base}/billing/return?charge=${id}&result=${result}${action === "update_card" ? "&flow=card-update" : ""}`,
         webhookUrl: functionsUrl,
         email: user.email ?? undefined,
       });
