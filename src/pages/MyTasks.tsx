@@ -1,3 +1,5 @@
+import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
+import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Eye, MessageCircle, Pencil, Plus, Star, UserRound, Users, X } from "lucide-react";
@@ -102,6 +104,7 @@ const MyTasks = () => {
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [performingTasks, setPerformingTasks] = useState<PerformingTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paymentSummary, setPaymentSummary] = useState<{ task: PublishedTask; oneTime: boolean } | null>(null);
   const [submittedReviews, setSubmittedReviews] = useState<Set<string>>(new Set());
   const [actionId, setActionId] = useState<string | null>(null);
 
@@ -145,14 +148,16 @@ const MyTasks = () => {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    let loadVersion = 0;
 
     const load = async () => {
+      const version = ++loadVersion;
       setLoading(true);
 
       const { data: reviews, error: reviewsError } = await supabase.from("reviews")
         .select("task_id, reviewee_id").eq("reviewer_id", user.id);
       if (reviewsError) toast.error("לא הצלחנו לטעון את הדירוגים הקודמים");
-      if (!cancelled && reviews) setSubmittedReviews(new Set(reviews.map((review) => `${review.task_id}:${review.reviewee_id}`)));
+      if (!cancelled && version === loadVersion && reviews) setSubmittedReviews(new Set(reviews.map((review) => `${review.task_id}:${review.reviewee_id}`)));
 
       const nextPublishedTasks: PublishedTask[] = [];
       const nextApplications: CandidateApplication[] = [];
@@ -254,7 +259,7 @@ const MyTasks = () => {
         nextPerformingTasks.push(...taskGroups.filter((task): task is PerformingTask => task !== null));
       }
 
-      if (!cancelled) {
+      if (!cancelled && version === loadVersion) {
         setPublishedTasks(nextPublishedTasks);
         setApplications(nextApplications.sort((a, b) => Number(a.status !== "pending") - Number(b.status !== "pending")));
         setPerformingTasks(nextPerformingTasks);
@@ -263,8 +268,13 @@ const MyTasks = () => {
     };
 
     void load();
+    const refresh = () => { if (document.visibilityState === "visible") void load(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       cancelled = true;
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
     };
   }, [user]);
 
@@ -355,14 +365,21 @@ const MyTasks = () => {
 
   /** Opens Cardcom's page to pay this task with a different card. */
   const payWithOtherCard = async (task: PublishedTask, oneTime = false) => {
+    const paymentTab = openPaymentTab();
+    if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
     setPayingTask(task.id);
     const result = await (oneTime ? payTaskOnce(task.id) : payTaskWithNewCard(task.id));
     if (!result.ok) {
+      paymentTab.close();
       setPayingTask(null);
       toast.error(billingErrorText(result.code));
       return;
     }
-    window.location.assign(result.url);
+    const opened = paymentTab.navigate(result.url);
+    setPayingTask(null);
+    setPaymentSummary(null);
+    if (opened) toast.info(PAYMENT_TAB_OPENED);
+    else toast.error("דף התשלום נסגר או לא זמין. אפשר לנסות שוב.");
   };
 
   const sendAgain = async (task: PublishedTask) => {
@@ -670,10 +687,10 @@ const MyTasks = () => {
                           <Button size="sm" disabled={payingTask === task.id} onClick={() => retryPayment(task)} className="rounded-full font-bold">
                             לנסות שוב
                           </Button>
-                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => payWithOtherCard(task)} className="rounded-full font-bold">
+                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: false })} className="rounded-full font-bold">
                             לשלם בכרטיס אחר
                           </Button>
-                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => payWithOtherCard(task, true)} className="rounded-full font-bold">
+                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
                             תשלום חד-פעמי
                           </Button>
                         </div>
@@ -846,6 +863,13 @@ const MyTasks = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <PaymentSummaryDialog open={!!paymentSummary} title="סיכום תשלום למטלה"
+          amount={Number(paymentSummary?.task.payment_due ?? 0)}
+          description={`עמלת פרסום וביטוח, אם נבחר, עבור המטלה ״${paymentSummary?.task.name ?? ""}״. זו אינה התמורה לעובד.`}
+          savesCard={!paymentSummary?.oneTime} busy={!!payingTask}
+          onOpenChange={(open) => !open && setPaymentSummary(null)}
+          onConfirm={() => { if (paymentSummary) void payWithOtherCard(paymentSummary.task, paymentSummary.oneTime); }} />
 
         {reviewTarget && (
           <ReviewDialog

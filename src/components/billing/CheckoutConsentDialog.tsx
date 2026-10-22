@@ -42,7 +42,7 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="max-w-md rounded-3xl" dir="rtl">
+      <DialogContent className="max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-extrabold">
             {overdue ? "תשלום עבור החידוש" : `מנוי ${info?.name ?? ""}`}
@@ -52,6 +52,13 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
           </DialogDescription>
         </DialogHeader>
 
+        <div className="rounded-2xl bg-muted p-4 text-sm space-y-2">
+          <p className="font-bold">סה״כ עכשיו: {onStartTrial ? "0" : info ? formatPrice(info.price) : "טרם נטען"} ₪</p>
+          {onStartTrial && info && <p>לאחר החודש החינם: {formatPrice(info.price)} ₪ {periodShort(info.periodMonths)}.</p>}
+          <p>הכרטיס יישמר אצל חברת הסליקה לחידוש המנוי. Apple Pay ו-Google Pay אינם זמינים לשמירת כרטיס למנוי.</p>
+          <p>דף התשלום ייפתח בכרטיסייה נפרדת. המסך הזה יישאר פתוח.</p>
+        </div>
+
         <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pr-5">
           {onStartTrial && (
             <li>החודש הראשון חינם, פעם אחת בלבד. הכרטיס נשמר עכשיו ויחויב רק בסוף החודש.</li>
@@ -60,7 +67,7 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
           <li>שולחים תזכורת במייל ובהודעה לפני כל חיוב.</li>
           <li>אפשר לבטל בכל עת מתוך האפליקציה. המנוי נשאר פעיל עד סוף התקופה ששולמה, ולא מתבצע החזר יחסי.</li>
           <li>בתוך 14 יום מהתשלום אפשר לבטל ולקבל החזר, פעם אחת בלבד לכל משתמש.</li>
-          <li>פרטי הכרטיס מוזנים בדף מאובטח של חברת הסליקה ולא נשמרים אצלנו.</li>
+          <li>פרטי הכרטיס המלאים מוזנים ונשמרים אצל חברת הסליקה. אצלנו נשמרים רק מזהה מאובטח לחיוב ופרטי תצוגה.</li>
         </ul>
 
         <div className="flex items-start gap-3 rounded-2xl border border-border p-3">
@@ -83,7 +90,7 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
           {onStartTrial && (
             <Button
               onClick={onStartTrial}
-              disabled={!agreed || busy}
+              disabled={!agreed || busy || !info}
               className="w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none"
             >
               {busy ? <Loader2 className="animate-spin" size={18} /> : "התחילו חודש חינם 🎁"}
@@ -95,7 +102,7 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
           {!onStartTrial && (
             <Button
               onClick={onConfirm}
-              disabled={!agreed || busy}
+              disabled={!agreed || busy || !info}
               className="w-full py-6 text-base font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none"
             >
               {busy ? <Loader2 className="animate-spin" size={18} /> : "המשך לתשלום"}

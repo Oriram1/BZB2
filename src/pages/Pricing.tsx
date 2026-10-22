@@ -1,3 +1,4 @@
+import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
@@ -115,27 +116,40 @@ const Pricing = () => {
 
   const confirmCheckout = async () => {
     if (!checkoutPlan) return;
+    const paymentTab = openPaymentTab();
+    if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
     setBusy(true);
     const result = await startCheckout(checkoutPlan);
     if (!result.ok) {
+      paymentTab.close();
       setBusy(false);
       toast.error(billingErrorMessage(result.code));
       return;
     }
-    // Off to the hosted card page; busy stays on until the browser leaves.
-    window.location.assign(result.data.url);
+    const opened = paymentTab.navigate(result.data.url);
+    setBusy(false);
+    setCheckoutPlan(null);
+    if (opened) toast.info(PAYMENT_TAB_OPENED);
+    else toast.error("דף התשלום נסגר או לא זמין. אפשר לנסות שוב.");
   };
 
   const confirmTrial = async () => {
     if (!checkoutPlan) return;
+    const paymentTab = openPaymentTab();
+    if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
     setBusy(true);
     const result = await startTrial(checkoutPlan);
     if (!result.ok) {
+      paymentTab.close();
       setBusy(false);
       toast.error(billingErrorMessage(result.code));
       return;
     }
-    window.location.assign(result.data.url);
+    const opened = paymentTab.navigate(result.data.url);
+    setBusy(false);
+    setCheckoutPlan(null);
+    if (opened) toast.info(PAYMENT_TAB_OPENED);
+    else toast.error("דף התשלום נסגר או לא זמין. אפשר לנסות שוב.");
   };
 
   return (

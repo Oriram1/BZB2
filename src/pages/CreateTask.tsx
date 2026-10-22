@@ -1,3 +1,5 @@
+import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
+import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED, type PaymentTab } from "@/lib/paymentTab";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +54,7 @@ const CreateTask = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const onSummary = step === 6;
+  const [cardSetupOpen, setCardSetupOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
@@ -187,6 +190,10 @@ const CreateTask = () => {
     const { data: fresh } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
     const latest = (fresh as unknown as PublishQuote | null) ?? quote;
     if (latest) setQuote(latest);
+    if (latest && !latest.billing_off && latest.due > 0 && !latest.has_card) {
+      setCardSetupOpen(true);
+      return;
+    }
     if (latest && !latest.billing_off && latest.due > 0 && latest.has_card) {
       setConfirmQuote(latest);
       return;
@@ -194,7 +201,13 @@ const CreateTask = () => {
     await publishTask();
   };
 
-  const publishTask = async () => {
+  const beginCardSetup = () => {
+    const paymentTab = openPaymentTab();
+    if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
+    void publishTask(paymentTab);
+  };
+
+  const publishTask = async (paymentTab?: PaymentTab) => {
     if (!user) {
       toast.error("יש להתחבר כדי לפרסם מטלה");
       navigate("/login");
@@ -227,16 +240,26 @@ const CreateTask = () => {
       } catch {
         /* the person re-enters the form if storage is blocked */
       }
-      const setup = await startTaskCardSetup();
-      if (setup.ok) {
-        window.location.assign(setup.url);
+      if (!paymentTab) {
+        setLoading(false);
+        setCardSetupOpen(true);
         return;
       }
+      const setup = await startTaskCardSetup();
       setLoading(false);
-      toast.error("לא הצלחנו לפתוח את דף התשלום. נסו שוב בעוד רגע");
+      if (setup.ok) {
+        const opened = paymentTab.navigate(setup.url);
+        setCardSetupOpen(false);
+        if (opened) toast.info(PAYMENT_TAB_OPENED);
+        else toast.error("דף התשלום נסגר או לא זמין. אפשר לנסות שוב.");
+        return;
+      }
+      paymentTab.close();
+      toast.error("לא הצלחנו לפתוח את דף התשלום. לא בוצע חיוב. אפשר לנסות שוב.");
       return;
     }
 
+    paymentTab?.close();
     const { data: created, error } = await supabase.from("tasks").insert({
       creator_id: user.id,
       category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
@@ -726,11 +749,15 @@ const CreateTask = () => {
               </p>
               {quote.due > 0 && !quote.has_card && (
                 <p className="mt-2 text-xs font-bold text-foreground">
-                  בלחיצה על פרסום תועברו לשמירת כרטיס אשראי, בלי חיוב בשלב הזה.
+                  לפני הפרסום יוצג סיכום. שמירת הכרטיס תיפתח בכרטיסייה נפרדת, בלי חיוב בשלב הזה.
                 </p>
               )}
             </div>
           )}
+
+          <PaymentSummaryDialog open={cardSetupOpen} title="שמירת כרטיס לפני פרסום" amount={0}
+            description={`הכרטיס יישמר כעת. החיוב בסך ${formatCurrency(quote?.due ?? 0)} יתבצע רק לאחר אישור המטלה.`}
+            savesCard busy={loading} onOpenChange={setCardSetupOpen} onConfirm={beginCardSetup} />
 
           <AlertDialog open={!!confirmQuote} onOpenChange={(open) => !open && setConfirmQuote(null)}>
             <AlertDialogContent dir="rtl" data-testid="charge-confirm">

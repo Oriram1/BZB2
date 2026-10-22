@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, CreditCard, Receipt } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import CheckoutConsentDialog from "@/components/billing/CheckoutConsentDialog";
+import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
+import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import RefundCancelDialog from "@/components/billing/RefundCancelDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +54,7 @@ const Subscription = () => {
   const [orders, setOrders] = useState<HistoryRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [replaceCardOpen, setReplaceCardOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [cancelOptionsOpen, setCancelOptionsOpen] = useState(false);
@@ -162,26 +165,41 @@ const Subscription = () => {
   };
 
   const replaceCard = async () => {
+    const paymentTab = openPaymentTab();
+    if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
     setBusy(true);
     const result = await updateSubscriptionCard();
     if (!result.ok) {
+      paymentTab.close();
       setBusy(false);
       toast.error(billingErrorMessage(result.code));
       return;
     }
-    window.location.assign(result.data.url);
+    const opened = paymentTab.navigate(result.data.url);
+    setBusy(false);
+    setReplaceCardOpen(false);
+    setPayOpen(false);
+    if (opened) toast.info(PAYMENT_TAB_OPENED);
+    else toast.error("דף התשלום נסגר או לא זמין. אפשר לנסות שוב.");
   };
 
   const payOverdue = async () => {
+    const paymentTab = openPaymentTab();
+    if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
     setBusy(true);
     const result = await startCheckout(null);
     if (!result.ok) {
+      paymentTab.close();
       setBusy(false);
       toast.error(billingErrorMessage(result.code));
       return;
     }
-    // Leaves the app for the hosted card page; busy stays on until it does.
-    window.location.assign(result.data.url);
+    const opened = paymentTab.navigate(result.data.url);
+    setBusy(false);
+    setReplaceCardOpen(false);
+    setPayOpen(false);
+    if (opened) toast.info(PAYMENT_TAB_OPENED);
+    else toast.error("דף התשלום נסגר או לא זמין. אפשר לנסות שוב.");
   };
 
   return (
@@ -283,7 +301,7 @@ const Subscription = () => {
 
               {(subscription.status === "active" || subscription.status === "past_due") && (
                 <div className="space-y-2">
-                  <Button variant="outline" onClick={replaceCard} disabled={busy} className="rounded-2xl font-bold">
+                  <Button variant="outline" onClick={() => setReplaceCardOpen(true)} disabled={busy} className="rounded-2xl font-bold">
                     <CreditCard size={16} className="ms-1" />
                     החלפת כרטיס אשראי
                   </Button>
@@ -435,6 +453,10 @@ const Subscription = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PaymentSummaryDialog open={replaceCardOpen} title="החלפת כרטיס אשראי" amount={0}
+        description="שמירת כרטיס חדש לחיובים עתידיים. מצב המנוי ומועד החידוש לא ישתנו."
+        savesCard busy={busy} onOpenChange={setReplaceCardOpen} onConfirm={replaceCard} />
 
       <CheckoutConsentDialog
         open={payOpen}

@@ -254,11 +254,14 @@ Deno.serve(async (req) => {
     .eq("user_id", userId)
     .maybeSingle();
 
-  const emailEnabled = preference?.email_enabled ?? defaults.email;
+  // Payment-method changes are security confirmations, independent of marketing
+  // or plan-change notification preferences.
+  const cardUpdate = row.event_type === "billing_plan_changed" && row.data.kind === "card_updated";
+  const emailEnabled = cardUpdate || (preference?.email_enabled ?? defaults.email);
   const pushEnabled = preference?.push_enabled ?? defaults.push;
 
   const quiet = resolveQuietHours(settings ?? null);
-  const isQuiet = quiet.enabled && inQuietWindow(israelHour(new Date()), quiet.start, quiet.end);
+  const isQuiet = !cardUpdate && quiet.enabled && inQuietWindow(israelHour(new Date()), quiet.start, quiet.end);
 
   // One variable, one write. The previous shape logged "batched" and then
   // immediately overwrote it with "disabled" via the same upsert key, which is

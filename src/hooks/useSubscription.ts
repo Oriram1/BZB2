@@ -34,6 +34,13 @@ export function useSubscription() {
 
   useEffect(() => {
     void load();
+    const refresh = () => { if (document.visibilityState === "visible") void load(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [load]);
 
   return { subscription, loading, failed, reload: load };

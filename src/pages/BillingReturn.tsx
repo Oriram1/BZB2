@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, CircleAlert, Loader2 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { confirmCharge, confirmOrder } from "@/lib/billing";
+import { confirmCharge, confirmOrder, paymentFailureMessage } from "@/lib/billing";
 import { TASK_DRAFT_KEY } from "@/lib/taskBilling";
 
 type Outcome = "checking" | "paid" | "failed" | "cancelled" | "unknown";
@@ -25,6 +25,7 @@ const BillingReturn = () => {
   const chargeId = params.get("charge");
   const hint = params.get("result");
   const cardUpdateFlow = params.get("flow") === "card-update";
+  const [failureReason, setFailureReason] = useState<string | undefined>();
   const [outcome, setOutcome] = useState<Outcome>("checking");
 
   const [chargeNote, setChargeNote] = useState<"task" | "card" | "trial" | "card-update" | null>(null);
@@ -66,7 +67,7 @@ const BillingReturn = () => {
             }
             return setOutcome("paid");
           }
-          if (charged.ok && charged.data.status === "failed") return setOutcome("failed");
+          if (charged.ok && charged.data.status === "failed") { setFailureReason(charged.data.failureReason); return setOutcome("failed"); }
           if (!charged.ok && charged.code !== "unknown") return setOutcome("unknown");
           await new Promise((resolve) => setTimeout(resolve, POLL_MS));
           continue;
@@ -74,7 +75,7 @@ const BillingReturn = () => {
         const result = await confirmOrder(orderId!);
         if (cancelled) return;
         if (result.ok && result.data.status === "paid") return setOutcome("paid");
-        if (result.ok && result.data.status === "failed") return setOutcome("failed");
+        if (result.ok && result.data.status === "failed") { setFailureReason(result.data.failureReason); return setOutcome("failed"); }
         if (!result.ok && result.code !== "unknown") return setOutcome("unknown");
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
       }
@@ -107,7 +108,7 @@ const BillingReturn = () => {
             </h1>
             <p className="text-muted-foreground">
               {chargeNote === "card-update"
-                ? "לא חויבתם. הכרטיס החדש נשמר לחיובים עתידיים. מצב המנוי ומועד החידוש לא השתנו."
+                ? "לא חויבתם. הכרטיס החדש נשמר לחיובים עתידיים. נשלח אישור במייל. מצב המנוי ומועד החידוש לא השתנו."
                 : chargeNote === "task"
                 ? "המטלה שולמה ועולה לאפליקציה."
                 : chargeNote === "card"
@@ -130,7 +131,7 @@ const BillingReturn = () => {
             <h1 className="text-2xl font-extrabold">
               {cardUpdateFlow ? "החלפת הכרטיס לא הושלמה" : outcome === "cancelled" ? "התשלום בוטל" : "התשלום לא הושלם"}
             </h1>
-            <p className="text-muted-foreground">לא חויבתם. אפשר לנסות שוב בכל עת.</p>
+            <p className="text-muted-foreground">{outcome === "cancelled" ? "הפעולה בוטלה. אפשר לחזור ולנסות שוב." : paymentFailureMessage(failureReason)}</p>
             <Button asChild className="rounded-2xl font-extrabold">
               <Link to={cardUpdateFlow ? "/subscription" : "/pricing"}>{cardUpdateFlow ? "חזרה למנוי שלי" : "חזרה למסלולים"}</Link>
             </Button>

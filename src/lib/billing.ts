@@ -99,6 +99,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   already_subscribed: "כבר יש לכם מנוי פעיל",
   too_many_attempts: "יותר מדי ניסיונות תשלום. כדאי לנסות שוב בעוד שעה",
   billing_disabled: "התשלומים עדיין לא נפתחו. נעדכן כשהמנויים יהיו זמינים",
+  popup_blocked: "הדפדפן חסם את דף התשלום. יש לאפשר חלונות קופצים לאתר ולנסות שוב",
+  network_error: "לא הצלחנו להתחבר לשירות התשלום. בדקו את החיבור ונסו שוב",
   payment_unavailable: "שירות התשלום לא זמין כרגע. נסו שוב בעוד כמה דקות",
   no_active_subscription: "לא נמצא מנוי פעיל",
   cannot_resume: "אי אפשר לחדש את המנוי הזה. אפשר לרכוש מנוי חדש",
@@ -147,13 +149,13 @@ export const startCheckout = (planId: PlanId | null) =>
   });
 
 export const confirmOrder = (orderId: string) =>
-  call<{ status: "pending" | "paid" | "failed" | "refunded" }>("billing-confirm", { order_id: orderId });
+  call<{ status: "pending" | "paid" | "failed" | "refunded"; failureReason?: string }>("billing-confirm", { order_id: orderId });
 
 export type ChargeStatus = "pending" | "paid" | "failed" | "refunded";
 
 /** A task payment or a saved card (not a subscription order). */
 export const confirmCharge = (chargeId: string) =>
-  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean; cardUpdated?: boolean }>("billing-confirm", { charge_id: chargeId });
+  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean; cardUpdated?: boolean; failureReason?: string }>("billing-confirm", { charge_id: chargeId });
 
 /** Replace the saved card without renewing or charging the subscription. */
 export const updateSubscriptionCard = () =>
@@ -257,4 +259,13 @@ export function mergePaymentHistory(orders: OrderInput[], charges: ChargeInput[]
       })),
   ];
   return rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, limit);
+}
+
+export function paymentFailureMessage(reason?: string) {
+  switch (reason) {
+    case "card_declined": return "חברת האשראי לא אישרה את העסקה. אפשר לנסות כרטיס אחר או לפנות לחברת האשראי.";
+    case "verification_failed": return "אימות פרטי העסקה לא הושלם. יש לפנות לתמיכה לפני ניסיון נוסף.";
+    case "provider_unavailable": return "שירות הסליקה לא היה זמין. אפשר לנסות שוב בעוד כמה דקות.";
+    default: return "לא התקבל אישור להשלמת הפעולה. אפשר לנסות שוב או לפנות לתמיכה אם הבעיה חוזרת.";
+  }
 }

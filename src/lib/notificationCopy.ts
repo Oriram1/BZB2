@@ -211,7 +211,7 @@ export function notificationLine(
     case "billing_plan_changed":
       return {
         emoji: "🔁",
-        title: data.kind === "trial_started" ? "החודש החינם התחיל" : "המסלול עודכן",
+        title: data.kind === "card_updated" ? "הכרטיס הוחלף בהצלחה" : data.kind === "trial_started" ? "החודש החינם התחיל" : "המסלול עודכן",
         body: "פרטים בדף המנוי",
       };
 

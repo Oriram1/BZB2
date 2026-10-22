@@ -566,6 +566,18 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
 
     case "billing_plan_changed": {
       const kind = str(data.kind);
+      if (kind === "card_updated") {
+        const last4 = /^\d{4}$/.test(str(data.card_last4)) ? str(data.card_last4) : "";
+        return {
+          subject: "כרטיס האשראי שלכם עודכן", preheader: "אישור החלפת כרטיס ב-BZB", heading: "הכרטיס הוחלף בהצלחה",
+          paragraphs: [
+            `נשמר כרטיס חדש לחיובים עתידיים${last4 ? `, שמסתיים ב־${last4}` : ""}.`,
+            "לא בוצע חיוב בעקבות החלפת הכרטיס. מצב המנוי ומועד החידוש לא השתנו.",
+            "אם לא ביצעתם את הפעולה, יש לפנות לתמיכה דרך האתר.",
+          ],
+          action: { label: "לפרטי המנוי", url: `${base}/subscription` }, manageUrl,
+        };
+      }
       const paragraphs = kind === "trial_started"
         ? ["החודש החינם התחיל. הכרטיס יחויב רק בסופו, ואפשר לבטל עד אז."]
         : kind === "scheduled"
@@ -800,7 +812,9 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
       return { title: "משימות הוסתרו", body: "המנוי הסתיים. חידוש יחזיר אותן מיד", url, tag: "tasks-hidden" };
 
     case "billing_plan_changed":
-      return { title: "המסלול עודכן", body: "פרטים בדף המנוי", url, tag: "billing-plan-changed" };
+      return data.kind === "card_updated"
+        ? { title: "הכרטיס הוחלף", body: "הכרטיס החדש נשמר לחיובים עתידיים", url, tag: "billing-card-updated" }
+        : { title: "המסלול עודכן", body: "פרטים בדף המנוי", url, tag: "billing-plan-changed" };
 
     case "task_cancelled":
       return {

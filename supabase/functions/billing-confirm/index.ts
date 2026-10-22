@@ -10,6 +10,8 @@ import { authenticatedClients, errorResponse, json, readJsonObject, withCors } f
 import { settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
 import { CHARGE_COLUMNS, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
+import { paymentFailureReason } from "../_shared/paymentFailure.ts";
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 Deno.serve(withCors(async (req) => {
@@ -30,6 +32,11 @@ Deno.serve(withCors(async (req) => {
         .maybeSingle();
       if (!charge) return json({ error: "not_found" }, 404);
       const settled = await settleChargePage(admin, charge as ChargeRow);
+      if (settled.status === "failed") {
+        const { data: failure, error } = await admin.from("billing_charges").select("error,response_code").eq("id", chargeId).single();
+        if (error) throw error;
+        return json({ ...settled, failureReason: paymentFailureReason(failure) });
+      }
       return json(settled);
     }
 
@@ -46,6 +53,11 @@ Deno.serve(withCors(async (req) => {
     if (!order) return json({ error: "not_found" }, 404);
 
     const { status } = await settleLowProfileOrder(admin, order as OrderRow);
+    if (status === "failed") {
+      const { data: failure, error } = await admin.from("payment_orders").select("error,response_code").eq("id", orderId).single();
+      if (error) throw error;
+      return json({ status, failureReason: paymentFailureReason(failure) });
+    }
     return json({ status });
   } catch (error) {
     return errorResponse(error);

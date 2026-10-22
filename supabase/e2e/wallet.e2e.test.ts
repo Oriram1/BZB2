@@ -82,6 +82,10 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
       assertEquals(confirmed.status, 200);
       assertEquals((await confirmed.json()).cardUpdated, true);
     }
+    const cardNotes = await admin.from("notifications").select("data").eq("user_id", userId).eq("event_type", "billing_plan_changed").eq("data->>kind", "card_updated");
+    assertEquals(cardNotes.error, null);
+    assertEquals(cardNotes.data?.length, 1, "one email event despite repeated webhook and confirmation calls");
+    assertEquals(cardNotes.data?.[0].data.kind, "card_updated");
     const updatedMethod = await admin.from("payment_methods").select("token,card_expiry").eq("user_id", userId).single();
     assert(updatedMethod.data?.token !== "original-recurring-token");
     assertEquals(updatedMethod.data?.card_expiry, "0429");

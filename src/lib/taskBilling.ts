@@ -101,6 +101,12 @@ export async function resubmitTask(taskId: string) {
 
 export const billingErrorText = (code: string) => {
   switch (code) {
+    case "payment_unavailable":
+      return "שירות התשלום לא זמין כרגע. אפשר לנסות שוב בעוד כמה דקות";
+    case "network_error":
+      return "לא הצלחנו להתחבר לשירות התשלום. בדקו את החיבור ונסו שוב";
+    case "not_found":
+      return "המטלה לא נמצאה או שאין הרשאה לתשלום";
     case "card_required":
       return "צריך לשמור כרטיס אשראי קודם";
     case "too_many_attempts":

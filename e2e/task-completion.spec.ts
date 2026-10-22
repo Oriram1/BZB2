@@ -124,7 +124,12 @@ test('completion closes chat, records earnings and supports mutual ratings', asy
     await expect(page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('payment-options.png'), fullPage: true });
     await page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true }).click();
-    await expect(page.getByText('משהו השתבש, נסו שוב בעוד רגע', { exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog')).toContainText('הכרטיס לא יישמר');
+    await page.screenshot({ path: testInfo.outputPath('one-time-summary.png'), fullPage: false, animations: 'disabled' });
+    await page.getByRole('button', { name: 'פתיחת דף מאובטח', exact: true }).click();
+    await expect(page.getByText('שירות התשלום לא זמין כרגע. אפשר לנסות שוב בעוד כמה דקות', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'פתיחת דף מאובטח', exact: true })).toBeEnabled();
+    await page.getByRole('dialog').getByRole('button', { name: 'חזרה', exact: true }).click();
     await expect(page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true })).toBeEnabled();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   } finally {
