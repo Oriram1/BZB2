@@ -3,6 +3,7 @@
  *
  *   retry     charge the saved card again for a task waiting on payment
  *   new_card  open Cardcom's page to pay that task with a different card
+ *   wallet    charge once without saving a card (wallet-compatible hosted page)
  *   card_setup open Cardcom's page to save a card without charging (needed
  *              before a paid task can be submitted for review)
  *
@@ -27,7 +28,7 @@ Deno.serve(withCors(async (req) => {
 
     const body = await readJsonObject(req);
     const action = String(body.action ?? "");
-    if (!["retry", "new_card", "card_setup"].includes(action)) return json({ error: "invalid_action" }, 400);
+    if (!["retry", "new_card", "wallet", "card_setup"].includes(action)) return json({ error: "invalid_action" }, 400);
 
     const since = new Date(Date.now() - 3_600_000).toISOString();
     const { count } = await admin
@@ -86,11 +87,12 @@ Deno.serve(withCors(async (req) => {
       purpose: "task",
       task_id: task.id,
       amount: task.payment_due,
+      meta: action === "wallet" ? { payment_mode: "one_time" } : {},
     });
     if (error) throw error;
     return await openPage(admin, id, {
       amount: Number(task.payment_due),
-      operation: "ChargeAndCreateToken",
+      operation: action === "wallet" ? "ChargeOnly" : "ChargeAndCreateToken",
       productName: `משימה: ${task.name}`,
       returnUrl: (result) => `${base}/billing/return?charge=${id}&result=${result}`,
       webhookUrl: functionsUrl,
@@ -106,7 +108,7 @@ async function openPage(
   chargeId: string,
   page: {
     amount: number;
-    operation: "ChargeAndCreateToken" | "CreateTokenOnly";
+    operation: "ChargeOnly" | "ChargeAndCreateToken" | "CreateTokenOnly";
     productName: string;
     returnUrl: (result: string) => string;
     webhookUrl: string;

@@ -10,13 +10,14 @@ import { toast } from "sonner";
 interface ReviewDialogProps {
   open: boolean;
   onClose: () => void;
+  onSubmitted?: () => void;
   taskId: string;
   taskName: string;
   revieweeId: string;
   revieweeName: string;
 }
 
-export default function ReviewDialog({ open, onClose, taskId, taskName, revieweeId, revieweeName }: ReviewDialogProps) {
+export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskName, revieweeId, revieweeName }: ReviewDialogProps) {
   const { user } = useAuth();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
@@ -35,14 +36,16 @@ export default function ReviewDialog({ open, onClose, taskId, taskName, reviewee
     });
     setLoading(false);
     if (error) {
-      if (error.message.includes("unique")) {
+      if (error.code === "23505") {
         toast.info("כבר דירגת את המטלה הזאת");
+        onSubmitted?.();
+        onClose();
       } else {
         toast.error("לא הצלחנו לשלוח את הדירוג");
       }
-      onClose();
       return;
     }
+    onSubmitted?.();
     toast.success("הדירוג נשלח ויפורסם לאחר אישור");
     onClose();
   };

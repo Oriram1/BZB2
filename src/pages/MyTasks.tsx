@@ -27,6 +27,7 @@ import ReviewDialog from "@/components/reviews/ReviewDialog";
 import {
   billingErrorText,
   payTaskWithNewCard,
+  payTaskOnce,
   publishStateLabel,
   resubmitTask,
   retryTaskPayment,
@@ -66,6 +67,7 @@ interface CandidateApplication {
 
 interface PerformingTask {
   applicationId: string;
+  creatorId: string;
   applicationStatus: ApplicationStatus;
   id: string;
   name: string;
@@ -100,6 +102,7 @@ const MyTasks = () => {
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [performingTasks, setPerformingTasks] = useState<PerformingTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submittedReviews, setSubmittedReviews] = useState<Set<string>>(new Set());
   const [actionId, setActionId] = useState<string | null>(null);
 
   const pendingCount = useMemo(
@@ -145,6 +148,11 @@ const MyTasks = () => {
 
     const load = async () => {
       setLoading(true);
+
+      const { data: reviews, error: reviewsError } = await supabase.from("reviews")
+        .select("task_id, reviewee_id").eq("reviewer_id", user.id);
+      if (reviewsError) toast.error("לא הצלחנו לטעון את הדירוגים הקודמים");
+      if (!cancelled && reviews) setSubmittedReviews(new Set(reviews.map((review) => `${review.task_id}:${review.reviewee_id}`)));
 
       const nextPublishedTasks: PublishedTask[] = [];
       const nextApplications: CandidateApplication[] = [];
@@ -222,7 +230,7 @@ const MyTasks = () => {
           (ownApplications ?? []).map(async (application) => {
             const { data: task } = await supabase
               .from("tasks")
-              .select("id, name, short_desc, status, scheduled_date, scheduled_time, location")
+              .select("id, creator_id, name, short_desc, status, scheduled_date, scheduled_time, location")
               .eq("id", application.task_id)
               .is("archived_at", null)
               .maybeSingle();
@@ -230,6 +238,7 @@ const MyTasks = () => {
             if (!task) return null;
             return {
               applicationId: application.id,
+              creatorId: task.creator_id,
               applicationStatus: application.status,
               id: task.id,
               name: task.name,
@@ -345,9 +354,9 @@ const MyTasks = () => {
   };
 
   /** Opens Cardcom's page to pay this task with a different card. */
-  const payWithOtherCard = async (task: PublishedTask) => {
+  const payWithOtherCard = async (task: PublishedTask, oneTime = false) => {
     setPayingTask(task.id);
-    const result = await payTaskWithNewCard(task.id);
+    const result = await (oneTime ? payTaskOnce(task.id) : payTaskWithNewCard(task.id));
     if (!result.ok) {
       setPayingTask(null);
       toast.error(billingErrorText(result.code));
@@ -573,6 +582,15 @@ const MyTasks = () => {
                           </Button>
                         </>
                       )}
+                      {application.status === "accepted" && application.taskStatus === "completed" && (
+                        <Button variant="outline" className="rounded-full font-bold"
+                          disabled={submittedReviews.has(`${application.taskId}:${application.applicantId}`)}
+                          onClick={() => setReviewTarget({ taskId: application.taskId, taskName: application.taskName,
+                            revieweeId: application.applicantId, revieweeName: `${application.firstName} ${application.lastName}`.trim() })}>
+                          <Star size={16} className="ms-1" />
+                          {submittedReviews.has(`${application.taskId}:${application.applicantId}`) ? "הדירוג נשלח" : "דירוג העובד"}
+                        </Button>
+                      )}
                       {application.status === "accepted" && application.taskStatus !== "completed" && application.taskStatus !== "cancelled" && (
                         <Button
                           onClick={() => openAcceptedConversation(application)}
@@ -580,6 +598,14 @@ const MyTasks = () => {
                           className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
                         >
                           <MessageCircle size={16} /> מעבר לצ׳אט
+                        </Button>
+                      )}
+                      {application.status === "accepted" && application.taskStatus !== "completed" && application.taskStatus !== "cancelled" && (
+                        <Button variant="outline" className="rounded-full font-bold" onClick={() => {
+                          const task = publishedTasks.find((item) => item.id === application.taskId);
+                          if (task) setConfirmComplete(task);
+                        }}>
+                          <Check size={16} className="ms-1" /> סמן כהושלמה
                         </Button>
                       )}
                     </div>
@@ -647,7 +673,11 @@ const MyTasks = () => {
                           <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => payWithOtherCard(task)} className="rounded-full font-bold">
                             לשלם בכרטיס אחר
                           </Button>
+                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => payWithOtherCard(task, true)} className="rounded-full font-bold">
+                            תשלום חד-פעמי
+                          </Button>
                         </div>
+                        <p className="mt-2 text-xs text-muted-foreground">בתשלום חד-פעמי לא נשמר כרטיס. Apple Pay ו-Google Pay זמינים בכפוף לתמיכת דף התשלום והמכשיר.</p>
                       </div>
                     )}
                     {(task.publish_state === "draft" || task.publish_state === "rejected") && (
@@ -726,12 +756,21 @@ const MyTasks = () => {
                       <h2 className="font-extrabold text-lg truncate">{task.name}</h2>
                       <p className="text-sm text-muted-foreground line-clamp-2">{task.shortDesc}</p>
                     </Link>
-                    <Badge variant="secondary" className="rounded-full">{applicationStatusLabel[task.applicationStatus]}</Badge>
+                    <Badge variant="secondary" className="rounded-full">{task.status === "completed" || task.status === "cancelled" ? taskStatusLabel(task.status) : applicationStatusLabel[task.applicationStatus]}</Badge>
                   </div>
                   <div className="mt-3 text-sm text-muted-foreground space-y-1">
                     <p>{task.location}</p>
                     {(task.scheduledDate || task.scheduledTime) && <p>{formatDateTime(task.scheduledDate, task.scheduledTime)}</p>}
                   </div>
+                  {task.applicationStatus === "accepted" && task.status === "completed" && (
+                    <Button variant="outline" className="mt-4 rounded-full font-bold"
+                      disabled={submittedReviews.has(`${task.id}:${task.creatorId}`)}
+                      onClick={() => setReviewTarget({ taskId: task.id, taskName: task.name,
+                        revieweeId: task.creatorId, revieweeName: "מפרסם המטלה" })}>
+                      <Star size={16} className="ms-1" />
+                      {submittedReviews.has(`${task.id}:${task.creatorId}`) ? "הדירוג נשלח" : "דירוג המפרסם"}
+                    </Button>
+                  )}
                   {task.applicationStatus === "accepted" && task.status !== "completed" && task.status !== "cancelled" && (
                     <Button
                       onClick={async () => {
@@ -812,6 +851,7 @@ const MyTasks = () => {
           <ReviewDialog
             open
             onClose={() => setReviewTarget(null)}
+            onSubmitted={() => setSubmittedReviews((current) => new Set(current).add(`${reviewTarget.taskId}:${reviewTarget.revieweeId}`))}
             taskId={reviewTarget.taskId}
             taskName={reviewTarget.taskName}
             revieweeId={reviewTarget.revieweeId}

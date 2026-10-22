@@ -334,7 +334,7 @@ export async function settleChargePage(
     _document_url: d.documentUrl,
   });
   // The new card becomes the saved card, so later charges and renewals use it.
-  if (d.token) {
+  if (d.token && charge.meta?.payment_mode !== "one_time") {
     await admin.rpc("save_payment_method", {
       _user_id: charge.user_id,
       _token: d.token,

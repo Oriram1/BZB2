@@ -9,6 +9,8 @@ import {
 } from "./cardcom_mock.ts";
 import { applyVerdict, evaluateTransaction, settleLowProfileOrder, type OrderRow } from "./billing.ts";
 
+import { settleChargePage } from "./taskBilling.ts";
+
 const ORDER_ID = "22222222-2222-2222-2222-222222222222";
 
 function useMock(apiName = MOCK_API_NAME) {
@@ -285,6 +287,27 @@ Deno.test("a document link that cannot be fetched never blocks granting the subs
     });
     assertEquals(result.applied, true);
     assertEquals((calls.find((c) => c.kind === "rpc")!.args as Record<string, unknown>)._document_url, null);
+  } finally {
+    await mock.close();
+  }
+});
+
+Deno.test("one-time wallet payment settles without replacing the saved subscription card", async () => {
+  const mock = useMock();
+  try {
+    const page = await createLowProfile({ amount: 8, operation: "ChargeOnly", returnValue: ORDER_ID,
+      productName: "Task", successUrl: "https://app.test/ok", failedUrl: "https://app.test/fail",
+      cancelUrl: "https://app.test/cancel", webhookUrl: "https://app.test/webhook" });
+    assertEquals(mock.requests.at(-1)?.body.Operation, "ChargeOnly");
+    mock.pages.get(page.lowProfileId)!.outcome = "paid";
+    // Even an unexpected token in a one-time response must not become recurring.
+    const { admin, calls } = fakeAdmin({ applied: false });
+    const result = await settleChargePage(admin, { id: ORDER_ID, user_id: "user-1", purpose: "task",
+      task_id: "task-1", plan_id: null, amount: 8, status: "pending", low_profile_id: page.lowProfileId,
+      external_uniq_id: null, deal_number: null, meta: { payment_mode: "one_time" } });
+    assertEquals(result.status, "paid");
+    assertEquals(calls.filter(c => c.name === "billing_charge_paid").length, 1);
+    assertEquals(calls.filter(c => c.name === "save_payment_method").length, 0);
   } finally {
     await mock.close();
   }

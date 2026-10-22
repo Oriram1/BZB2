@@ -139,7 +139,7 @@ export function expiryMMYY(month?: number, year?: number): string | null {
 
 import { J5 } from "./cardCheck.ts";
 
-export type LowProfileOperation = "ChargeAndCreateToken" | "CreateTokenOnly";
+export type LowProfileOperation = "ChargeOnly" | "ChargeAndCreateToken" | "CreateTokenOnly";
 
 export async function createLowProfile(params: {
   amount: number;

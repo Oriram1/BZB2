@@ -382,6 +382,12 @@ const TaskDetail = () => {
           </div>
         </div>
 
+        {isOwner && (
+          <Button className="w-full rounded-2xl font-bold" onClick={() => navigate("/my-tasks?tab=published")}>
+            {task.status === "completed" ? "המטלות והדירוגים שלי" : "ניהול וסיום המטלה"}
+          </Button>
+        )}
+
         {/* Detailed Description */}
         {(task.full_desc || task.short_desc) && (
           <div className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-6 border-2 border-primary/30 shadow-md space-y-3">

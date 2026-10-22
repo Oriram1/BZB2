@@ -77,6 +77,13 @@ export async function payTaskWithNewCard(taskId: string): Promise<PageResult> {
   return { ok: true, url: result.data.url };
 }
 
+/** A one-time hosted charge; wallets require activation on the Cardcom terminal. */
+export async function payTaskOnce(taskId: string): Promise<PageResult> {
+  const result = await invoke<{ url: string }>("task-pay", { action: "wallet", task_id: taskId });
+  if (!result.ok) return { ok: false, code: result.code };
+  return { ok: true, url: result.data.url };
+}
+
 /** Admin: approve or reject a task in the review queue. */
 export function reviewTask(taskId: string, approve: boolean, note?: string) {
   return invoke<{ state: TaskPublishState; charge?: string }>("task-review", { task_id: taskId, approve, note });
