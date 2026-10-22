@@ -182,13 +182,14 @@ export async function chargeSavedCard(
 export async function chargeTask(admin: SupabaseClient, taskId: string): Promise<ChargeOutcome> {
   const { data: task } = await admin
     .from("tasks")
-    .select("id, creator_id, name, payment_due, publish_state")
+    .select("id, creator_id, name, payment_due, publish_state, payment_mode")
     .eq("id", taskId)
     .maybeSingle();
   if (!task) return { status: "skipped", reason: "task_not_found" };
   if (!["awaiting_charge", "pending_payment"].includes(task.publish_state)) {
     return { status: "skipped", reason: `state_${task.publish_state}` };
   }
+  if (task.payment_mode === "one_time") return { status: "skipped", reason: "one_time_payment_required" };
   const amount = Number(task.payment_due);
   if (!(amount > 0)) return { status: "skipped", reason: "nothing_due" };
 

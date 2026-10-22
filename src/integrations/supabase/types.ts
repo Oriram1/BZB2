@@ -1091,6 +1091,7 @@ export type Database = {
           hidden_at: string | null
           id: string
           image_url: string | null
+          payment_mode: string
           insurance: boolean
           latitude: number | null
           location: string | null
@@ -1128,6 +1129,7 @@ export type Database = {
           hidden_at?: string | null
           id?: string
           image_url?: string | null
+          payment_mode?: string
           insurance?: boolean
           latitude?: number | null
           location?: string | null
@@ -1165,6 +1167,7 @@ export type Database = {
           hidden_at?: string | null
           id?: string
           image_url?: string | null
+          payment_mode?: string
           insurance?: boolean
           latitude?: number | null
           location?: string | null

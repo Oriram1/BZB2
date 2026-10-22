@@ -71,6 +71,7 @@ const CreateTask = () => {
   const [insurance, setInsurance] = useState(false);
   const [quote, setQuote] = useState<PublishQuote | null>(null);
   const fees = useTaskFees();
+  const [paymentMode, setPaymentMode] = useState<"saved_card" | "one_time">("saved_card");
   const [confirmQuote, setConfirmQuote] = useState<PublishQuote | null>(null);
   const [searchParams] = useSearchParams();
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
@@ -195,6 +196,7 @@ const CreateTask = () => {
       return;
     }
     if (latest && !latest.billing_off && latest.due > 0 && latest.has_card) {
+      setPaymentMode("saved_card");
       setConfirmQuote(latest);
       return;
     }
@@ -207,7 +209,7 @@ const CreateTask = () => {
     void publishTask(paymentTab);
   };
 
-  const publishTask = async (paymentTab?: PaymentTab) => {
+  const publishTask = async (paymentTab?: PaymentTab, selectedPaymentMode: "saved_card" | "one_time" = "saved_card") => {
     if (!user) {
       toast.error("יש להתחבר כדי לפרסם מטלה");
       navigate("/login");
@@ -231,7 +233,7 @@ const CreateTask = () => {
 
     // A paid task is charged to a saved card once it is approved, so the card
     // has to be on file before it can be submitted.
-    if (currentQuote && !currentQuote.billing_off && currentQuote.due > 0 && !currentQuote.has_card) {
+    if (selectedPaymentMode === "saved_card" && currentQuote && !currentQuote.billing_off && currentQuote.due > 0 && !currentQuote.has_card) {
       try {
         sessionStorage.setItem(
           TASK_DRAFT_KEY,
@@ -279,6 +281,7 @@ const CreateTask = () => {
       notes: form.notes || null,
       image_url: imageUrl,
       insurance,
+      payment_mode: selectedPaymentMode,
     }).select("id").maybeSingle();
     setLoading(false);
     if (error) {
@@ -765,7 +768,7 @@ const CreateTask = () => {
                 <AlertDialogTitle>לפני שמפרסמים</AlertDialogTitle>
                 <AlertDialogDescription asChild>
                   <div className="space-y-2 text-start text-sm text-muted-foreground">
-                    <p>
+                    {paymentMode === "saved_card" ? <p>
                       המטלה תישלח לאישור. ברגע שנאשר אותה, נחייב את הכרטיס
                       {confirmQuote?.card_last4 ? ` שמסתיים ב־${confirmQuote.card_last4}` : " ששמרתם"} ב־
                       <strong className="text-foreground">{confirmQuote ? formatCurrency(confirmQuote.due) : ""}</strong>
@@ -776,19 +779,31 @@ const CreateTask = () => {
                           : " (עמלת פרסום)"}
                       , והמטלה תעלה לאפליקציה אחרי שהחיוב עבר.
                     </p>
+                    : <p>המטלה תישלח לאישור בלי לחייב את הכרטיס השמור. לאחר האישור, יופיע תשלום בסך {confirmQuote ? formatCurrency(confirmQuote.due) : ""} ב״המטלות שלי״. שם אפשר לבחור כרטיס אחר, Apple Pay, Google Pay או Bit. המטלה תעלה לאפליקציה רק לאחר התשלום.</p>}
                     <p>אם המטלה לא תאושר, לא תחויבו בכלום.</p>
                   </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <fieldset className="space-y-2 text-sm">
+                <legend className="mb-2 font-bold">איך לשלם על המטלה?</legend>
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
+                  <input type="radio" name="task-payment-mode" value="saved_card" checked={paymentMode === "saved_card"} onChange={() => setPaymentMode("saved_card")} />
+                  <span>הכרטיס השמור{confirmQuote?.card_last4 ? ` שמסתיים ב-${confirmQuote.card_last4}` : ""}</span>
+                </label>
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
+                  <input type="radio" name="task-payment-mode" value="one_time" checked={paymentMode === "one_time"} onChange={() => setPaymentMode("one_time")} />
+                  <span>אמצעי תשלום אחר - כרטיס אחר, Apple Pay, Google Pay או Bit</span>
+                </label>
+              </fieldset>
               <AlertDialogFooter>
                 <AlertDialogCancel>חזרה</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
                     setConfirmQuote(null);
-                    void publishTask();
+                    void publishTask(undefined, paymentMode);
                   }}
                 >
-                  מאשרים ומפרסמים
+                  {paymentMode === "one_time" ? "שליחה לאישור ותשלום בהמשך" : "מאשרים ומפרסמים"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

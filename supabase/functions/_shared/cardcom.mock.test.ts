@@ -9,7 +9,7 @@ import {
 } from "./cardcom_mock.ts";
 import { applyVerdict, evaluateTransaction, settleLowProfileOrder, type OrderRow } from "./billing.ts";
 
-import { settleChargePage } from "./taskBilling.ts";
+import { chargeTask, settleChargePage } from "./taskBilling.ts";
 
 const ORDER_ID = "22222222-2222-2222-2222-222222222222";
 
@@ -328,4 +328,11 @@ Deno.test("Bit URL is available only for one-time charges on an enabled terminal
       assertEquals(Boolean(page.bitUrl), operation === "ChargeOnly");
     }
   } finally { await mock.close(); }
+});
+
+Deno.test("automatic and retry charging skip an explicitly one-time task", async () => {
+  const admin = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: {
+    id: "manual", creator_id: "user", name: "manual", payment_due: 8, publish_state: "pending_payment", payment_mode: "one_time",
+  } }) }) }) }) } as unknown as SupabaseClient;
+  assertEquals(await chargeTask(admin, "manual"), { status: "skipped", reason: "one_time_payment_required" });
 });

@@ -17,3 +17,12 @@ Deno.test("payment failure categories do not expose vendor text", () => {
   assertEquals(paymentFailureReason({ error: "create_failed" }), "provider_unavailable");
   assertEquals(paymentFailureReason(null), "unknown");
 });
+
+Deno.test("manual payment approval does not describe a declined card", () => {
+  const content = emailContent({ id: "manual", event_type: "task_payment_failed", data: {
+    task_name: "test", amount: 8, reason: "manual_payment_required",
+  }, link: "/my-tasks?tab=published" });
+  assertEquals(content.heading, "המטלה אושרה - נדרש תשלום");
+  assertStringIncludes(content.paragraphs!.join(" "), "הכרטיס השמור לא חויב");
+  assertEquals(content.paragraphs!.join(" ").includes("נדחה"), false);
+});

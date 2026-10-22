@@ -197,6 +197,7 @@ export function notificationLine(
       return { emoji: "🚫", title: "המטלה לא אושרה", body: `"${text(data.task_name, "המטלה")}" לא אושרה. לא חויבתם` };
 
     case "task_payment_failed":
+      if (data.reason === "manual_payment_required") return { emoji: "💳", title: "המטלה אושרה - נדרש תשלום", body: "הכרטיס השמור לא חויב. אפשר לבחור אמצעי תשלום ולהשלים את הפרסום" };
       return { emoji: "⚠️", title: "החיוב נדחה", body: `"${text(data.task_name, "המטלה")}" ממתינה לתשלום. אפשר לנסות כרטיס אחר` };
 
     case "task_payment_reminder":

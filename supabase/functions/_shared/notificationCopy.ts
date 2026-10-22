@@ -507,6 +507,15 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
     case "task_payment_failed": {
       const task = str(data.task_name, "המטלה");
       const amount = price(data.amount);
+      if (data.reason === "manual_payment_required") return {
+        subject: `המטלה "${task}" אושרה וממתינה לתשלום`,
+        preheader: "אפשר לבחור אמצעי תשלום ולהשלים את הפרסום",
+        heading: "המטלה אושרה - נדרש תשלום",
+        paragraphs: [`המטלה "${task}" אושרה. הכרטיס השמור לא חויב.`,
+          `אפשר לשלם${amount ? ` ${amount}` : ""} בכרטיס אחר, Apple Pay, Google Pay או Bit. המטלה תפורסם לאחר התשלום.`,
+          "אם לא ישולם תוך 7 ימים, המטלה תחזור לטיוטה."],
+        action: { label: "לבחירת אמצעי תשלום", url: `${base}/my-tasks?tab=published` }, manageUrl,
+      };
       return {
         subject: `החיוב על המטלה "${task}" נדחה`,
         preheader: "המטלה ממתינה לתשלום",
@@ -796,8 +805,8 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
 
     case "task_payment_failed":
       return {
-        title: "החיוב נדחה ⚠️",
-        body: `המטלה "${str(data.task_name, "המטלה")}" ממתינה לתשלום, כדאי לנסות כרטיס אחר`,
+        title: data.reason === "manual_payment_required" ? "המטלה אושרה - נדרש תשלום" : "החיוב נדחה ⚠️",
+        body: data.reason === "manual_payment_required" ? "הכרטיס השמור לא חויב. אפשר לבחור אמצעי תשלום ולהשלים את הפרסום" : `המטלה "${str(data.task_name, "המטלה")}" ממתינה לתשלום, כדאי לנסות כרטיס אחר`,
         url,
         tag: `task-payment-${str(data.task_id)}`,
       };

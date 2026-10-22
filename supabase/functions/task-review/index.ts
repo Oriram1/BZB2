@@ -57,6 +57,13 @@ Deno.serve(withCors(async (req) => {
       return json({ state: "live" });
     }
 
+    if (result.state === "pending_payment") {
+      await notifyBilling(admin, task.creator_id, "task_payment_failed", {
+        task_id: task.id, task_name: task.name, amount: result.due, reason: "manual_payment_required",
+      }, "/my-tasks?tab=published");
+      return json({ state: "pending_payment", charge: "manual_payment_required" });
+    }
+
     // Approved and due: charge now.
     const outcome = await chargeTask(admin, task.id);
     const { data: after } = await admin.from("tasks").select("publish_state").eq("id", task.id).single();

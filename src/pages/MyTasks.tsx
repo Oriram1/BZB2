@@ -49,6 +49,7 @@ interface PublishedTask {
   workers_needed: number;
   publish_state: TaskPublishState;
   payment_due: number;
+  payment_mode: string;
 }
 
 interface CandidateApplication {
@@ -170,7 +171,7 @@ const MyTasks = () => {
       {
         const { data: taskRows, error: taskError } = await supabase
           .from("tasks")
-          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due")
+          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode")
           .eq("creator_id", user.id)
           .is("archived_at", null)
           .order("created_at", { ascending: false });
@@ -671,25 +672,27 @@ const MyTasks = () => {
                     {task.publish_state === "pending_review" && (
                       <p className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm text-foreground">
                         המטלה ממתינה לאישור. {Number(task.payment_due) > 0
-                          ? `הכרטיס יחויב ב־${Number(task.payment_due)} ₪ רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
+                          ? task.payment_mode === "one_time"
+                            ? "לאחר האישור תוכלו לבחור אמצעי תשלום. הכרטיס השמור לא יחויב אוטומטית."
+                            : `הכרטיס יחויב ב־${Number(task.payment_due)} ₪ רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
                           : "היא תעלה לאפליקציה מיד אחרי האישור."}
                       </p>
                     )}
                     {(task.publish_state === "pending_payment" || task.publish_state === "awaiting_charge") && (
                       <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
                         <p className="font-bold text-foreground">
-                          המטלה אושרה אבל החיוב ({Number(task.payment_due)} ₪) לא עבר.
+                          {task.payment_mode === "one_time" ? `המטלה אושרה וממתינה לתשלום (${Number(task.payment_due)} ₪).` : `המטלה אושרה אבל החיוב (${Number(task.payment_due)} ₪) לא עבר.`}
                         </p>
                         <p className="mt-1 text-muted-foreground">
-                          כדאי לנסות כרטיס אחר או לפנות לחברת האשראי. אם לא ישולם תוך 7 ימים המטלה תחזור לטיוטה, בלי חיוב.
+                          {task.payment_mode === "one_time" ? "בחרו אמצעי תשלום כדי להשלים את הפרסום. הכרטיס השמור לא חויב." : "כדאי לנסות כרטיס אחר או לפנות לחברת האשראי."} אם לא ישולם תוך 7 ימים המטלה תחזור לטיוטה, בלי חיוב.
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          <Button size="sm" disabled={payingTask === task.id} onClick={() => retryPayment(task)} className="rounded-full font-bold">
+                          {task.payment_mode !== "one_time" && <><Button size="sm" disabled={payingTask === task.id} onClick={() => retryPayment(task)} className="rounded-full font-bold">
                             לנסות שוב
                           </Button>
                           <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: false })} className="rounded-full font-bold">
                             לשלם בכרטיס אחר
-                          </Button>
+                          </Button></>}
                           <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
                             תשלום חד-פעמי
                           </Button>
