@@ -186,7 +186,11 @@ export async function createLowProfile(params: {
     FailedRedirectUrl: params.failedUrl,
     CancelRedirectUrl: params.cancelUrl,
     WebHookUrl: params.webhookUrl,
-    UIDefinition: params.email ? { CardOwnerEmailValue: params.email } : undefined,
+    // One-time pay-now pages hide the cardholder name: Apple Pay, Google Pay and
+    // Bit supply it themselves. Pages that save a card keep the field.
+    UIDefinition: params.email || params.operation === "ChargeOnly"
+      ? { CardOwnerEmailValue: params.email, IsHideCardOwnerName: params.operation === "ChargeOnly" ? true : undefined }
+      : undefined,
     Document: config.issueDocuments ? params.document : undefined,
   });
 
