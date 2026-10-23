@@ -16,7 +16,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, CreditCard, Wallet, Smartphone, Plus, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -848,17 +848,29 @@ const CreateTask = () => {
                 <legend className="mb-3 font-bold">איך לשלם על המטלה?</legend>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    ...(confirmQuote?.has_card ? [{ value: "saved_card" as const, label: `הכרטיס השמור${confirmQuote.card_last4 ? ` שמסתיים ב-${confirmQuote.card_last4}` : ""}`, title: "הכרטיס השמור", hint: confirmQuote.card_last4 ? `מסתיים ב-${confirmQuote.card_last4}` : "חיוב אחרי אישור", ltr: false, icon: CreditCard }] : []),
-                    { value: "new_card" as const, label: "כרטיס אשראי חדש", title: "כרטיס אשראי חדש", hint: "חיוב אחרי אישור", ltr: false, icon: Plus },
-                    { value: "wallet" as const, label: "Apple Pay או Google Pay - תשלום עכשיו", title: "Apple Pay / Google Pay", hint: "תשלום עכשיו", ltr: true, icon: Wallet },
-                    { value: "bit" as const, label: "Bit - תשלום עכשיו", title: "Bit", hint: "תשלום עכשיו", ltr: true, icon: Smartphone },
-                  ].map(({ value, label, title, hint, ltr, icon: Icon }) => (
+                    ...(confirmQuote?.has_card ? [{ value: "saved_card" as const, label: `הכרטיס השמור${confirmQuote.card_last4 ? ` שמסתיים ב-${confirmQuote.card_last4}` : ""}`, title: "הכרטיס השמור", hint: confirmQuote.card_last4 ? `מסתיים ב-${confirmQuote.card_last4}` : "חיוב אחרי אישור", ltr: false }] : []),
+                    { value: "new_card" as const, label: "כרטיס אשראי חדש", title: "כרטיס אשראי חדש", hint: "חיוב אחרי אישור", ltr: false },
+                    { value: "wallet" as const, label: "Apple Pay או Google Pay - תשלום עכשיו", title: "Apple Pay / Google Pay", hint: "תשלום עכשיו", ltr: true },
+                    { value: "bit" as const, label: "Bit - תשלום עכשיו", title: "Bit", hint: "תשלום עכשיו", ltr: true },
+                  ].map(({ value, label, title, hint, ltr }) => (
                     <label key={value} className="cursor-pointer">
                       <input className="peer sr-only" type="radio" name="task-payment-mode" aria-label={label} value={value} checked={paymentMode === value} onChange={() => setPaymentMode(value)} />
                       <span className="flex h-full min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-border px-3 py-4 text-center font-bold transition-colors hover:border-primary/60 peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2">
-                        <Icon size={28} strokeWidth={1.75} aria-hidden="true" />
-                        <span dir={ltr ? "ltr" : undefined}>{title}</span>
-                        <span className="text-xs font-medium text-muted-foreground">{hint}</span>
+                        <span className="flex h-10 w-full items-center justify-center gap-1.5" dir="ltr" aria-hidden="true">
+                          {value === "wallet" ? <>
+                            <img src="/payment-marks/apple-pay.svg" alt="" className="h-6 w-auto shrink-0 min-[360px]:h-7" />
+                            <img src="/payment-marks/google-pay.png" alt="" className="h-6 w-auto shrink-0 min-[360px]:h-7" />
+                          </> : value === "bit" ? (
+                            <img src="/payment-marks/bit.svg" alt="" className="h-6 w-auto min-[360px]:h-7" />
+                          ) : (
+                            <span className="relative inline-flex">
+                              <CreditCard size={30} strokeWidth={1.75} />
+                              {value === "new_card" && <Plus size={14} strokeWidth={2.5} className="absolute -bottom-1 -right-2 rounded-full bg-card" />}
+                            </span>
+                          )}
+                        </span>
+                        <span dir={ltr ? "ltr" : undefined} className="block w-full text-center">{title}</span>
+                        <span className="block w-full text-center text-xs font-medium text-muted-foreground">{hint}</span>
                       </span>
                     </label>
                   ))}
