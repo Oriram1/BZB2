@@ -28,7 +28,7 @@ const BillingReturn = () => {
   const [failureReason, setFailureReason] = useState<string | undefined>();
   const [outcome, setOutcome] = useState<Outcome>("checking");
 
-  const [chargeNote, setChargeNote] = useState<"task" | "task-review" | "card" | "trial" | "card-update" | null>(null);
+  const [chargeNote, setChargeNote] = useState<"task" | "task-review" | "card" | "trial" | "trial-used" | "card-update" | null>(null);
 
   useEffect(() => {
     if (!orderId && !chargeId) {
@@ -50,6 +50,7 @@ const BillingReturn = () => {
           if (charged.ok && charged.data.status === "paid") {
             if (charged.data.cardUpdated) setChargeNote("card-update");
             else if (charged.data.trial) setChargeNote("trial");
+            else if (charged.data.trialRefused) setChargeNote("trial-used");
             else if (charged.data.taskId) setChargeNote(charged.data.awaitingReview ? "task-review" : "task");
             else {
               setChargeNote("card");
@@ -104,7 +105,7 @@ const BillingReturn = () => {
           <>
             <CheckCircle2 className="mx-auto text-primary-ink" size={48} aria-hidden />
             <h1 className="text-2xl font-extrabold">
-              {chargeNote === "card-update" ? "הכרטיס הוחלף בהצלחה" : chargeNote === "card" ? "הכרטיס נשמר 🐝" : chargeNote === "trial" ? "החודש החינם התחיל 🎁" : "התשלום התקבל, תודה! 🐝"}
+              {chargeNote === "card-update" ? "הכרטיס הוחלף בהצלחה" : chargeNote === "card" ? "הכרטיס נשמר 🐝" : chargeNote === "trial" ? "החודש החינם התחיל 🎁" : chargeNote === "trial-used" ? "החודש החינם כבר נוצל" : "התשלום התקבל, תודה! 🐝"}
             </h1>
             <p className="text-muted-foreground">
               {chargeNote === "card-update"
@@ -113,6 +114,8 @@ const BillingReturn = () => {
                 ? "המטלה שולמה ועולה לאפליקציה."
                 : chargeNote === "task-review"
                 ? "התשלום התקבל. המטלה תעלה לאפליקציה אחרי שנאשר אותה. אם לא תאושר, הכסף יוחזר במלואו."
+                : chargeNote === "trial-used"
+                  ? "הכרטיס נשמר ולא חויבתם. החודש החינם ניתן פעם אחת לאדם, ולכן אפשר להצטרף למנוי בתשלום מדף המנוי."
                 : chargeNote === "card"
                   ? "לא חויבתם. הכרטיס ישמש רק אחרי שנאשר מטלה בתשלום."
                   : chargeNote === "trial"

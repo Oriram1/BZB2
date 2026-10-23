@@ -242,7 +242,7 @@ export async function chargeTask(admin: SupabaseClient, taskId: string): Promise
 export async function settleChargePage(
   admin: SupabaseClient,
   charge: ChargeRow,
-): Promise<{ status: ChargeRow["status"]; taskId?: string | null; trial?: boolean; cardUpdated?: boolean; awaitingReview?: boolean }> {
+): Promise<{ status: ChargeRow["status"]; taskId?: string | null; trial?: boolean; trialRefused?: boolean; cardUpdated?: boolean; awaitingReview?: boolean }> {
   // Already settled (the webhook usually gets there first). Say whether it was a
   // free-month card, so the page the customer lands on describes what happened.
   if (charge.status !== "pending" || !charge.low_profile_id) {
@@ -312,7 +312,7 @@ export async function settleChargePage(
         _card_last4: last4,
         _card_expiry: expiry,
       });
-      const started = (trial as { started?: boolean; period_end?: string } | null);
+      const started = (trial as { started?: boolean; period_end?: string; reason?: string } | null);
       if (started?.started) {
         await notifyBilling(admin, charge.user_id, "billing_plan_changed", {
           kind: "trial_started",
@@ -320,7 +320,8 @@ export async function settleChargePage(
           period_end: started.period_end,
         });
       }
-      return { status: "paid", trial: Boolean(started?.started) };
+      // The card is saved either way; only the free month is refused.
+      return { status: "paid", trial: Boolean(started?.started), trialRefused: !started?.started && (trial as { reason?: string } | null)?.reason === "trial_already_used" };
     }
     return { status: "paid", taskId: charge.task_id };
   }

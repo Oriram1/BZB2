@@ -31,6 +31,12 @@ Deno.serve(withCors(async (req) => {
       .maybeSingle();
     if (state?.free_month_used_at) return json({ error: "trial_already_used" }, 409);
 
+    // The same person under another or an already deleted account (email with
+    // dots or "+tag", same phone). The card is checked once it has been saved.
+    const { data: knownPerson, error: precheckError } = await admin.rpc("trial_precheck", { _user_id: user.id });
+    if (precheckError) throw precheckError;
+    if (knownPerson === true) return json({ error: "trial_already_used" }, 409);
+
     const { data: existing } = await admin
       .from("subscriptions")
       .select("status, first_paid_at")
