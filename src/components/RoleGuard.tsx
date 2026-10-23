@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ interface RoleGuardProps {
 const RoleGuard = ({ children, requireAuth = true, allowedRoles }: RoleGuardProps) => {
   const { user, roles, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   /** Whether this guard has already let the page through once. */
   const admittedRef = useRef(false);
 
@@ -20,7 +21,7 @@ const RoleGuard = ({ children, requireAuth = true, allowedRoles }: RoleGuardProp
 
     if (requireAuth && !user) {
       toast.error("יש להתחבר כדי לגשת לדף זה");
-      navigate("/login", { replace: true });
+      navigate("/login", { replace: true, state: { from: location.pathname + location.search } });
       return;
     }
 
@@ -31,7 +32,7 @@ const RoleGuard = ({ children, requireAuth = true, allowedRoles }: RoleGuardProp
         navigate("/tasks", { replace: true });
       }
     }
-  }, [user, roles, loading, requireAuth, allowedRoles, navigate]);
+  }, [user, roles, loading, requireAuth, allowedRoles, navigate, location]);
 
   // Returning null unmounts the page and destroys its state — the open
   // conversation, the scroll position, a half-typed message. That is the right

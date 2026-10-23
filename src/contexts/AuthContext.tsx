@@ -176,7 +176,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+    void supabase.auth.getSession().then(async ({ data: { session: stored } }) => {
+      let session = stored;
+      // A session in storage is only a claim: the server may have revoked it
+      // (session_not_found). Trusting it showed the user as signed in until the
+      // first authenticated call threw them to the login page. Drop it up front;
+      // a network failure is not proof of revocation, so that keeps the session.
+      if (stored) {
+        const { error } = await supabase.auth.getUser();
+        if (error && (error.status === 401 || error.status === 403)) {
+          await supabase.auth.signOut({ scope: "local" });
+          session = null;
+        }
+      }
       const nextUser = session?.user ?? null;
       setLoading(true);
       setSession(session);

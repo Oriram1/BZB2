@@ -375,7 +375,7 @@ const MyTasks = () => {
       paymentTab.close();
       setPayingTask(null);
       toast.error(billingErrorText(result.code), result.code === "session_expired" ? {
-        action: { label: "כניסה מחדש", onClick: () => navigate("/login") },
+        action: { label: "כניסה מחדש", onClick: () => navigate("/login", { state: { from: "/my-tasks?tab=published" } }) },
       } : undefined);
       return;
     }

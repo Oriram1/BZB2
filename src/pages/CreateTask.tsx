@@ -330,7 +330,7 @@ const CreateTask = () => {
         } else {
           paymentTab.close();
           toast.error(`${page.ok ? "דף התשלום נסגר." : billingErrorText(page.code)} המטלה נשמרה. אפשר לשלם עליה מ״המטלות שלי״.`, !page.ok && page.code === "session_expired" ? {
-            action: { label: "כניסה מחדש", onClick: () => navigate("/login") },
+            action: { label: "כניסה מחדש", onClick: () => navigate("/login", { state: { from: "/my-tasks?tab=published" } }) },
           } : undefined);
         }
       } else if (quote && !quote.billing_off) {
