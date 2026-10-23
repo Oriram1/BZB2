@@ -42,7 +42,20 @@ type PageResult = { ok: true; url: string; code?: undefined } | { ok: false; cod
 type Result<T> = { ok: true; data: T; code?: undefined } | { ok: false; code: string; data?: undefined };
 
 async function invoke<T>(name: string, body: Record<string, unknown>): Promise<Result<T>> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
+  let { data, error } = await supabase.functions.invoke(name, { body });
+  // A 401 is returned before a payment is created. Retry only this case, once,
+  // after obtaining a fresh user session; never replay an uncertain payment.
+  if (error && (error as { context?: Response }).context?.status === 401) {
+    const refreshed = await supabase.auth.refreshSession();
+    if (refreshed.error || !refreshed.data.session) return { ok: false, code: "session_expired" };
+    ({ data, error } = await supabase.functions.invoke(name, {
+      body,
+      headers: { Authorization: `Bearer ${refreshed.data.session.access_token}` },
+    }));
+    if (error && (error as { context?: Response }).context?.status === 401) {
+      return { ok: false, code: "session_expired" };
+    }
+  }
   if (error) {
     let code = "network_error";
     try {
@@ -101,6 +114,9 @@ export async function resubmitTask(taskId: string) {
 
 export const billingErrorText = (code: string) => {
   switch (code) {
+    case "session_expired":
+    case "unauthorized":
+      return "ההתחברות פגה. יש להיכנס שוב כדי לפתוח את דף התשלום. לא בוצע חיוב";
     case "bit_unavailable":
       return "תשלום ב-Bit עדיין לא זמין. אפשר לשלם בכרטיס או בארנק דיגיטלי";
     case "payment_unavailable":

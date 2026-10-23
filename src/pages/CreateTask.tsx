@@ -16,7 +16,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, CreditCard, Wallet, Smartphone, Plus, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -329,7 +329,9 @@ const CreateTask = () => {
           toast.info("המטלה נשלחה לאישור. דף התשלום נפתח בכרטיסייה נפרדת. אם המטלה לא תאושר, הכסף יוחזר.");
         } else {
           paymentTab.close();
-          toast.error(`${page.ok ? "דף התשלום נסגר." : billingErrorText(page.code)} המטלה נשלחה לאישור, ואפשר לשלם עליה מ״המטלות שלי״.`);
+          toast.error(`${page.ok ? "דף התשלום נסגר." : billingErrorText(page.code)} המטלה נשמרה. אפשר לשלם עליה מ״המטלות שלי״.`, !page.ok && page.code === "session_expired" ? {
+            action: { label: "כניסה מחדש", onClick: () => navigate("/login") },
+          } : undefined);
         }
       } else if (quote && !quote.billing_off) {
         toast.success("המטלה נשלחה לאישור. תעלה לאפליקציה אחרי שנאשר אותה 🐝");
@@ -842,24 +844,25 @@ const CreateTask = () => {
                   </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <fieldset className="space-y-2 text-sm">
-                <legend className="mb-2 font-bold">איך לשלם על המטלה?</legend>
-                {confirmQuote?.has_card && <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
-                  <input type="radio" name="task-payment-mode" value="saved_card" checked={paymentMode === "saved_card"} onChange={() => setPaymentMode("saved_card")} />
-                  <span>הכרטיס השמור{confirmQuote?.card_last4 ? ` שמסתיים ב-${confirmQuote.card_last4}` : ""}</span>
-                </label>}
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
-                  <input type="radio" name="task-payment-mode" value="new_card" checked={paymentMode === "new_card"} onChange={() => setPaymentMode("new_card")} />
-                  <span>כרטיס אשראי חדש</span>
-                </label>
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
-                  <input type="radio" name="task-payment-mode" value="wallet" checked={paymentMode === "wallet"} onChange={() => setPaymentMode("wallet")} />
-                  <span>Apple Pay או Google Pay - תשלום עכשיו</span>
-                </label>
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
-                  <input type="radio" name="task-payment-mode" value="bit" checked={paymentMode === "bit"} onChange={() => setPaymentMode("bit")} />
-                  <span>Bit - תשלום עכשיו</span>
-                </label>
+              <fieldset className="text-sm">
+                <legend className="mb-3 font-bold">איך לשלם על המטלה?</legend>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ...(confirmQuote?.has_card ? [{ value: "saved_card" as const, label: `הכרטיס השמור${confirmQuote.card_last4 ? ` שמסתיים ב-${confirmQuote.card_last4}` : ""}`, title: "הכרטיס השמור", hint: confirmQuote.card_last4 ? `מסתיים ב-${confirmQuote.card_last4}` : "חיוב אחרי אישור", ltr: false, icon: CreditCard }] : []),
+                    { value: "new_card" as const, label: "כרטיס אשראי חדש", title: "כרטיס אשראי חדש", hint: "חיוב אחרי אישור", ltr: false, icon: Plus },
+                    { value: "wallet" as const, label: "Apple Pay או Google Pay - תשלום עכשיו", title: "Apple Pay / Google Pay", hint: "תשלום עכשיו", ltr: true, icon: Wallet },
+                    { value: "bit" as const, label: "Bit - תשלום עכשיו", title: "Bit", hint: "תשלום עכשיו", ltr: true, icon: Smartphone },
+                  ].map(({ value, label, title, hint, ltr, icon: Icon }) => (
+                    <label key={value} className="cursor-pointer">
+                      <input className="peer sr-only" type="radio" name="task-payment-mode" aria-label={label} value={value} checked={paymentMode === value} onChange={() => setPaymentMode(value)} />
+                      <span className="flex h-full min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-border px-3 py-4 text-center font-bold transition-colors hover:border-primary/60 peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2">
+                        <Icon size={28} strokeWidth={1.75} aria-hidden="true" />
+                        <span dir={ltr ? "ltr" : undefined}>{title}</span>
+                        <span className="text-xs font-medium text-muted-foreground">{hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </fieldset>
               <AlertDialogFooter>
                 <AlertDialogCancel>חזרה</AlertDialogCancel>
