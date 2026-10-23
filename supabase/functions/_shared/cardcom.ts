@@ -157,6 +157,8 @@ export async function createLowProfile(params: {
   webhookUrl: string;
   document?: CardcomDocument;
   email?: string;
+  /** Prefills the cardholder name so wallet pages never ask the user to type it. */
+  cardOwnerName?: string;
   /**
    * Ask the card issuer to authorize this small amount (J5) while the card is
    * saved, so a card that cannot pay is refused now. Nothing is charged.
@@ -189,7 +191,7 @@ export async function createLowProfile(params: {
     // One-time pay-now pages hide the cardholder name: Apple Pay, Google Pay and
     // Bit supply it themselves. Pages that save a card keep the field.
     UIDefinition: params.email || params.operation === "ChargeOnly"
-      ? { CardOwnerEmailValue: params.email, IsHideCardOwnerName: params.operation === "ChargeOnly" ? true : undefined }
+      ? { CardOwnerEmailValue: params.email, CardOwnerNameValue: params.operation === "ChargeOnly" ? params.cardOwnerName : undefined, IsHideCardOwnerName: params.operation === "ChargeOnly" ? true : undefined }
       : undefined,
     Document: config.issueDocuments ? params.document : undefined,
   });

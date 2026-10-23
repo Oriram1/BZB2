@@ -115,6 +115,7 @@ Deno.serve(withCors(async (req) => {
       returnUrl: (result) => `${base}/billing/return?charge=${id}&result=${result}`,
       webhookUrl: functionsUrl,
       email: user.email ?? undefined,
+      cardOwnerName: oneTime ? await ownerName(admin, user.id) : undefined,
     });
   } catch (error) {
     return errorResponse(error);
@@ -132,6 +133,7 @@ async function openPage(
     returnUrl: (result: string) => string;
     webhookUrl: string;
     email?: string;
+    cardOwnerName?: string;
   },
 ) {
   try {
@@ -145,6 +147,7 @@ async function openPage(
       cancelUrl: page.returnUrl("cancel"),
       webhookUrl: page.webhookUrl,
       email: page.email,
+      cardOwnerName: page.cardOwnerName,
     });
     const { error: linkError } = await admin.from("billing_charges").update({ low_profile_id: created.lowProfileId }).eq("id", chargeId);
     if (linkError) throw linkError;
@@ -159,4 +162,9 @@ async function openPage(
     console.error("task_pay_page_failed", error instanceof Error ? error.message : error);
     return json({ error: "payment_unavailable" }, 502);
   }
+}
+
+async function ownerName(admin: Parameters<typeof chargeTask>[0], userId: string) {
+  const { data } = await admin.from("profiles").select("first_name,last_name").eq("user_id", userId).maybeSingle();
+  return [data?.first_name, data?.last_name].filter(Boolean).join(" ").trim() || undefined;
 }
