@@ -688,9 +688,6 @@ const MyTasks = () => {
                         <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
                           תשלום עכשיו
                         </Button>
-                        <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true, bit: true })} className="rounded-full font-bold">
-                          תשלום ב-Bit
-                        </Button>
                       </div>
                     )}
                     {(task.publish_state === "pending_payment" || task.publish_state === "awaiting_charge") && (
@@ -711,11 +708,8 @@ const MyTasks = () => {
                           <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
                             תשלום חד-פעמי
                           </Button>
-                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true, bit: true })} className="rounded-full font-bold">
-                            תשלום ב-Bit
-                          </Button>
                         </div>
-                        <p className="mt-2 text-xs text-muted-foreground">בתשלום חד-פעמי לא נשמר כרטיס. Apple Pay, Google Pay ו-Bit זמינים בכפוף להפעלתם אצל חברת הסליקה ולתמיכת המכשיר.</p>
+                        <p className="mt-2 text-xs text-muted-foreground">בתשלום חד-פעמי לא נשמר כרטיס. Apple Pay, Google Pay ו-Bit נבחרים בדף התשלום, בכפוף להפעלתם אצל חברת הסליקה ולתמיכת המכשיר.</p>
                       </div>
                     )}
                     {(task.publish_state === "draft" || task.publish_state === "rejected") && (

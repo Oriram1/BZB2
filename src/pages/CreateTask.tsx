@@ -56,7 +56,7 @@ const steps = [
  *   new_card    a new card is saved on Cardcom now, charged on approval
  *   wallet/bit  paid now on Cardcom's page, refunded if the task is rejected
  */
-type TaskPaymentChoice = "saved_card" | "new_card" | "wallet" | "bit";
+type TaskPaymentChoice = "saved_card" | "new_card" | "wallet";
 
 const CreateTask = () => {
   const { user } = useAuth();
@@ -256,7 +256,7 @@ const CreateTask = () => {
       setQuote(currentQuote);
     }
 
-    const paysNow = choice === "wallet" || choice === "bit";
+    const paysNow = choice === "wallet";
     // A paid task is charged to a saved card once it is approved, so the card
     // has to be on file before it can be submitted. A new card is saved first,
     // and the form waits for it.
@@ -323,7 +323,7 @@ const CreateTask = () => {
         details: { name: form.taskName, category: form.category },
       });
       if (prepay && paymentTab && created?.id) {
-        const page = await payTaskOnce(created.id, choice === "bit" ? "bit" : "wallet");
+        const page = await payTaskOnce(created.id, "wallet");
         setLoading(false);
         if (page.ok && paymentTab.navigate(page.url)) {
           toast.info("המטלה נשלחה לאישור. דף התשלום נפתח בכרטיסייה נפרדת. אם המטלה לא תאושר, הכסף יוחזר.");
@@ -839,7 +839,7 @@ const CreateTask = () => {
                       , והמטלה תעלה לאפליקציה אחרי שהחיוב עבר.
                     </p>
                     : paymentMode === "new_card" ? <p>ייפתח דף מאובטח של Cardcom לשמירת הכרטיס החדש, בלי חיוב עכשיו. אחרי השמירה תחזרו לטופס ותפרסמו. הכרטיס יחויב ב־{confirmQuote ? formatCurrency(confirmQuote.due) : ""} רק אחרי שנאשר את המטלה.</p>
-                    : <p>ייפתח דף התשלום של Cardcom ותשלמו עכשיו {confirmQuote ? formatCurrency(confirmQuote.due) : ""}{paymentMode === "bit" ? " ב-Bit" : " ב-Apple Pay או Google Pay"}. המטלה תעלה לאפליקציה אחרי שנאשר אותה. אם לא תאושר, הכסף יוחזר במלואו.</p>}
+                    : <p>ייפתח דף התשלום של Cardcom ותשלמו עכשיו {confirmQuote ? formatCurrency(confirmQuote.due) : ""}. בדף התשלום תוכלו לבחור Apple Pay, Google Pay, Bit או כרטיס. המטלה תעלה לאפליקציה אחרי שנאשר אותה. אם לא תאושר, הכסף יוחזר במלואו.</p>}
                     {(paymentMode === "saved_card" || paymentMode === "new_card") && <p>אם המטלה לא תאושר, לא תחויבו בכלום.</p>}
                   </div>
                 </AlertDialogDescription>
@@ -850,8 +850,7 @@ const CreateTask = () => {
                   {[
                     ...(confirmQuote?.has_card ? [{ value: "saved_card" as const, label: `הכרטיס השמור${confirmQuote.card_last4 ? ` שמסתיים ב-${confirmQuote.card_last4}` : ""}`, title: "הכרטיס השמור", hint: confirmQuote.card_last4 ? `מסתיים ב-${confirmQuote.card_last4}` : "חיוב אחרי אישור", ltr: false }] : []),
                     { value: "new_card" as const, label: "כרטיס אשראי חדש", title: "כרטיס אשראי חדש", hint: "חיוב אחרי אישור", ltr: false },
-                    { value: "wallet" as const, label: "Apple Pay או Google Pay - תשלום עכשיו", title: "Apple Pay / Google Pay", hint: "תשלום עכשיו", ltr: true },
-                    { value: "bit" as const, label: "Bit - תשלום עכשיו", title: "Bit", hint: "תשלום עכשיו", ltr: true },
+                    { value: "wallet" as const, label: "תשלום עכשיו - Apple Pay, Google Pay או Bit", title: "תשלום עכשיו", hint: "Apple Pay · Google Pay · Bit", ltr: false },
                   ].map(({ value, label, title, hint, ltr }) => (
                     <label key={value} className="cursor-pointer">
                       <input className="peer sr-only" type="radio" name="task-payment-mode" aria-label={label} value={value} checked={paymentMode === value} onChange={() => setPaymentMode(value)} />
@@ -860,9 +859,8 @@ const CreateTask = () => {
                           {value === "wallet" ? <>
                             <img src="/payment-marks/apple-pay.svg" alt="" className="h-6 w-auto shrink-0 min-[360px]:h-7" />
                             <img src="/payment-marks/google-pay.png" alt="" className="h-6 w-auto shrink-0 min-[360px]:h-7" />
-                          </> : value === "bit" ? (
-                            <img src="/payment-marks/bit.svg" alt="" className="h-6 w-auto min-[360px]:h-7" />
-                          ) : (
+                            <img src="/payment-marks/bit.svg" alt="" className="h-6 w-auto shrink-0 min-[360px]:h-7" />
+                          </> : (
                             <span className="relative inline-flex">
                               <CreditCard size={30} strokeWidth={1.75} />
                               {value === "new_card" && <Plus size={14} strokeWidth={2.5} className="absolute -bottom-1 -right-2 rounded-full bg-card" />}

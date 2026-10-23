@@ -35,7 +35,7 @@ test('wallet choice opens checkout immediately and an unpaid task never charges 
     await page.goto('/create-task?resume=1');
     await page.getByRole('button', { name: 'פרסם מטלה', exact: false }).click();
     await expect(page.getByTestId('charge-confirm')).toContainText('2444');
-    await page.getByRole('radio', { name: 'Apple Pay או Google Pay - תשלום עכשיו', exact: true }).check();
+    await page.getByRole('radio', { name: 'תשלום עכשיו - Apple Pay, Google Pay או Bit', exact: true }).check();
     await expect(page.getByTestId('charge-confirm')).toContainText('ותשלמו עכשיו');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('payment-choice.png'), fullPage: false, animations: 'disabled' });
