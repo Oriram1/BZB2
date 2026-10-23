@@ -517,31 +517,31 @@ const CreateTask = () => {
                     {dateShortcuts.map(({ label, value }) => (
                       <Button key={label} type="button" variant="outline" aria-pressed={form.date === value}
                         title={value.split("-").reverse().join("/")} className={shortcutClass(form.date === value)} onClick={() => updateForm("date", value)}>
-                        <Check size={14} aria-hidden="true" className={form.date === value ? "shrink-0" : "invisible shrink-0"} />
                         {label}
                       </Button>
                     ))}
                   </div>
                   <p id="date-hint" className="mt-1 text-xs text-muted-foreground">הקלד בפורמט DD/MM/YYYY.</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <Label htmlFor="time" className="text-right block mb-1 font-bold">שעה</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    dir="ltr"
-                    step={300}
-                    value={form.time}
-                    onChange={(event) => updateForm("time", event.target.value)}
-                    aria-describedby="time-hint"
-                    className="h-12 rounded-2xl px-4 text-base font-medium [direction:ltr]"
-                    style={{ unicodeBidi: "plaintext" }}
-                  />
+                  <div className="h-12 min-w-0 rounded-2xl border border-input bg-background px-4 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                    <Input
+                      id="time"
+                      type="time"
+                      dir="ltr"
+                      step={300}
+                      value={form.time}
+                      onChange={(event) => updateForm("time", event.target.value)}
+                      aria-describedby="time-hint"
+                      className="h-full min-w-0 max-w-full appearance-none rounded-none border-0 bg-transparent p-0 text-base font-medium [direction:ltr] focus-visible:ring-0 focus-visible:ring-offset-0"
+                      style={{ unicodeBidi: "plaintext" }}
+                    />
+                  </div>
                   <div role="group" aria-label="בחירת שעה מהירה" className="mt-2 grid grid-cols-3 gap-2">
                     {["09:00", "14:00", "18:00"].map((time) => (
                       <Button key={time} type="button" variant="outline" aria-pressed={form.time === time}
                         className={shortcutClass(form.time === time)} onClick={() => updateForm("time", time)}>
-                        <Check size={14} aria-hidden="true" className={form.time === time ? "shrink-0" : "invisible shrink-0"} />
                         <span dir="ltr">{time}</span>
                       </Button>
                     ))}
