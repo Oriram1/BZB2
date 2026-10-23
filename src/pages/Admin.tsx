@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminReviewsPanel from "@/components/reviews/AdminReviewsPanel";
 import TaskReviewPanel from "@/components/admin/TaskReviewPanel";
+import TrialBlocksPanel from "@/components/admin/TrialBlocksPanel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -964,7 +965,7 @@ export default function Admin() {
 
       <div className="relative z-[1] max-w-5xl mx-auto px-4 py-6">
         <Tabs dir="rtl" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 grid h-auto w-full grid-cols-4 sm:grid-cols-8 rounded-xl p-1">
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-4 sm:grid-cols-9 rounded-xl p-1">
             {[
               { value: "overview", label: "סקירה" },
               { value: "users", label: "משתמשים" },
@@ -974,6 +975,7 @@ export default function Admin() {
               { value: "tasks", label: "אישור משימות" },
               { value: "reviews", label: "ביקורות" },
               { value: "pricing", label: "מחירים" },
+              { value: "trials", label: "חודש חינם" },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -1653,6 +1655,10 @@ export default function Admin() {
           <TabsContent value="pricing" className="space-y-6">
             <PlanPricing />
             <TaskFeePricing />
+          </TabsContent>
+
+          <TabsContent value="trials" className="space-y-6">
+            <TrialBlocksPanel />
           </TabsContent>
         </Tabs>
       </div>

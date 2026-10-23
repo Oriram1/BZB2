@@ -40,3 +40,23 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.trial_fingerprints WHERE fingerprint LIKE '%@%' OR fingerprint LIKE '%1111%') THEN RAISE EXCEPTION 'no raw values stored'; END IF;
   RAISE NOTICE 'trial fingerprint invariants passed';
 END $$;
+
+-- The admin screen's read: admins only.
+DO $$
+DECLARE adm UUID := gen_random_uuid(); usr UUID := gen_random_uuid(); r JSONB; denied BOOLEAN := false;
+BEGIN
+  INSERT INTO auth.users (id, email, instance_id, aud, role) VALUES
+    (adm, adm::TEXT || '@admin.test', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
+    (usr, usr::TEXT || '@user.test', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');
+  INSERT INTO public.user_roles (user_id, role) VALUES (adm, 'admin');
+  INSERT INTO public.trial_blocks (user_id, stage, matched_kinds) VALUES (usr, 'precheck', ARRAY['email']);
+
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', usr, 'role', 'authenticated')::TEXT, true);
+  BEGIN PERFORM public.admin_trial_blocks(10); EXCEPTION WHEN insufficient_privilege THEN denied := true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'a non-admin must be refused'; END IF;
+
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', adm, 'role', 'authenticated')::TEXT, true);
+  r := public.admin_trial_blocks(10);
+  IF jsonb_array_length(r->'recent') < 1 OR jsonb_array_length(r->'daily') < 1 THEN RAISE EXCEPTION 'admin sees the blocks: %', r; END IF;
+  RAISE NOTICE 'admin trial blocks read passed';
+END $$;
