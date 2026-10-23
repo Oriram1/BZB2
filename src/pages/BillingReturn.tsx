@@ -28,7 +28,7 @@ const BillingReturn = () => {
   const [failureReason, setFailureReason] = useState<string | undefined>();
   const [outcome, setOutcome] = useState<Outcome>("checking");
 
-  const [chargeNote, setChargeNote] = useState<"task" | "card" | "trial" | "card-update" | null>(null);
+  const [chargeNote, setChargeNote] = useState<"task" | "task-review" | "card" | "trial" | "card-update" | null>(null);
 
   useEffect(() => {
     if (!orderId && !chargeId) {
@@ -50,7 +50,7 @@ const BillingReturn = () => {
           if (charged.ok && charged.data.status === "paid") {
             if (charged.data.cardUpdated) setChargeNote("card-update");
             else if (charged.data.trial) setChargeNote("trial");
-            else if (charged.data.taskId) setChargeNote("task");
+            else if (charged.data.taskId) setChargeNote(charged.data.awaitingReview ? "task-review" : "task");
             else {
               setChargeNote("card");
               // A task form was waiting for this card: put the person back on it.
@@ -111,6 +111,8 @@ const BillingReturn = () => {
                 ? "לא חויבתם. הכרטיס החדש נשמר לחיובים עתידיים. נשלח אישור במייל. מצב המנוי ומועד החידוש לא השתנו."
                 : chargeNote === "task"
                 ? "המטלה שולמה ועולה לאפליקציה."
+                : chargeNote === "task-review"
+                ? "התשלום התקבל. המטלה תעלה לאפליקציה אחרי שנאשר אותה. אם לא תאושר, הכסף יוחזר במלואו."
                 : chargeNote === "card"
                   ? "לא חויבתם. הכרטיס ישמש רק אחרי שנאשר מטלה בתשלום."
                   : chargeNote === "trial"
@@ -118,8 +120,8 @@ const BillingReturn = () => {
                     : "המנוי פעיל. שלחנו אישור במייל."}
             </p>
             <Button asChild className="gradient-honey text-primary-foreground border-none rounded-2xl font-extrabold">
-              <Link to={chargeNote === "task" ? "/my-tasks?tab=published" : "/subscription"}>
-                {chargeNote === "task" ? "למטלות שלי" : "למנוי שלי"}
+              <Link to={chargeNote === "task" || chargeNote === "task-review" ? "/my-tasks?tab=published" : "/subscription"}>
+                {chargeNote === "task" || chargeNote === "task-review" ? "למטלות שלי" : "למנוי שלי"}
               </Link>
             </Button>
           </>

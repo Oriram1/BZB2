@@ -25,7 +25,7 @@ import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { logUserActivity } from "@/lib/activityLog";
-import { startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
+import { billingErrorText, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 import { feeText, useTaskFees } from "@/lib/taskFees";
 import {
   AlertDialog,
@@ -50,6 +50,14 @@ const steps = [
   { id: 6, label: "סיכום", icon: Check },
 ];
 
+/**
+ * How a paid task is paid:
+ *   saved_card  charged on approval
+ *   new_card    a new card is saved on Cardcom now, charged on approval
+ *   wallet/bit  paid now on Cardcom's page, refunded if the task is rejected
+ */
+type TaskPaymentChoice = "saved_card" | "new_card" | "wallet" | "bit";
+
 const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -72,7 +80,7 @@ const CreateTask = () => {
   const [insurance, setInsurance] = useState(false);
   const [quote, setQuote] = useState<PublishQuote | null>(null);
   const fees = useTaskFees();
-  const [paymentMode, setPaymentMode] = useState<"saved_card" | "one_time">("saved_card");
+  const [paymentMode, setPaymentMode] = useState<TaskPaymentChoice>("saved_card");
   const [confirmQuote, setConfirmQuote] = useState<PublishQuote | null>(null);
   const [searchParams] = useSearchParams();
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
@@ -199,12 +207,8 @@ const CreateTask = () => {
     const { data: fresh } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
     const latest = (fresh as unknown as PublishQuote | null) ?? quote;
     if (latest) setQuote(latest);
-    if (latest && !latest.billing_off && latest.due > 0 && !latest.has_card) {
-      setCardSetupOpen(true);
-      return;
-    }
-    if (latest && !latest.billing_off && latest.due > 0 && latest.has_card) {
-      setPaymentMode("saved_card");
+    if (latest && !latest.billing_off && latest.due > 0) {
+      setPaymentMode(latest.has_card ? "saved_card" : "new_card");
       setConfirmQuote(latest);
       return;
     }
@@ -217,7 +221,20 @@ const CreateTask = () => {
     void publishTask(paymentTab);
   };
 
-  const publishTask = async (paymentTab?: PaymentTab, selectedPaymentMode: "saved_card" | "one_time" = "saved_card") => {
+  /** Runs inside the click, so the payment tab is opened before any await. */
+  const confirmPayment = () => {
+    const choice = paymentMode;
+    setConfirmQuote(null);
+    if (choice === "saved_card") {
+      void publishTask(undefined, choice);
+      return;
+    }
+    const paymentTab = openPaymentTab();
+    if (!paymentTab) { toast.error(PAYMENT_POPUP_BLOCKED); return; }
+    void publishTask(paymentTab, choice);
+  };
+
+  const publishTask = async (paymentTab?: PaymentTab, choice: TaskPaymentChoice = "saved_card") => {
     if (!user) {
       toast.error("יש להתחבר כדי לפרסם מטלה");
       navigate("/login");
@@ -239,9 +256,12 @@ const CreateTask = () => {
       setQuote(currentQuote);
     }
 
+    const paysNow = choice === "wallet" || choice === "bit";
     // A paid task is charged to a saved card once it is approved, so the card
-    // has to be on file before it can be submitted.
-    if (selectedPaymentMode === "saved_card" && currentQuote && !currentQuote.billing_off && currentQuote.due > 0 && !currentQuote.has_card) {
+    // has to be on file before it can be submitted. A new card is saved first,
+    // and the form waits for it.
+    if (!paysNow && currentQuote && !currentQuote.billing_off && currentQuote.due > 0
+        && (choice === "new_card" || !currentQuote.has_card)) {
       try {
         sessionStorage.setItem(
           TASK_DRAFT_KEY,
@@ -269,7 +289,8 @@ const CreateTask = () => {
       return;
     }
 
-    paymentTab?.close();
+    const prepay = paysNow && !!currentQuote && !currentQuote.billing_off && currentQuote.due > 0;
+    if (!prepay) paymentTab?.close();
     const { data: created, error } = await supabase.from("tasks").insert({
       creator_id: user.id,
       category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
@@ -289,10 +310,11 @@ const CreateTask = () => {
       notes: form.notes || null,
       image_url: imageUrl,
       insurance,
-      payment_mode: selectedPaymentMode,
+      payment_mode: prepay ? "one_time" : "saved_card",
     }).select("id").maybeSingle();
-    setLoading(false);
+    if (error || !prepay) setLoading(false);
     if (error) {
+      paymentTab?.close();
       toast.error(publishErrorMessage(error));
     } else {
       logUserActivity(user.id, "task_created", {
@@ -300,7 +322,16 @@ const CreateTask = () => {
         entityId: created?.id ?? null,
         details: { name: form.taskName, category: form.category },
       });
-      if (quote && !quote.billing_off) {
+      if (prepay && paymentTab && created?.id) {
+        const page = await payTaskOnce(created.id, choice === "bit" ? "bit" : "wallet");
+        setLoading(false);
+        if (page.ok && paymentTab.navigate(page.url)) {
+          toast.info("המטלה נשלחה לאישור. דף התשלום נפתח בכרטיסייה נפרדת. אם המטלה לא תאושר, הכסף יוחזר.");
+        } else {
+          paymentTab.close();
+          toast.error(`${page.ok ? "דף התשלום נסגר." : billingErrorText(page.code)} המטלה נשלחה לאישור, ואפשר לשלם עליה מ״המטלות שלי״.`);
+        }
+      } else if (quote && !quote.billing_off) {
         toast.success("המטלה נשלחה לאישור. תעלה לאפליקציה אחרי שנאשר אותה 🐝");
       } else {
         toast.success("המטלה פורסמה בהצלחה! 🎉🐝");
@@ -805,31 +836,37 @@ const CreateTask = () => {
                           : " (עמלת פרסום)"}
                       , והמטלה תעלה לאפליקציה אחרי שהחיוב עבר.
                     </p>
-                    : <p>המטלה תישלח לאישור בלי לחייב את הכרטיס השמור. לאחר האישור, יופיע תשלום בסך {confirmQuote ? formatCurrency(confirmQuote.due) : ""} ב״המטלות שלי״. שם אפשר לבחור כרטיס אחר, Apple Pay, Google Pay או Bit. המטלה תעלה לאפליקציה רק לאחר התשלום.</p>}
-                    <p>אם המטלה לא תאושר, לא תחויבו בכלום.</p>
+                    : paymentMode === "new_card" ? <p>ייפתח דף מאובטח של Cardcom לשמירת הכרטיס החדש, בלי חיוב עכשיו. אחרי השמירה תחזרו לטופס ותפרסמו. הכרטיס יחויב ב־{confirmQuote ? formatCurrency(confirmQuote.due) : ""} רק אחרי שנאשר את המטלה.</p>
+                    : <p>ייפתח דף התשלום של Cardcom ותשלמו עכשיו {confirmQuote ? formatCurrency(confirmQuote.due) : ""}{paymentMode === "bit" ? " ב-Bit" : " ב-Apple Pay או Google Pay"}. המטלה תעלה לאפליקציה אחרי שנאשר אותה. אם לא תאושר, הכסף יוחזר במלואו.</p>}
+                    {(paymentMode === "saved_card" || paymentMode === "new_card") && <p>אם המטלה לא תאושר, לא תחויבו בכלום.</p>}
                   </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <fieldset className="space-y-2 text-sm">
                 <legend className="mb-2 font-bold">איך לשלם על המטלה?</legend>
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
+                {confirmQuote?.has_card && <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
                   <input type="radio" name="task-payment-mode" value="saved_card" checked={paymentMode === "saved_card"} onChange={() => setPaymentMode("saved_card")} />
                   <span>הכרטיס השמור{confirmQuote?.card_last4 ? ` שמסתיים ב-${confirmQuote.card_last4}` : ""}</span>
+                </label>}
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
+                  <input type="radio" name="task-payment-mode" value="new_card" checked={paymentMode === "new_card"} onChange={() => setPaymentMode("new_card")} />
+                  <span>כרטיס אשראי חדש</span>
                 </label>
                 <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
-                  <input type="radio" name="task-payment-mode" value="one_time" checked={paymentMode === "one_time"} onChange={() => setPaymentMode("one_time")} />
-                  <span>אמצעי תשלום אחר - כרטיס אחר, Apple Pay, Google Pay או Bit</span>
+                  <input type="radio" name="task-payment-mode" value="wallet" checked={paymentMode === "wallet"} onChange={() => setPaymentMode("wallet")} />
+                  <span>Apple Pay או Google Pay - תשלום עכשיו</span>
+                </label>
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border p-3">
+                  <input type="radio" name="task-payment-mode" value="bit" checked={paymentMode === "bit"} onChange={() => setPaymentMode("bit")} />
+                  <span>Bit - תשלום עכשיו</span>
                 </label>
               </fieldset>
               <AlertDialogFooter>
                 <AlertDialogCancel>חזרה</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => {
-                    setConfirmQuote(null);
-                    void publishTask(undefined, paymentMode);
-                  }}
+                  onClick={confirmPayment}
                 >
-                  {paymentMode === "one_time" ? "שליחה לאישור ותשלום בהמשך" : "מאשרים ומפרסמים"}
+                  {paymentMode === "saved_card" ? "מאשרים ומפרסמים" : paymentMode === "new_card" ? "לשמירת הכרטיס" : "שליחה לאישור ומעבר לתשלום"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

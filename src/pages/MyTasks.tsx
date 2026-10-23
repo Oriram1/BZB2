@@ -50,6 +50,7 @@ interface PublishedTask {
   publish_state: TaskPublishState;
   payment_due: number;
   payment_mode: string;
+  charged_at: string | null;
 }
 
 interface CandidateApplication {
@@ -171,7 +172,7 @@ const MyTasks = () => {
       {
         const { data: taskRows, error: taskError } = await supabase
           .from("tasks")
-          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode")
+          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at")
           .eq("creator_id", user.id)
           .is("archived_at", null)
           .order("created_at", { ascending: false });
@@ -673,10 +674,22 @@ const MyTasks = () => {
                       <p className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm text-foreground">
                         המטלה ממתינה לאישור. {Number(task.payment_due) > 0
                           ? task.payment_mode === "one_time"
-                            ? "לאחר האישור תוכלו לבחור אמצעי תשלום. הכרטיס השמור לא יחויב אוטומטית."
+                            ? task.charged_at
+                              ? `שילמתם ${Number(task.payment_due)} ₪. המטלה תעלה מיד אחרי האישור, ואם לא תאושר הכסף יוחזר.`
+                              : "אפשר לשלם כבר עכשיו, או לבחור אמצעי תשלום אחרי האישור. הכרטיס השמור לא יחויב אוטומטית."
                             : `הכרטיס יחויב ב־${Number(task.payment_due)} ₪ רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
                           : "היא תעלה לאפליקציה מיד אחרי האישור."}
                       </p>
+                    )}
+                    {task.publish_state === "pending_review" && task.payment_mode === "one_time" && !task.charged_at && Number(task.payment_due) > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
+                          תשלום עכשיו
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true, bit: true })} className="rounded-full font-bold">
+                          תשלום ב-Bit
+                        </Button>
+                      </div>
                     )}
                     {(task.publish_state === "pending_payment" || task.publish_state === "awaiting_charge") && (
                       <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">

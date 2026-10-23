@@ -5,7 +5,7 @@ const api = process.env.LOCAL_SUPABASE_URL;
 const service = process.env.LOCAL_SERVICE_KEY;
 if (api && !['localhost', '127.0.0.1'].includes(new URL(api).hostname)) throw new Error('Local Supabase required');
 
-test('choose another payment method before submitting, then pay only after approval', async ({ page }, testInfo) => {
+test('wallet choice opens checkout immediately and an unpaid task never charges the saved card', async ({ page }, testInfo) => {
   test.skip(!api || !service, 'Requires local Supabase');
   const admin = createClient(api!, service!, { auth: { persistSession: false } });
   const email = `choice-${crypto.randomUUID()}@example.test`;
@@ -35,12 +35,24 @@ test('choose another payment method before submitting, then pay only after appro
     await page.goto('/create-task?resume=1');
     await page.getByRole('button', { name: 'פרסם מטלה', exact: false }).click();
     await expect(page.getByTestId('charge-confirm')).toContainText('2444');
-    await page.getByRole('radio', { name: 'אמצעי תשלום אחר', exact: false }).check();
-    await expect(page.getByTestId('charge-confirm')).toContainText('בלי לחייב את הכרטיס השמור');
+    await page.getByRole('radio', { name: 'Apple Pay או Google Pay - תשלום עכשיו', exact: true }).check();
+    await expect(page.getByTestId('charge-confirm')).toContainText('ותשלמו עכשיו');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('payment-choice.png'), fullPage: false, animations: 'disabled' });
+    let checkoutRequested = false;
+    await page.route('**/functions/v1/task-pay', async route => {
+      const body = route.request().postDataJSON();
+      expect(body.action).toBe('wallet');
+      checkoutRequested = true;
+      await route.fulfill({ json: { url: `${new URL(page.url()).origin}/test-checkout` } });
+    });
+    const popupPromise = page.waitForEvent('popup');
     const insertedResponse = page.waitForResponse(r => r.url().includes('/rest/v1/tasks') && r.request().method() === 'POST');
-    await page.getByRole('button', { name: 'שליחה לאישור ותשלום בהמשך', exact: true }).click();
+    await page.getByRole('button', { name: 'שליחה לאישור ומעבר לתשלום', exact: true }).click();
+    const popup = await popupPromise;
+    await expect(popup).toHaveURL(/\/test-checkout$/);
+    expect(checkoutRequested).toBe(true);
+    await popup.close();
     const inserted = await insertedResponse;
     expect(inserted.ok(), JSON.stringify(await inserted.json())).toBe(true);
     await expect(page).toHaveURL(/\/my-tasks\?tab=published$/);
@@ -49,7 +61,7 @@ test('choose another payment method before submitting, then pay only after appro
     taskId = task.data!.id;
     expect(task.data!.payment_mode).toBe('one_time');
     expect(task.data!.publish_state).toBe('pending_review');
-    await expect(page.getByText('לאחר האישור תוכלו לבחור אמצעי תשלום.', { exact: false })).toBeVisible();
+    await expect(page.getByText('אפשר לשלם כבר עכשיו', { exact: false })).toBeVisible();
     const reviewed = await admin.rpc('task_review_decide', { _task_id: taskId, _admin_id: id, _approve: true });
     expect(reviewed.error).toBeNull();
     expect(reviewed.data.state).toBe('pending_payment');

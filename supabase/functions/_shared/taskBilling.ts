@@ -57,6 +57,13 @@ export type ChargeOutcome =
   | { status: "unknown"; chargeId: string }
   | { status: "skipped"; reason: string };
 
+async function stillInReview(admin: SupabaseClient, taskId: string | null) {
+  if (!taskId) return false;
+  const { data, error } = await admin.from("tasks").select("publish_state").eq("id", taskId).maybeSingle();
+  if (error) throw error;
+  return data?.publish_state === "pending_review";
+}
+
 async function taskLabel(admin: SupabaseClient, taskId: string | null) {
   if (!taskId) return null;
   const { data } = await admin.from("tasks").select("name").eq("id", taskId).maybeSingle();
@@ -235,11 +242,12 @@ export async function chargeTask(admin: SupabaseClient, taskId: string): Promise
 export async function settleChargePage(
   admin: SupabaseClient,
   charge: ChargeRow,
-): Promise<{ status: ChargeRow["status"]; taskId?: string | null; trial?: boolean; cardUpdated?: boolean }> {
+): Promise<{ status: ChargeRow["status"]; taskId?: string | null; trial?: boolean; cardUpdated?: boolean; awaitingReview?: boolean }> {
   // Already settled (the webhook usually gets there first). Say whether it was a
   // free-month card, so the page the customer lands on describes what happened.
   if (charge.status !== "pending" || !charge.low_profile_id) {
-    return { status: charge.status, taskId: charge.task_id, trial: charge.status === "paid" && charge.meta?.trial === true, cardUpdated: charge.status === "paid" && charge.meta?.card_update === true };
+    const awaitingReview = charge.status === "paid" && charge.purpose === "task" && await stillInReview(admin, charge.task_id);
+    return { status: charge.status, taskId: charge.task_id, trial: charge.status === "paid" && charge.meta?.trial === true, cardUpdated: charge.status === "paid" && charge.meta?.card_update === true, awaitingReview };
   }
 
   const result = await getLpResult(charge.low_profile_id);
@@ -335,12 +343,13 @@ export async function settleChargePage(
   if (verdict.kind !== "paid") return { status: "pending", taskId: charge.task_id };
 
   const d = verdict.details;
-  const { data: applied } = await admin.rpc("billing_charge_paid", {
+  const { data: applied, error: applyError } = await admin.rpc("billing_charge_paid", {
     _charge_id: charge.id,
     _deal_number: d.dealNumber,
     _document_number: d.documentNumber,
     _document_url: d.documentUrl,
   });
+  if (applyError) throw applyError;
   // The new card becomes the saved card, so later charges and renewals use it.
   if (d.token && charge.meta?.payment_mode !== "one_time") {
     await admin.rpc("save_payment_method", {
@@ -349,6 +358,10 @@ export async function settleChargePage(
       _card_last4: d.last4,
       _card_expiry: d.expiry,
     });
+  }
+  // Paid up front: the task still waits for review, so there is nothing to announce yet.
+  if ((applied as { prepaid?: boolean } | null)?.prepaid) {
+    return { status: "paid", taskId: charge.task_id, awaitingReview: true };
   }
   if ((applied as { applied?: boolean } | null)?.applied && charge.task_id) {
     await notifyBilling(admin, charge.user_id, "task_approved", {

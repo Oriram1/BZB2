@@ -155,7 +155,7 @@ export type ChargeStatus = "pending" | "paid" | "failed" | "refunded";
 
 /** A task payment or a saved card (not a subscription order). */
 export const confirmCharge = (chargeId: string) =>
-  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean; cardUpdated?: boolean; failureReason?: string }>("billing-confirm", { charge_id: chargeId });
+  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean; cardUpdated?: boolean; awaitingReview?: boolean; failureReason?: string }>("billing-confirm", { charge_id: chargeId });
 
 /** Replace the saved card without renewing or charging the subscription. */
 export const updateSubscriptionCard = () =>

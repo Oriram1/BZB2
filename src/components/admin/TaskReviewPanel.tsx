@@ -14,6 +14,8 @@ interface QueueTask {
   short_desc: string;
   payment: number;
   payment_due: number;
+  payment_mode: string;
+  charged_at: string | null;
   insurance: boolean;
   uses_free_slot: boolean;
   publish_state: TaskPublishState;
@@ -38,7 +40,7 @@ export default function TaskReviewPanel() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, name, short_desc, payment, payment_due, insurance, uses_free_slot, publish_state, created_at, creator_id")
+      .select("id, name, short_desc, payment, payment_due, insurance, uses_free_slot, publish_state, created_at, creator_id, payment_mode, charged_at")
       .in("publish_state", ["pending_review", "awaiting_charge", "pending_payment"])
       .order("created_at", { ascending: true });
     if (error) {
@@ -73,7 +75,7 @@ export default function TaskReviewPanel() {
       toast.error(billingErrorText(result.code));
       return;
     }
-    if (!approve) toast.success("המשימה נדחתה. לא חויבו");
+    if (!approve) toast.success(task.charged_at ? "המשימה נדחתה. נפתחה בקשת החזר אוטומטי" : "המשימה נדחתה. לא חויבו");
     else if (result.data.state === "live") toast.success("המשימה אושרה ופורסמה");
     else toast.error("המשימה אושרה אבל החיוב לא עבר. היא ממתינה לתשלום");
     void load();
@@ -83,7 +85,7 @@ export default function TaskReviewPanel() {
     <Card className="p-5">
       <h2 className="mb-1 text-lg font-extrabold">משימות לאישור</h2>
       <p className="mb-4 text-sm text-muted-foreground">
-        אישור משימה בתשלום מחייב את הכרטיס של המפרסם באותו רגע. המשימה עולה רק אם החיוב עבר.
+        מטלה ששולמה מראש תפורסם באישור ללא חיוב נוסף. הכרטיס השמור יחויב רק אם המפרסם בחר בו. דחיית מטלה ששולמה מראש יוצרת בקשת החזר אוטומטי.
       </p>
 
       {loading ? (
@@ -106,11 +108,11 @@ export default function TaskReviewPanel() {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <Badge variant={waitingPayment ? "destructive" : "secondary"} className="rounded-full">
-                      {waitingPayment ? "החיוב לא עבר" : publishStateLabel[task.publish_state]}
+                      {waitingPayment ? "ממתינה לתשלום" : publishStateLabel[task.publish_state]}
                     </Badge>
                     <span className="text-xs font-bold">
                       {Number(task.payment_due) > 0
-                        ? `לחיוב: ${Number(task.payment_due)} ₪${task.insurance ? " (כולל ביטוח)" : ""}`
+                        ? `${task.charged_at ? "שולם מראש" : task.payment_mode === "one_time" ? "לתשלום חד-פעמי" : "לחיוב בכרטיס השמור"}: ${Number(task.payment_due)} ₪${task.insurance ? " (כולל ביטוח)" : ""}`
                         : task.uses_free_slot
                           ? "המטלה החינמית"
                           : "ללא חיוב"}

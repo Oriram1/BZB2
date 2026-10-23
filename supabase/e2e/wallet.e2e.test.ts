@@ -11,12 +11,13 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
   const children: Deno.ChildProcess[] = [];
   let userId: string | undefined;
   let taskId: string | undefined;
+  const prepaidTaskIds: string[] = [];
   try {
-    for (const [name, port] of [["task-pay", 8291], ["billing-webhook", 8292], ["billing-confirm", 8293]] as const) {
+    for (const [name, port] of [["task-pay", 8291], ["billing-webhook", 8292], ["billing-confirm", 8293], ["task-review", 8294], ["task-refund", 8295]] as const) {
       children.push(new Deno.Command(Deno.execPath(), { args: ["run", "-A", "--no-lock", `supabase/functions/${name}/index.ts`],
         env: { DENO_SERVE_ADDRESS: `tcp:127.0.0.1:${port}`, SUPABASE_URL: url,
           SUPABASE_ANON_KEY: Deno.env.get("LOCAL_ANON_KEY")!, SUPABASE_SERVICE_ROLE_KEY: Deno.env.get("LOCAL_SERVICE_KEY")!,
-          BILLING_ENABLED: "true", CARDCOM_BASE_URL: mock.url, CARDCOM_MODE: "test",
+          BILLING_ENABLED: "true", NOTIFY_DISPATCH_SECRET: "local-prepay-refund", CARDCOM_BASE_URL: mock.url, CARDCOM_MODE: "test",
           CARDCOM_TEST_TERMINAL: String(MOCK_TERMINAL), CARDCOM_TEST_API_NAME: MOCK_API_NAME,
           CARDCOM_TEST_API_PASSWORD: MOCK_API_PASSWORD, PUBLIC_SITE_URL: "http://localhost:5187" }, stdout: "null", stderr: "piped" }).spawn());
       let ready = false;
@@ -58,6 +59,49 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
     assertEquals((await admin.from("tasks").select("publish_state").eq("id", taskId).single()).data?.publish_state, "live");
     assertEquals((await admin.from("payment_methods").select("token").eq("user_id", userId).single()).data?.token, "original-recurring-token");
     assertEquals((await admin.from("billing_charges").select("status").eq("id", page.charge_id).single()).data?.status, "paid");
+    // Pay before review, keep it private, then approve without a token charge
+    // or reject and run the same refund worker used in production.
+    assertEquals((await admin.from("user_roles").insert({ user_id: userId, role: "admin" })).error, null);
+    for (const approve of [true, false]) {
+      const createdTask = await admin.from("tasks").insert({ creator_id: userId, name: "Prepay E2E", short_desc: "local", category: "housework", payment: 50, payment_mode: "one_time" }).select("id").single();
+      assertEquals(createdTask.error, null);
+      const prepayTaskId = createdTask.data!.id;
+      prepaidTaskIds.push(prepayTaskId);
+      assertEquals((await admin.from("tasks").update({ publish_state: "pending_review", payment_due: 8, payment_mode: "one_time", charged_at: null }).eq("id", prepayTaskId)).error, null);
+      const headers = { "Content-Type": "application/json", Authorization: `Bearer ${signed.data.session!.access_token}` };
+      const payment = await fetch("http://127.0.0.1:8291", { method: "POST", headers, body: JSON.stringify({ action: "wallet", task_id: prepayTaskId }) });
+      assertEquals(payment.status, 200);
+      const paymentPage = await payment.json();
+      const paymentCharge = await admin.from("billing_charges").select("low_profile_id").eq("id", paymentPage.charge_id).single();
+      assertEquals(paymentCharge.error, null);
+      mock.pages.get(paymentCharge.data!.low_profile_id)!.outcome = "paid";
+      for (let repeat = 0; repeat < 2; repeat++) {
+        const confirmation = await fetch("http://127.0.0.1:8293", { method: "POST", headers, body: JSON.stringify({ charge_id: paymentPage.charge_id }) });
+        assertEquals(confirmation.status, 200);
+        const result = await confirmation.json();
+        assertEquals(result.status, "paid");
+        assertEquals(result.awaitingReview, true);
+      }
+      const waiting = await admin.from("tasks").select("publish_state,charged_at").eq("id", prepayTaskId).single();
+      assertEquals(waiting.data?.publish_state, "pending_review");
+      assert(waiting.data?.charged_at);
+      const tokenRequests = mock.requests.filter(r => r.path === "/Transactions/Transaction").length;
+      const reviewed = await fetch("http://127.0.0.1:8294", { method: "POST", headers, body: JSON.stringify({ task_id: prepayTaskId, approve }) });
+      assertEquals(reviewed.status, 200);
+      assertEquals((await reviewed.json()).state, approve ? "live" : "rejected");
+      assertEquals(mock.requests.filter(r => r.path === "/Transactions/Transaction").length, tokenRequests, "review must not charge the saved card");
+      assertEquals((await admin.from("payment_methods").select("token").eq("user_id", userId).single()).data?.token, "original-recurring-token");
+      if (!approve) {
+        const refundsBefore = mock.requests.filter(r => r.path === "/Transactions/RefundByTransactionId").length;
+        for (let repeat = 0; repeat < 2; repeat++) {
+          const refunded = await fetch("http://127.0.0.1:8295", { method: "POST", headers: { "x-notify-secret": "local-prepay-refund" } });
+          assertEquals(refunded.status, 200);
+          assertEquals((await refunded.json()).failed, 0);
+        }
+        assertEquals(mock.requests.filter(r => r.path === "/Transactions/RefundByTransactionId").length, refundsBefore + 1, "refund once");
+        assertEquals((await admin.from("billing_charges").select("status").eq("id", paymentPage.charge_id).single()).data?.status, "refunded");
+      }
+    }
     // Bit uses the same settlement and never overwrites the recurring card.
     assertEquals((await admin.from("tasks").update({ publish_state: "pending_payment", payment_due: 8 }).eq("id", taskId)).error, null);
     const unavailable = await fetch("http://127.0.0.1:8291", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signed.data.session!.access_token}` }, body: JSON.stringify({ action: "bit", task_id: taskId }) });
@@ -115,6 +159,7 @@ Deno.test({ name: "one-time wallet checkout through real Edge handlers and local
   } finally {
     for (const child of children) { child.kill("SIGTERM"); await child.status; }
     await mock.close();
+    for (const id of prepaidTaskIds) assertEquals((await admin.from("tasks").delete().eq("id", id)).error, null);
     if (taskId) assertEquals((await admin.from("tasks").delete().eq("id", taskId)).error, null);
     if (userId) assertEquals((await admin.auth.admin.deleteUser(userId)).error, null);
   }

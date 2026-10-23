@@ -5,6 +5,8 @@
  *   new_card  open Cardcom's page to pay that task with a different card
  *   wallet    charge once without saving a card (wallet-compatible hosted page)
  *   bit       charge once using Cardcom's Bit URL, if enabled on the terminal
+ *             (wallet and bit also accept a one-time task still waiting for
+ *             review: it is paid up front, and refunded if it is rejected)
  *   card_setup open Cardcom's page to save a card without charging (needed
  *              before a paid task can be submitted for review)
  *
@@ -76,12 +78,14 @@ Deno.serve(withCors(async (req) => {
     if (!UUID.test(taskId)) return json({ error: "invalid_task" }, 400);
     const { data: task } = await admin
       .from("tasks")
-      .select("id, creator_id, name, payment_due, publish_state")
+      .select("id, creator_id, name, payment_due, publish_state, payment_mode, charged_at")
       .eq("id", taskId)
       .eq("creator_id", user.id)
       .maybeSingle();
     if (!task) return json({ error: "not_found" }, 404);
-    if (!["pending_payment", "awaiting_charge"].includes(task.publish_state)) {
+    const prepay = (action === "wallet" || action === "bit") && task.publish_state === "pending_review"
+      && task.payment_mode === "one_time" && !task.charged_at && Number(task.payment_due) > 0;
+    if (!prepay && !["pending_payment", "awaiting_charge"].includes(task.publish_state)) {
       return json({ error: "not_waiting_for_payment", state: task.publish_state }, 409);
     }
 

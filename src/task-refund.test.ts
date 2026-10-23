@@ -163,10 +163,15 @@ describe("refund wiring", () => {
 describe("charge confirmation before publishing", () => {
   const page = read("src/pages/CreateTask.tsx");
 
-  it("asks first when a paid task will be charged to a saved card", () => {
+  it("asks first, and lets the person choose how, whenever a task costs money", () => {
     expect(page).toContain('data-testid="charge-confirm"');
-    expect(page).toMatch(/latest\.due > 0 && latest\.has_card/);
+    expect(page).toMatch(/!latest\.billing_off && latest\.due > 0\) \{\s*setPaymentMode\(latest\.has_card \? "saved_card" : "new_card"\)/);
     expect(page).toContain("setConfirmQuote(latest)");
+  });
+
+  it("opens Cardcom from the confirm click for a new card, a wallet or Bit", () => {
+    expect(page).toMatch(/const confirmPayment = \(\) => \{[\s\S]*?const paymentTab = openPaymentTab\(\);/);
+    expect(page).toContain('payTaskOnce(created.id, choice === "bit" ? "bit" : "wallet")');
   });
 
   it("states the amount and the card, and that a rejected task costs nothing", () => {
