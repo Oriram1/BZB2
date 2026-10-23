@@ -277,7 +277,7 @@ function Timestamp({ value }: { value: string }) {
   );
 }
 
-const TAB_VALUES = ["overview", "users", "family", "activity", "log", "tasks", "reviews", "pricing"] as const;
+const TAB_VALUES = ["overview", "users", "family", "activity", "log", "tasks", "reviews", "pricing", "trials"] as const;
 
 export default function Admin() {
   const { user, roles, loading } = useAuth();
