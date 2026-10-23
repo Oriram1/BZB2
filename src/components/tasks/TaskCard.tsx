@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { logUserActivity } from "@/lib/activityLog";
+import type { TaskPublishState } from "@/lib/taskBilling";
 
 interface Task {
   id: number;
@@ -31,6 +32,7 @@ interface Task {
   /** Undefined when the user's location is unknown — never a placeholder value. */
   distance?: number;
   creatorId?: string;
+  publishState?: TaskPublishState;
 }
 
 /**
@@ -117,6 +119,11 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
           {task.categoryLabel}
         </Badge>
       </div>
+      {user && task.creatorId === user.id && task.publishState === "pending_review" && (
+        <p className="relative mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+          המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
+        </p>
+      )}
       {/* Fixed field order — the optional distance sits last so nothing shifts when it is missing. */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground mt-4 pt-4 border-t border-border relative">
         <Field icon={Calendar} label="מועד" value={formatDateTime(task.date, task.time)} />

@@ -73,6 +73,7 @@ const TaskList = () => {
             lat: t.latitude,
             lng: t.longitude,
             creatorId: t.creator_id,
+            publishState: t.publish_state,
           }));
         setTasks(mapped);
       }
