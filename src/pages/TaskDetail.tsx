@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
+import type { TaskPublishState } from "@/lib/taskBilling";
 import { formFor, RECIPIENT, say } from "@/lib/gender";
 import {
   AlertDialog,
@@ -68,6 +69,7 @@ interface TaskData {
   duration_hours: number | null;
   workers_needed: number;
   status: string;
+  publish_state: TaskPublishState;
   notes: string | null;
   image_url: string | null;
   creator_id: string;
@@ -313,6 +315,8 @@ const TaskDetail = () => {
   if (!task) return null;
 
   const isOwner = user?.id === task.creator_id;
+  const isOwnPendingReview = isOwner && task.publish_state === "pending_review";
+  const statusLabel = isOwnPendingReview ? "ממתינה לאישור" : statusLabels[task.status] || task.status;
   const creatorAvatar = creator?.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${task.creator_id}`;
 
   return (
@@ -347,7 +351,7 @@ const TaskDetail = () => {
             />
             <div className="absolute top-3 right-3">
               <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs shadow-md">
-                {statusLabels[task.status] || task.status}
+                {statusLabel}
               </Badge>
             </div>
           </div>
@@ -364,7 +368,7 @@ const TaskDetail = () => {
             </div>
             {!task.image_url && (
               <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs">
-                {statusLabels[task.status] || task.status}
+                {statusLabel}
               </Badge>
             )}
           </div>
@@ -373,6 +377,12 @@ const TaskDetail = () => {
             <h2 className="font-black text-2xl sm:text-3xl text-foreground tracking-tight">{task.name}</h2>
             <p className="text-muted-foreground text-sm mt-1 leading-relaxed">{task.short_desc}</p>
           </div>
+
+          {isOwnPendingReview && (
+            <p className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+              המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
+            </p>
+          )}
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/40 font-medium">
             <span className="flex items-center gap-1">
