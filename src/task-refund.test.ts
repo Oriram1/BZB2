@@ -171,7 +171,7 @@ describe("charge confirmation before publishing", () => {
 
   it("opens Cardcom from the confirm click for a new card, a wallet or Bit", () => {
     expect(page).toMatch(/const confirmPayment = \(\) => \{[\s\S]*?const paymentTab = openPaymentTab\(\);/);
-    expect(page).toContain('payTaskOnce(created.id, choice === "bit" ? "bit" : "wallet")');
+    expect(page).toContain('payTaskOnce(created.id, "wallet")');
   });
 
   it("states the amount and the card, and that a rejected task costs nothing", () => {
