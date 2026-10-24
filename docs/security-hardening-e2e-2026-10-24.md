@@ -142,3 +142,13 @@ Rejected per-user geocode calls are checked before the shared daily budget, so
 one user cannot exhaust the project budget by repeating already-limited calls.
 The extra migration was applied with --include-all after a dry-run showed only
 that migration; the concurrently supplied migration had a later timestamp.
+
+## Production release verification
+
+Code commit `47068df` deployed READY as `bzb-2-nbp2bsrf6-bzb1.vercel.app`.
+All 22 selected browser cases passed again against https://www.bzb-web.com,
+including real account login/profile access and intercepted signup failure
+flows on desktop and mobile. Live HTTP smoke passed after configuring the
+server key and after the final geocode deployment. Full dependency audit
+remained zero. Only the pre-existing lint errors and the Pro-only leaked
+password protection blocker remain from the reported checks.
