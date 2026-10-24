@@ -50,19 +50,27 @@ Deno.serve(async (req) => {
   const lowProfileId = String(body.LowProfileId ?? body.lowprofilecode ?? "").trim();
   if (!lowProfileId || lowProfileId.length > 100) return json({ error: "missing_low_profile_id" }, 400);
 
-  const { data: order } = await admin
+  const { data: order, error: orderError } = await admin
     .from("payment_orders")
     .select("id, user_id, plan_id, kind, amount, status, low_profile_id, external_uniq_id, deal_number")
     .eq("low_profile_id", lowProfileId)
     .maybeSingle();
+  if (orderError) {
+    console.error("billing_webhook_order_lookup_failed", orderError.code);
+    return json({ error: "temporarily_unavailable" }, 500);
+  }
 
   // Not a subscription page: it may be a task payment or a card saved for later.
   if (!order) {
-    const { data: charge } = await admin
+    const { data: charge, error: chargeError } = await admin
       .from("billing_charges")
       .select(CHARGE_COLUMNS)
       .eq("low_profile_id", lowProfileId)
       .maybeSingle();
+    if (chargeError) {
+      console.error("billing_webhook_charge_lookup_failed", chargeError.code);
+      return json({ error: "temporarily_unavailable" }, 500);
+    }
     if (charge) {
       try {
         const settled = await settleChargePage(admin, charge as ChargeRow);
@@ -80,9 +88,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Unknown page id: acknowledge so Cardcom stops retrying, keep a trace.
+  // Bounded hourly aggregate retains counts and samples without a row per ID.
   if (!order) {
-    await admin.from("payment_events").insert({ source: "webhook", low_profile_id: lowProfileId, outcome: "unknown_order" });
+    const { error } = await admin.rpc("record_unknown_payment_webhook", { _low_profile_id: lowProfileId });
+    if (error) {
+      console.error("billing_webhook_unknown_audit_failed", error.code);
+      return json({ error: "temporarily_unavailable" }, 500);
+    }
     return json({ ok: true });
   }
 

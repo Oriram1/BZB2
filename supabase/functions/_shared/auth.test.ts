@@ -8,6 +8,15 @@ Deno.test("corsOrigin allows the local Vite address", () => {
   assertEquals(corsOrigin(post(undefined, { Origin: "http://127.0.0.1:5173" })), "http://127.0.0.1:5173");
 });
 
+Deno.test("CORS only permits this project's production and preview origins", () => {
+  for (const origin of ["https://bzb-web.com", "https://www.bzb-web.com", "https://bzb-2.vercel.app", "https://bzb-2-acpf98ir0-bzb1.vercel.app", "https://bzb-2-git-main-bzb1.vercel.app"]) {
+    assertEquals(corsOrigin(post(undefined, { Origin: origin })), origin);
+  }
+  for (const origin of ["https://evil.vercel.app", "https://bzb-2-abc-attacker.vercel.app", "https://bzb-2-abc-bzb1.vercel.app.evil.test", "http://bzb-2-abc-bzb1.vercel.app", "https://bzb-web.com.evil.test", "null"]) {
+    assertEquals(corsOrigin(post(undefined, { Origin: origin })), "https://bzb-web.com");
+  }
+});
+
 Deno.test("readJsonObject accepts bounded JSON objects", async () => {
   assertEquals(await readJsonObject(post(JSON.stringify({ ok: true }))), { ok: true });
 });

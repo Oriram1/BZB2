@@ -26,7 +26,11 @@ import { formFor, GENDER_LABEL, GENDER_OPTIONS, RECIPIENT, say, type Gender } fr
 const hebrewAuthError = (message: string): string => {
   const m = message.toLowerCase();
   if (m.includes("already registered") || m.includes("already been registered"))
-    return "כתובת האימייל הזו כבר רשומה. אפשר להתחבר איתה או לבחור כתובת אחרת";
+    return "לא ניתן להשלים הרשמה עם הפרטים האלה. אם כבר נרשמת, אפשר להתחבר או לאפס סיסמה";
+  if (m.includes("database error saving new user"))
+    return "לא ניתן להשלים הרשמה עם הפרטים האלה. אם כבר נרשמת, אפשר להתחבר או לאפס סיסמה";
+  if (m.includes("weak_password") || m.includes("compromised") || m.includes("pwned"))
+    return "הסיסמה הזו אינה בטוחה לשימוש. כדאי לבחור סיסמה אחרת וייחודית";
   if (m.includes("invalid format") || m.includes("validate email"))
     return "כתובת האימייל לא נראית תקינה";
   if (m.includes("password") && m.includes("6"))
@@ -266,15 +270,8 @@ const Register = () => {
     }
 
     if (error) {
-      // The normalized-email trigger surfaces as a generic DB error; confirm the cause before saying so.
-      const aliasTaken =
-        error.message.toLowerCase().includes("database error saving new user") &&
-        (await supabase.rpc("is_email_alias_taken", { p_email: form.email })).data === true;
-      toast.error(
-        aliasTaken
-          ? "כבר קיים חשבון על תיבת המייל הזו (גם בגרסה עם נקודות או +). אפשר להתחבר עם הכתובת המקורית"
-          : hebrewAuthError(error.message),
-      );
+      // Do not query account existence after an auth failure.
+      toast.error(hebrewAuthError(error.message));
       setLoading(false);
       return;
     }

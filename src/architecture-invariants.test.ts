@@ -36,7 +36,7 @@ describe("architecture invariants", () => {
   });
 
   it("bounds external geocoding input and request time", () => {
-    const source = readFileSync(resolve(root, "supabase/functions/geocode-address/index.ts"), "utf8");
+    const source = readFileSync(resolve(root, "supabase/functions/geocode-address/handler.ts"), "utf8");
     expect(source).toContain("length > 500");
     expect(source).toContain("AbortSignal.timeout(8_000)");
   });

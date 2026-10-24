@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient, type User } from "https://esm.sh/@su
 const ALLOWED_ORIGINS = [
   "https://bzb-web.com",
   "https://www.bzb-web.com",
+  "https://bzb-2.vercel.app",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:8080",
@@ -11,13 +12,14 @@ const ALLOWED_ORIGINS = [
 
 export function corsOrigin(req: Request): string {
   const origin = req.headers.get("Origin") ?? "";
-  if (ALLOWED_ORIGINS.includes(origin) || origin.endsWith(".vercel.app")) return origin;
+  // Deployment hashes and branch aliases must belong to this project AND team.
+  if (ALLOWED_ORIGINS.includes(origin) || /^https:\/\/bzb-2-[a-z0-9-]+-bzb1\.vercel\.app$/.test(origin)) return origin;
   return ALLOWED_ORIGINS[0];
 }
 
 /**
  * The site answers on both the apex and the `www.` host, and previews answer on
- * `*.vercel.app`, so a single hard-coded origin fails the preflight for every
+ * the project's Vercel previews, so a single hard-coded origin fails the preflight for every
  * caller but one. Responses are built deep inside each handler, far from the
  * `Request` — rather than thread it through every call site, `withCors` stashes
  * it here so `json` can echo the caller's own origin.
