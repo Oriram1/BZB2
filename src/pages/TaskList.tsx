@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus, ExternalLink } from "lucide-react";
+import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
@@ -101,30 +101,6 @@ const TaskList = () => {
   /** How many tasks the distance slider alone is holding back, for the empty state. */
   const hiddenByDistance = inCategory.length - filteredTasks.length;
 
-  const openFilteredTasksInGoogleMaps = () => {
-    const locatedTasks = filteredTasks.filter(
-      (task) => task.lat !== null && task.lng !== null,
-    );
-    if (locatedTasks.length === 0) return;
-
-    const origin = userPos
-      ? `${userPos.lat},${userPos.lng}`
-      : `${locatedTasks[0].lat},${locatedTasks[0].lng}`;
-    const destination = locatedTasks[locatedTasks.length - 1];
-    const waypoints = locatedTasks
-      .slice(0, -1)
-      .map((task) => `${task.lat},${task.lng}`)
-      .join("|");
-    const params = new URLSearchParams({
-      api: "1",
-      origin,
-      destination: `${destination.lat},${destination.lng}`,
-    });
-    if (waypoints) params.set("waypoints", waypoints);
-
-    window.open(`https://www.google.com/maps/dir/?${params.toString()}`, "_blank", "noopener,noreferrer");
-  };
-
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
       <div className="absolute top-40 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-blob" />
@@ -149,17 +125,6 @@ const TaskList = () => {
         <div className="flex items-center justify-between gap-3 mb-4 animate-fade-in">
           <h1 className="text-2xl font-bold text-foreground">מטלות זמינות</h1>
           <div className="flex items-center gap-2 shrink-0">
-            {filteredTasks.some((task) => task.lat !== null && task.lng !== null) && (
-              <button
-                type="button"
-                onClick={openFilteredTasksInGoogleMaps}
-                aria-label="פתיחת המטלות המוצגות ב-Google Maps"
-                title="פתיחה ב-Google Maps"
-                className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <ExternalLink size={18} aria-hidden="true" />
-              </button>
-            )}
             <div className="flex items-center gap-1 bg-card rounded-2xl p-1 border border-border shadow-sm" role="group" aria-label="תצוגה">
             <button
               onClick={() => setViewMode("list")}
