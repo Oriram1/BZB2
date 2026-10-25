@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, CreditCard, Receipt } from "lucide-react";
+import { AlertTriangle, CreditCard, Receipt, RefreshCw } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import CheckoutConsentDialog from "@/components/billing/CheckoutConsentDialog";
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSubscription } from "@/hooks/useSubscription";
+import { hasAccess, useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import {
   billingErrorMessage,
@@ -119,6 +119,14 @@ const Subscription = () => {
       ? plans[subscription.pending_plan_id] ?? null
       : null;
 
+  const refreshSubscription = async () => {
+    const result = await reload();
+    if (!result) return;
+    if (result.failed) toast.error("לא הצלחנו לבדוק את מצב המנוי. אפשר לנסות שוב.");
+    else if (hasAccess(result.subscription)) toast.success("המנוי שלכם זמין בחשבון הזה");
+    else toast.info("לא נמצא מנוי פעיל בחשבון הזה");
+  };
+
   const cancel = async () => {
     setBusy(true);
     const result = await cancelSubscription();
@@ -212,7 +220,7 @@ const Subscription = () => {
         ) : failed ? (
           <Card className="border-border">
             <CardContent className="p-6 text-sm text-muted-foreground">
-              לא הצלחנו לטעון את פרטי המנוי. נסו לרענן את הדף.
+              לא הצלחנו לטעון את פרטי המנוי. אפשר לנסות שוב בכפתור רענון מצב המנוי.
             </CardContent>
           </Card>
         ) : !subscription ? (
@@ -343,6 +351,21 @@ const Subscription = () => {
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-border">
+          <CardContent className="p-5 space-y-3 text-sm">
+            <p className="font-bold">כבר רכשתם מנוי?</p>
+            <p className="text-muted-foreground">
+              המנוי משויך לחשבון שלכם וזמין גם במכשיר חדש. צריך להתחבר לחשבון שבו בוצעה הרכישה.
+            </p>
+            <Button variant="outline" onClick={() => void refreshSubscription()} disabled={loading || busy}
+              aria-busy={loading} className="min-h-11 rounded-2xl font-bold">
+              <RefreshCw size={16} aria-hidden="true" className={`ms-1 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />
+              {loading ? "בודקים את מצב המנוי…" : "רענון מצב המנוי"}
+            </Button>
+            <p className="text-xs text-muted-foreground">הרענון בודק את המנוי הקיים. לא מתבצע חיוב נוסף.</p>
+          </CardContent>
+        </Card>
 
         {orders.length > 0 && (
           <Card className="border-border">
