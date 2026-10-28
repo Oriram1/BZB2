@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,19 @@ const FieldError = ({ id, message }: { id: string; message?: string }) =>
     </p>
   ) : null;
 
+/** A numbered group of fields, so the long form reads as three short steps. */
+const FormSection = ({ step, title, emoji, tone, children }: {
+  step: number; title: string; emoji: string; tone: string; children: React.ReactNode;
+}) => (
+  <section className={`rounded-3xl p-4 ${tone}`} aria-labelledby={`section-${step}`}>
+    <h2 id={`section-${step}`} className="mb-3 flex items-center gap-2 text-lg font-black text-foreground">
+      <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-sm text-background">{step}</span>
+      {title} <span aria-hidden="true">{emoji}</span>
+    </h2>
+    <div className="flex flex-col gap-4">{children}</div>
+  </section>
+);
+
 const Register = () => {
   const { role } = useParams<{ role: string }>();
   const [searchParams] = useSearchParams();
@@ -84,6 +97,7 @@ const Register = () => {
     firstName: "", lastName: "", age: "", address: "", gender: "" as Gender | "",
     email: "", phone: "", password: "",
   });
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressPosition, setAddressPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -212,7 +226,7 @@ const Register = () => {
   const ageBelowMinimum = ageProblem === "below";
   const ageAboveMaximum = ageProblem === "above";
   const ageBlockMessage = ageAboveMaximum
-    ? "הגיל שהוזן לא נראה תקין"
+    ? `אפשר להזין גיל עד ${MAX_AGE}`
     : ageBelowMinimum && (ageTouched || form.age.length >= 2)
       ? `הגיל המינימלי להרשמה הוא ${minAge}`
       : undefined;
@@ -226,7 +240,7 @@ const Register = () => {
     const age = parseInt(form.age, 10);
     if (!form.age.trim()) next.age = "חסר גיל";
     else if (Number.isNaN(age) || age < minAge) next.age = `הגיל המינימלי להרשמה הוא ${minAge}`;
-    else if (age > MAX_AGE) next.age = "הגיל שהוזן לא נראה תקין";
+    else if (age > MAX_AGE) next.age = `אפשר להזין גיל עד ${MAX_AGE}`;
 
     if (!form.gender) next.gender = "צריך לבחור אחת מהאפשרויות";
 
@@ -345,178 +359,206 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Resolve a typed address even when the user submits without blurring it.
-    // A map pick is already authoritative and does not need another lookup.
-    const resolvedPosition = await resolveAddressBeforeSubmit();
-
     const found = validate();
     setErrors(found);
 
     const firstInvalid = Object.keys(found).find((key) => found[key]);
     if (firstInvalid) {
-      // Send focus to the first problem so the user lands on it directly,
-      // instead of hunting for what went wrong.
-      const el = document.getElementById(firstInvalid === "terms" ? "terms" : firstInvalid);
-      el?.focus();
-      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      window.requestAnimationFrame(() => errorSummaryRef.current?.focus());
       return;
     }
 
+    const resolvedPosition = await resolveAddressBeforeSubmit();
     await finishRegistration(resolvedPosition);
   };
 
+  const fieldClass = "mt-1 h-12 rounded-2xl border-2 bg-background text-base focus-visible:border-primary focus-visible:ring-primary";
+
   return (
     <div className="min-h-screen py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8 relative overflow-hidden" dir="rtl">
-      <div className="absolute inset-0 bg-muted" />
-      <div className="absolute top-10 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
-      <div className="absolute bottom-10 left-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
+      <div className="absolute inset-0 bg-gradient-to-b from-secondary/30 via-background to-accent/20" />
+      <div className="absolute inset-0 honeycomb-pattern opacity-70" />
+      <div className="absolute -top-16 -right-16 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-blob" />
+      <div className="absolute bottom-10 -left-16 w-80 h-80 bg-secondary/30 rounded-full blur-3xl animate-blob animation-delay-2000" />
+      <span aria-hidden="true" className="hidden md:block absolute top-24 left-[12%] text-5xl animate-float">🐝</span>
+      <span aria-hidden="true" className="hidden md:block absolute bottom-32 right-[10%] text-4xl animate-float animation-delay-2000">🍯</span>
+      <span aria-hidden="true" className="hidden md:block absolute top-1/2 left-[6%] text-3xl animate-float">✨</span>
 
-      <div className="relative z-10 w-full max-w-lg mx-auto glass rounded-3xl shadow-glow p-8 border border-border animate-pop-in">
-        <div className="flex flex-col items-center mb-6">
-          <Link to="/">
-            <BzbLogo className="w-16 h-16 mb-3" animate />
+      <div className="relative z-10 w-full max-w-lg mx-auto rounded-[2rem] border-2 border-foreground/10 bg-background p-6 sm:p-8 shadow-[0_6px_0_0_hsl(var(--honey-dark)/0.35)] animate-pop-in">
+        <div className="flex flex-col items-center mb-6 text-center">
+          <Link to="/" className="mb-3 -rotate-6 rounded-3xl bg-secondary/40 p-2 transition-transform hover:rotate-0">
+            <BzbLogo className="w-16 h-16" animate />
           </Link>
-          <h1 className="text-2xl font-extrabold text-foreground text-center">{title}</h1>
+          <h1 className="text-3xl font-black text-foreground leading-tight">{title}</h1>
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary-ink">
+            ⏱️ לוקח בערך דקה
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-muted-foreground text-sm font-medium">הרשמה עם אימייל</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
+        {!isGoogleSignup && <div className="mb-5"><GoogleAuthButton role={isWorker ? "bee" : isParent ? "parent" : "tasker"} /></div>}
 
-        {!isGoogleSignup && <div className="mb-6"><GoogleAuthButton role={isWorker ? "bee" : isParent ? "parent" : "tasker"} /></div>}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="flex-1 h-0.5 rounded-full bg-border" />
+          <span className="text-muted-foreground text-sm font-bold">או עם אימייל</span>
+          <div className="flex-1 h-0.5 rounded-full bg-border" />
+        </div>
 
         {/* noValidate: the browser's own check blocks submit and shows an English
             tooltip, which meant our Hebrew messages never ran. Validation is ours. */}
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="firstName">שם פרטי</Label>
-              <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} autoComplete="given-name" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} />
-              <FieldError id="firstName" message={errors.firstName} />
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+          <p className="text-sm text-muted-foreground text-center">כל השדות חובה, למעט אישור קבלת עדכונים.</p>
+          {Object.values(errors).some(Boolean) && (
+            <div ref={errorSummaryRef} tabIndex={-1} role="alert" className="rounded-3xl border-2 border-destructive bg-destructive/5 p-4 text-sm text-foreground focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-destructive">
+              <p className="font-black text-base">אופס, חסרים עוד כמה דברים 🙈</p>
+              <ul className="mt-2 space-y-1.5">
+                {Object.entries(errors).filter(([, message]) => message).map(([key, message]) => (
+                  <li key={key} className="flex items-start gap-2">
+                    <span aria-hidden="true" className="mt-0.5 text-destructive">●</span>
+                    <a className="font-medium underline underline-offset-2" href={`#${key}`} onClick={(event) => { event.preventDefault(); document.getElementById(key)?.focus(); document.getElementById(key)?.scrollIntoView({ block: "center" }); }}>{message}</a>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div>
-              <Label htmlFor="lastName">שם משפחה</Label>
-              <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} autoComplete="family-name" className="mt-1 rounded-2xl h-12" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} />
-              <FieldError id="lastName" message={errors.lastName} />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="age">גיל</Label>
-            <Input id="age" type="text" inputMode="numeric" maxLength={3} dir="ltr" value={form.age} onBlur={() => setAgeTouched(true)} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className="mt-1 rounded-2xl h-12" aria-invalid={!!(errors.age || ageBlockMessage)} aria-describedby={errors.age || ageBlockMessage ? "age-error" : "age-hint"} />
-            {errors.age || ageBlockMessage
-              ? <FieldError id="age" message={errors.age || ageBlockMessage} />
-              : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}</p>}
-          </div>
-          <div>
-            <Label htmlFor="gender">מין</Label>
-            {/* Asked at signup because Hebrew inflects every message the app
-                later sends. "מעדיפ/ה לא לציין" is a real answer — it reads in
-                the plural, the same as anyone we cannot identify. */}
-            <div id="gender" role="radiogroup" aria-label="מין" className="mt-1 grid grid-cols-3 gap-2">
-              {GENDER_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  role="radio"
-                  aria-checked={form.gender === option}
-                  onClick={() => updateField("gender", option)}
-                  className={`h-12 rounded-2xl border-2 px-2 text-sm font-bold transition-colors ${
-                    form.gender === option
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40"
-                  }`}
-                >
-                  {GENDER_LABEL[option]}
-                </button>
-              ))}
-            </div>
-            {errors.gender && <FieldError id="gender" message={errors.gender} />}
-          </div>
-          <div>
-            <Label htmlFor="address">כתובת</Label>
-            <Input
-              id="address"
-              value={form.address}
-              onChange={(e) => updateField("address", e.target.value)}
-              onBlur={handleAddressBlur}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddressBlur(); } }}
-              placeholder="אפשר להזין כתובת או לבחור נקודה במפה"
-              autoComplete="street-address"
-              className="mt-1 rounded-2xl h-12"
-              aria-invalid={!!errors.address}
-              aria-describedby={errors.address ? "address-error" : undefined}
-            />
-            {addressLoading && <p className="text-xs text-muted-foreground mt-1">מאתר את הכתובת...</p>}
-            <div className="mt-3">
-              <GoogleMapPicker
-                lat={addressPosition?.lat ?? null}
-                lng={addressPosition?.lng ?? null}
-                onLocationSelect={(lat, lng) => setAddressPosition({ lat, lng })}
-                onAddressFound={(address) => updateField("address", address)}
-              />
-            </div>
-            <FieldError id="address" message={errors.address} />
-          </div>
-          <div>
-            <Label htmlFor="email">אימייל</Label>
-            <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="email@example.com" autoComplete="email" className="mt-1 rounded-2xl h-12" dir="ltr" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} />
-            <FieldError id="email" message={errors.email} />
-          </div>
-          <div>
-            <Label htmlFor="phone">טלפון</Label>
-            <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onBlur={() => setPhoneTouched(true)} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className="mt-1 rounded-2xl h-12" dir="ltr" aria-invalid={!!(errors.phone || phoneLiveError)} aria-describedby={errors.phone || phoneLiveError ? "phone-error" : undefined} />
-            <FieldError id="phone" message={errors.phone || phoneLiveError} />
-            {phoneTaken && !errors.phone && !phoneLiveError && (
-              <p className="mt-1.5 flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-500">
-                <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
-                <span>המספר הזה כבר רשום במערכת. אפשר להמשיך — אבל אם זו טעות, כדאי לתקן עכשיו.</span>
-              </p>
-            )}
-          </div>
-          {!isGoogleSignup && <div>
-            <Label htmlFor="password">סיסמה</Label>
-            <PasswordInput
-              id="password"
-              value={form.password}
-              onChange={(e) => updateField("password", e.target.value)}
-              autoComplete="new-password"
-              className="mt-1 rounded-2xl h-12"
-              aria-invalid={!!errors.password}
-              aria-describedby={errors.password ? "password-error" : "password-hint"}
-            />
-            <PasswordStrength password={form.password} />
-            {errors.password
-              ? <FieldError id="password" message={errors.password} />
-              : <p id="password-hint" className="text-xs text-muted-foreground mt-1">{passwordRequirementsMessage}</p>}
-          </div>}
+          )}
 
-          <div className="mt-2">
+          <FormSection step={1} title="קצת עליך" emoji="👋" tone="bg-secondary/20">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="firstName" className="font-bold">שם פרטי</Label>
+                <Input id="firstName" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} autoComplete="given-name" className={fieldClass} aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} />
+                <FieldError id="firstName" message={errors.firstName} />
+              </div>
+              <div>
+                <Label htmlFor="lastName" className="font-bold">שם משפחה</Label>
+                <Input id="lastName" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} autoComplete="family-name" className={fieldClass} aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} />
+                <FieldError id="lastName" message={errors.lastName} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="age" className="font-bold">גיל</Label>
+              <Input id="age" type="text" inputMode="numeric" maxLength={3} dir="ltr" value={form.age} onBlur={() => setAgeTouched(true)} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className={`${fieldClass} max-w-[8rem]`} aria-invalid={!!(errors.age || ageBlockMessage)} aria-describedby={errors.age || ageBlockMessage ? "age-error" : "age-hint"} />
+              {errors.age || ageBlockMessage
+                ? <FieldError id="age" message={errors.age || ageBlockMessage} />
+                : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}</p>}
+            </div>
+            <div>
+              <Label htmlFor="gender" className="font-bold">מין</Label>
+              {/* Asked at signup because Hebrew inflects every message the app
+                  later sends. "מעדיפ/ה לא לציין" is a real answer — it reads in
+                  the plural, the same as anyone we cannot identify. */}
+              <div id="gender" role="radiogroup" aria-label="מין" className="mt-1 grid grid-cols-3 gap-2">
+                {GENDER_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.gender === option}
+                    onClick={() => updateField("gender", option)}
+                    className={`h-12 rounded-2xl border-2 px-2 text-sm font-bold transition-all active:scale-95 ${
+                      form.gender === option
+                        ? "border-primary bg-primary text-primary-foreground shadow-[0_3px_0_0_hsl(var(--honey-dark))]"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:-translate-y-0.5"
+                    }`}
+                  >
+                    {GENDER_LABEL[option]}
+                  </button>
+                ))}
+              </div>
+              {errors.gender && <FieldError id="gender" message={errors.gender} />}
+            </div>
+          </FormSection>
+
+          <FormSection step={2} title="איפה גרים?" emoji="📍" tone="bg-primary/10">
+            <div>
+              <Label htmlFor="address" className="font-bold">כתובת</Label>
+              <p className="text-xs text-muted-foreground mt-1">הכתובת משמשת להצגת מטלות באזור שלך.</p>
+              <Input
+                id="address"
+                value={form.address}
+                onChange={(e) => updateField("address", e.target.value)}
+                onBlur={handleAddressBlur}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddressBlur(); } }}
+                placeholder="אפשר להזין כתובת או לבחור נקודה במפה"
+                autoComplete="street-address"
+                className={fieldClass}
+                aria-invalid={!!errors.address}
+                aria-describedby={errors.address ? "address-error" : undefined}
+              />
+              {addressLoading && <p className="text-xs text-muted-foreground mt-1">מאתר את הכתובת...</p>}
+              <div className="mt-3 overflow-hidden rounded-2xl border-2 border-border">
+                <GoogleMapPicker
+                  lat={addressPosition?.lat ?? null}
+                  lng={addressPosition?.lng ?? null}
+                  onLocationSelect={(lat, lng) => setAddressPosition({ lat, lng })}
+                  onAddressFound={(address) => updateField("address", address)}
+                />
+              </div>
+              <FieldError id="address" message={errors.address} />
+            </div>
+          </FormSection>
+
+          <FormSection step={3} title="איך נשארים בקשר?" emoji="💬" tone="bg-accent/25">
+            <div>
+              <Label htmlFor="email" className="font-bold">אימייל</Label>
+              <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="email@example.com" autoComplete="email" className={fieldClass} dir="ltr" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} />
+              <FieldError id="email" message={errors.email} />
+            </div>
+            <div>
+              <Label htmlFor="phone" className="font-bold">טלפון</Label>
+              <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onBlur={() => setPhoneTouched(true)} onChange={(e) => updateField("phone", e.target.value)} placeholder="050-000-0000" className={fieldClass} dir="ltr" aria-invalid={!!(errors.phone || phoneLiveError)} aria-describedby={errors.phone || phoneLiveError ? "phone-error" : undefined} />
+              <FieldError id="phone" message={errors.phone || phoneLiveError} />
+              {phoneTaken && !errors.phone && !phoneLiveError && (
+                <p className="mt-1.5 flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-500">
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <span>המספר הזה כבר רשום במערכת. אפשר להמשיך — אבל אם זו טעות, כדאי לתקן עכשיו.</span>
+                </p>
+              )}
+            </div>
+            {!isGoogleSignup && <div>
+              <Label htmlFor="password" className="font-bold">סיסמה</Label>
+              <PasswordInput
+                id="password"
+                value={form.password}
+                onChange={(e) => updateField("password", e.target.value)}
+                autoComplete="new-password"
+                className={fieldClass}
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? "password-error" : "password-hint"}
+              />
+              <PasswordStrength password={form.password} />
+              {errors.password
+                ? <FieldError id="password" message={errors.password} />
+                : <p id="password-hint" className="text-xs text-muted-foreground mt-1">{passwordRequirementsMessage}</p>}
+            </div>}
+          </FormSection>
+
+          <div className="flex flex-col gap-3 rounded-3xl bg-muted/60 p-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => { setAgreed(v === true); setErrors((e) => ({ ...e, terms: "" })); }} className="h-5 w-5 rounded-md" aria-invalid={!!errors.terms} aria-describedby={errors.terms ? "terms-error" : undefined} />
+                <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
+                  אנו מאשרים את{" "}
+                  <Link to="/terms" className="text-primary-ink font-bold underline" target="_blank">תנאי השימוש</Link>
+                  {" "}ואת{" "}
+                  <Link to="/privacy" className="text-primary-ink font-bold underline" target="_blank">מדיניות הפרטיות</Link>
+                </Label>
+              </div>
+              <FieldError id="terms" message={errors.terms} />
+            </div>
+
             <div className="flex items-center gap-2">
-              <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => { setAgreed(v === true); setErrors((e) => ({ ...e, terms: "" })); }} aria-invalid={!!errors.terms} aria-describedby={errors.terms ? "terms-error" : undefined} />
-              <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
-                אנו מאשרים את{" "}
-                <Link to="/terms" className="text-primary-ink font-bold underline" target="_blank">תנאי השימוש</Link>
-                {" "}ואת{" "}
-                <Link to="/privacy" className="text-primary-ink font-bold underline" target="_blank">מדיניות הפרטיות</Link>
+              <Checkbox id="marketing" checked={marketingConsent} onCheckedChange={(v) => setMarketingConsent(v === true)} className="h-5 w-5 rounded-md" />
+              <Label htmlFor="marketing" className="text-sm text-muted-foreground cursor-pointer">
+                אני {say(formFor(form.gender), RECIPIENT.agree)} לקבל עדכונים, הצעות ודברי פרסומת מ-BZB בדוא"ל, SMS והודעות פוש (רשות)
               </Label>
             </div>
-            <FieldError id="terms" message={errors.terms} />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox id="marketing" checked={marketingConsent} onCheckedChange={(v) => setMarketingConsent(v === true)} />
-            <Label htmlFor="marketing" className="text-sm text-muted-foreground cursor-pointer">
-              אני {say(formFor(form.gender), RECIPIENT.agree)} לקבל עדכונים, הצעות ודברי פרסומת מ-BZB בדוא"ל, SMS והודעות פוש
-            </Label>
-          </div>
-
-          <Button type="submit" disabled={loading || ageBelowMinimum || ageAboveMaximum} className="w-full py-6 text-lg font-extrabold gradient-honey text-primary-foreground rounded-2xl border-none hover:scale-[1.02] transition-transform duration-300 mt-2">
-            {loading ? "נרשמים..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "הירשמו 🐝"}
+          <Button type="submit" disabled={loading} className="w-full h-14 text-xl font-black gradient-honey text-primary-foreground rounded-2xl border-none shadow-[0_5px_0_0_hsl(var(--honey-dark))] transition-all duration-150 hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_1px_0_0_hsl(var(--honey-dark))]">
+            {loading ? "נרשמים..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "יאללה, נרשמים! 🐝"}
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground mt-2">
+          <p className="text-center text-sm text-muted-foreground">
             כבר רשומים?{" "}
             <Link to="/login" className="text-primary-ink font-bold underline">
               התחברו
@@ -530,3 +572,4 @@ const Register = () => {
 };
 
 export default Register;
+
