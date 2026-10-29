@@ -386,9 +386,6 @@ const Register = () => {
             <BzbLogo className="w-16 h-16" animate />
           </Link>
           <h1 className="text-3xl font-black text-foreground leading-tight">{title}</h1>
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary-ink">
-            ⏱️ לוקח בערך דקה
-          </p>
         </div>
 
         {!isGoogleSignup && <div className="mb-5"><GoogleAuthButton role={isWorker ? "bee" : isParent ? "parent" : "tasker"} /></div>}
