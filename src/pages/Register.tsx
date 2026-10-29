@@ -376,13 +376,9 @@ const Register = () => {
 
   return (
     <div className="min-h-screen py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8 relative overflow-hidden" dir="rtl">
-      <div className="absolute inset-0 bg-gradient-to-b from-secondary/30 via-background to-accent/20" />
-      <div className="absolute inset-0 honeycomb-pattern opacity-70" />
-      <div className="absolute -top-16 -right-16 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-blob" />
-      <div className="absolute bottom-10 -left-16 w-80 h-80 bg-secondary/30 rounded-full blur-3xl animate-blob animation-delay-2000" />
-      <span aria-hidden="true" className="hidden md:block absolute top-24 left-[12%] text-5xl animate-float">🐝</span>
-      <span aria-hidden="true" className="hidden md:block absolute bottom-32 right-[10%] text-4xl animate-float animation-delay-2000">🍯</span>
-      <span aria-hidden="true" className="hidden md:block absolute top-1/2 left-[6%] text-3xl animate-float">✨</span>
+      <div className="absolute inset-0 bg-muted" />
+      <div className="absolute top-10 right-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
+      <div className="absolute bottom-10 left-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
 
       <div className="relative z-10 w-full max-w-lg mx-auto rounded-[2rem] border-2 border-foreground/10 bg-background p-6 sm:p-8 shadow-[0_6px_0_0_hsl(var(--honey-dark)/0.35)] animate-pop-in">
         <div className="flex flex-col items-center mb-6 text-center">
