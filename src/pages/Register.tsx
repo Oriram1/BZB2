@@ -481,7 +481,7 @@ const Register = () => {
                 aria-describedby={errors.address ? "address-error" : undefined}
               />
               {addressLoading && <p className="text-xs text-muted-foreground mt-1">מאתר את הכתובת...</p>}
-              <div className="mt-3 overflow-hidden rounded-2xl border-2 border-border">
+              <div className="mt-3">
                 <GoogleMapPicker
                   lat={addressPosition?.lat ?? null}
                   lng={addressPosition?.lng ?? null}
