@@ -16,7 +16,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, Tag, FileText, DollarSign, MapPin, Image, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, Tag, FileText, DollarSign, MapPin, Image, Sparkles, StickyNote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,6 +24,7 @@ import { formatCurrency, formatDateTime } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
+import TaskAssistant, { type AssistantFields, type MissingField } from "@/components/tasks/TaskAssistant";
 import { logUserActivity } from "@/lib/activityLog";
 import { billingErrorText, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 import { feeText, useTaskFees } from "@/lib/taskFees";
@@ -58,6 +59,11 @@ const steps = [
  */
 type TaskPaymentChoice = "saved_card" | "new_card" | "wallet";
 
+/** The wizard step where each required field lives, for landing on the first gap. */
+const stepOfField: Record<MissingField, number> = {
+  category: 1, taskName: 2, shortDesc: 2, payment: 3, location: 4, date: 4, time: 4,
+};
+
 const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -83,6 +89,8 @@ const CreateTask = () => {
   const [paymentMode, setPaymentMode] = useState<TaskPaymentChoice>("saved_card");
   const [confirmQuote, setConfirmQuote] = useState<PublishQuote | null>(null);
   const [searchParams] = useSearchParams();
+  // The assistant opens first; a restored draft goes straight back to the form.
+  const [assistantOpen, setAssistantOpen] = useState(() => searchParams.get("resume") !== "1");
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
   const today = new Date();
   const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -146,7 +154,40 @@ const CreateTask = () => {
     setLocationLoading(false);
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /** Puts what the assistant understood into the form and opens the step that still needs work. */
+  const applyAssistant = async (fields: AssistantFields, missing: MissingField[]) => {
+    setForm((current) => ({
+      ...current,
+      ...(fields.category && { category: fields.category }),
+      ...(fields.taskName && { taskName: fields.taskName }),
+      ...(fields.shortDesc && { shortDesc: fields.shortDesc }),
+      ...(fields.fullDesc && { fullDesc: fields.fullDesc }),
+      ...(fields.payment !== null && { payment: String(fields.payment) }),
+      ...(fields.paymentType && { paymentType: fields.paymentType }),
+      ...(fields.workers !== null && { workers: String(fields.workers) }),
+      ...(fields.location && { location: fields.location }),
+      ...(fields.date && { date: fields.date }),
+      ...(fields.time && { time: fields.time }),
+      ...(fields.duration !== null && { duration: String(fields.duration) }),
+    }));
+    setAssistantOpen(false);
+    setStep(missing.length ? Math.min(...missing.map((field) => stepOfField[field])) : 6);
+    if (missing.length === 0) toast.success("הטופס מולא. בדקו את הפרטים לפני הפרסום");
+
+    // Same geocoding as typing the address by hand, so the map pin is set too.
+    if (fields.location) {
+      setLocationLoading(true);
+      const geocoded = await geocodeAddress(fields.location);
+      if (geocoded) {
+        updateForm("location", geocoded.formattedAddress);
+        setSelectedLat(geocoded.lat);
+        setSelectedLng(geocoded.lng);
+      }
+      setLocationLoading(false);
+    }
+  };
+
+  const handleImageSelect =(e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -358,6 +399,16 @@ const CreateTask = () => {
           </div>
         )}
 
+        {assistantOpen ? (
+          <div className="glass rounded-3xl shadow-glow p-6 sm:p-8 border border-border animate-pop-in">
+            <TaskAssistant onApply={(fields, missing) => void applyAssistant(fields, missing)} onManual={() => setAssistantOpen(false)} />
+          </div>
+        ) : (<>
+        {step === 1 && (
+          <Button type="button" variant="outline" className="mb-4 w-full gap-1.5 rounded-full" onClick={() => setAssistantOpen(true)}>
+            <Sparkles size={16} /> לתאר במילים ולתת לביזי למלא
+          </Button>
+        )}
         {/* Progress Steps */}
         <div className="flex items-center justify-between mb-8 px-1 sm:px-2 overflow-x-auto py-2" role="region" aria-label="שלבי התקדמות">
           {steps.map((s, i) => {
@@ -929,6 +980,7 @@ const CreateTask = () => {
             )}
           </div>
         </div>
+        </>)}
       </div>
     </div>
   );

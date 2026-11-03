@@ -54,6 +54,8 @@ verify_jwt = true
 verify_jwt = true
 [functions.geocode-address]
 verify_jwt = true
+[functions.task-assistant]
+verify_jwt = true
 [functions.push-subscribe]
 verify_jwt = true
 [functions.redeem-family-link-code]
