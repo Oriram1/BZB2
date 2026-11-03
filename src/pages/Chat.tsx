@@ -4,13 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowRight, Camera, Mic, Phone, MoreVertical } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowRight, Camera, Check, Mic, Phone, MoreVertical, Star } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import ChatComposer, { type OutgoingMessage } from "@/components/chat/ChatComposer";
 import VoiceNoteBubble from "@/components/chat/VoiceNoteBubble";
+import ReviewDialog from "@/components/reviews/ReviewDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
+import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -23,6 +35,7 @@ interface Conversation {
   participant_1: string;
   participant_2: string;
   task_id: string | null;
+  taskCreatorId: string | null;
   otherId: string;
   otherPhone: string | null;
   otherName: string;
@@ -41,6 +54,20 @@ interface Message {
   attachment_type: "image" | "audio" | null;
   attachment_duration: number | null;
 }
+
+/** A finished task whose other side this user has not rated yet. */
+interface ReviewTarget {
+  taskId: string;
+  taskName: string;
+  revieweeId: string;
+  revieweeName: string;
+}
+
+/** What complete_task refuses, said in the words the publisher used to get here. */
+const completionError: Record<string, string> = {
+  no_accepted_worker: "אפשר לסמן מטלה כהושלמה רק אחרי שנבחר לה עובד",
+  task_cancelled: "המטלה בוטלה, אז אי אפשר לסמן אותה כהושלמה",
+};
 
 /** What a conversation row shows when the last message was a photo or a voice note. */
 const previewOf = (message: { content: string; attachment_type: string | null }) => {
@@ -61,6 +88,10 @@ const Chat = () => {
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [toRate, setToRate] = useState<ReviewTarget[]>([]);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
+  const [confirmComplete, setConfirmComplete] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // The chat is the one screen that must fit the device exactly instead of
@@ -92,26 +123,45 @@ const Chat = () => {
       }
       if (!data) return;
 
+      const { data: reviews } = await supabase.from("reviews")
+        .select("task_id, reviewee_id").eq("reviewer_id", user.id);
+      const reviewed = new Set((reviews ?? []).map((review) => `${review.task_id}:${review.reviewee_id}`));
+
       const convs: Conversation[] = [];
+      const pendingRatings: ReviewTarget[] = [];
       for (const c of data) {
+        const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
         let taskName = "";
+        let taskCreatorId: string | null = null;
+        let completed = false;
         if (c.task_id) {
           const { data: task, error: taskError } = await supabase.from("tasks")
-            .select("name, status, archived_at").eq("id", c.task_id).maybeSingle();
+            .select("name, status, archived_at, creator_id").eq("id", c.task_id).maybeSingle();
           if (taskError) {
             toast.error("לא הצלחנו לבדוק את מצב המשימה של השיחה");
             continue;
           }
-          if (!task || task.status === "completed" || task.status === "cancelled" || task.archived_at) continue;
+          if (!task || task.status === "cancelled" || task.archived_at) continue;
+          // A finished task closes its chat, but the other side still waits to be rated.
+          if (task.status === "completed") {
+            if (reviewed.has(`${c.task_id}:${otherId}`)) continue;
+            completed = true;
+          }
           taskName = task.name;
+          taskCreatorId = task.creator_id;
         }
 
-        const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
         const { data: profile } = await supabase
           .from("profiles")
           .select("first_name, last_name, phone")
           .eq("user_id", otherId)
           .single();
+        const otherName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "משתמש";
+
+        if (completed && c.task_id) {
+          pendingRatings.push({ taskId: c.task_id, taskName, revieweeId: otherId, revieweeName: otherName });
+          continue;
+        }
 
         const { data: lastMsg } = await supabase
           .from("messages")
@@ -132,9 +182,10 @@ const Chat = () => {
           participant_1: c.participant_1,
           participant_2: c.participant_2,
           task_id: c.task_id,
+          taskCreatorId,
           otherId,
           otherPhone: profile?.phone ?? null,
-          otherName: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "משתמש",
+          otherName,
           taskName,
           lastMessage: lastMsg?.[0] ? previewOf(lastMsg[0]) : "",
           lastTime: lastMsg?.[0]?.created_at
@@ -145,6 +196,7 @@ const Chat = () => {
       }
       if (cancelled || version !== loadVersion) return;
       setConversations(convs);
+      setToRate(pendingRatings);
       if (!requestedHandled && requestedConversation && convs.some((conversation) => conversation.id === requestedConversation)) {
         setActiveChat(requestedConversation);
         setShowSidebar(false);
@@ -320,6 +372,30 @@ const Chat = () => {
   };
 
   const activeConv = conversations.find((c) => c.id === activeChat);
+  /** Only the publisher may close a task — see complete_task. */
+  const canComplete = Boolean(activeConv?.task_id && activeConv.taskCreatorId === user?.id);
+
+  const completeTask = async () => {
+    if (!activeConv?.task_id || completing) return;
+    setCompleting(true);
+    const { error } = await supabase.rpc("complete_task", { _task_id: activeConv.task_id });
+    setCompleting(false);
+    if (error) {
+      const reason = Object.keys(completionError).find((key) => error.message.includes(key));
+      toast.error(reason ? completionError[reason] : "לא הצלחנו לסמן את המטלה כהושלמה");
+      return;
+    }
+    logUserActivity(user?.id, "task_completed", { entityType: "task", entityId: activeConv.task_id, details: { name: activeConv.taskName } });
+    toast.success("המטלה סומנה כהושלמה. התשלום נרשם לעובדים שביצעו אותה");
+
+    // The chat closes with the task; rating the worker is the natural next step.
+    const target = { taskId: activeConv.task_id, taskName: activeConv.taskName, revieweeId: activeConv.otherId, revieweeName: activeConv.otherName };
+    setConversations((current) => current.filter((item) => item.task_id !== activeConv.task_id));
+    setToRate((current) => [target, ...current.filter((item) => !(item.taskId === target.taskId && item.revieweeId === target.revieweeId))]);
+    setActiveChat(null);
+    setShowSidebar(true);
+    setReviewTarget(target);
+  };
 
   if (!user) {
     return (
@@ -354,6 +430,23 @@ const Chat = () => {
             <Input placeholder="חפש שיחה..." className="rounded-2xl h-10 text-sm" />
           </div>
           <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain">
+            {toRate.length > 0 && (
+              <section className="bg-primary/5 p-3 space-y-2" aria-label="מטלות שהושלמו וממתינות לדירוג">
+                <p className="text-xs font-bold text-foreground">מטלות שהושלמו — ממתינות לדירוג</p>
+                {toRate.map((item) => (
+                  <div key={`${item.taskId}:${item.revieweeId}`} className="flex items-center gap-2 rounded-2xl bg-card p-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-foreground">{item.revieweeName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{item.taskName}</p>
+                    </div>
+                    <Button size="sm" className="rounded-full gradient-honey text-primary-foreground font-bold gap-1 shrink-0"
+                      onClick={() => setReviewTarget(item)}>
+                      <Star size={14} /> דרג
+                    </Button>
+                  </div>
+                ))}
+              </section>
+            )}
             {conversations.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm">
                 אין שיחות עדיין
@@ -403,6 +496,16 @@ const Chat = () => {
                   )}
                 </div>
                 <div className="relative flex items-center gap-1">
+                  {canComplete && (
+                    <Button
+                      size="sm"
+                      onClick={() => setConfirmComplete(true)}
+                      disabled={completing}
+                      className="rounded-full gradient-honey text-primary-foreground font-bold gap-1 h-8 px-3 text-xs"
+                    >
+                      <Check size={14} /> הושלמה
+                    </Button>
+                  )}
                   <Button
                     asChild={Boolean(activeConv.otherPhone)}
                     size="icon"
@@ -528,6 +631,36 @@ const Chat = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לסמן את &ldquo;{activeConv?.taskName}&rdquo; כהושלמה?</AlertDialogTitle>
+            <AlertDialogDescription>
+              הצ׳אט ייסגר, התשלום יירשם לעובד ותוכלו לדרג אחד את השני.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmComplete(false); void completeTask(); }}>
+              כן, המטלה הושלמה
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {reviewTarget && (
+        <ReviewDialog
+          open
+          onClose={() => setReviewTarget(null)}
+          onSubmitted={() => setToRate((current) => current.filter((item) =>
+            !(item.taskId === reviewTarget.taskId && item.revieweeId === reviewTarget.revieweeId)))}
+          taskId={reviewTarget.taskId}
+          taskName={reviewTarget.taskName}
+          revieweeId={reviewTarget.revieweeId}
+          revieweeName={reviewTarget.revieweeName}
+        />
+      )}
     </div>
   );
 };
