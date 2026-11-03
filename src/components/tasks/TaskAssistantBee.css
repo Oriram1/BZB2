@@ -1,0 +1,33 @@
+.task-assistant-bee {
+  --bee-cycle: 2.4s;
+  background-size: 600% 600%;
+  animation:
+    assistant-bee-column calc(var(--bee-cycle) / 6) steps(6, end) infinite,
+    assistant-bee-row var(--bee-cycle) steps(6, end) infinite;
+}
+
+.task-assistant-bee[data-state="thinking"] {
+  --bee-cycle: 1.8s;
+}
+
+.task-assistant-bee[data-active="false"] {
+  opacity: 0;
+  animation-play-state: paused;
+}
+
+@keyframes assistant-bee-column {
+  from { background-position-x: 0; }
+  to { background-position-x: 120%; }
+}
+
+@keyframes assistant-bee-row {
+  from { background-position-y: 0; }
+  to { background-position-y: 120%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-assistant-bee {
+    animation: none;
+    background-position: 0 0;
+  }
+}

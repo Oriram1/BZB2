@@ -6,6 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { categories } from "@/lib/categories";
 import { toast } from "sonner";
+import idleBee from "@/assets/assistant/bee-idle.webp";
+import thinkingBee from "@/assets/assistant/bee-thinking.webp";
+import "./TaskAssistantBee.css";
 
 /** What the task-assistant function returns; null means "not said". */
 export interface AssistantFields {
@@ -125,7 +128,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         ))}
         {loading && (
           <p className="inline-flex items-center gap-2 self-start rounded-2xl bg-primary/10 px-4 py-2.5 text-sm text-muted-foreground">
-            <Loader2 size={14} className="animate-spin" aria-hidden /> ממלא את הטופס…
+            <Loader2 size={14} className="motion-safe:animate-spin" aria-hidden /> ממלא את הטופס…
           </p>
         )}
         <div ref={endRef} />
@@ -142,6 +145,12 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
       )}
 
       <form className="flex items-end gap-2" onSubmit={(event) => { event.preventDefault(); void send(input); }}>
+        <span className="relative block size-14 shrink-0 self-center sm:size-[72px]" aria-hidden="true">
+          <span className="task-assistant-bee absolute inset-0" data-state="idle" data-active={!loading}
+            style={{ backgroundImage: `url("${idleBee}")` }} />
+          <span className="task-assistant-bee absolute inset-0" data-state="thinking" data-active={loading}
+            style={{ backgroundImage: `url("${thinkingBee}")` }} />
+        </span>
         <Textarea
           aria-label="תיאור המטלה"
           value={input}
