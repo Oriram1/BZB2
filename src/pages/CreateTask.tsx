@@ -16,15 +16,17 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, Tag, FileText, DollarSign, MapPin, Image, Sparkles, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, Tag, FileText, DollarSign, MapPin, Image, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatCurrency, formatDateTime } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import TaskAssistant, { type AssistantFields, type MissingField } from "@/components/tasks/TaskAssistant";
+import TaskReview from "@/components/tasks/TaskReview";
+import type { ReviewForm } from "@/lib/taskReview";
 import { logUserActivity } from "@/lib/activityLog";
 import { billingErrorText, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 import { feeText, useTaskFees } from "@/lib/taskFees";
@@ -187,7 +189,24 @@ const CreateTask = () => {
     }
   };
 
-  const handleImageSelect =(e: React.ChangeEvent<HTMLInputElement>) => {
+  /** Edits made on the review screen, by hand or through the assistant. */
+  const applyReviewChanges = async (changes: Partial<ReviewForm>) => {
+    setForm((current) => ({ ...current, ...changes }));
+    if (changes.location === undefined) return;
+    // A new address needs a new map pin; the old one would point at the old place.
+    setSelectedLat(null);
+    setSelectedLng(null);
+    setLocationLoading(true);
+    const geocoded = await geocodeAddress(changes.location);
+    if (geocoded) {
+      updateForm("location", geocoded.formattedAddress);
+      setSelectedLat(geocoded.lat);
+      setSelectedLng(geocoded.lng);
+    }
+    setLocationLoading(false);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -760,77 +779,8 @@ const CreateTask = () => {
           )}
 
           {step === 6 && (
-            <div className="flex flex-col gap-5">
-              <h2 className="text-2xl font-extrabold text-foreground text-start">רגע לפני פרסום 🚀</h2>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* 1. Details Card */}
-                <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-primary/30">
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
-                    <div className="p-2 bg-primary/15 rounded-xl text-primary-ink">
-                      <FileText size={20} />
-                    </div>
-                    <h3 className="font-extrabold text-foreground text-base">פרטים כלליים</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <SummaryItem label="קטגוריה" value={categoryLabel(form.category)} onEdit={() => setStep(1)} />
-                    <SummaryItem label="מה צריך לעשות?" value={form.taskName} onEdit={() => setStep(2)} />
-                    <SummaryItem label="תיאור" value={form.shortDesc} onEdit={() => setStep(2)} />
-                  </div>
-                </div>
-
-                {/* 2. Location & Time Card */}
-                <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-blue-500/30">
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
-                    <div className="p-2 bg-blue-500/15 rounded-xl text-blue-500">
-                      <MapPin size={20} />
-                    </div>
-                    <h3 className="font-extrabold text-foreground text-base">מיקום וזמנים</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <SummaryItem label="כתובת" value={form.location} onEdit={() => setStep(4)} />
-                    <SummaryItem label="מתי?" value={formatDateTime(form.date, form.time)} onEdit={() => setStep(4)} />
-                    <SummaryItem label="זמן משוער" value={formatDurationSummary(form.duration, form.durationUnit)} onEdit={() => setStep(4)} />
-                  </div>
-                </div>
-
-                {/* 3. Payment & Team Card */}
-                <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-green-500/30">
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
-                    <div className="p-2 bg-green-500/15 rounded-xl text-green-500">
-                      <DollarSign size={20} />
-                    </div>
-                    <h3 className="font-extrabold text-foreground text-base">תשלום ועובדים</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <SummaryItem label="תשלום מוצע" value={`${formatCurrency(Number(form.payment))} / ${form.paymentType === "hour" ? "שעה" : "משימה"}`} valueClassName="text-green-600 dark:text-green-400 font-black text-lg" onEdit={() => setStep(3)} />
-                    <SummaryItem label="עובדים דרושים" value={form.workers} onEdit={() => setStep(3)} />
-                    <SummaryItem label="תוקף מודעה" value={`${form.expiry} ימים`} onEdit={() => setStep(3)} />
-                  </div>
-                </div>
-
-                {/* 4. Notes & Extras Card */}
-                {(form.notes || imagePreview) && (
-                  <div className="bg-card/40 backdrop-blur-md border border-border/60 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all hover:border-orange-500/30">
-                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/40">
-                      <div className="p-2 bg-orange-500/15 rounded-xl text-orange-500">
-                        <StickyNote size={20} />
-                      </div>
-                      <h3 className="font-extrabold text-foreground text-base">תוספות</h3>
-                    </div>
-                    <div className="space-y-4">
-                      {form.notes && <SummaryItem label="הערות" value={form.notes} onEdit={() => setStep(5)} />}
-                      {imagePreview && (
-                        <div>
-                          <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider block mb-1">תמונה שצורפה</span>
-                          <img src={imagePreview} alt="תמונה שצורפה" className="h-24 w-auto rounded-xl object-cover border border-border/50 shadow-sm" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <TaskReview form={form} imagePreview={imagePreview} insurance={insurance}
+              onChange={applyReviewChanges} onOpenExtras={() => setStep(5)} />
           )}
 
           {step === 6 && quote && !quote.billing_off && (
@@ -1003,18 +953,5 @@ const publishErrorMessage = (error: { message: string; code?: string }) => {
   if (error.message === "too_many_pending_payment") return "יש כבר 3 מטלות שממתינות לתשלום. כדאי להסדיר אותן קודם.";
   return "שגיאה בפרסום המטלה: " + error.message;
 };
-
-const formatDurationSummary = (value: string, _unit: string) => {
-  if (!value) return "לא צוין";
-  const amount = Number(value);
-  return amount === 1 ? "יום אחד" : `${amount} ימים`;
-};
-
-const SummaryItem = ({ label, value, valueClassName = "", onEdit }: { label: string; value: string; valueClassName?: string; onEdit?: () => void }) => (
-  <div className="flex flex-col gap-0.5 text-start">
-    <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">{label}</span>{onEdit && <button type="button" onClick={onEdit} className="inline-flex min-h-11 items-center rounded px-2 text-xs font-bold text-primary-ink underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">עריכה</button>}</div>
-    <span className={`text-sm font-semibold text-foreground ${valueClassName}`}>{value || "—"}</span>
-  </div>
-);
 
 export default CreateTask;

@@ -28,6 +28,7 @@ Deno.test("task assistant authenticates, validates and gates the model on quota"
   for (const key of keys.slice(1)) Deno.env.set(key, "test-key");
   let modelCalls = 0;
   let allow = true;
+  let providerStatus = 200;
   let modelOutput = JSON.stringify({
     category: "housework", taskName: "ניקוי חלונות", shortDesc: "ניקוי חלונות בדירה", fullDesc: null,
     payment: 50, paymentType: "task", workers: 1, location: "רמת גן", date: null, time: null, duration: null,
@@ -42,6 +43,7 @@ Deno.test("task assistant authenticates, validates and gates the model on quota"
     }
     if (url.startsWith("https://generativelanguage.googleapis.com/")) {
       modelCalls++;
+      if (providerStatus !== 200) return Promise.resolve(Response.json({ error: { status: "PERMISSION_DENIED" } }, { status: providerStatus }));
       return Promise.resolve(Response.json({ candidates: [{ content: { parts: [{ text: modelOutput }] } }] }));
     }
     throw new Error("unexpected network call");
@@ -73,6 +75,11 @@ Deno.test("task assistant authenticates, validates and gates the model on quota"
     allow = true;
     modelOutput = "not json";
     assertEquals((await handleTaskAssistant(request(ask))).status, 500);
+
+    providerStatus = 403;
+    result = await handleTaskAssistant(request(ask));
+    assertEquals(result.status, 502);
+    assertEquals(await result.json(), { error: "assistant_provider_unavailable", provider_status: 403 });
   } finally {
     globalThis.fetch = originalFetch;
     keys.forEach((key, index) => previous[index] === undefined ? Deno.env.delete(key) : Deno.env.set(key, previous[index]!));

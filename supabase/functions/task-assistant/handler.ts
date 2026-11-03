@@ -120,10 +120,18 @@ function readMessages(value: unknown): ChatMessage[] {
   return messages;
 }
 
+/** The provider refused or failed. Its HTTP status is safe to return and says why. */
+class ProviderError extends Error {
+  constructor(readonly status: number) {
+    super("assistant_provider_unavailable");
+  }
+}
+
 async function extract(messages: ChatMessage[], today: { date: string; weekday: string }) {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("server_not_configured");
-  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash-lite";
+  // The "-latest" alias follows Google's current Flash-Lite, so a retired version never breaks us.
+  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-lite-latest";
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
@@ -138,7 +146,11 @@ async function extract(messages: ChatMessage[], today: { date: string; weekday: 
       generationConfig: { temperature: 0.1, responseMimeType: "application/json", responseSchema },
     }),
   });
-  if (!response.ok) throw new Error("assistant_provider_unavailable");
+  if (!response.ok) {
+    // Google's error body names the cause (bad key, API disabled, unknown model); it never echoes the key.
+    console.error("gemini_request_failed", response.status, (await response.text()).slice(0, 1_000));
+    throw new ProviderError(response.status);
+  }
   const data = await response.json();
   const output = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (typeof output !== "string") throw new Error("assistant_provider_rejected");
@@ -176,6 +188,9 @@ export const handleTaskAssistant = withCors(async (request: Request) => {
     const fields = sanitizeFields(await extract(messages, today), today.date);
     return json({ fields, missing: missingFields(fields) });
   } catch (error) {
+    if (error instanceof ProviderError) {
+      return json({ error: error.message, provider_status: error.status }, 502);
+    }
     return errorResponse(error);
   }
 });
