@@ -12,6 +12,10 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: {
     return Promise.resolve(state.responses.shift());
   },
 } } }));
+vi.mock("./AssistantLocation", () => ({
+  default: ({ query, onConfirm }: { query: string; onConfirm: (location: unknown) => void }) =>
+    <button onClick={() => onConfirm({ query, formattedAddress: "כתובת מאושרת", lat: 32.08, lng: 34.78 })}>אישור נקודת המפגש</button>,
+}));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), info: vi.fn(), success: vi.fn() } }));
 
 const fields = (overrides: Partial<AssistantFields> = {}): AssistantFields => ({
@@ -40,11 +44,14 @@ it("asks one missing question and waits for review before applying the draft", a
   expect(screen.queryByRole("heading", { name: "טיוטת המטלה" })).not.toBeInTheDocument();
 
   say("מחר ב-18:00");
+  await screen.findByRole("button", { name: "אישור נקודת המפגש" });
+  expect(screen.queryByRole("button", { name: "בדיקת המטלה" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "אישור נקודת המפגש" }));
   await screen.findByRole("button", { name: "בדיקת המטלה" });
   expect(onApply).not.toHaveBeenCalled();
   expect(screen.getByRole("heading", { name: "טיוטת המטלה" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "בדיקת המטלה" }));
-  expect(onApply).toHaveBeenCalledWith(fields({ date: "2026-11-04", time: "18:00" }), []);
+  expect(onApply).toHaveBeenCalledWith(fields({ date: "2026-11-04", time: "18:00" }), [], { query: "רמת גן", formattedAddress: "כתובת מאושרת", lat: 32.08, lng: 34.78 });
   // The second call carries the whole conversation, including the question asked.
   expect(state.bodies[1]).toEqual({ messages: [
     { role: "user", text: "ניקוי חלונות ברמת גן, 50 שקל" },
@@ -78,4 +85,17 @@ it("continues collecting missing details after four answers without opening the 
     expect(screen.queryByRole("heading", { name: "טיוטת המטלה" })).not.toBeInTheDocument();
     expect(onApply).not.toHaveBeenCalled();
   }
+});
+
+it("requires a new location confirmation when the conversation changes the address", async () => {
+  state.responses.push({ data: { fields: fields(), missing: ["time"] }, error: null });
+  state.responses.push({ data: { fields: fields({ location: "חיפה", time: "09:00", date: "2026-11-09" }), missing: [] }, error: null });
+  render(<TaskAssistant onApply={vi.fn()} onManual={vi.fn()} />);
+  say("רמת גן");
+  fireEvent.click(await screen.findByRole("button", { name: "אישור נקודת המפגש" }));
+  say("בעצם בחיפה ביום שני בשעה תשע");
+  await screen.findByText("נשאר לאשר את נקודת המפגש במפה לפני בדיקת המטלה.");
+  expect(screen.queryByRole("button", { name: "בדיקת המטלה" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "אישור נקודת המפגש" }));
+  expect(screen.getByRole("button", { name: "בדיקת המטלה" })).toBeInTheDocument();
 });

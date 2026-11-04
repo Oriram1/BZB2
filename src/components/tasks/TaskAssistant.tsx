@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import idleBee from "@/assets/assistant/bee-idle.webp";
 import thinkingBee from "@/assets/assistant/bee-thinking.webp";
 import "./TaskAssistantBee.css";
+import AssistantLocation, { type ConfirmedTaskLocation } from "./AssistantLocation";
 
 /** What the task-assistant function returns; null means "not said". */
 export interface AssistantFields {
@@ -56,8 +57,8 @@ function quickReplies(field: MissingField | undefined): string[] {
 }
 
 interface TaskAssistantProps {
-  /** An empty missing list means every required field is filled and the summary can open. */
-  onApply: (fields: AssistantFields, missing: MissingField[]) => void;
+  /** Opens review after all required fields and the meeting point are confirmed. */
+  onApply: (fields: AssistantFields, missing: MissingField[], location?: ConfirmedTaskLocation) => void;
   onManual: () => void;
 }
 
@@ -89,6 +90,8 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ fields: AssistantFields; missing: MissingField[] } | null>(null);
+  const [confirmedLocation, setConfirmedLocation] = useState<ConfirmedTaskLocation | null>(null);
+  const locationConfirmed = !!confirmedLocation && confirmedLocation.query === result?.fields.location;
   const endRef = useRef<HTMLDivElement>(null);
   const userTurns = messages.filter((message) => message.role === "user").length;
 
@@ -116,7 +119,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
     const found = { fields: data.fields as AssistantFields, missing: data.missing as MissingField[] };
     setResult(found);
     if (found.missing.length === 0) {
-      setMessages([...next, { role: "assistant", text: "הטיוטה מוכנה. אפשר לבדוק את הפרטים לפני הפרסום." }]);
+      setMessages([...next, { role: "assistant", text: confirmedLocation?.query === found.fields.location ? "הטיוטה מוכנה. אפשר לבדוק את הפרטים לפני הפרסום." : "נשאר לאשר את נקודת המפגש במפה לפני בדיקת המטלה." }]);
       return;
     }
     setMessages([...next, { role: "assistant", text: askAbout(found.missing) }]);
@@ -145,17 +148,21 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         <div ref={endRef} />
       </div>
 
-      {result && result.missing.length === 0 && (
+      {result?.fields.location && !locationConfirmed && !loading && (
+        <AssistantLocation key={result.fields.location} query={result.fields.location} onConfirm={setConfirmedLocation} />
+      )}
+
+      {result && result.missing.length === 0 && locationConfirmed && (
         <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4" aria-label="טיוטת המטלה">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-foreground">טיוטת המטלה</h3>
-            <span className="text-xs text-muted-foreground">{result.missing.length === 0 ? "מוכנה לבדיקה" : "מתעדכנת תוך כדי השיחה"}</span>
+            <span className="text-xs text-muted-foreground">מוכנה לבדיקה</span>
           </div>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             {[
               ["המטלה", result.fields.taskName || result.fields.shortDesc],
               ["תחום", categories.find((category) => category.value === result.fields.category)?.label],
-              ["מיקום", result.fields.location],
+              ["מיקום", confirmedLocation?.formattedAddress],
               ["מועד", [result.fields.date, result.fields.time].filter(Boolean).join(" · ")],
               ["תשלום", result.fields.payment != null ? `${result.fields.payment} ₪${result.fields.paymentType === "hour" ? " לשעה" : ""}` : null],
             ].map(([label, value]) => (
@@ -166,8 +173,8 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
             ))}
           </dl>
           <Button type="button" disabled={loading} className="mt-4 w-full rounded-xl"
-            onClick={() => onApply(result.fields, result.missing)}>
-            {result.missing.length === 0 ? "בדיקת המטלה" : "השלמת הפרטים בטופס"}
+            onClick={() => onApply(result.fields, result.missing, confirmedLocation ?? undefined)}>
+            בדיקת המטלה
           </Button>
         </div>
       )}
@@ -182,7 +189,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         </div>
       )}
 
-      <form className="sticky bottom-0 flex items-end gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+      <form className={`flex items-end gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${result?.fields.location && !locationConfirmed ? "" : "sticky bottom-0"}`}
         onSubmit={(event) => { event.preventDefault(); void send(input); }}>
         <Textarea
           aria-label="תיאור המטלה"

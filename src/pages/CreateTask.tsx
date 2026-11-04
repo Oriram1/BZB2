@@ -24,6 +24,7 @@ import { formatCurrency } from "@/lib/format";
 import { categories, categoryLabel } from "@/lib/categories";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
+import type { ConfirmedTaskLocation } from "@/components/tasks/AssistantLocation";
 import TaskAssistant, { type AssistantFields, type MissingField } from "@/components/tasks/TaskAssistant";
 import TaskReview from "@/components/tasks/TaskReview";
 import type { ReviewForm } from "@/lib/taskReview";
@@ -157,7 +158,7 @@ const CreateTask = () => {
   };
 
   /** Puts what the assistant understood into the form and opens the step that still needs work. */
-  const applyAssistant = async (fields: AssistantFields, missing: MissingField[]) => {
+  const applyAssistant = async (fields: AssistantFields, missing: MissingField[], location?: ConfirmedTaskLocation) => {
     setForm((current) => ({
       ...current,
       ...(fields.category && { category: fields.category }),
@@ -176,8 +177,14 @@ const CreateTask = () => {
     setStep(missing.length ? Math.min(...missing.map((field) => stepOfField[field])) : 6);
     if (missing.length === 0) toast.success("הטופס מולא. בדקו את הפרטים לפני הפרסום");
 
-    // Same geocoding as typing the address by hand, so the map pin is set too.
-    if (fields.location) {
+    // Preserve the confirmed meeting point, including a manually adjusted pin.
+    if (location && location.query === fields.location) {
+      updateForm("location", location.formattedAddress);
+      setSelectedLat(location.lat);
+      setSelectedLng(location.lng);
+    } else if (fields.location) {
+      setSelectedLat(null);
+      setSelectedLng(null);
       setLocationLoading(true);
       const geocoded = await geocodeAddress(fields.location);
       if (geocoded) {
@@ -420,7 +427,7 @@ const CreateTask = () => {
 
         {assistantOpen ? (
           <div className="rounded-3xl border border-border bg-background p-4 shadow-sm sm:p-6">
-            <TaskAssistant onApply={(fields, missing) => void applyAssistant(fields, missing)} onManual={() => setAssistantOpen(false)} />
+            <TaskAssistant onApply={(fields, missing, location) => void applyAssistant(fields, missing, location)} onManual={() => setAssistantOpen(false)} />
           </div>
         ) : (<>
         {step === 1 && (
