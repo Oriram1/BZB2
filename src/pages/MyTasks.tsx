@@ -650,6 +650,12 @@ const MyTasks = () => {
               ) : publishedTasks.map((task) => {
                 const closed = task.status === "completed" || task.status === "cancelled";
                 const canComplete = !closed && (acceptedByTask.get(task.id) ?? 0) > 0;
+                const acceptedApplications = applications.filter(
+                  (application) => application.taskId === task.id && application.status === "accepted",
+                );
+                const pendingRatings = acceptedApplications.filter(
+                  (application) => !submittedReviews.has(`${task.id}:${application.applicantId}`),
+                );
 
                 return (
                   <article
@@ -728,6 +734,28 @@ const MyTasks = () => {
                       <p className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm text-foreground">
                         המטלה מוסתרת כי המנוי הסתיים. חידוש המנוי יחזיר אותה מיד.
                       </p>
+                    )}
+                    {task.status === "completed" && pendingRatings.length > 0 && (
+                      <div className="mt-3 rounded-2xl border border-primary/30 bg-primary/5 p-3">
+                        <p className="text-sm font-bold text-foreground">המטלה הושלמה. נשמח לדירוג שלכם</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {pendingRatings.map((application) => (
+                            <Button
+                              key={application.applicantId}
+                              size="sm"
+                              className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                              onClick={() => setReviewTarget({
+                                taskId: task.id,
+                                taskName: task.name,
+                                revieweeId: application.applicantId,
+                                revieweeName: `${application.firstName} ${application.lastName}`.trim() || "מבצע המטלה",
+                              })}
+                            >
+                              <Star size={14} /> דירוג {application.firstName || "המבצע"}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">

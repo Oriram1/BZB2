@@ -849,8 +849,17 @@ const Profile = () => {
           </>
         )}
 
-        {(isBee || beeStats.applied > 0 || beeStatsError) && (
+        {(isBee || isTasker || beeStats.applied > 0 || beeStatsError) && (
           <>
+            <Card className="border-border bg-card/80">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <TrendingUp className="h-5 w-5 text-primary-ink" />
+                  הביצועים שלי כמבצע/ת מטלות
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">כאן תראו כמה מטלות השלמתם וכמה כסף הן הכניסו לכם.</p>
+              </CardHeader>
+            </Card>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <StatCard icon={ClipboardList} label="הגשות" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.applied} color="text-primary-ink" to="/my-tasks?tab=performing" />
               <StatCard icon={CheckCircle} label="התקבלו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.accepted} color="text-green-600" to="/my-tasks?tab=performing" />
