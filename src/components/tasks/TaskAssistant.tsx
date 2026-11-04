@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { addDays, format } from "date-fns";
-import { ArrowUp, ListChecks, Loader2, Sparkles } from "lucide-react";
+import { ArrowUp, ListChecks, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,13 +40,12 @@ const questionFor: Record<MissingField, string> = {
   time: "באיזו שעה?",
 };
 
-const GREETING = "שלום, אני ביזי 🐝 ספרו לי מה צריך לעשות, מתי, איפה וכמה תשלמו — ואני אמלא את הטופס.";
+const GREETING = "מה צריך לעשות? אפשר להתחיל בכמה מילים, ואת שאר הפרטים נשלים יחד.";
 /** After this many answers with gaps left, the form is the faster way to finish. */
 const MAX_TURNS = 4;
 const MAX_CHARS = 1_000;
 
-const askAbout = (missing: MissingField[]) =>
-  [...new Set(missing.slice(0, 2).map((field) => questionFor[field]))].join(" ");
+const askAbout = (missing: MissingField[]) => questionFor[missing[0]];
 
 function quickReplies(field: MissingField | undefined): string[] {
   const today = new Date();
@@ -62,6 +61,29 @@ interface TaskAssistantProps {
   /** An empty missing list means every required field is filled and the summary can open. */
   onApply: (fields: AssistantFields, missing: MissingField[]) => void;
   onManual: () => void;
+}
+
+function Bee({ thinking = false }: { thinking?: boolean }) {
+  return (
+    <span className="relative block size-14 shrink-0" aria-hidden="true">
+      <span className="task-assistant-bee absolute inset-0" data-state="idle" data-active={!thinking}
+        style={{ backgroundImage: `url("${idleBee}")` }} />
+      <span className="task-assistant-bee absolute inset-0" data-state="thinking" data-active={thinking}
+        style={{ backgroundImage: `url("${thinkingBee}")` }} />
+    </span>
+  );
+}
+
+function BusyReply({ text, thinking = false }: { text: string; thinking?: boolean }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Bee thinking={thinking} />
+      <div className="min-w-0 pt-1">
+        <span className="text-xs font-bold text-muted-foreground">ביזי</span>
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-7 text-foreground">{text}</p>
+      </div>
+    </div>
+  );
 }
 
 export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps) {
@@ -96,7 +118,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
     const found = { fields: data.fields as AssistantFields, missing: data.missing as MissingField[] };
     setResult(found);
     if (found.missing.length === 0) {
-      onApply(found.fields, []);
+      setMessages([...next, { role: "assistant", text: "הטיוטה מוכנה. אפשר לבדוק את הפרטים לפני הפרסום." }]);
       return;
     }
     if (next.filter((message) => message.role === "user").length >= MAX_TURNS) {
@@ -116,23 +138,46 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         <h2 className="text-xl font-extrabold text-foreground">ספרו לביזי מה צריך</h2>
       </div>
 
-      <div className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto" role="log" aria-live="polite">
-        <p className="max-w-[85%] self-start rounded-2xl rounded-ss-sm bg-primary/10 px-4 py-2.5 text-sm text-foreground">{GREETING}</p>
-        {messages.map((message, index) => (
-          <p key={index}
-            className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${message.role === "user"
-              ? "self-end rounded-se-sm gradient-honey text-primary-foreground"
-              : "self-start rounded-ss-sm bg-primary/10 text-foreground"}`}>
+      <div className="flex min-h-[180px] max-h-[45vh] flex-col gap-5 overflow-y-auto overscroll-contain pe-1" role="log" aria-label="השיחה עם ביזי" aria-live="polite" aria-busy={loading}>
+        <BusyReply text={GREETING} />
+        {messages.map((message, index) => message.role === "assistant" ? (
+          <BusyReply key={index} text={message.text} />
+        ) : (
+          <p key={index} dir="auto"
+            className="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-ee-sm bg-primary/15 px-4 py-3 text-sm leading-7 text-foreground">
             {message.text}
           </p>
         ))}
-        {loading && (
-          <p className="inline-flex items-center gap-2 self-start rounded-2xl bg-primary/10 px-4 py-2.5 text-sm text-muted-foreground">
-            <Loader2 size={14} className="motion-safe:animate-spin" aria-hidden /> ממלא את הטופס…
-          </p>
-        )}
+        {loading && <BusyReply thinking text="ממלא את הטופס…" />}
         <div ref={endRef} />
       </div>
+
+      {result && (
+        <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4" aria-label="טיוטת המטלה">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-foreground">טיוטת המטלה</h3>
+            <span className="text-xs text-muted-foreground">{result.missing.length === 0 ? "מוכנה לבדיקה" : "מתעדכנת תוך כדי השיחה"}</span>
+          </div>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            {[
+              ["המטלה", result.fields.taskName || result.fields.shortDesc],
+              ["תחום", categories.find((category) => category.value === result.fields.category)?.label],
+              ["מיקום", result.fields.location],
+              ["מועד", [result.fields.date, result.fields.time].filter(Boolean).join(" · ")],
+              ["תשלום", result.fields.payment != null ? `${result.fields.payment} ₪${result.fields.paymentType === "hour" ? " לשעה" : ""}` : null],
+            ].map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="mb-1 text-xs text-muted-foreground">{label}</dt>
+                <dd className="break-words font-medium text-foreground"><bdi>{value || "עוד לא צוין"}</bdi></dd>
+              </div>
+            ))}
+          </dl>
+          <Button type="button" disabled={loading} className="mt-4 w-full rounded-xl"
+            onClick={() => onApply(result.fields, result.missing)}>
+            {result.missing.length === 0 ? "בדיקת המטלה" : "השלמת הפרטים בטופס"}
+          </Button>
+        </div>
+      )}
 
       {replies.length > 0 && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="תשובות מהירות">
@@ -144,13 +189,8 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         </div>
       )}
 
-      <form className="flex items-end gap-2" onSubmit={(event) => { event.preventDefault(); void send(input); }}>
-        <span className="relative block size-14 shrink-0 self-center sm:size-[72px]" aria-hidden="true">
-          <span className="task-assistant-bee absolute inset-0" data-state="idle" data-active={!loading}
-            style={{ backgroundImage: `url("${idleBee}")` }} />
-          <span className="task-assistant-bee absolute inset-0" data-state="thinking" data-active={loading}
-            style={{ backgroundImage: `url("${thinkingBee}")` }} />
-        </span>
+      <form className="sticky bottom-0 flex items-end gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+        onSubmit={(event) => { event.preventDefault(); void send(input); }}>
         <Textarea
           aria-label="תיאור המטלה"
           value={input}
@@ -162,9 +202,9 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
               void send(input);
             }
           }}
-          placeholder={userTurns === 0 ? "למשל: ניקוי חלונות מחר בערב ברמת גן, 50 ש״ח, עובד אחד" : "התשובה שלכם…"}
-          className="min-h-[52px] flex-1 resize-none rounded-2xl text-base"
-          rows={userTurns === 0 ? 3 : 1}
+          placeholder={userTurns === 0 ? "למשל, עזרה בניקיון מחר בבוקר" : "התשובה שלכם…"}
+          className="min-h-[60px] min-w-0 flex-1 resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          rows={2}
           disabled={loading}
         />
         <Button type="submit" size="icon" aria-label="שליחה" disabled={loading || !input.trim()}
@@ -177,11 +217,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         <Button type="button" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={onManual}>
           <ListChecks size={16} /> אמלא בעצמי
         </Button>
-        {result && (
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApply(result.fields, result.missing)}>
-            המשך לטופס עם מה שמולא
-          </Button>
-        )}
+
       </div>
     </section>
   );

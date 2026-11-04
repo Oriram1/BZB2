@@ -27,23 +27,27 @@ const say = (text: string) => {
   fireEvent.click(screen.getByRole("button", { name: "שליחה" }));
 };
 
-it("asks only about what is missing, then hands a complete form back", async () => {
+it("asks one missing question and waits for review before applying the draft", async () => {
   const onApply = vi.fn();
   state.responses.push({ data: { fields: fields(), missing: ["date", "time"] }, error: null });
   state.responses.push({ data: { fields: fields({ date: "2026-11-04", time: "18:00" }), missing: [] }, error: null });
   render(<TaskAssistant onApply={onApply} onManual={vi.fn()} />);
 
   say("ניקוי חלונות ברמת גן, 50 שקל");
-  expect(await screen.findByText("באיזה תאריך? באיזו שעה?")).toBeInTheDocument();
+  expect(await screen.findByText("באיזה תאריך?")).toBeInTheDocument();
   expect(screen.getByRole("group", { name: "תשובות מהירות" })).toBeInTheDocument();
   expect(onApply).not.toHaveBeenCalled();
 
   say("מחר ב-18:00");
-  await waitFor(() => expect(onApply).toHaveBeenCalledWith(fields({ date: "2026-11-04", time: "18:00" }), []));
+  await screen.findByRole("button", { name: "בדיקת המטלה" });
+  expect(onApply).not.toHaveBeenCalled();
+  expect(screen.getByRole("heading", { name: "טיוטת המטלה" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "בדיקת המטלה" }));
+  expect(onApply).toHaveBeenCalledWith(fields({ date: "2026-11-04", time: "18:00" }), []);
   // The second call carries the whole conversation, including the question asked.
   expect(state.bodies[1]).toEqual({ messages: [
     { role: "user", text: "ניקוי חלונות ברמת גן, 50 שקל" },
-    { role: "assistant", text: "באיזה תאריך? באיזו שעה?" },
+    { role: "assistant", text: "באיזה תאריך?" },
     { role: "user", text: "מחר ב-18:00" },
   ] });
 });

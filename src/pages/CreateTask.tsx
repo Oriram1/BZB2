@@ -419,7 +419,7 @@ const CreateTask = () => {
         )}
 
         {assistantOpen ? (
-          <div className="glass rounded-3xl shadow-glow p-6 sm:p-8 border border-border animate-pop-in">
+          <div className="rounded-3xl border border-border bg-background p-4 shadow-sm sm:p-6">
             <TaskAssistant onApply={(fields, missing) => void applyAssistant(fields, missing)} onManual={() => setAssistantOpen(false)} />
           </div>
         ) : (<>
