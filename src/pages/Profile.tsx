@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -492,6 +493,7 @@ const Profile = () => {
       />
 
       <div className="max-w-3xl mx-auto py-8 px-4 relative z-10 space-y-6">
+        <PendingRatingsCard />
         {/* Profile Card */}
         <Card className="border-border overflow-hidden">
           {/* Identity sits at the top, on the banner — avatar, name and role in

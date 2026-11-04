@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
 import TaskCard from "@/components/tasks/TaskCard";
@@ -120,6 +121,7 @@ const TaskList = () => {
       />
 
       <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
+        <div className="mb-4"><PendingRatingsCard /></div>
         {/* Icon-only toggle: two states with familiar icons need no labels, and the
             narrow control keeps the title on one line down to 320px. */}
         <div className="flex items-center justify-between gap-3 mb-4 animate-fade-in">

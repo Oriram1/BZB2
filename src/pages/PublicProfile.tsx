@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import PageHeader from "@/components/PageHeader";
+import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import CategoryIcon from "@/components/tasks/CategoryIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -146,6 +147,7 @@ const PublicProfile = () => {
       <PageHeader title="פרופיל" />
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {!isSelf && userId && <PendingRatingsCard onlyUserId={userId} />}
         {/* Identity */}
         <div className="bg-card rounded-3xl border border-border p-6">
           <div className="flex items-center gap-4">
