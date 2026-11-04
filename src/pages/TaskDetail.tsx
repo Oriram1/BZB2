@@ -23,6 +23,7 @@ import {
   Share2,
   Eye,
   Pencil,
+  Star,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
 import { formFor, RECIPIENT, say } from "@/lib/gender";
+import ReviewDialog from "@/components/reviews/ReviewDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,6 +100,8 @@ const TaskDetail = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", shortDesc: "", fullDesc: "", payment: "", location: "", notes: "", date: "", time: "", durationDays: "" });
   const [saving, setSaving] = useState(false);
+  const [workerReviewOpen, setWorkerReviewOpen] = useState(false);
+  const [workerReviewSubmitted, setWorkerReviewSubmitted] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -153,12 +157,21 @@ const TaskDetail = () => {
       if (user) {
         const { data: app } = await supabase
           .from("task_applications")
-          .select("id")
+          .select("id, status")
           .eq("task_id", id)
           .eq("applicant_id", user.id)
           .is("archived_at", null)
           .maybeSingle();
         if (app) setAlreadyApplied(true);
+        if (app?.status === "accepted" && data.status === "completed" && data.creator_id !== user.id) {
+          const { data: review } = await supabase.from("reviews")
+            .select("id")
+            .eq("task_id", id)
+            .eq("reviewer_id", user.id)
+            .eq("reviewee_id", data.creator_id)
+            .maybeSingle();
+          setWorkerReviewSubmitted(Boolean(review));
+        }
       }
 
       setLoading(false);
@@ -398,6 +411,16 @@ const TaskDetail = () => {
           </Button>
         )}
 
+        {!isOwner && task.status === "completed" && alreadyApplied && (
+          <Button
+            className="w-full rounded-2xl font-bold gap-2 gradient-honey text-primary-foreground"
+            disabled={workerReviewSubmitted}
+            onClick={() => setWorkerReviewOpen(true)}
+          >
+            <Star size={18} /> {workerReviewSubmitted ? "הדירוג נשלח" : "דרג את מפרסם המטלה"}
+          </Button>
+        )}
+
         {/* Detailed Description */}
         {(task.full_desc || task.short_desc) && (
           <div className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-6 border-2 border-primary/30 shadow-md space-y-3">
@@ -627,6 +650,17 @@ const TaskDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {!isOwner && task.status === "completed" && creator && (
+        <ReviewDialog
+          open={workerReviewOpen}
+          onClose={() => setWorkerReviewOpen(false)}
+          onSubmitted={() => setWorkerReviewSubmitted(true)}
+          taskId={task.id}
+          taskName={task.name}
+          revieweeId={creator.user_id}
+          revieweeName={`${creator.first_name} ${creator.last_name}`.trim() || "מפרסם המטלה"}
+        />
+      )}
     </div>
   );
 };

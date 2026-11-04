@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import {
   User, Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
-  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw, Mail, Trash2, AlertTriangle
+  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw, Mail, Trash2, AlertTriangle, Star
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { LucideIcon } from "lucide-react";
@@ -27,6 +27,15 @@ import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import QRCode from "qrcode";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { loadBeeStats, loadPublishedTaskCounts, type BeeStats } from "@/lib/profileStats";
+
+interface ReviewHistoryRow {
+  id: string;
+  task_id: string;
+  task_name: string;
+  rating: number;
+  body: string | null;
+  created_at: string;
+}
 
 /** Someone who asked, from the public view page, to be added to the list. */
 interface ParentRequest {
@@ -99,6 +108,7 @@ const Profile = () => {
   // Bee state
   const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0, estimatedEarnings: false, missingHours: false });
   const [beeStatsError, setBeeStatsError] = useState(false);
+  const [reviewHistory, setReviewHistory] = useState<ReviewHistoryRow[]>([]);
   const [familyCode, setFamilyCode] = useState<string | null>(null);
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
   const [familyQr, setFamilyQr] = useState<string | null>(null);
@@ -308,7 +318,7 @@ const Profile = () => {
     if (!user) return;
     const load = async () => {
       setLoadingData(true);
-      await Promise.all([loadTaskerData(), loadBeeData()]);
+      await Promise.all([loadTaskerData(), loadBeeData(), loadReviewHistory()]);
       if (isBee) await Promise.all([loadParentContacts(), loadParentRequests()]);
       setLoadingData(false);
     };
@@ -382,6 +392,21 @@ const Profile = () => {
       setBeeStatsError(true);
       toast.error("לא הצלחנו לטעון את נתוני הביצוע וההכנסות");
     }
+  };
+
+  const loadReviewHistory = async () => {
+    if (!user) return;
+    const { data: reviews, error } = await supabase
+      .from("reviews")
+      .select("id, task_id, rating, body, created_at")
+      .eq("reviewer_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) return;
+    const rows = await Promise.all((reviews ?? []).map(async (review) => {
+      const { data: task } = await supabase.from("tasks").select("name").eq("id", review.task_id).is("archived_at", null).maybeSingle();
+      return { ...review, task_name: task?.name ?? "מטלה שהושלמה" };
+    }));
+    setReviewHistory(rows);
   };
 
   const handleSave = async () => {
@@ -899,6 +924,28 @@ const Profile = () => {
               </CardContent>
             </Card>
           </>
+        )}
+
+        {reviewHistory.length > 0 && (
+          <Card className="border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Star className="h-5 w-5 fill-yellow-400 text-yellow-500" />
+                הדירוגים שנתתי
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {reviewHistory.map((review) => (
+                <div key={review.id} className="rounded-2xl bg-muted/50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-bold">{review.task_name}</span>
+                    <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
+                  </div>
+                  {review.body && <p className="mt-1 text-sm text-muted-foreground">{review.body}</p>}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
         <PasswordCard />
         {/* Account deletion — privacy right (hidden for admins) */}
