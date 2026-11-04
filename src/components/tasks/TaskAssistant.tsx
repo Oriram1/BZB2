@@ -207,8 +207,8 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
               void send(input);
             }
           }}
-          placeholder={userTurns === 0 ? "למשל: היי, צריך שניים שינקו לי את הדירה מחר בבוקר ברמת גן, בערך 3 שעות, 300 שקל" : "התשובה שלכם…"}
-          className="min-h-[48px] min-w-0 flex-1 py-3 resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          placeholder={userTurns === 0 ? "למשל: צריך מישהו לנקות לי דירה מחר בבוקר ברמת גן" : "התשובה שלכם…"}
+          className="min-h-[48px] min-w-0 flex-1 py-3 resize-none placeholder:text-sm border-0 bg-transparent text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           rows={userTurns === 0 ? 2 : 1}
           disabled={loading}
         />
