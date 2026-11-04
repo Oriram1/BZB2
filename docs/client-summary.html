@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>סיכום הפרויקט BZB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #fdf9f0;
+      --card: #ffffff;
+      --ink: #1f2430;
+      --muted: #5b6270;
+      --accent: #f5a300;
+      --accent-dark: #b57a00;
+      --line: #ece5d4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #161a22;
+        --card: #1f2430;
+        --ink: #f2f2f2;
+        --muted: #aab1bd;
+        --accent: #ffb92e;
+        --accent-dark: #ffcf6a;
+        --line: #2f3645;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #161a22;
+      --card: #1f2430;
+      --ink: #f2f2f2;
+      --muted: #aab1bd;
+      --accent: #ffb92e;
+      --accent-dark: #ffcf6a;
+      --line: #2f3645;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Heebo", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      line-height: 1.7;
+      direction: rtl;
+      text-align: right;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+
+    header.hero {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 32px 28px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    header.hero img.logo { width: 96px; height: 96px; object-fit: contain; }
+    header.hero h1 { margin: 0 0 6px; font-size: 30px; font-weight: 800; }
+    header.hero p { margin: 0; color: var(--muted); }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+    .chip {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    nav.toc {
+      margin: 24px 0;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px 22px;
+    }
+    nav.toc h2 { margin: 0 0 10px; font-size: 18px; }
+    nav.toc ol { margin: 0; padding-inline-start: 22px; columns: 2; column-gap: 32px; }
+    nav.toc a { color: var(--accent-dark); text-decoration: none; }
+    nav.toc a:hover { text-decoration: underline; }
+
+    section.block {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 26px 26px 22px;
+      margin: 20px 0;
+    }
+    section.block h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    section.block h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #1f2430;
+      font-size: 16px;
+      font-weight: 800;
+      flex: 0 0 auto;
+    }
+    section.block .when { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+    section.block ul { margin: 0; padding-inline-start: 22px; }
+    section.block li { margin: 4px 0; }
+
+    .shots {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    figure { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    figure img { display: block; width: 100%; height: auto; }
+    figcaption { padding: 8px 12px; font-size: 14px; color: var(--muted); }
+
+    .note {
+      margin-top: 28px;
+      padding: 16px 20px;
+      border-inline-start: 4px solid var(--accent);
+      background: var(--card);
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    @media (max-width: 640px) {
+      .wrap { padding: 20px 14px 48px; }
+      header.hero h1 { font-size: 24px; }
+      nav.toc ol { columns: 1; }
+      section.block { padding: 20px 18px; }
+    }
+
+    @media print {
+      body { background: #fff; color: #000; }
+      section.block, header.hero, nav.toc { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+<main class="wrap">
+
+  <header class="hero">
+    <img class="logo" src="../public/bzb-logo.png" alt="לוגו BZB">
+    <div>
+      <h1>סיכום הפרויקט BZB (Busy Bee)</h1>
+      <p>סיכום של כל מה שנבנה, תוקן ונבדק באפליקציה, בשפה פשוטה.</p>
+      <div class="meta">
+        <span class="chip">תקופה: פברואר 2026 עד 29 באוקטובר 2026</span>
+        <span class="chip">היקף: 557 שינויים בגיט</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="תוכן עניינים">
+    <h2>תוכן עניינים</h2>
+    <ol>
+      <li><a href="#s1">הקמה ועיצוב ראשוני</a></li>
+      <li><a href="#s2">חיבור לשרת אמיתי</a></li>
+      <li><a href="#s3">ניווט וחוויית משתמש</a></li>
+      <li><a href="#s4">הרשאות ותפקידים</a></li>
+      <li><a href="#s5">מפות וכתובות</a></li>
+      <li><a href="#s6">משימות</a></li>
+      <li><a href="#s7">התראות ותקשורת</a></li>
+      <li><a href="#s8">הורים</a></li>
+      <li><a href="#s9">מערכת ניהול (אדמין)</a></li>
+      <li><a href="#s10">אבטחה ופרטיות</a></li>
+      <li><a href="#s11">מיילים והתחברות</a></li>
+      <li><a href="#s12">תשלומים (Cardcom)</a></li>
+      <li><a href="#s13">מחירים ועמלות</a></li>
+      <li><a href="#s14">פריסה ותשתית</a></li>
+      <li><a href="#s15">תיעוד והכנה לשחרור</a></li>
+    </ol>
+  </nav>
+
+  <section class="block" id="s1">
+    <h2><span class="num">1</span>הקמה ועיצוב ראשוני</h2>
+    <p class="when">פברואר עד מרץ 2026</p>
+    <ul>
+      <li>הקמת תשתית האפליקציה ומסכי הבסיס.</li>
+      <li>עיצוב מחדש של המותג: לוגו BZB, סגנון צעיר ודינמי, ואייקון דבורה.</li>
+      <li>מסך משימות, לוח משימות, ומסך צ'אט למשימות.</li>
+      <li>הוספת מפה ראשונה ללוח ההורים.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/tasks-desktop.jpg" alt="מסך משימות במחשב" loading="lazy">
+        <figcaption>מסך המשימות במחשב</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/tasks-mobile.jpg" alt="מסך משימות בנייד" loading="lazy">
+        <figcaption>מסך המשימות בנייד</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s2">
+    <h2><span class="num">2</span>חיבור לשרת אמיתי</h2>
+    <p class="when">סוף מרץ 2026</p>
+    <ul>
+      <li>חיבור האפליקציה לבסיס נתונים, הרשמה וכניסה אמיתיות.</li>
+      <li>בדיקת הרשמה מקצה לקצה.</li>
+      <li>מסכי ניהול פרופיל ותמונת פרופיל.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/profile-desktop.jpg" alt="מסך פרופיל במחשב" loading="lazy">
+        <figcaption>מסך הפרופיל</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/public-profile-desktop.jpg" alt="פרופיל ציבורי" loading="lazy">
+        <figcaption>פרופיל ציבורי של משתמש</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s3">
+    <h2><span class="num">3</span>ניווט וחוויית משתמש</h2>
+    <p class="when">מרץ עד אוגוסט 2026</p>
+    <ul>
+      <li>תפריט צד (מגירה) לנייד ולמחשב, שיפור כפתורי החזרה, וניווט מתוקן לכל המסכים.</li>
+      <li>תמיכה מלאה בעברית ובכיוון מימין לשמאל (RTL).</li>
+      <li>פונט Heebo לכל האתר.</li>
+      <li>מסך הפתיחה נפתח תמיד מלמעלה.</li>
+      <li>מסך הרשמה חדש ומסודר.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/settings-mobile.jpg" alt="הגדרות בנייד" loading="lazy">
+        <figcaption>מסך הגדרות בנייד</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/my-tasks-mobile.jpg" alt="המשימות שלי בנייד" loading="lazy">
+        <figcaption>המשימות שלי בנייד</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s4">
+    <h2><span class="num">4</span>הרשאות ותפקידים</h2>
+    <p class="when">אפריל 2026 ואוגוסט 2026</p>
+    <ul>
+      <li>הפרדה בין <strong>מציעים (דבורים)</strong> ל<strong>מבקשים (מפרסמים/הורים)</strong>.</li>
+      <li>הגבלת פעולת "החל" למשימה לדבורים מחוברות בלבד.</li>
+      <li>צ'אט נפתח רק אחרי שמשימה אושרה.</li>
+      <li>ניהול מסכים לפי תפקיד, וניהול תפקידים עם מעבר בין מציע למבקש.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="s5">
+    <h2><span class="num">5</span>מפות וכתובות</h2>
+    <p class="when">אפריל עד אוגוסט 2026</p>
+    <ul>
+      <li>שילוב Google Maps בעברית.</li>
+      <li>בחירת כתובת במפה, והמרת כתובת לקואורדינטות (geocoding).</li>
+      <li>ניווט ישיר למשימה דרך Google Maps או Waze.</li>
+      <li>הצגת משימות בתצוגת מפה.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/tasker-create-task-desktop.jpg" alt="יצירת משימה במחשב" loading="lazy">
+        <figcaption>יצירת משימה עם בחירת מיקום</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/tasker-create-task-mobile.jpg" alt="יצירת משימה בנייד" loading="lazy">
+        <figcaption>יצירת משימה בנייד</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s6">
+    <h2><span class="num">6</span>משימות</h2>
+    <p class="when">אפריל עד אוקטובר 2026</p>
+    <ul>
+      <li>הזנת משך משימה (בימים), תאריך, שעה ומספר עובדים נדרשים.</li>
+      <li>טיוטות משימה ושמירה לפני פרסום.</li>
+      <li>עריכה, ביטול, ומחיקה רכה (ארכיון).</li>
+      <li>סימון משימה כהושלמה.</li>
+      <li>דירוגים וביקורות לאחר משימה.</li>
+      <li>העלאת תמונות למשימה.</li>
+      <li>בחירה מהירה של תאריך ושעה, ובחירת שעה במרווחים של 5 דקות.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/tasker-task-detail-desktop.jpg" alt="פרטי משימה במחשב" loading="lazy">
+        <figcaption>פרטי משימה</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/tasker-task-detail-mobile.jpg" alt="פרטי משימה בנייד" loading="lazy">
+        <figcaption>פרטי משימה בנייד</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/tasker-my-tasks-desktop.jpg" alt="המשימות שלי במחשב" loading="lazy">
+        <figcaption>המשימות שלי</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s7">
+    <h2><span class="num">7</span>התראות ותקשורת</h2>
+    <p class="when">אוגוסט 2026</p>
+    <ul>
+      <li>התראות במייל וגם התראות דחיפה (Web Push) לטלפון.</li>
+      <li>"שעות שקטות": איסוף ההודעות לסיכום במקום התראה בכל רגע.</li>
+      <li>התקנת האפליקציה כ-PWA במכשיר, כולל אייקון ייעודי.</li>
+      <li>חיבור מחדש אוטומטי לצ'אט ולהתראות אחרי ניתוק.</li>
+      <li>שליחת הודעות קוליות ותמונות בצ'אט.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/chat-desktop.jpg" alt="צ'אט במחשב" loading="lazy">
+        <figcaption>צ'אט במחשב</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/chat-mobile.jpg" alt="צ'אט בנייד" loading="lazy">
+        <figcaption>צ'אט בנייד</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s8">
+    <h2><span class="num">8</span>הורים</h2>
+    <p class="when">מרץ עד אוגוסט 2026</p>
+    <ul>
+      <li>תצוגת הורה לקריאה בלבד באמצעות קישור שיתוף.</li>
+      <li>חיבור הורה לילד באמצעות QR או קישור, במקום קוד בן 6 ספרות.</li>
+      <li>הורים יכולים לקבל עדכונים ולנהל העדפות מייל בלי לפתוח חשבון.</li>
+      <li>אפשרות להורה לבקש מנוי.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="s9">
+    <h2><span class="num">9</span>מערכת ניהול (אדמין)</h2>
+    <p class="when">יולי עד אוקטובר 2026</p>
+    <ul>
+      <li>לוח בקרה עם אפשרות לפירוט (drill-down).</li>
+      <li>ניהול משתמשים: חיפוש, בחירה מרובה ומחיקה מרובה.</li>
+      <li>אישור הרשמות ואישור כתובות מייל.</li>
+      <li>איפוס סיסמה.</li>
+      <li>אישור והסרה של קישורי הורה-ילד.</li>
+      <li>יומן פעולות של מנהלים ומשתמשים.</li>
+      <li>ניהול מחירי מנויים ועמלות, בלי ערכים קשיחים בקוד.</li>
+      <li>מסך סירוב לחודש חינם.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/admin-overview-desktop.jpg" alt="לוח בקרה לאדמין" loading="lazy">
+        <figcaption>לוח הבקרה</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/admin-users-desktop.jpg" alt="ניהול משתמשים" loading="lazy">
+        <figcaption>ניהול משתמשים</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/admin-activity-desktop.jpg" alt="יומן פעילות" loading="lazy">
+        <figcaption>יומן פעילות</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/admin-reviews-desktop.jpg" alt="ביקורות לאדמין" loading="lazy">
+        <figcaption>ניהול ביקורות</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/admin-family-desktop.jpg" alt="קישורי משפחה לאדמין" loading="lazy">
+        <figcaption>קישורי הורה-ילד</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s10">
+    <h2><span class="num">10</span>אבטחה ופרטיות</h2>
+    <p class="when">אוגוסט עד אוקטובר 2026</p>
+    <ul>
+      <li>ביקורת אבטחה ותיקון הממצאים שנמצאו.</li>
+      <li>הקשחת הרשאות לבסיס הנתונים, הגבלת מתקשרים פנימיים, ואכיפת הרשאות על דירוגים.</li>
+      <li>עדכון ספריות תוכנה עם פרצות ידועות.</li>
+      <li>הגנות CORS ו-CSP, כולל אישור Google Maps ו-Supabase.</li>
+      <li>עמידה בתיקון 13 לחוק הגנת הפרטיות ובתקנות GDPR.</li>
+      <li>מחיקת חשבון עם שמירת רשומות תשלום לתקופה הנדרשת, והסרת פרטי כרטיס האשראי.</li>
+      <li>מניעת הרשמה כפולה דרך כתובות Gmail עם נקודות או +.</li>
+      <li>כללי חוזק סיסמה, ואישור נוסף לכניסה עם Google.</li>
+      <li>תיקון נגישות לפי תקן <strong>WCAG 2.2 AA</strong>.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="s11">
+    <h2><span class="num">11</span>מיילים והתחברות</h2>
+    <p class="when">יולי עד אוגוסט 2026</p>
+    <ul>
+      <li>שליחת מיילים דרך Resend, כולל איפוס סיסמה ואימות.</li>
+      <li>כניסה עם Google, כולל טיפול בכשלים ובהתנתקות ישנה.</li>
+      <li>ניתוב נכון למשתמשים מחוברים.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="s12">
+    <h2><span class="num">12</span>תשלומים (Cardcom)</h2>
+    <p class="when">ספטמבר עד אוקטובר 2026</p>
+    <ul>
+      <li><strong>מנויים:</strong> חודשי, רבעוני ושנתי, עם חיוב חוזר אוטומטי, שדרוג, שינוי תוכנית מתוזמן, וביטול.</li>
+      <li><strong>החזרים:</strong> החזר מלא בתוך 14 יום, החזרים לשדרוג, והחזר אוטומטי כשמשימה נמחקת או נדחית.</li>
+      <li><strong>חיוב לפי משימה:</strong> משימה ראשונה חינם, אישור תשלום לפני פרסום, ותשלום חד-פעמי בכרטיס, בארנק או ב-Bit.</li>
+      <li><strong>חודש חינם:</strong> אחד לכל אדם, גם עם חשבונות שנמחקו או כתובות מייל חלופיות.</li>
+      <li><strong>בדיקת כרטיס J5:</strong> חיוב סמלי לאימות כרטיס לפני חודש חינם.</li>
+      <li><strong>כרטיסים שנדחו:</strong> לא מנסים שוב, וקוד דחייה קשיח מוגדר.</li>
+      <li><strong>חשבוניות:</strong> קישור לחשבונית שהופקה, ותצוגת היסטוריית תשלומים כולל עמלות ושינויי תוכנית.</li>
+      <li><strong>תשלומים בתהליך:</strong> שחזור אוטומטי של סשן תשלום שנקטע.</li>
+      <li><strong>בדיקות:</strong> נבדק קודם בסביבת הבדיקה של Cardcom, ואחר כך בטרמינל אמיתי. התוצאות מתועדות בפירוט.</li>
+      <li><strong>מתג כיבוי:</strong> אפשרות לכבות את החיוב בכל רגע.</li>
+      <li><strong>Apple Pay:</strong> קובץ אימות דומיין והגדרת לוגו.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/tasker-subscription-desktop.jpg" alt="מסך מנוי במחשב" loading="lazy">
+        <figcaption>מסך מנוי במחשב</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/tasker-subscription-mobile.jpg" alt="מסך מנוי בנייד" loading="lazy">
+        <figcaption>מסך מנוי בנייד</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/pricing-desktop.jpg" alt="מסך תמחור במחשב" loading="lazy">
+        <figcaption>מסך התמחור</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/pricing-mobile.jpg" alt="מסך תמחור בנייד" loading="lazy">
+        <figcaption>מסך התמחור בנייד</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s13">
+    <h2><span class="num">13</span>מחירים ועמלות</h2>
+    <p class="when">אוקטובר 2026</p>
+    <ul>
+      <li>מחירי מנויים ועמלות משימה מנוהלים מאדמין, עם היסטוריה, וחתימה על כל שינוי.</li>
+      <li>תצוגת מחירים באגורות.</li>
+      <li>כל מסך מציג את המחיר הנוכחי מהמערכת.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="live-screenshots/admin-pricing-desktop.jpg" alt="ניהול מחירים במחשב" loading="lazy">
+        <figcaption>ניהול מחירים במחשב</figcaption>
+      </figure>
+      <figure>
+        <img src="live-screenshots/admin-pricing-mobile.jpg" alt="ניהול מחירים בנייד" loading="lazy">
+        <figcaption>ניהול מחירים בנייד</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="s14">
+    <h2><span class="num">14</span>פריסה ותשתית</h2>
+    <p class="when">מרץ עד אוקטובר 2026</p>
+    <ul>
+      <li>פריסה ל-Vercel, כולל ניתוב נכון לכל הנתיבים.</li>
+      <li>פרויקט Supabase ייעודי ל-BZB, מיגרציות, ועדכון טיפוסי הנתונים.</li>
+      <li>פונקציות שרת (Edge Functions) לגיאוקודינג, חיובים, webhooks ומשימות מתוזמנות (cron).</li>
+      <li>תיעוד גיבוי ושחזור, ומגבלות קצב לכניסה.</li>
+      <li>ניקוי קוד שלא בשימוש, ותיקון בדיקות טיפוסים (typecheck).</li>
+      <li>בדיקות אוטומטיות מקצה לקצה (Playwright).</li>
+    </ul>
+  </section>
+
+  <section class="block" id="s15">
+    <h2><span class="num">15</span>תיעוד והכנה לשחרור</h2>
+    <p class="when">אוגוסט עד אוקטובר 2026</p>
+    <ul>
+      <li>מסמך שאלות ללקוח בשפה פשוטה.</li>
+      <li>טבלת מצבי תשלום.</li>
+      <li>סיכום עברי של בדיקות התשלום.</li>
+      <li>דוחות בדיקות QA ורשימת משימות פתוחות.</li>
+      <li>רשימת אימותים לפני שחרור לאוויר.</li>
+    </ul>
+    <div class="shots">
+      <figure>
+        <img src="../public/reports/task-feedback-2026-10-20/report-preview.jpg" alt="תצוגה מקדימה של דוח משוב" loading="lazy">
+        <figcaption>דוח משוב על משימות (20 באוקטובר 2026)</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <p class="note">
+    הסיכום מבוסס על היסטוריית הגיט בלבד ועל קבצי התיעוד בתיקיית הפרויקט.
+    צילומי המסך לקוחים מהתיעוד של הפרויקט (<code>docs/live-screenshots</code>) ומהדוחות שבתיקיית <code>public/reports</code>.
+  </p>
+
+</main>
+</body>
+</html>
