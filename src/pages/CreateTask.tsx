@@ -148,13 +148,18 @@ const CreateTask = () => {
   const handleLocationBlur = async () => {
     if (!form.location.trim()) return;
     setLocationLoading(true);
-    const formattedAddress = await geocodeAddress(form.location);
-    if (formattedAddress) {
-      updateForm("location", formattedAddress.formattedAddress);
-      setSelectedLat(formattedAddress.lat);
-      setSelectedLng(formattedAddress.lng);
+    try {
+      const formattedAddress = await geocodeAddress(form.location);
+      if (formattedAddress) {
+        updateForm("location", formattedAddress.formattedAddress);
+        setSelectedLat(formattedAddress.lat);
+        setSelectedLng(formattedAddress.lng);
+      }
+    } catch {
+      // The typed address stays; the task can still be published without coordinates.
+    } finally {
+      setLocationLoading(false);
     }
-    setLocationLoading(false);
   };
 
   /** Puts what the assistant understood into the form and opens the step that still needs work. */
@@ -910,7 +915,7 @@ const CreateTask = () => {
                 onClick={async () => {
                   if (step === 4 && form.location.trim() && selectedLat === null) {
                     setLocationLoading(true);
-                    const result = await geocodeAddress(form.location);
+                    const result = await geocodeAddress(form.location).catch(() => null);
                     if (result) {
                       updateForm("location", result.formattedAddress);
                       setSelectedLat(result.lat);
