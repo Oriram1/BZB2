@@ -13,7 +13,7 @@ export const CATEGORIES = ["housework", "handyman", "tutoring", "babysitting", "
 /** Kept in step with canProceed() in CreateTask and tasks_short_desc_length. */
 export const REQUIRED = ["category", "taskName", "shortDesc", "payment", "location", "date", "time"] as const;
 const SHORT_DESC_MAX = 120;
-const MAX_MESSAGES = 12;
+const MAX_MESSAGES = 40;
 const MAX_MESSAGE_CHARS = 1_000;
 
 export interface TaskFields {

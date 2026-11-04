@@ -37,6 +37,7 @@ it("asks one missing question and waits for review before applying the draft", a
   expect(await screen.findByText("באיזה תאריך?")).toBeInTheDocument();
   expect(screen.getByRole("group", { name: "תשובות מהירות" })).toBeInTheDocument();
   expect(onApply).not.toHaveBeenCalled();
+  expect(screen.queryByRole("heading", { name: "טיוטת המטלה" })).not.toBeInTheDocument();
 
   say("מחר ב-18:00");
   await screen.findByRole("button", { name: "בדיקת המטלה" });
@@ -64,4 +65,17 @@ it("lets the person skip to the manual form", () => {
   render(<TaskAssistant onApply={vi.fn()} onManual={onManual} />);
   fireEvent.click(screen.getByRole("button", { name: /אמלא בעצמי/ }));
   expect(onManual).toHaveBeenCalled();
+});
+
+
+it("continues collecting missing details after four answers without opening the form", async () => {
+  const onApply = vi.fn();
+  render(<TaskAssistant onApply={onApply} onManual={vi.fn()} />);
+  for (let turn = 0; turn < 7; turn++) {
+    state.responses.push({ data: { fields: fields(), missing: ["location"] }, error: null });
+    say("עוד פרטים " + turn);
+    await waitFor(() => expect(screen.getAllByText("באיזו כתובת או עיר?")).toHaveLength(turn + 1));
+    expect(screen.queryByRole("heading", { name: "טיוטת המטלה" })).not.toBeInTheDocument();
+    expect(onApply).not.toHaveBeenCalled();
+  }
 });

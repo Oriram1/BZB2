@@ -40,9 +40,7 @@ const questionFor: Record<MissingField, string> = {
   time: "באיזו שעה?",
 };
 
-const GREETING = "מה צריך לעשות? אפשר להתחיל בכמה מילים, ואת שאר הפרטים נשלים יחד.";
-/** After this many answers with gaps left, the form is the faster way to finish. */
-const MAX_TURNS = 4;
+const GREETING = "ספרו לי בהרחבה מה צריך לעשות, איפה ומתי, ומה התשלום המוצע. אפשר לציין גם כמה עובדים צריך ולכמה זמן. אשאל על מה שחסר.";
 const MAX_CHARS = 1_000;
 
 const askAbout = (missing: MissingField[]) => questionFor[missing[0]];
@@ -121,11 +119,6 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
       setMessages([...next, { role: "assistant", text: "הטיוטה מוכנה. אפשר לבדוק את הפרטים לפני הפרסום." }]);
       return;
     }
-    if (next.filter((message) => message.role === "user").length >= MAX_TURNS) {
-      toast.info("נשארו כמה פרטים — נשלים אותם בטופס");
-      onApply(found.fields, found.missing);
-      return;
-    }
     setMessages([...next, { role: "assistant", text: askAbout(found.missing) }]);
   };
 
@@ -152,7 +145,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         <div ref={endRef} />
       </div>
 
-      {result && (
+      {result && result.missing.length === 0 && (
         <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4" aria-label="טיוטת המטלה">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-foreground">טיוטת המטלה</h3>
