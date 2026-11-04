@@ -97,6 +97,7 @@ const TaskDetail = () => {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [acceptedAsWorker, setAcceptedAsWorker] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", shortDesc: "", fullDesc: "", payment: "", location: "", notes: "", date: "", time: "", durationDays: "" });
   const [saving, setSaving] = useState(false);
@@ -163,6 +164,7 @@ const TaskDetail = () => {
           .is("archived_at", null)
           .maybeSingle();
         if (app) setAlreadyApplied(true);
+        setAcceptedAsWorker(app?.status === "accepted");
         if (app?.status === "accepted" && data.status === "completed" && data.creator_id !== user.id) {
           const { data: review } = await supabase.from("reviews")
             .select("id")
@@ -411,7 +413,7 @@ const TaskDetail = () => {
           </Button>
         )}
 
-        {!isOwner && task.status === "completed" && alreadyApplied && (
+        {!isOwner && task.status === "completed" && acceptedAsWorker && (
           <Button
             className="w-full rounded-2xl font-bold gap-2 gradient-honey text-primary-foreground"
             disabled={workerReviewSubmitted}
