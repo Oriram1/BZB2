@@ -115,6 +115,15 @@ const MyTasks = () => {
     [applications],
   );
 
+  const pendingPerformerRatings = useMemo(
+    () => performingTasks.filter(
+      (task) => task.applicationStatus === "accepted"
+        && task.status === "completed"
+        && !submittedReviews.has(`${task.id}:${task.creatorId}`),
+    ),
+    [performingTasks, submittedReviews],
+  );
+
   /** Only a task with someone working on it can be completed — see complete_task. */
   const acceptedByTask = useMemo(() => {
     const counts = new Map<string, number>();
@@ -650,12 +659,6 @@ const MyTasks = () => {
               ) : publishedTasks.map((task) => {
                 const closed = task.status === "completed" || task.status === "cancelled";
                 const canComplete = !closed && (acceptedByTask.get(task.id) ?? 0) > 0;
-                const acceptedApplications = applications.filter(
-                  (application) => application.taskId === task.id && application.status === "accepted",
-                );
-                const pendingRatings = acceptedApplications.filter(
-                  (application) => !submittedReviews.has(`${task.id}:${application.applicantId}`),
-                );
 
                 return (
                   <article
@@ -735,28 +738,6 @@ const MyTasks = () => {
                         המטלה מוסתרת כי המנוי הסתיים. חידוש המנוי יחזיר אותה מיד.
                       </p>
                     )}
-                    {task.status === "completed" && pendingRatings.length > 0 && (
-                      <div className="mt-3 rounded-2xl border border-primary/30 bg-primary/5 p-3">
-                        <p className="text-sm font-bold text-foreground">המטלה הושלמה. נשמח לדירוג שלכם</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {pendingRatings.map((application) => (
-                            <Button
-                              key={application.applicantId}
-                              size="sm"
-                              className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
-                              onClick={() => setReviewTarget({
-                                taskId: task.id,
-                                taskName: task.name,
-                                revieweeId: application.applicantId,
-                                revieweeName: `${application.firstName} ${application.lastName}`.trim() || "מבצע המטלה",
-                              })}
-                            >
-                              <Star size={14} /> דירוג {application.firstName || "המבצע"}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                         <span className="inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>
@@ -809,7 +790,27 @@ const MyTasks = () => {
 <Link to="/tasks">למטלות הזמינות</Link>
 </Button>
                 </div>
-              ) : performingTasks.map((task) => (
+              ) : (
+                <>
+                  {pendingPerformerRatings.length > 0 && (
+                    <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4">
+                      <p className="font-bold text-foreground">דירוגים ממתינים</p>
+                      <p className="mt-1 text-sm text-muted-foreground">ביצעתם משימה. דירוג מהיר למפרסם:</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {pendingPerformerRatings.map((task) => (
+                          <Button
+                            key={task.applicationId}
+                            size="sm"
+                            className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                            onClick={() => setReviewTarget({ taskId: task.id, taskName: task.name, revieweeId: task.creatorId, revieweeName: "מפרסם המטלה" })}
+                          >
+                            <Star size={14} /> דירוג {task.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {performingTasks.map((task) => (
                 <article key={task.applicationId} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <Link to={`/task/${task.id}`} className="min-w-0 flex-1">
@@ -847,7 +848,9 @@ const MyTasks = () => {
                     </Button>
                   )}
                 </article>
-              ))}
+                  ))}
+                </>
+              )}
             </TabsContent>
           )}
         </Tabs>
