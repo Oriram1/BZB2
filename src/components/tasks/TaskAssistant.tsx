@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { addDays, format } from "date-fns";
-import { ArrowUp, ListChecks, Sparkles } from "lucide-react";
+import { ArrowUp, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,7 +75,7 @@ function Bee({ thinking = false }: { thinking?: boolean }) {
 
 function BusyReply({ text, thinking = false }: { text: string; thinking?: boolean }) {
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-center gap-2">
       <Bee thinking={thinking} />
       <div className="min-w-0 pt-1">
         <span className="text-xs font-bold text-muted-foreground">ביזי</span>
@@ -130,11 +130,16 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
   return (
     <section className="flex flex-col gap-4" aria-label="עוזר פרסום מטלה">
       <div className="flex items-center gap-2">
-        <Sparkles className="text-primary-ink" size={20} aria-hidden />
+        <svg className="text-primary-ink" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+          <path d="M8 3.5 11.5 5.5v4L8 11.5 4.5 9.5v-4z" />
+          <path d="M16 12.5l3.5 2v4L16 20.5l-3.5-2v-4z" />
+          <path d="M16 3.5l3.5 2v4L16 11.5" opacity=".45" />
+          <path d="M8 12.5l3.5 2v4L8 20.5" opacity=".45" />
+        </svg>
         <h2 className="text-xl font-extrabold text-foreground">ספרו לביזי מה צריך</h2>
       </div>
 
-      <div className="flex min-h-[180px] max-h-[45vh] flex-col gap-5 overflow-y-auto overscroll-contain pe-1" role="log" aria-label="השיחה עם ביזי" aria-live="polite" aria-busy={loading}>
+      <div className="flex max-h-[45vh] flex-col gap-5 overflow-y-auto overscroll-contain pe-1" role="log" aria-label="השיחה עם ביזי" aria-live="polite" aria-busy={loading}>
         <BusyReply text={GREETING} />
         {messages.map((message, index) => message.role === "assistant" ? (
           <BusyReply key={index} text={message.text} />
@@ -189,7 +194,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         </div>
       )}
 
-      <form className={`flex items-end gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${result?.fields.location && !locationConfirmed ? "" : "sticky bottom-0"}`}
+      <form className={`flex items-center gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${result?.fields.location && !locationConfirmed ? "" : "sticky bottom-0"}`}
         onSubmit={(event) => { event.preventDefault(); void send(input); }}>
         <Textarea
           aria-label="תיאור המטלה"
@@ -202,9 +207,9 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
               void send(input);
             }
           }}
-          placeholder={userTurns === 0 ? "למשל, עזרה בניקיון מחר בבוקר" : "התשובה שלכם…"}
-          className="min-h-[60px] min-w-0 flex-1 resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-          rows={2}
+          placeholder={userTurns === 0 ? "למשל: היי, צריך שניים שינקו לי את הדירה מחר בבוקר ברמת גן, בערך 3 שעות, 300 שקל" : "התשובה שלכם…"}
+          className="min-h-[48px] min-w-0 flex-1 py-3 resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          rows={userTurns === 0 ? 2 : 1}
           disabled={loading}
         />
         <Button type="submit" size="icon" aria-label="שליחה" disabled={loading || !input.trim()}
