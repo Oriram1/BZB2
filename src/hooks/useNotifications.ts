@@ -45,7 +45,7 @@ export function useNotifications() {
     // during Vite HMR). Reusing that already-subscribed channel makes
     // Realtime reject the next `.on(...)` call. Each mounted effect owns a
     // fresh channel, and cleanup still removes it when the effect unmounts.
-    const channel = supabase.channel(`notifications-${user.id}-${Date.now()}`);
+    const channel = supabase.channel(`notifications-${user.id}-${crypto.randomUUID()}`);
     channel.on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
