@@ -93,6 +93,18 @@ export async function currentSubscription() {
   return (await registration?.pushManager.getSubscription()) ?? null;
 }
 
+/** Reconnect an existing, consented subscription to the signed-in account. */
+export async function syncPushSubscription() {
+  if (!pushSupported() || !isStandalone() || Notification.permission !== "granted") return false;
+  const subscription = await currentSubscription();
+  if (!subscription) return false;
+  const { error } = await supabase.functions.invoke("push-subscribe", {
+    body: { action: "subscribe", subscription: subscription.toJSON() },
+  });
+  if (error) throw error;
+  return true;
+}
+
 export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
   if (!pushSupported()) return { ok: false, reason: "unsupported" };
   if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "not_configured" };

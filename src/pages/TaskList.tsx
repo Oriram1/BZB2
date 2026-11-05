@@ -32,14 +32,30 @@ const TaskList = () => {
   /** null until the browser hands us a position; distance stays hidden until then. */
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
 
-  useEffect(() => {
-    if (!navigator.geolocation) return;
+  const [locationState, setLocationState] = useState<"checking" | "prompt" | "denied" | "unavailable" | "ready">("checking");
+  const locate = () => {
+    if (!navigator.geolocation) { setLocationState("unavailable"); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      // Permission denied or unavailable: leave userPos null rather than guessing.
-      () => setUserPos(null),
+      (pos) => { setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocationState("ready"); },
+      (error) => { setUserPos(null); setLocationState(error.code === 1 ? "denied" : "unavailable"); },
       { timeout: 8000, maximumAge: 5 * 60 * 1000 },
     );
+  };
+  useEffect(() => {
+    let cancelled = false;
+    if (!navigator.geolocation) { setLocationState("unavailable"); return; }
+    if (!navigator.permissions?.query) { setLocationState("prompt"); return; }
+    const checkPermission = () => {
+      void navigator.permissions.query({ name: "geolocation" }).then((permission) => {
+        if (cancelled) return;
+        if (permission.state === "granted") locate();
+        else { setUserPos(null); setLocationState(permission.state); }
+      }).catch(() => { if (!cancelled) setLocationState("prompt"); });
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") checkPermission(); };
+    checkPermission();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisible); };
   }, []);
 
   useEffect(() => {
@@ -48,6 +64,7 @@ const TaskList = () => {
         .from("tasks")
         .select("*")
         .eq("status", "open")
+        .eq("publish_state", "live")
         .is("archived_at", null)
         .order("created_at", { ascending: false });
 
@@ -122,6 +139,12 @@ const TaskList = () => {
 
       <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
         <div className="mb-4"><PendingRatingsCard /></div>
+        {locationState !== "ready" && locationState !== "checking" && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-4 text-sm">
+            <p>{locationState === "denied" ? "המיקום חסום. כדי לראות מטלות קרובות, אפשר לאפשר מיקום בהגדרות המכשיר או הדפדפן." : "רוצים לראות מטלות קרובות? אפשר לאפשר גישה למיקום."}</p>
+            {locationState !== "denied" && <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={locate}>שימוש במיקום שלי</Button>}
+          </div>
+        )}
         {/* Icon-only toggle: two states with familiar icons need no labels, and the
             narrow control keeps the title on one line down to 320px. */}
         <div className="flex items-center justify-between gap-3 mb-4 animate-fade-in">
