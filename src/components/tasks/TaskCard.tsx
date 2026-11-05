@@ -121,9 +121,15 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
         </Badge>
       </div>
       {task.creatorRating !== undefined && (
-        <div className="relative mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-foreground" aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}>
-          <Star size={13} className="fill-primary text-primary-ink" aria-hidden="true" />
-          {task.creatorRating ? <><span>דירוג המפרסם</span><bdi>{task.creatorRating.average.toFixed(1)}</bdi><span>({task.creatorRating.count})</span></> : "למפרסם עדיין אין דירוגים"}
+        <div className="relative mt-3 flex items-center gap-1.5 text-xs leading-5" aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}>
+          <span className="text-muted-foreground">דירוג המפרסם</span>
+          {task.creatorRating ? (
+            <>
+              <Star size={13} className="fill-primary-ink text-primary-ink" aria-hidden="true" />
+              <bdi className="font-bold tabular-nums text-foreground">{task.creatorRating.average.toFixed(1)}</bdi>
+              <span className="text-muted-foreground">({task.creatorRating.count === 1 ? "דירוג אחד" : `${task.creatorRating.count} דירוגים`})</span>
+            </>
+          ) : <span className="text-muted-foreground">אין עדיין דירוגים</span>}
         </div>
       )}
       {user && task.creatorId === user.id && task.publishState === "pending_review" && (
