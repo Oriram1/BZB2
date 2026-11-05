@@ -17,14 +17,14 @@ export function ReviewResponseEditor({ reviewId, response, onSaved }: { reviewId
       const { error } = await supabase.rpc("submit_review_response", { _review_id: reviewId, _body: body.trim() });
       if (error) throw error;
       setEditing(false);
-      toast.success("התגובה נשלחה לאישור");
+      toast.success("התגובה נשלחה");
       onSaved();
     } catch {
       toast.error("לא הצלחנו לשמור את התגובה. אפשר לנסות שוב");
     } finally { setBusy(false); }
   };
   return <div className="mt-3 border-t border-border pt-3">
-    {response && !editing && <div className="text-sm"><p className="font-semibold">התגובה שלי</p><p className="whitespace-pre-wrap break-words">{response.body}</p><p className="mt-1 text-xs text-muted-foreground">{response.status === "approved" ? "פורסמה" : response.status === "rejected" ? "לא אושרה" : "ממתינה לאישור"}</p></div>}
-    {editing ? <div className="space-y-2"><Textarea aria-label="תגובה לביקורת" value={body} maxLength={500} onChange={(event) => setBody(event.target.value)} placeholder="מה תרצו להשיב?" /><div className="flex gap-2"><Button size="sm" disabled={!body.trim() || busy} onClick={() => void submit()}>שליחת תגובה</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => { setBody(response?.body ?? ""); setEditing(false); }}>ביטול</Button></div><p className="text-xs text-muted-foreground">התגובה תופיע לאחר אישור מנהל.</p></div> : <Button size="sm" variant="outline" className="mt-2 rounded-full" onClick={() => { setBody(response?.body ?? ""); setEditing(true); }}>{response ? "עריכת תגובה" : "תגובה לביקורת"}</Button>}
+    {response && !editing && <div className="text-sm"><p className="font-semibold">התגובה שלי</p><p className="whitespace-pre-wrap break-words">{response.body}</p><p className="mt-1 text-xs text-muted-foreground">{response.status === "approved" ? "פורסמה" : response.status === "rejected" ? "לא אושרה" : "נבדקת לפני פרסום"}</p></div>}
+    {editing ? <div className="space-y-2"><Textarea aria-label="תגובה לביקורת" value={body} maxLength={500} onChange={(event) => setBody(event.target.value)} placeholder="מה תרצו להשיב?" /><div className="flex gap-2"><Button size="sm" disabled={!body.trim() || busy} onClick={() => void submit()}>שליחת תגובה</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => { setBody(response?.body ?? ""); setEditing(false); }}>ביטול</Button></div><p className="text-xs text-muted-foreground">תגובה תקינה מתפרסמת אוטומטית. תוכן חשוד נבדק על ידי אדם.</p></div> : <Button size="sm" variant="outline" className="mt-2 rounded-full" onClick={() => { setBody(response?.body ?? ""); setEditing(true); }}>{response ? "עריכת תגובה" : "תגובה לביקורת"}</Button>}
   </div>;
 }

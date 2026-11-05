@@ -17,6 +17,8 @@ interface PendingReview {
   task_name: string | null;
   reviewer_name: string | null;
   reviewee_name: string | null;
+  screening: string;
+  screening_reason: string | null;
 }
 
 export default function AdminReviewsPanel() {
@@ -32,7 +34,7 @@ export default function AdminReviewsPanel() {
     // auth.users, not profiles, so PostgREST cannot embed a profile from here.
     const { data, error } = await supabase
       .from("reviews")
-      .select("id, task_id, reviewer_id, reviewee_id, rating, body, created_at, tasks!task_id (name)")
+      .select("id, task_id, reviewer_id, reviewee_id, rating, body, created_at, screening, screening_reason, tasks!task_id (name)")
       .eq("status", "pending")
       .order("created_at", { ascending: true });
 
@@ -63,6 +65,8 @@ export default function AdminReviewsPanel() {
         task_name: (r.tasks as { name: string } | null)?.name ?? null,
         reviewer_name: nameOf.get(r.reviewer_id) ?? null,
         reviewee_name: nameOf.get(r.reviewee_id) ?? null,
+        screening: r.screening,
+        screening_reason: r.screening_reason,
       })),
     );
     setLoading(false);
@@ -89,7 +93,7 @@ export default function AdminReviewsPanel() {
   return (
     <Card className="p-5 border-border/80 shadow-sm">
       <h2 className="font-extrabold text-lg mb-1">ביקורות ממתינות לאישור</h2>
-      <p className="text-sm text-muted-foreground mb-4">ביקורות שנשלחו ועדיין לא פורסמו</p>
+      <p className="text-sm text-muted-foreground mb-4">ביקורות עם דירוג נמוך, תוכן שסומן בבדיקה אוטומטית, או בדיקה שלא הושלמה. ביקורות תקינות מתפרסמות לבד</p>
       {loading ? (
         <p className="text-sm text-muted-foreground">טוען...</p>
       ) : reviews.length === 0 ? (
@@ -110,6 +114,9 @@ export default function AdminReviewsPanel() {
                     className={s <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"} />
                 ))}
               </div>
+              <p className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+                {r.screening === "manual_low_rating" ? "דירוג נמוך" : r.screening === "flagged" ? `סומן אוטומטית: ${r.screening_reason ?? "תוכן חשוד"}` : "בדיקה אוטומטית לא הושלמה"}
+              </p>
               {r.body && <p className="text-sm text-foreground">{r.body}</p>}
               <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("he-IL")}</p>
               <div className="flex gap-2">

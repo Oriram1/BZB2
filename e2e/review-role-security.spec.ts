@@ -57,7 +57,7 @@ test('review publication, replies, reports, appeals and role security', async ({
     const modified = await owner.client.from('tasks').update({ review_window_started_at: '2000-01-01T00:00:00Z' }).eq('id', taskId).select('review_window_started_at').single();
     expect(modified.error).toBeNull();
     expect(new Date(modified.data!.review_window_started_at).getUTCFullYear()).toBeGreaterThan(2020);
-    const review = await owner.client.from('reviews').insert({ task_id: taskId, reviewer_id: owner.id, reviewee_id: worker.id, rating: 4, reviewee_role: 'tasker', published_at: new Date().toISOString() }).select('id, reviewee_role, published_at').single();
+    const review = await owner.client.from('reviews').insert({ task_id: taskId, reviewer_id: owner.id, reviewee_id: worker.id, rating: 4, body: 'היה בסדר', reviewee_role: 'tasker', published_at: new Date().toISOString() }).select('id, reviewee_role, published_at').single();
     expect(review.error).toBeNull();
     expect(review.data?.reviewee_role).toBe('bee');
     expect(review.data?.published_at).toBeNull();
@@ -73,7 +73,7 @@ test('review publication, replies, reports, appeals and role security', async ({
     expect(hidden.data).toEqual([]);
     const before = await admin.from('notifications').select('id').eq('event_type', 'review_approved').eq('user_id', worker.id);
     expect(before.data).toEqual([]);
-    const other = await worker.client.from('reviews').insert({ task_id: taskId, reviewer_id: worker.id, reviewee_id: owner.id, rating: 5 }).select('id').single();
+    const other = await worker.client.from('reviews').insert({ task_id: taskId, reviewer_id: worker.id, reviewee_id: owner.id, rating: 5, body: 'תגובה חיובית' }).select('id').single();
     expect(other.error).toBeNull();
     const after = await outsider.client.from('reviews').select('id').eq('id', review.data!.id);
     expect(after.data).toEqual([{ id: review.data!.id }]);
@@ -91,13 +91,13 @@ test('review publication, replies, reports, appeals and role security', async ({
     await workerPage.getByLabel('תגובה לביקורת').fill('תודה על המשוב');
     await workerPage.screenshot({ path: testInfo.outputPath('review-response.png'), fullPage: true, animations: 'disabled' });
     await workerPage.getByRole('button', { name: 'שליחת תגובה' }).click();
-    await expect(workerPage.getByText('ממתינה לאישור', { exact: true })).toBeVisible();
+    await expect(workerPage.getByText('נבדקת לפני פרסום', { exact: true })).toBeVisible();
     const pendingResponse = await admin.from('review_responses').select('id').eq('review_id', review.data!.id).single();
     expect(pendingResponse.error).toBeNull();
     expect((await outsider.client.from('review_responses').select('id').eq('id', pendingResponse.data!.id)).data).toEqual([]);
     await login(moderatorPage, moderator.email);
     await moderatorPage.goto('/admin?tab=reviews');
-    await expect(moderatorPage.getByRole('heading', { name: 'תגובות לביקורות שממתינות לאישור' })).toBeVisible();
+    await expect(moderatorPage.getByRole('heading', { name: 'תגובות לביקורות שממתינות לבדיקה' })).toBeVisible();
     const responseItem = moderatorPage.getByRole('listitem').filter({ hasText: 'תודה על המשוב' });
     await responseItem.scrollIntoViewIfNeeded();
     await moderatorPage.screenshot({ path: testInfo.outputPath('review-admin.png'), fullPage: false, animations: 'disabled' });
@@ -170,7 +170,7 @@ test('review publication, replies, reports, appeals and role security', async ({
     expect(expiryApplication.error).toBeNull();
     expect((await owner.client.from('task_applications').update({ status: 'accepted' }).eq('id', expiryApplication.data!.id)).error).toBeNull();
     expect((await owner.client.rpc('complete_task', { _task_id: expiryTaskId })).error).toBeNull();
-    const lone = await owner.client.from('reviews').insert({ task_id: expiryTaskId, reviewer_id: owner.id, reviewee_id: worker.id, rating: 3 }).select('id').single();
+    const lone = await owner.client.from('reviews').insert({ task_id: expiryTaskId, reviewer_id: owner.id, reviewee_id: worker.id, rating: 3, body: 'ביקורת לבדיקה' }).select('id').single();
     expect(lone.error).toBeNull();
     expect((await moderator.client.rpc('admin_moderate_review', { _review_id: lone.data!.id, _status: 'rejected', _reason: '' })).error).not.toBeNull();
     expect((await moderator.client.rpc('admin_moderate_review', { _review_id: lone.data!.id, _status: 'rejected', _reason: 'נא להסיר פרטים אישיים' })).error).toBeNull();
@@ -256,6 +256,101 @@ test('review reminders, tags and admin anomaly signals', async () => {
     expect((await moderator.client.rpc('admin_review_anomalies')).error).toBeNull();
   } finally {
     if (taskId) await admin.from('tasks').delete().eq('id', taskId);
+    for (const id of ids.reverse()) await admin.auth.admin.deleteUser(id);
+  }
+});
+
+
+test('automatic screening publishes clean reviews, holds risky ones, and admins can take a review down', async () => {
+  test.setTimeout(90_000);
+  test.skip(!api || !anon || !service, 'Requires local Supabase');
+  const admin = createClient(api!, service!, { auth: { persistSession: false } });
+  const ids: string[] = [];
+  const password = `Test-${crypto.randomUUID()}!`;
+  const makeUser = async (role: 'tasker' | 'bee' | 'admin') => {
+    const email = `screen-${crypto.randomUUID()}@example.test`;
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { first_name: 'בדיקה', last_name: 'מקומית' } });
+    expect(created.error).toBeNull();
+    const id = created.data.user!.id;
+    ids.push(id);
+    expect((await admin.from('user_roles').insert({ user_id: id, role })).error).toBeNull();
+    const client = createClient(api!, anon!, { auth: { persistSession: false } });
+    expect((await client.auth.signInWithPassword({ email, password })).error).toBeNull();
+    return { id, client };
+  };
+  const tasks: string[] = [];
+  const completed = async (owner: { id: string; client: ReturnType<typeof createClient> }, worker: { id: string; client: ReturnType<typeof createClient> }, name: string) => {
+    const t = await admin.from('tasks').insert({ creator_id: owner.id, name, short_desc: 'בדיקה', category: 'housework', payment: 50, workers_needed: 1, publish_state: 'live' }).select('id').single();
+    const taskId = t.data!.id as string;
+    tasks.push(taskId);
+    await admin.from('tasks').update({ publish_state: 'live' }).eq('id', taskId);
+    const app = await worker.client.from('task_applications').insert({ task_id: taskId, applicant_id: worker.id }).select('id').single();
+    await owner.client.from('task_applications').update({ status: 'accepted' }).eq('id', app.data!.id);
+    expect((await owner.client.rpc('complete_task', { _task_id: taskId })).error).toBeNull();
+    return taskId;
+  };
+  try {
+    const owner = await makeUser('tasker');
+    const worker = await makeUser('bee');
+    const moderator = await makeUser('admin');
+    const outsider = await makeUser('bee');
+
+    // 1) Clean, text-free reviews on both sides publish by themselves, with no admin.
+    const t1 = await completed(owner, worker, 'פרסום אוטומטי');
+    expect((await owner.client.from('reviews').insert({ task_id: t1, reviewer_id: owner.id, reviewee_id: worker.id, rating: 5 })).error).toBeNull();
+    expect((await outsider.client.from('reviews').select('id').eq('task_id', t1)).data).toEqual([]);
+    expect((await worker.client.from('reviews').insert({ task_id: t1, reviewer_id: worker.id, reviewee_id: owner.id, rating: 4 })).error).toBeNull();
+    const auto = await admin.from('reviews').select('status, screening, published_at').eq('task_id', t1);
+    expect(auto.data?.every((r) => r.status === 'approved' && r.screening === 'clean' && r.published_at)).toBe(true);
+    expect((await outsider.client.from('reviews').select('id').eq('task_id', t1)).data).toHaveLength(2);
+
+    // 2) A low rating always waits for a person, and a client cannot choose its own screening result.
+    const t2 = await completed(owner, worker, 'דירוג נמוך');
+    const low = await owner.client.from('reviews').insert({ task_id: t2, reviewer_id: owner.id, reviewee_id: worker.id, rating: 2, body: 'לא מרוצה', screening: 'clean', status: 'pending' }).select('id').single();
+    expect(low.error).toBeNull();
+    const lowRow = await admin.from('reviews').select('status, screening').eq('id', low.data!.id).single();
+    expect(lowRow.data).toEqual({ status: 'pending', screening: 'manual_low_rating' });
+    expect((await owner.client.rpc('system_screen_review', { _review_id: low.data!.id, _verdict: 'clean' })).error).not.toBeNull();
+    expect((await admin.rpc('system_screen_review', { _review_id: low.data!.id, _verdict: 'clean' })).error).toBeNull();
+    expect((await admin.from('reviews').select('status').eq('id', low.data!.id).single()).data?.status).toBe('pending'); // low ratings never auto-publish
+
+    // 3) A text review waits for the screen: clean text publishes, flagged text goes to the admin queue.
+    const t3 = await completed(owner, worker, 'בדיקת תוכן');
+    const clean = await worker.client.from('reviews').insert({ task_id: t3, reviewer_id: worker.id, reviewee_id: owner.id, rating: 5, body: 'עבודה נעימה, תודה' }).select('id').single();
+    expect((await admin.from('reviews').select('status, screening').eq('id', clean.data!.id).single()).data).toEqual({ status: 'pending', screening: 'pending_ai' });
+    expect((await admin.rpc('system_screen_review', { _review_id: clean.data!.id, _verdict: 'flagged', _reason: 'שפה פוגענית' })).error).toBeNull();
+    expect((await admin.from('reviews').select('status, screening, screening_reason').eq('id', clean.data!.id).single()).data).toEqual({ status: 'pending', screening: 'flagged', screening_reason: 'שפה פוגענית' });
+    expect((await moderator.client.rpc('admin_moderate_review', { _review_id: clean.data!.id, _status: 'approved' })).error).toBeNull();
+    const t4 = await completed(owner, worker, 'תוכן תקין');
+    const ok = await worker.client.from('reviews').insert({ task_id: t4, reviewer_id: worker.id, reviewee_id: owner.id, rating: 5, body: 'מקצועי' }).select('id').single();
+    expect((await admin.rpc('system_screen_review', { _review_id: ok.data!.id, _verdict: 'clean' })).error).toBeNull();
+    expect((await admin.from('reviews').select('status, screening').eq('id', ok.data!.id).single()).data).toEqual({ status: 'approved', screening: 'clean' });
+    // Replies are screened the same way.
+    const published = await admin.from('reviews').select('id').eq('task_id', t1).eq('reviewee_id', worker.id).single();
+    expect((await worker.client.rpc('submit_review_response', { _review_id: published.data!.id, _body: 'תודה רבה' })).error).toBeNull();
+    const reply = await admin.from('review_responses').select('id, status, screening').eq('review_id', published.data!.id).single();
+    expect(reply.data).toMatchObject({ status: 'pending', screening: 'pending_ai' });
+    expect((await admin.rpc('system_screen_review_response', { _response_id: reply.data!.id, _verdict: 'clean' })).error).toBeNull();
+    expect((await outsider.client.from('review_responses').select('body').eq('id', reply.data!.id)).data).toEqual([{ body: 'תודה רבה' }]);
+
+    // 4) Takedown of a published review: admin only, reason required, author notified and can appeal, averages follow.
+    const before = await outsider.client.from('user_role_ratings').select('review_count').eq('user_id', worker.id).eq('reviewee_role', 'bee').single();
+    expect(before.data?.review_count).toBe(1);
+    expect((await outsider.client.rpc('admin_remove_review', { _review_id: published.data!.id, _reason: 'x' })).error).not.toBeNull();
+    expect((await moderator.client.rpc('admin_remove_review', { _review_id: published.data!.id, _reason: '' })).error).not.toBeNull();
+    expect((await moderator.client.rpc('admin_remove_review', { _review_id: published.data!.id, _reason: 'הביקורת מפרה את המדיניות' })).error).toBeNull();
+    expect((await moderator.client.rpc('admin_remove_review', { _review_id: published.data!.id, _reason: 'שוב' })).error).not.toBeNull();
+    expect((await outsider.client.from('reviews').select('id').eq('id', published.data!.id)).data).toEqual([]);
+    expect((await outsider.client.from('user_role_ratings').select('review_count').eq('user_id', worker.id).eq('reviewee_role', 'bee')).data).toEqual([]);
+    const notice = await admin.from('notifications').select('data').eq('event_type', 'review_rejected').eq('user_id', owner.id);
+    expect(notice.data?.some((n) => (n.data as { removed?: boolean }).removed === true)).toBe(true);
+    const removedBy = await admin.from('reviews').select('reviewer_id').eq('id', published.data!.id).single();
+    expect(removedBy.data?.reviewer_id).toBe(owner.id);
+    expect((await owner.client.from('reviews').select('rejection_reason').eq('id', published.data!.id).single()).data?.rejection_reason).toBe('הביקורת מפרה את המדיניות');
+    expect((await owner.client.rpc('appeal_review_decision', { _review_id: published.data!.id, _reason: 'אשמח לבדיקה' })).error).toBeNull();
+    expect((await admin.from('admin_audit_log').select('id').eq('action', 'admin_removed_review').eq('target_identifier', published.data!.id)).data).toHaveLength(1);
+  } finally {
+    for (const id of tasks) await admin.from('tasks').delete().eq('id', id);
     for (const id of ids.reverse()) await admin.auth.admin.deleteUser(id);
   }
 });

@@ -94,13 +94,15 @@ test('completion closes chat, records earnings and supports mutual ratings', asy
     await expect(workerPage.getByRole('button', { name: 'מעבר לצ׳אט' })).toHaveCount(0);
     await workerPage.getByRole('button', { name: 'דירוג המפרסם' }).click();
     await workerPage.getByRole('button', { name: '4 כוכבים', exact: true }).click();
+    await workerPage.getByPlaceholder('כתוב ביקורת (אופציונלי)...').fill('עבודה נעימה');
     await workerPage.getByRole('button', { name: 'שלח דירוג', exact: true }).click();
     await expect(workerPage.getByRole('button', { name: 'הדירוג נשלח', exact: true })).toBeDisabled();
     await workerPage.screenshot({ path: testInfo.outputPath('completed-worker.png'), fullPage: true });
     const reviews = await admin.from('reviews').select('rating,status').eq('task_id', taskId);
     expect(reviews.error).toBeNull();
     expect(reviews.data?.map(r => r.rating).sort()).toEqual([4, 5]);
-    expect(reviews.data?.every(r => r.status === 'pending')).toBe(true);
+    // A text-free 5-star review publishes by itself; the worker's text review waits for the screen.
+    expect(reviews.data?.map(r => r.status).sort()).toEqual(['approved', 'pending']);
 
     await workerPage.goto('/profile');
     await expect(workerPage.getByText('הכנסות', { exact: true }).locator('..')).toContainText('125');

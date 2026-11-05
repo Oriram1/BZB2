@@ -35,6 +35,12 @@ async function makeUser(role: 'tasker' | 'bee' | 'admin', first: string, last: s
   return { id, email, client };
 }
 
+async function approveIfPending(mod: User, id: string) {
+  // Text-free good reviews publish on their own; only the rest wait for the screen or a person.
+  const row = await admin!.from('reviews').select('status').eq('id', id).single();
+  if (row.data?.status === 'pending') expect((await mod.client.rpc('admin_set_review_status', { _review_id: id, _status: 'approved' })).error).toBeNull();
+}
+
 async function completedTask(owner: User, worker: User, name: string) {
   const t = await admin!.from('tasks').insert({ creator_id: owner.id, name, short_desc: 'עזרה בבית', category: 'housework', payment: 80, workers_needed: 1, publish_state: 'live' }).select('id').single();
   expect(t.error).toBeNull();
@@ -123,7 +129,7 @@ test.describe('review tutorial reels', () => {
       { say: 'בוחרים כמה כוכבים.', act: async () => { await pause(page, 500); await page.getByRole('button', { name: '5 כוכבים', exact: true }).click(); } },
       { say: 'אפשר לסמן תגיות, כמו הגיע בזמן, ותקשורת נעימה.', act: async () => { await page.getByRole('button', { name: 'הגיע בזמן' }).click(); await pause(page, 500); await page.getByRole('button', { name: 'תקשורת נעימה' }).click(); } },
       { say: 'ולכתוב כמה מילים, אם בא לכם.', act: async () => { await page.getByPlaceholder('כתוב ביקורת (אופציונלי)...').pressSequentially('עבד מסודר ובזמן, תודה!', { delay: 55 }); } },
-      { say: 'ושולחים. הדירוג לא מופיע מיד: הוא מתפרסם אחרי שגם הצד השני דירג, או אחרי ארבעה עשר ימים, ובאישור מנהל.', act: async () => { await page.getByRole('button', { name: 'שלח דירוג', exact: true }).click(); await expect(page.getByRole('button', { name: 'הדירוג נשלח', exact: true })).toBeDisabled(); } },
+      { say: 'ושולחים. ביקורת תקינה מתפרסמת אוטומטית, אבל רק אחרי שגם הצד השני דירג, או אחרי ארבעה עשר ימים. דירוג נמוך או תוכן חשוד נבדקים על ידי אדם.', act: async () => { await page.getByRole('button', { name: 'שלח דירוג', exact: true }).click(); await expect(page.getByRole('button', { name: 'הדירוג נשלח', exact: true })).toBeDisabled(); } },
       { say: 'ככה אף אחד לא מושפע מהדירוג של השני. פשוט ומכבד.' },
     ], async (p) => { page = p; await p.goto('/my-tasks?tab=applications'); });
   });
@@ -138,10 +144,10 @@ test.describe('review tutorial reels', () => {
     let page!: Page;
     await record(browser, project, state, 'עריכת-דירוג', [
       { say: 'שלחתם דירוג וחשבתם שוב? כל עוד הוא לא פורסם, אפשר לערוך אותו.', act: async () => { await page.getByRole('button', { name: 'עריכת הדירוג' }).scrollIntoViewIfNeeded(); } },
-      { say: 'בפרופיל, מתחת לדירוגים שנתתם, רואים את הסטטוס: ממתין לאישור, או פורסם.', act: async () => { await pause(page, 1500); } },
+      { say: 'בפרופיל, מתחת לדירוגים שנתתם, רואים את הסטטוס: נבדקת, ממתינה לפרסום הדדי, או פורסמה.', act: async () => { await pause(page, 1500); } },
       { say: 'לוחצים על עריכת הדירוג.', act: async () => { await page.getByRole('button', { name: 'עריכת הדירוג' }).click(); } },
       { say: 'משנים את הכוכבים ואת הטקסט.', act: async () => { await page.getByRole('button', { name: '5 כוכבים', exact: true }).click(); await page.getByPlaceholder('כתוב ביקורת (אופציונלי)...').fill('עבודה מצוינת, ממליצה מאוד'); } },
-      { say: 'ושומרים. הדירוג חוזר לבדיקה של מנהל לפני שהוא מתפרסם.', act: async () => { await page.getByRole('button', { name: 'שמירת השינויים' }).click(); await expect(page.getByText('עבודה מצוינת, ממליצה מאוד').first()).toBeVisible(); } },
+      { say: 'ושומרים. הדירוג עובר שוב את הבדיקה האוטומטית לפני שהוא מתפרסם.', act: async () => { await page.getByRole('button', { name: 'שמירת השינויים' }).click(); await expect(page.getByText('עבודה מצוינת, ממליצה מאוד').first()).toBeVisible(); } },
       { say: 'אחרי הפרסום כבר אי אפשר לערוך, אז כדאי לוודא לפני.' },
     ], async (p) => { page = p; await p.goto('/profile'); });
   });
@@ -150,7 +156,7 @@ test.describe('review tutorial reels', () => {
     expect((await owner.client.from('reviews').insert({ task_id: taskId, reviewer_id: owner.id, reviewee_id: worker.id, rating: 5, body, tags })).error).toBeNull();
     expect((await worker.client.from('reviews').insert({ task_id: taskId, reviewer_id: worker.id, reviewee_id: owner.id, rating: 4 })).error).toBeNull();
     const rows = await admin!.from('reviews').select('id').eq('task_id', taskId);
-    for (const r of rows.data ?? []) expect((await mod.client.rpc('admin_set_review_status', { _review_id: r.id, _status: 'approved' })).error).toBeNull();
+    for (const r of rows.data ?? []) await approveIfPending(mod, r.id);
     const pub = await admin!.from('reviews').select('id').eq('task_id', taskId).eq('reviewee_id', worker.id).not('published_at', 'is', null);
     expect(pub.data).toHaveLength(1);
     return pub.data![0].id as string;
@@ -169,7 +175,7 @@ test.describe('review tutorial reels', () => {
       { say: 'קיבלתם ביקורת? אפשר להגיב לה, פעם אחת.', act: async () => { await expect(page.getByText('הגיע בזמן ועבד נקי')).toBeVisible({ timeout: 20000 }); await page.getByText('הגיע בזמן ועבד נקי').scrollIntoViewIfNeeded(); } },
       { say: 'בפרופיל שלכם, מתחת לכל ביקורת, לוחצים על תגובה לביקורת.', act: async () => { await page.getByRole('button', { name: 'תגובה לביקורת', exact: true }).click(); } },
       { say: 'כותבים תגובה קצרה ועניינית.', act: async () => { await page.getByLabel('תגובה לביקורת').pressSequentially('תודה רבה, היה כיף לעבוד איתך!', { delay: 55 }); } },
-      { say: 'התגובה לא משנה את הדירוג. היא עוברת אישור מנהל, ואז מופיעה בפרופיל לצד הביקורת.', act: async () => { await page.getByRole('button', { name: 'שליחת תגובה' }).click(); await expect(page.getByText('ממתינה לאישור', { exact: true })).toBeVisible(); } },
+      { say: 'התגובה לא משנה את הדירוג. היא עוברת בדיקה אוטומטית, ואם היא תקינה היא מופיעה בפרופיל לצד הביקורת.', act: async () => { await page.getByRole('button', { name: 'שליחת תגובה' }).click(); await expect(page.getByText('נבדקת לפני פרסום', { exact: true })).toBeVisible(); } },
       { say: 'ומי שכתב את הביקורת מקבל על זה התראה.' },
     ], async (p) => { page = p; await p.goto('/profile'); });
   });
@@ -203,17 +209,41 @@ test.describe('review tutorial reels', () => {
     const t1 = await completedTask(owner, worker, 'גינון בחצר');
     const reviewId = await publishedReview(owner, worker, mod, t1, 'עבודה יפה מאוד', ['thorough']);
     expect((await worker.client.rpc('submit_review_response', { _review_id: reviewId, _body: 'תודה על הדירוג' })).error).toBeNull();
+    const reply = await admin!.from('review_responses').select('id').eq('review_id', reviewId).single();
+    expect((await admin!.rpc('system_screen_review_response', { _response_id: reply.data!.id, _verdict: 'flagged', _reason: 'ביטוי לא מתאים' })).error).toBeNull();
     expect((await viewer.client.rpc('report_review', { _review_id: reviewId, _reason: 'spam', _details: 'נראה כמו פרסום' })).error).toBeNull();
     const t2 = await completedTask(owner, worker, 'צביעת קיר');
     expect((await worker.client.from('reviews').insert({ task_id: t2, reviewer_id: worker.id, reviewee_id: owner.id, rating: 2, body: 'התקשורת הייתה מסובכת' })).error).toBeNull();
+    const t3 = await completedTask(owner, worker, 'הרכבת מדפים');
+    const flagged = await owner.client.from('reviews').insert({ task_id: t3, reviewer_id: owner.id, reviewee_id: worker.id, rating: 4, body: 'טקסט לא הולם לדוגמה' }).select('id').single();
+    expect((await admin!.rpc('system_screen_review', { _review_id: flagged.data!.id, _verdict: 'flagged', _reason: 'שפה לא הולמת' })).error).toBeNull();
     const state = await loginState(browser, mod.email, project);
     let page!: Page;
     await record(browser, project, state, 'מנהל-אישור-ביקורות', [
-      { say: 'למנהלים: כל ביקורת, תגובה ודיווח עוברים בדיקה במסך הניהול.', act: async () => { await expect(page.getByRole('heading', { name: 'ביקורות ממתינות לאישור' })).toBeVisible({ timeout: 20000 }); } },
-      { say: 'ביקורות ממתינות מופיעות כאן. אפשר לאשר, או לדחות עם סיבה שהכותב יראה.', act: async () => { await pause(page, 1500); } },
-      { say: 'נניח שהביקורת הזאת פוגעת. בוחרים דחה, וכותבים מה צריך לתקן.', act: async () => { await page.getByRole('button', { name: 'דחה' }).first().click(); await page.getByLabel('סיבה לדחיית הביקורת').pressSequentially('נא לנסח בלי ביקורת אישית', { delay: 45 }); } },
-      { say: 'ממשיכים לתגובות ולדיווחים. כל החלטה דורשת נימוק, וניתנת רק פעם אחת.', act: async () => { await page.getByRole('button', { name: 'אישור דחייה' }).click(); await page.getByRole('heading', { name: 'תגובות לביקורות שממתינות לאישור' }).scrollIntoViewIfNeeded(); } },
+      { say: 'למנהלים: ביקורות תקינות מתפרסמות לבד. כאן מגיע רק מה שצריך עין אנושית.', act: async () => { await expect(page.getByRole('heading', { name: 'ביקורות ממתינות לאישור' })).toBeVisible({ timeout: 20000 }); } },
+      { say: 'הבדיקה האוטומטית מסמנת דירוג נמוך, קללות, פרטים אישיים וספאם, ולכל ביקורת רואים למה היא הגיעה לכאן.', act: async () => { await pause(page, 2500); } },
+      { say: 'אפשר לאשר, או לדחות עם סיבה שהכותב יראה.', act: async () => { await page.getByRole('button', { name: 'דחה' }).first().click(); await page.getByLabel('סיבה לדחיית הביקורת').pressSequentially('נא לנסח בלי ביקורת אישית', { delay: 45 }); } },
+      { say: 'ממשיכים לתגובות ולדיווחים. כל החלטה דורשת נימוק, וניתנת רק פעם אחת.', act: async () => { await page.getByRole('button', { name: 'אישור דחייה' }).click(); await page.getByRole('heading', { name: 'תגובות לביקורות שממתינות לבדיקה' }).scrollIntoViewIfNeeded(); } },
       { say: 'ובתחתית יש סימנים לבדיקה ידנית, כמו ביקורות חוזרות בין אותם שני אנשים. אלה רמזים בלבד, בלי חסימה אוטומטית.', act: async () => { await page.getByRole('heading', { name: 'דיווחים וערעורים על ביקורות' }).scrollIntoViewIfNeeded(); await pause(page, 1500); await page.getByRole('heading', { name: 'סימנים לבדיקה ידנית' }).scrollIntoViewIfNeeded(); } },
+    ], async (p) => { page = p; await p.goto('/admin?tab=reviews'); });
+  });
+
+  test('7 take down a published review', async ({ browser }, info) => {
+    const project = info.project.use as Record<string, unknown>;
+    const owner = await makeUser('tasker', 'נועה', 'כהן');
+    const worker = await makeUser('bee', 'דניאל', 'לוי');
+    const mod = await makeUser('admin', 'מנהל', 'מערכת');
+    const t1 = await completedTask(owner, worker, 'שטיפת רכב');
+    await publishedReview(owner, worker, mod, t1, 'השירות היה גרוע והוא לא היה נעים', ['pleasant']);
+    const state = await loginState(browser, mod.email, project);
+    let page!: Page;
+    await record(browser, project, state, 'הסרת-ביקורת-שפורסמה', [
+      { say: 'ביקורת כבר פורסמה, ואז מתברר שהיא מפרה את המדיניות? מנהל יכול להסיר אותה.', act: async () => { await expect(page.getByRole('heading', { name: 'ביקורות שפורסמו' })).toBeVisible({ timeout: 20000 }); } },
+      { say: 'במסך הניהול, בלשונית ביקורות, יורדים אל ביקורות שפורסמו.', act: async () => { await page.getByRole('heading', { name: 'ביקורות שפורסמו' }).scrollIntoViewIfNeeded(); await pause(page, 1500); } },
+      { say: 'לוחצים על הסרת ביקורת.', act: async () => { await page.getByRole('button', { name: 'הסרת ביקורת' }).first().click(); } },
+      { say: 'כותבים סיבה. הכותב יראה אותה.', act: async () => { await page.getByLabel('סיבה להסרת הביקורת').pressSequentially('הביקורת כוללת פגיעה אישית', { delay: 50 }); } },
+      { say: 'ומאשרים. הביקורת יורדת מהפרופיל, והממוצע מתעדכן מיד.', act: async () => { await page.getByRole('button', { name: 'אישור הסרה' }).click(); await expect(page.getByText('הביקורת הוסרה והכותב קיבל הודעה')).toBeVisible(); } },
+      { say: 'הכותב מקבל התראה עם הסיבה, ויכול לערער על ההחלטה פעם אחת.' },
     ], async (p) => { page = p; await p.goto('/admin?tab=reviews'); });
   });
 
@@ -229,7 +259,7 @@ test.describe('review tutorial reels', () => {
     expect((await other.client.from('reviews').insert({ task_id: t2, reviewer_id: other.id, reviewee_id: worker.id, rating: 3, body: 'בסדר, איחר קצת', tags: ['as_agreed'] })).error).toBeNull();
     expect((await worker.client.from('reviews').insert({ task_id: t2, reviewer_id: worker.id, reviewee_id: other.id, rating: 5 })).error).toBeNull();
     const rows = await admin!.from('reviews').select('id').eq('task_id', t2);
-    for (const r of rows.data ?? []) await mod.client.rpc('admin_set_review_status', { _review_id: r.id, _status: 'approved' });
+    for (const r of rows.data ?? []) await approveIfPending(mod, r.id);
     const viewer = await makeUser('bee', 'יעל', 'אברהם');
     const state = await loginState(browser, viewer.email, project);
     let page!: Page;

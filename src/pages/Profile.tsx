@@ -44,6 +44,7 @@ interface ReviewHistoryRow {
   status: "pending" | "approved" | "rejected";
   published_at: string | null;
   rejection_reason: string | null;
+  screening: string;
   tags: string[];
 }
 
@@ -429,7 +430,7 @@ const Profile = () => {
     if (!user) return;
     const { data: reviews, error } = await supabase
       .from("reviews")
-      .select("id, task_id, rating, body, created_at, status, published_at, rejection_reason, tags")
+      .select("id, task_id, rating, body, created_at, status, published_at, rejection_reason, screening, tags")
       .eq("reviewer_id", user.id)
       .order("created_at", { ascending: false });
     if (error) return;
@@ -1016,7 +1017,7 @@ const Profile = () => {
                     <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
                   </div>
                   {review.body && <p className="mt-1 text-sm text-muted-foreground">{review.body}</p>}
-                  <p className="mt-1 text-xs text-muted-foreground">{review.status === "pending" ? "ממתין לאישור מנהל" : review.status === "rejected" ? "לא אושר" : review.published_at ? "פורסם" : "אושר וממתין לפרסום הדדי"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{review.status === "pending" ? (review.screening === "pending_ai" ? "נבדקת אוטומטית" : "ממתינה לבדיקה של אדם") : review.status === "rejected" ? "לא אושר" : review.published_at ? "פורסם" : "אושר וממתין לפרסום הדדי"}</p>
                   {review.status === "rejected" && review.rejection_reason && <p className="mt-1 text-sm text-muted-foreground">סיבת ההחלטה: {review.rejection_reason}</p>}
                   {review.status === "rejected" && <ReviewAppeal reviewId={review.id} />}
                   {!review.published_at && <Button type="button" variant="outline" size="sm" className="mt-2 rounded-full" onClick={() => setEditingReview(review)}>עריכת הדירוג</Button>}

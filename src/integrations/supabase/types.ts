@@ -859,7 +859,7 @@ export type Database = {
         Relationships: []
       }
       review_responses: {
-        Row: { id: string; review_id: string; respondent_id: string; body: string; status: Database["public"]["Enums"]["review_status"]; created_at: string; updated_at: string }
+        Row: { screening: string; screening_reason: string | null; id: string; review_id: string; respondent_id: string; body: string; status: Database["public"]["Enums"]["review_status"]; created_at: string; updated_at: string }
         Insert: { id?: string; review_id: string; respondent_id: string; body: string; status?: Database["public"]["Enums"]["review_status"]; created_at?: string; updated_at?: string }
         Update: { body?: string; status?: Database["public"]["Enums"]["review_status"]; updated_at?: string }
         Relationships: []
@@ -879,6 +879,8 @@ export type Database = {
       reviews: {
         Row: {
           body: string | null
+          screening: string
+          screening_reason: string | null
           tags: string[]
           rejection_reason: string | null
           blind_until: string | null
@@ -895,6 +897,8 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          screening?: string
+          screening_reason?: string | null
           tags?: string[]
           rejection_reason?: string | null
           blind_until?: string | null
@@ -911,6 +915,8 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          screening?: string
+          screening_reason?: string | null
           tags?: string[]
           rejection_reason?: string | null
           blind_until?: string | null
@@ -1294,6 +1300,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_remove_review: { Args: { _review_id: string; _reason: string }; Returns: undefined }
       admin_review_anomalies: { Args: Record<string, never>; Returns: { signal: string; subject_id: string | null; other_id: string | null; detail: string; occurrences: number }[] }
       appeal_review_decision: { Args: { _review_id: string; _reason: string }; Returns: undefined }
       admin_resolve_review_appeal: { Args: { _appeal_id: string; _decision: string; _note: string }; Returns: undefined }

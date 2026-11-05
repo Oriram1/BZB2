@@ -62,7 +62,7 @@ export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskN
       return;
     }
     onSubmitted?.();
-    toast.success(initialReview ? "הדירוג עודכן ונשלח לבדיקה מחדש" : "הדירוג נשלח. לאחר אישור, הוא יפורסם כששני הצדדים ידרגו או לאחר 14 יום");
+    toast.success(initialReview ? "הדירוג עודכן ויעבור בדיקה מחדש" : "הדירוג נשלח. ביקורת תקינה מתפרסמת אוטומטית כששני הצדדים דירגו או אחרי 14 יום");
     onClose();
   };
 
@@ -73,7 +73,7 @@ export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskN
           <DialogTitle>{initialReview ? "עריכת הדירוג" : `דרג את ${revieweeName}`}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">מטלה: {taskName}</p>
-        <p className="text-sm text-muted-foreground">הדירוג יפורסם לאחר אישור, כששני הצדדים ידרגו או בתום 14 יום מסיום המטלה.</p>
+        <p className="text-sm text-muted-foreground">ביקורת תקינה מתפרסמת אוטומטית כששני הצדדים דירגו, או בתום 14 יום מסיום המטלה. דירוג נמוך או תוכן חשוד נבדקים על ידי אדם.</p>
         <div className="flex gap-1 justify-center py-2" role="group" aria-label="דירוג בכוכבים">
           {[1, 2, 3, 4, 5].map((s) => (
             <button
