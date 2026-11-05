@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { usePermissionPrompt } from "@/components/PermissionPromptContext";
 import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
@@ -18,6 +20,8 @@ const NO_DISTANCE_LIMIT = MAX_DISTANCE_KM + 1;
 
 const TaskList = () => {
   const { roles } = useAuth();
+  const { pushPending } = usePermissionPrompt();
+  const [locationDismissed, setLocationDismissed] = useState(false);
   const isTasker = roles.includes("tasker");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [maxDistance, setMaxDistance] = useState(() => {
@@ -139,12 +143,21 @@ const TaskList = () => {
 
       <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
         <div className="mb-4"><PendingRatingsCard /></div>
-        {locationState !== "ready" && locationState !== "checking" && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-4 text-sm">
-            <p>{locationState === "denied" ? "המיקום חסום. כדי לראות מטלות קרובות, אפשר לאפשר מיקום בהגדרות המכשיר או הדפדפן." : "רוצים לראות מטלות קרובות? אפשר לאפשר גישה למיקום."}</p>
-            {locationState !== "denied" && <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={locate}>שימוש במיקום שלי</Button>}
-          </div>
-        )}
+        <Dialog open={!pushPending && !locationDismissed && locationState !== "ready" && locationState !== "checking"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
+          <DialogContent dir="rtl" className="rounded-2xl sm:max-w-md">
+            <DialogHeader>
+              <span className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink" aria-hidden="true"><MapPin size={24} /></span>
+              <DialogTitle className="text-xl font-extrabold">נמצא יחד מטלות קרובות? 🐝</DialogTitle>
+              <DialogDescription className="pt-2 leading-relaxed">
+                {locationState === "denied" ? "המיקום חסום כרגע. כדי לראות מטלות לפי המרחק, אפשר לאפשר גישה למיקום בהגדרות המכשיר או הדפדפן." : "עם המיקום שלכם נוכל להציג את המרחק למטלות ולעזור למצוא מה קרוב אליכם. בלחיצה תופיע בקשת אישור מהמכשיר."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-2 pt-2">
+              {locationState !== "denied" && <Button className="flex-1 rounded-full" onClick={() => { setLocationDismissed(true); locate(); }}>שימוש במיקום שלי</Button>}
+              <Button className="flex-1 rounded-full" variant="outline" onClick={() => setLocationDismissed(true)}>{locationState === "denied" ? "הבנתי" : "לא עכשיו"}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         {/* Icon-only toggle: two states with familiar icons need no labels, and the
             narrow control keeps the title on one line down to 320px. */}
         <div className="flex items-center justify-between gap-3 mb-4 animate-fade-in">

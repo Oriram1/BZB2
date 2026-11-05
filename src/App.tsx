@@ -39,6 +39,7 @@ import { NavDrawerProvider } from "./components/NavDrawerContext";
 import PresenceTracker from "./components/PresenceTracker";
 import InstallPrompt from "./components/InstallPrompt";
 import PushOnboarding from "./components/PushOnboarding";
+import { PermissionPromptProvider } from "./components/PermissionPromptContext";
 import CookieConsent from "./components/CookieConsent";
 
 const queryClient = new QueryClient();
@@ -102,6 +103,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
           <NavDrawerProvider>
+          <PermissionPromptProvider>
             <ScrollToTop />
             <SkipToContent />
             <MobileNav />
@@ -139,6 +141,7 @@ const App = () => (
             <PushOnboarding />
             <CookieConsent />
             <FloatingNavTrigger />
+          </PermissionPromptProvider>
           </NavDrawerProvider>
           </BrowserRouter>
         </TooltipProvider>

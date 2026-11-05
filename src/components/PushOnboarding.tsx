@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { BellRing } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissionPrompt } from "@/components/PermissionPromptContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { isStandalone, pushConfigured, pushSupported, subscribeToPush, syncPushSubscription } from "@/lib/push";
 
 export default function PushOnboarding() {
   const { user, loading } = useAuth();
+  const { setPushPending } = usePermissionPrompt();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -15,26 +17,30 @@ export default function PushOnboarding() {
 
   useEffect(() => {
     setOpen(false);
-    if (loading || !userId || !isStandalone() || !pushSupported() || !pushConfigured()) return;
+    if (loading) return;
+    if (!userId || !isStandalone() || !pushSupported() || !pushConfigured()) { setPushPending(false); return; }
+    setPushPending(true);
     let cancelled = false;
     const start = async () => {
       try {
-        if (await syncPushSubscription() || cancelled) return;
+        if (await syncPushSubscription()) { if (!cancelled) setPushPending(false); return; }
+        if (cancelled) return;
         if (!sessionStorage.getItem(`bzb.push-dismissed:${userId}`)) {
           setBlocked(Notification.permission === "denied");
           setOpen(true);
-        }
+        } else setPushPending(false);
       } catch {
-        if (!cancelled) toast.error("לא הצלחנו לחבר את ההתראות למכשיר. אפשר לנסות שוב בהגדרות ההתראות");
+        if (!cancelled) { setPushPending(false); toast.error("לא הצלחנו לחבר את ההתראות למכשיר. אפשר לנסות שוב בהגדרות ההתראות"); }
       }
     };
     void start();
     return () => { cancelled = true; };
-  }, [loading, userId]);
+  }, [loading, userId, setPushPending]);
 
   const dismiss = () => {
     if (userId) sessionStorage.setItem(`bzb.push-dismissed:${userId}`, "1");
     setOpen(false);
+    setPushPending(false);
   };
   const enable = async () => {
     setBusy(true);
@@ -42,6 +48,7 @@ export default function PushOnboarding() {
       const result = await subscribeToPush();
       if (result.ok) {
         setOpen(false);
+        setPushPending(false);
         toast.success("מעולה! ההתראות הופעלו במכשיר הזה 🐝");
       } else {
         toast.error(result.reason === "denied" ? "לא אושרו התראות. אפשר לשנות זאת בהגדרות המכשיר" : "לא הצלחנו להפעיל התראות. אפשר לנסות שוב בהגדרות ההתראות");
