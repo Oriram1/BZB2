@@ -57,8 +57,12 @@ const PublicProfile = () => {
   const [tasks, setTasks] = useState<PublicTask[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsFailed, setReviewsFailed] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState("all");
+  const [reviewSort, setReviewSort] = useState("newest");
   const avgRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : null;
   const [loading, setLoading] = useState(true);
+  const filteredReviews = reviews.filter((review) => reviewFilter === "all" || review.rating === Number(reviewFilter));
+  const visibleReviews = [...filteredReviews].sort((a, b) => reviewSort === "highest" ? b.rating - a.rating : reviewSort === "lowest" ? a.rating - b.rating : new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   useEffect(() => {
     if (!userId) return;
@@ -249,8 +253,20 @@ const PublicProfile = () => {
             ) : reviews.length === 0 ? (
               <p className="text-sm text-muted-foreground">אין עדיין דירוגים. לאחר השלמת משימות, דירוגים שאושרו יופיעו כאן.</p>
             ) : (
+              <>
+              <div className="mb-4 space-y-1" aria-label="התפלגות דירוגים">
+                {[5, 4, 3, 2, 1].map((stars) => {
+                  const count = reviews.filter((review) => review.rating === stars).length;
+                  return <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="w-4">{stars}</span><Star size={12} className="fill-yellow-400 text-yellow-500" aria-hidden="true" /><div className="h-2 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-yellow-400" style={{ width: `${count / reviews.length * 100}%` }} /></div><span className="w-6 text-end tabular-nums">{count}</span><span className="sr-only">{count} דירוגים של {stars} כוכבים</span></div>;
+                })}
+              </div>
+              <div className="mb-4 flex flex-wrap gap-3 text-sm">
+                <label>מיון <select value={reviewSort} onChange={(event) => setReviewSort(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="newest">החדשות ביותר</option><option value="highest">הגבוהות ביותר</option><option value="lowest">הנמוכות ביותר</option></select></label>
+                <label>סינון <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="all">כל הדירוגים</option>{[5, 4, 3, 2, 1].map((stars) => <option key={stars} value={stars}>{stars} כוכבים</option>)}</select></label>
+              </div>
+              {visibleReviews.length === 0 && <p className="text-sm text-muted-foreground">אין ביקורות בדירוג הזה.</p>}
               <ul className="space-y-3">
-                {reviews.map((r) => (
+                {visibleReviews.map((r) => (
                   <li key={r.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
                     <div className="flex items-center gap-1 mb-1">
                       {[1, 2, 3, 4, 5].map((s) => (
@@ -267,6 +283,7 @@ const PublicProfile = () => {
                   </li>
                 ))}
               </ul>
+              </>
             )}
           </div>
         )}

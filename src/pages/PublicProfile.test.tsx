@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import PublicProfile from "./PublicProfile";
@@ -34,4 +34,20 @@ it("distinguishes a failed rating query from no reviews", async () => {
   profile();
   expect(await screen.findByRole("alert")).toHaveTextContent("לא הצלחנו לטעון את הדירוגים");
   expect(screen.queryByText(/אין עדיין דירוגים/)).not.toBeInTheDocument();
+});
+
+it("filters and sorts approved reviews while preserving the overall average", async () => {
+  state.reviews = [
+    { id: "1", rating: 2, body: "ביקורת נמוכה", created_at: "2026-01-01", reviewer_id: "a" },
+    { id: "2", rating: 5, body: "ביקורת גבוהה", created_at: "2026-02-01", reviewer_id: "b" },
+  ];
+  profile();
+  expect(await screen.findByText("3.5")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("סינון"), { target: { value: "2" } });
+  expect(screen.getByText("ביקורת נמוכה")).toBeInTheDocument();
+  expect(screen.queryByText("ביקורת גבוהה")).not.toBeInTheDocument();
+  expect(screen.getByText("3.5")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("סינון"), { target: { value: "all" } });
+  fireEvent.change(screen.getByLabelText("מיון"), { target: { value: "lowest" } });
+  expect(screen.getByText("ביקורת נמוכה").compareDocumentPosition(screen.getByText("ביקורת גבוהה")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
