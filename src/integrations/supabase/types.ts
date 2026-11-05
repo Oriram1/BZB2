@@ -858,13 +858,36 @@ export type Database = {
         }
         Relationships: []
       }
+      review_responses: {
+        Row: { id: string; review_id: string; respondent_id: string; body: string; status: Database["public"]["Enums"]["review_status"]; created_at: string; updated_at: string }
+        Insert: { id?: string; review_id: string; respondent_id: string; body: string; status?: Database["public"]["Enums"]["review_status"]; created_at?: string; updated_at?: string }
+        Update: { body?: string; status?: Database["public"]["Enums"]["review_status"]; updated_at?: string }
+        Relationships: []
+      }
+      review_appeals: {
+        Row: { id: string; review_id: string; author_id: string; reason: string; status: string; decision: string | null; decision_note: string | null; created_at: string; resolved_at: string | null }
+        Insert: { review_id: string; author_id: string; reason: string }
+        Update: { status?: string; decision?: string | null; decision_note?: string | null }
+        Relationships: []
+      }
+      review_reports: {
+        Row: { id: string; review_id: string; reporter_id: string; reason: string; details: string | null; status: string; decision: string | null; decision_note: string | null; appealed_at: string | null; created_at: string; resolved_at: string | null }
+        Insert: { review_id: string; reporter_id: string; reason: string; details?: string | null }
+        Update: { status?: string; decision?: string | null; decision_note?: string | null }
+        Relationships: []
+      }
       reviews: {
         Row: {
           body: string | null
+          tags: string[]
+          rejection_reason: string | null
+          blind_until: string | null
+          published_at: string | null
           created_at: string
           id: string
           rating: number
           reviewee_id: string
+          reviewee_role: string
           reviewer_id: string
           status: Database["public"]["Enums"]["review_status"]
           task_id: string
@@ -872,10 +895,15 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          tags?: string[]
+          rejection_reason?: string | null
+          blind_until?: string | null
+          published_at?: string | null
           created_at?: string
           id?: string
           rating: number
           reviewee_id: string
+          reviewee_role?: string
           reviewer_id: string
           status?: Database["public"]["Enums"]["review_status"]
           task_id: string
@@ -883,10 +911,15 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          tags?: string[]
+          rejection_reason?: string | null
+          blind_until?: string | null
+          published_at?: string | null
           created_at?: string
           id?: string
           rating?: number
           reviewee_id?: string
+          reviewee_role?: string
           reviewer_id?: string
           status?: Database["public"]["Enums"]["review_status"]
           task_id?: string
@@ -1105,6 +1138,7 @@ export type Database = {
           pending_payment_since: string | null
           publish_state: Database["public"]["Enums"]["task_publish_state"]
           review_note: string | null
+          review_window_started_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           scheduled_date: string | null
@@ -1143,6 +1177,7 @@ export type Database = {
           pending_payment_since?: string | null
           publish_state?: Database["public"]["Enums"]["task_publish_state"]
           review_note?: string | null
+          review_window_started_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           scheduled_date?: string | null
@@ -1181,6 +1216,7 @@ export type Database = {
           pending_payment_since?: string | null
           publish_state?: Database["public"]["Enums"]["task_publish_state"]
           review_note?: string | null
+          review_window_started_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           scheduled_date?: string | null
@@ -1244,6 +1280,10 @@ export type Database = {
       }
     }
     Views: {
+      user_role_ratings: {
+        Row: { avg_rating: number | null; review_count: number | null; reviewee_role: string | null; user_id: string | null }
+        Relationships: []
+      }
       user_avg_ratings: {
         Row: {
           avg_rating: number | null
@@ -1254,6 +1294,16 @@ export type Database = {
       }
     }
     Functions: {
+      admin_review_anomalies: { Args: Record<string, never>; Returns: { signal: string; subject_id: string | null; other_id: string | null; detail: string; occurrences: number }[] }
+      appeal_review_decision: { Args: { _review_id: string; _reason: string }; Returns: undefined }
+      admin_resolve_review_appeal: { Args: { _appeal_id: string; _decision: string; _note: string }; Returns: undefined }
+      admin_moderate_review: { Args: { _review_id: string; _status: Database["public"]["Enums"]["review_status"]; _reason?: string | null }; Returns: undefined }
+      submit_review_response: { Args: { _review_id: string; _body: string }; Returns: undefined }
+      admin_moderate_review_response: { Args: { _response_id: string; _status: Database["public"]["Enums"]["review_status"] }; Returns: undefined }
+      report_review: { Args: { _review_id: string; _reason: string; _details?: string | null }; Returns: undefined }
+      appeal_review_report: { Args: { _report_id: string }; Returns: undefined }
+      admin_resolve_review_report: { Args: { _report_id: string; _decision: string; _note: string }; Returns: undefined }
+      edit_unpublished_review: { Args: { _review_id: string; _rating: number; _body: string | null; _tags?: string[] | null }; Returns: undefined }
       admin_archive_task: { Args: { _task_id: string }; Returns: undefined }
       get_task_fees: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_get_task_fees: { Args: Record<PropertyKey, never>; Returns: Json }
@@ -1515,6 +1565,11 @@ export type Database = {
         | "application_decided"
         | "message_received"
         | "review_approved"
+        | "review_reminder"
+        | "review_rejected"
+        | "review_response_approved"
+        | "review_report_resolved"
+        | "review_appeal_resolved"
         | "task_completed"
         | "parent_child_accepted"
         | "parent_digest"
@@ -1700,6 +1755,11 @@ export const Constants = {
         "application_decided",
         "message_received",
         "review_approved",
+        "review_reminder",
+        "review_rejected",
+        "review_response_approved",
+        "review_report_resolved",
+        "review_appeal_resolved",
         "task_completed",
         "parent_child_accepted",
         "parent_digest",

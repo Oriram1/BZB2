@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Star, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 
@@ -21,6 +22,9 @@ interface PendingReview {
 export default function AdminReviewsPanel() {
   const [reviews, setReviews] = useState<PendingReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rejecting, setRejecting] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -69,13 +73,17 @@ export default function AdminReviewsPanel() {
   const decide = async (id: string, status: "approved" | "rejected") => {
     // Goes through an RPC because reviews has no UPDATE policy: a direct update()
     // here matched zero rows, so the decision never left the browser.
-    const { error } = await supabase.rpc("admin_set_review_status", {
-      _review_id: id,
-      _status: status,
+    if (busy) return;
+    if (status === "rejected" && !reason.trim()) { toast.error("יש לציין סיבה לדחייה"); return; }
+    setBusy(id);
+    const { error } = await supabase.rpc("admin_moderate_review", {
+      _review_id: id, _status: status, _reason: status === "rejected" ? reason.trim() : null,
     });
+    setBusy(null);
     if (error) { toast.error("שגיאה בעדכון"); return; }
     toast.success(status === "approved" ? "ביקורת אושרה" : "ביקורת נדחתה");
     setReviews((prev) => prev.filter((r) => r.id !== id));
+    setRejecting(null); setReason("");
   };
 
   return (
@@ -106,14 +114,15 @@ export default function AdminReviewsPanel() {
               <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("he-IL")}</p>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="text-green-600 border-green-300 hover:bg-green-50"
-                  onClick={() => decide(r.id, "approved")}>
+                  disabled={Boolean(busy)} onClick={() => void decide(r.id, "approved")}>
                   <Check size={14} className="me-1" /> אשר
                 </Button>
                 <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50"
-                  onClick={() => decide(r.id, "rejected")}>
+                  disabled={Boolean(busy)} onClick={() => { setRejecting(r.id); setReason(""); }}>
                   <X size={14} className="me-1" /> דחה
                 </Button>
               </div>
+              {rejecting === r.id && <div className="flex flex-wrap gap-2"><Input aria-label="סיבה לדחיית הביקורת" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} placeholder="מה צריך לתקן?" /><Button size="sm" disabled={!reason.trim() || Boolean(busy)} onClick={() => void decide(r.id, "rejected")}>אישור דחייה</Button><Button size="sm" variant="outline" onClick={() => setRejecting(null)}>ביטול</Button></div>}
             </li>
           ))}
         </ul>

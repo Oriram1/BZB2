@@ -76,8 +76,8 @@ const TaskList = () => {
       if (!error && data) {
         const creatorIds = [...new Set(data.map((task) => task.creator_id))];
         const { data: ratingRows, error: ratingError } = creatorIds.length
-          ? await fetchAllPages((from, to) => supabase.from("user_avg_ratings")
-            .select("user_id, avg_rating, review_count").in("user_id", creatorIds)
+          ? await fetchAllPages((from, to) => supabase.from("user_role_ratings")
+            .select("user_id, avg_rating, review_count").eq("reviewee_role", "tasker").in("user_id", creatorIds)
             .order("user_id").range(from, to))
           : { data: [], error: null };
         const ratings = new Map(ratingRows.map((rating) => [rating.user_id, rating]));

@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import { ReviewAppeal } from "@/components/reviews/ReviewAppeal";
+import { ReviewTags } from "@/components/reviews/ReviewTags";
+import ReviewReportsPanel from "@/components/reviews/ReviewReportsPanel";
+import { ReviewResponseEditor, type ReviewResponse } from "@/components/reviews/ReviewResponseEditor";
+import ReviewDialog from "@/components/reviews/ReviewDialog";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,6 +41,10 @@ interface ReviewHistoryRow {
   rating: number;
   body: string | null;
   created_at: string;
+  status: "pending" | "approved" | "rejected";
+  published_at: string | null;
+  rejection_reason: string | null;
+  tags: string[];
 }
 
 /** Someone who asked, from the public view page, to be added to the list. */
@@ -109,8 +118,10 @@ const Profile = () => {
   // Bee state
   const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0, estimatedEarnings: false, missingHours: false });
   const [beeStatsError, setBeeStatsError] = useState(false);
+  const [editingReview, setEditingReview] = useState<ReviewHistoryRow | null>(null);
   const [reviewHistory, setReviewHistory] = useState<ReviewHistoryRow[]>([]);
-  const [receivedReviews, setReceivedReviews] = useState<Pick<ReviewHistoryRow, "id" | "rating" | "body" | "created_at">[]>([]);
+  const [receivedReviews, setReceivedReviews] = useState<Pick<ReviewHistoryRow, "id" | "rating" | "body" | "created_at" | "tags">[]>([]);
+  const [receivedResponses, setReceivedResponses] = useState<ReviewResponse[]>([]);
   const [receivedReviewsError, setReceivedReviewsError] = useState(false);
   const [familyCode, setFamilyCode] = useState<string | null>(null);
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
@@ -400,18 +411,23 @@ const Profile = () => {
   const loadReceivedReviews = async () => {
     if (!user) return;
     const { data, error } = await fetchAllPages((from, to) => supabase.from("reviews")
-      .select("id, rating, body, created_at")
-      .eq("reviewee_id", user.id).eq("status", "approved")
+      .select("id, rating, body, created_at, tags")
+      .eq("reviewee_id", user.id).eq("status", "approved").not("published_at", "is", null)
       .order("created_at", { ascending: false }).order("id").range(from, to));
-    setReceivedReviewsError(Boolean(error));
-    setReceivedReviews(error ? [] : data);
+    if (error) { setReceivedReviewsError(true); setReceivedReviews([]); setReceivedResponses([]); return; }
+    const reviewIds = data.map((review) => review.id);
+    const responseResult = reviewIds.length ? await fetchAllPages((from, to) => supabase.from("review_responses")
+      .select("review_id, body, status").in("review_id", reviewIds).order("id").range(from, to)) : { data: [], error: null };
+    setReceivedReviewsError(Boolean(responseResult.error));
+    setReceivedReviews(data);
+    setReceivedResponses(responseResult.error ? [] : responseResult.data);
   };
 
   const loadReviewHistory = async () => {
     if (!user) return;
     const { data: reviews, error } = await supabase
       .from("reviews")
-      .select("id, task_id, rating, body, created_at")
+      .select("id, task_id, rating, body, created_at, status, published_at, rejection_reason, tags")
       .eq("reviewer_id", user.id)
       .order("created_at", { ascending: false });
     if (error) return;
@@ -961,6 +977,8 @@ const Profile = () => {
                       <time className="text-xs text-muted-foreground" dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString("he-IL")}</time>
                     </div>
                     {review.body && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">{review.body}</p>}
+                    <ReviewTags tags={review.tags} />
+                    <ReviewResponseEditor key={`${review.id}:${receivedResponses.find((response) => response.review_id === review.id)?.body ?? ""}`} reviewId={review.id} response={receivedResponses.find((response) => response.review_id === review.id)} onSaved={() => void loadReceivedReviews()} />
                   </li>
                 ))}
               </ul>
@@ -984,11 +1002,19 @@ const Profile = () => {
                     <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
                   </div>
                   {review.body && <p className="mt-1 text-sm text-muted-foreground">{review.body}</p>}
+                  <p className="mt-1 text-xs text-muted-foreground">{review.status === "pending" ? "ממתין לאישור מנהל" : review.status === "rejected" ? "לא אושר" : review.published_at ? "פורסם" : "אושר וממתין לפרסום הדדי"}</p>
+                  {review.status === "rejected" && review.rejection_reason && <p className="mt-1 text-sm text-muted-foreground">סיבת ההחלטה: {review.rejection_reason}</p>}
+                  {review.status === "rejected" && <ReviewAppeal reviewId={review.id} />}
+                  {!review.published_at && <Button type="button" variant="outline" size="sm" className="mt-2 rounded-full" onClick={() => setEditingReview(review)}>עריכת הדירוג</Button>}
                 </div>
               ))}
             </CardContent>
           </Card>
         )}
+        {editingReview && <ReviewDialog open onClose={() => setEditingReview(null)} onSubmitted={() => void loadReviewHistory()}
+          taskId={editingReview.task_id} taskName={editingReview.task_name} revieweeId="" revieweeName=""
+          initialReview={{ id: editingReview.id, rating: editingReview.rating, body: editingReview.body, tags: editingReview.tags }} />}
+        <ReviewReportsPanel />
         <PasswordCard />
         {/* Account deletion — privacy right (hidden for admins) */}
         {!roles.includes("admin") && <><Card className="border-destructive/30">

@@ -12,6 +12,11 @@ export type NotificationEvent =
   | "application_decided"
   | "message_received"
   | "review_approved"
+  | "review_reminder"
+  | "review_rejected"
+  | "review_response_approved"
+  | "review_report_resolved"
+  | "review_appeal_resolved"
   | "task_completed"
   | "parent_child_accepted"
   | "parent_digest"
@@ -161,6 +166,20 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       };
     }
 
+    case "review_report_resolved":
+      return { subject: "עדכון על הדיווח שלכם", preheader: "הבדיקה הסתיימה", heading: "התקבלה החלטה על הדיווח", paragraphs: ["אפשר לראות את ההחלטה בפרופיל."], action: { label: "לפרופיל שלי", url }, manageUrl };
+    case "review_appeal_resolved":
+      return { subject: "עדכון על הערעור שלכם", preheader: "הבדיקה הסתיימה", heading: "התקבלה החלטה על הערעור", paragraphs: ["אפשר לראות את ההחלטה בפרופיל."], action: { label: "לפרופיל שלי", url }, manageUrl };
+    case "review_reminder": {
+      const task = str(data.task_name, "המטלה");
+      return { subject: data.kind === "last" ? "הזמן לדרג עומד להסתיים" : "איך היה לעבוד יחד?", preheader: "דירוג קצר עוזר לאחרים", heading: "איך היה לעבוד יחד?", paragraphs: [`אפשר לדרג את "${task}" בכמה שניות.`], action: { label: "לדירוג", url }, manageUrl };
+    }
+    case "review_rejected": {
+      const removed = data.removed === true;
+      return { subject: "עדכון על ביקורת שכתבתם", preheader: "התקבל עדכון על הביקורת", heading: removed ? "הביקורת הוסרה לאחר בדיקה" : "הביקורת לא אושרה", paragraphs: [removed ? "אפשר לבדוק את פרטי הביקורת בפרופיל." : "אפשר לראות את סיבת ההחלטה ולעדכן את הביקורת בפרופיל."], action: { label: "לפרופיל שלי", url }, manageUrl };
+    }
+    case "review_response_approved":
+      return { subject: "התקבלה תגובה לביקורת שלכם", preheader: "יש תגובה חדשה לביקורת שכתבתם", heading: "התקבלה תגובה לביקורת", paragraphs: ["אפשר לראות את התגובה בפרופיל."], action: { label: "לפרופיל שלי", url }, manageUrl };
     case "review_approved": {
       const task = str(data.task_name, "המטלה");
       return {
@@ -670,6 +689,16 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
         tag: `chat-${str(data.conversation_id)}`,
       };
 
+    case "review_report_resolved":
+      return { title: "עדכון על הדיווח", body: "הבדיקה הסתיימה. ההחלטה זמינה בפרופיל", url, tag: `review-report-${str(data.report_id)}` };
+    case "review_appeal_resolved":
+      return { title: "עדכון על הערעור", body: "הבדיקה הסתיימה. ההחלטה זמינה בפרופיל", url, tag: `review-appeal-${str(data.review_id)}` };
+    case "review_reminder":
+      return { title: data.kind === "last" ? "הזמן לדרג עומד להסתיים ⏳" : "איך היה לעבוד יחד? ⭐", body: `דירוג קצר על "${str(data.task_name, "המטלה")}"`, url, tag: `review-reminder-${str(data.task_id)}` };
+    case "review_rejected":
+      return { title: "עדכון על ביקורת שכתבתם", body: data.removed ? "הביקורת הוסרה לאחר בדיקה" : "הביקורת לא אושרה. אפשר לעדכן אותה בפרופיל", url, tag: `review-decision-${str(data.review_id)}` };
+    case "review_response_approved":
+      return { title: "תגובה לביקורת שלכם 💬", body: "התקבלה תגובה לביקורת שכתבתם", url, tag: `review-response-${str(data.review_id)}` };
     case "review_approved":
       return { title: "קיבלתם דירוג חדש ⭐", body: `הדירוג על "${str(data.task_name, "המטלה")}" אושר ומופיע בפרופיל`, url, tag: `review-${str(data.review_id)}` };
 
@@ -858,6 +887,11 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   application_decided: { email: true, push: true },
   message_received: { email: true, push: true },
   review_approved: { email: true, push: true },
+  review_reminder: { email: false, push: true },
+  review_rejected: { email: true, push: true },
+  review_response_approved: { email: true, push: true },
+  review_report_resolved: { email: true, push: true },
+  review_appeal_resolved: { email: true, push: true },
   task_completed: { email: true, push: false },
   parent_child_accepted: { email: true, push: true },
   parent_digest: { email: true, push: true },

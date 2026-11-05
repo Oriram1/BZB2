@@ -34,6 +34,7 @@ import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
 import { formFor, RECIPIENT, say } from "@/lib/gender";
+import { reviewWindowOpen } from "@/lib/reviewWindow";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
 import {
   AlertDialog,
@@ -69,6 +70,7 @@ interface TaskData {
   scheduled_date: string | null;
   scheduled_time: string | null;
   duration_hours: number | null;
+  review_window_started_at: string | null;
   workers_needed: number;
   status: string;
   publish_state: TaskPublishState;
@@ -123,8 +125,8 @@ const TaskDetail = () => {
       }
       setTask(data);
       setCreatorRating(undefined);
-      const { data: rating, error: ratingError } = await supabase.from("user_avg_ratings")
-        .select("avg_rating, review_count").eq("user_id", data.creator_id).maybeSingle();
+      const { data: rating, error: ratingError } = await supabase.from("user_role_ratings")
+        .select("avg_rating, review_count").eq("user_id", data.creator_id).eq("reviewee_role", "tasker").maybeSingle();
       if (ratingError) setCreatorRating(undefined);
       else setCreatorRating(rating?.avg_rating != null && rating.review_count ? { average: rating.avg_rating, count: rating.review_count } : null);
 
@@ -422,10 +424,10 @@ const TaskDetail = () => {
         {!isOwner && task.status === "completed" && acceptedAsWorker && (
           <Button
             className="w-full rounded-2xl font-bold gap-2 gradient-honey text-primary-foreground"
-            disabled={workerReviewSubmitted}
+            disabled={workerReviewSubmitted || !reviewWindowOpen(task.review_window_started_at)}
             onClick={() => setWorkerReviewOpen(true)}
           >
-            <Star size={18} /> {workerReviewSubmitted ? "הדירוג נשלח" : "דרג את מפרסם המטלה"}
+            <Star size={18} /> {workerReviewSubmitted ? "הדירוג נשלח" : !reviewWindowOpen(task.review_window_started_at) ? "זמן הדירוג הסתיים" : "דרג את מפרסם המטלה"}
           </Button>
         )}
 

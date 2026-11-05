@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import AdminReviewQueues from "@/components/reviews/AdminReviewQueues";
 import AdminReviewsPanel from "@/components/reviews/AdminReviewsPanel";
 import TaskReviewPanel from "@/components/admin/TaskReviewPanel";
 import TrialBlocksPanel from "@/components/admin/TrialBlocksPanel";
@@ -1650,6 +1651,7 @@ export default function Admin() {
           {/* ─── Reviews Tab ─── */}
           <TabsContent value="reviews" className="space-y-6">
             <AdminReviewsPanel />
+            <AdminReviewQueues />
           </TabsContent>
                   {/* ─── Pricing Tab ─── */}
           <TabsContent value="pricing" className="space-y-6">

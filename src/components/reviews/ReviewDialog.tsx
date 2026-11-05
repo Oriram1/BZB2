@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { TAGS_FOR_PUBLISHER, TAGS_FOR_WORKER } from "@/lib/reviewTags";
 import { Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,38 +16,53 @@ interface ReviewDialogProps {
   taskName: string;
   revieweeId: string;
   revieweeName: string;
+  initialReview?: { id: string; rating: number; body: string | null; tags?: string[] };
 }
 
-export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskName, revieweeId, revieweeName }: ReviewDialogProps) {
+export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskName, revieweeId, revieweeName, initialReview }: ReviewDialogProps) {
   const { user } = useAuth();
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(initialReview?.rating ?? 0);
   const [hovered, setHovered] = useState(0);
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initialReview?.body ?? "");
   const [loading, setLoading] = useState(false);
+  const [tags, setTags] = useState<string[]>(initialReview?.tags ?? []);
+  const [options, setOptions] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!open || !user) return;
+    let cancelled = false;
+    void supabase.from("tasks").select("creator_id").eq("id", taskId).maybeSingle().then(({ data }) => {
+      // The reviewee is the worker when the reviewer owns the task.
+      if (!cancelled && data) setOptions(data.creator_id === user.id ? TAGS_FOR_WORKER : TAGS_FOR_PUBLISHER);
+    });
+    return () => { cancelled = true; };
+  }, [open, user, taskId]);
+  const toggleTag = (tag: string) => setTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : current.length < 4 ? [...current, tag] : current);
 
   const submit = async () => {
     if (!user || rating === 0) return;
     setLoading(true);
-    const { error } = await supabase.from("reviews").insert({
-      task_id: taskId,
-      reviewer_id: user.id,
-      reviewee_id: revieweeId,
-      rating,
-      body: body.trim() || null,
-    });
+    const { error } = initialReview
+      ? await supabase.rpc("edit_unpublished_review", { _review_id: initialReview.id, _rating: rating, _body: body.trim() || null, _tags: tags })
+      : await supabase.from("reviews").insert({
+        task_id: taskId, reviewer_id: user.id, reviewee_id: revieweeId,
+        rating, body: body.trim() || null, tags,
+      });
     setLoading(false);
     if (error) {
       if (error.code === "23505") {
         toast.info("כבר דירגת את המטלה הזאת");
         onSubmitted?.();
         onClose();
+      } else if (error.message.includes("appeal_pending")) {
+        toast.error("קיים ערעור בבדיקה. אפשר לערוך אחרי שתתקבל החלטה");
       } else {
         toast.error("לא הצלחנו לשלוח את הדירוג");
       }
       return;
     }
     onSubmitted?.();
-    toast.success("הדירוג נשלח ויפורסם לאחר אישור");
+    toast.success(initialReview ? "הדירוג עודכן ונשלח לבדיקה מחדש" : "הדירוג נשלח. לאחר אישור, הוא יפורסם כששני הצדדים ידרגו או לאחר 14 יום");
     onClose();
   };
 
@@ -54,9 +70,10 @@ export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskN
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-sm" dir="rtl">
         <DialogHeader>
-          <DialogTitle>דרג את {revieweeName}</DialogTitle>
+          <DialogTitle>{initialReview ? "עריכת הדירוג" : `דרג את ${revieweeName}`}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">מטלה: {taskName}</p>
+        <p className="text-sm text-muted-foreground">הדירוג יפורסם לאחר אישור, כששני הצדדים ידרגו או בתום 14 יום מסיום המטלה.</p>
         <div className="flex gap-1 justify-center py-2" role="group" aria-label="דירוג בכוכבים">
           {[1, 2, 3, 4, 5].map((s) => (
             <button
@@ -75,6 +92,16 @@ export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskN
             </button>
           ))}
         </div>
+        {Object.keys(options).length > 0 && (
+          <div role="group" aria-label="תגיות משוב (לא חובה)" className="flex flex-wrap gap-2">
+            {Object.entries(options).map(([key, label]) => (
+              <button key={key} type="button" aria-pressed={tags.includes(key)} onClick={() => toggleTag(key)}
+                className={`rounded-full border px-3 py-1 text-sm ${tags.includes(key) ? "border-primary bg-primary/15 font-semibold" : "border-border text-muted-foreground"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <Textarea
           placeholder="כתוב ביקורת (אופציונלי)..."
           value={body}
@@ -85,7 +112,7 @@ export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskN
         <div className="flex gap-2 justify-end">
           <Button variant="outline" onClick={onClose}>ביטול</Button>
           <Button onClick={submit} disabled={rating === 0 || loading}>
-            {loading ? "שולח..." : "שלח דירוג"}
+            {loading ? "שולח..." : initialReview ? "שמירת השינויים" : "שלח דירוג"}
           </Button>
         </div>
       </DialogContent>

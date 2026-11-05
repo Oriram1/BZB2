@@ -104,6 +104,12 @@ test('completion closes chat, records earnings and supports mutual ratings', asy
 
     await workerPage.goto('/profile');
     await expect(workerPage.getByText('הכנסות', { exact: true }).locator('..')).toContainText('125');
+    await workerPage.getByRole('button', { name: 'עריכת הדירוג' }).click();
+    const editDialog = workerPage.getByRole('dialog');
+    await expect(editDialog.getByRole('heading', { name: 'עריכת הדירוג' })).toBeVisible();
+    await editDialog.getByPlaceholder('כתוב ביקורת (אופציונלי)...').fill('בדיקת עריכה מקומית');
+    await editDialog.getByRole('button', { name: 'שמירת השינויים' }).click();
+    await expect(workerPage.getByText('בדיקת עריכה מקומית')).toBeVisible();
     await workerPage.screenshot({ path: testInfo.outputPath('earnings.png'), fullPage: true });
     await expect(workerPage.locator('body')).not.toContainText('נתוני הביצוע וההכנסות לא נטענו');
     expect(await workerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

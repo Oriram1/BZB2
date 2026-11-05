@@ -3,6 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import PageHeader from "@/components/PageHeader";
+import { ReviewTags } from "@/components/reviews/ReviewTags";
+import { ReportReviewDialog } from "@/components/reviews/ReportReviewDialog";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import CategoryIcon from "@/components/tasks/CategoryIcon";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,8 @@ interface Review {
   body: string | null;
   created_at: string;
   reviewer_id: string;
+  reviewee_role: string;
+  tags: string[];
 }
 
 interface PublicTask {
@@ -57,11 +61,16 @@ const PublicProfile = () => {
   const [tasks, setTasks] = useState<PublicTask[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsFailed, setReviewsFailed] = useState(false);
+  const [responses, setResponses] = useState<{ review_id: string; body: string }[]>([]);
+  const [responsesFailed, setResponsesFailed] = useState(false);
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [reviewRole, setReviewRole] = useState("all");
   const [reviewFilter, setReviewFilter] = useState("all");
   const [reviewSort, setReviewSort] = useState("newest");
-  const avgRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : null;
+  const roleReviews = reviews.filter((review) => reviewRole === "all" || review.reviewee_role === reviewRole);
+  const avgRating = roleReviews.length ? roleReviews.reduce((sum, review) => sum + review.rating, 0) / roleReviews.length : null;
   const [loading, setLoading] = useState(true);
-  const filteredReviews = reviews.filter((review) => reviewFilter === "all" || review.rating === Number(reviewFilter));
+  const filteredReviews = roleReviews.filter((review) => reviewFilter === "all" || review.rating === Number(reviewFilter));
   const visibleReviews = [...filteredReviews].sort((a, b) => reviewSort === "highest" ? b.rating - a.rating : reviewSort === "lowest" ? a.rating - b.rating : new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   useEffect(() => {
@@ -82,16 +91,22 @@ const PublicProfile = () => {
           .order("created_at", { ascending: false }),
         fetchAllPages((from, to) => supabase
           .from("reviews")
-          .select("id, rating, body, created_at, reviewer_id")
+          .select("id, rating, body, created_at, reviewer_id, reviewee_role, tags")
           .eq("reviewee_id", userId)
           .eq("status", "approved")
+          .not("published_at", "is", null)
           .order("created_at", { ascending: false })
           .order("id")
           .range(from, to)),
       ]);
       const profileData = Array.isArray(profileRows) ? profileRows[0] : profileRows;
 
+      const reviewIds = (reviewRows ?? []).map((review) => review.id);
+      const responseResult = reviewIds.length && !reviewError ? await fetchAllPages((from, to) => supabase.from("review_responses")
+        .select("review_id, body").in("review_id", reviewIds).eq("status", "approved").order("id").range(from, to)) : { data: [], error: null };
       if (cancelled) return;
+      setResponses(responseResult.error ? [] : responseResult.data);
+      setResponsesFailed(Boolean(responseResult.error));
       setProfile(profileData ?? null);
       setRoles((roleRows ?? []).map((r) => r.role as string));
       setTasks(taskRows ?? []);
@@ -244,20 +259,21 @@ const PublicProfile = () => {
                 <span className="flex items-center gap-1 text-sm font-bold text-yellow-500">
                   <Star size={14} className="fill-yellow-400 text-yellow-400" aria-hidden="true" />
                   {avgRating.toFixed(1)}
-                  <span className="text-muted-foreground font-normal">({reviews.length})</span>
+                  <span className="text-muted-foreground font-normal">({roleReviews.length})</span>
                 </span>
               )}
             </div>
+            {!reviewsFailed && reviews.length > 0 && <label className="mb-4 block text-sm">תפקיד <select value={reviewRole} onChange={(event) => setReviewRole(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="all">כל התפקידים</option><option value="tasker">כמפרסם מטלות</option><option value="bee">כמבצע מטלות</option></select></label>}
             {reviewsFailed ? (
               <p role="alert" className="text-sm text-destructive">לא הצלחנו לטעון את הדירוגים. יש לרענן ולנסות שוב.</p>
-            ) : reviews.length === 0 ? (
+            ) : roleReviews.length === 0 ? (
               <p className="text-sm text-muted-foreground">אין עדיין דירוגים. לאחר השלמת משימות, דירוגים שאושרו יופיעו כאן.</p>
             ) : (
               <>
               <div className="mb-4 space-y-1" aria-label="התפלגות דירוגים">
                 {[5, 4, 3, 2, 1].map((stars) => {
-                  const count = reviews.filter((review) => review.rating === stars).length;
-                  return <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="w-4">{stars}</span><Star size={12} className="fill-yellow-400 text-yellow-500" aria-hidden="true" /><div className="h-2 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-yellow-400" style={{ width: `${count / reviews.length * 100}%` }} /></div><span className="w-6 text-end tabular-nums">{count}</span><span className="sr-only">{count} דירוגים של {stars} כוכבים</span></div>;
+                  const count = roleReviews.filter((review) => review.rating === stars).length;
+                  return <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="w-4">{stars}</span><Star size={12} className="fill-yellow-400 text-yellow-500" aria-hidden="true" /><div className="h-2 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-yellow-400" style={{ width: `${count / roleReviews.length * 100}%` }} /></div><span className="w-6 text-end tabular-nums">{count}</span><span className="sr-only">{count} דירוגים של {stars} כוכבים</span></div>;
                 })}
               </div>
               <div className="mb-4 flex flex-wrap gap-3 text-sm">
@@ -265,6 +281,7 @@ const PublicProfile = () => {
                 <label>סינון <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="all">כל הדירוגים</option>{[5, 4, 3, 2, 1].map((stars) => <option key={stars} value={stars}>{stars} כוכבים</option>)}</select></label>
               </div>
               {visibleReviews.length === 0 && <p className="text-sm text-muted-foreground">אין ביקורות בדירוג הזה.</p>}
+              {responsesFailed && <p role="alert" className="mb-3 text-sm text-destructive">לא הצלחנו לטעון תגובות לביקורות.</p>}
               <ul className="space-y-3">
                 {visibleReviews.map((r) => (
                   <li key={r.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
@@ -278,8 +295,11 @@ const PublicProfile = () => {
                         />
                       ))}
                     </div>
-                    {r.body && <p className="text-sm text-foreground">{r.body}</p>}
+                    {r.body && <p className="whitespace-pre-wrap break-words text-sm text-foreground">{r.body}</p>}
+                    <ReviewTags tags={r.tags} />
                     <p className="text-xs text-muted-foreground mt-1">{new Date(r.created_at).toLocaleDateString("he-IL")}</p>
+                    {responses.find((response) => response.review_id === r.id) && <div className="mt-2 border-s-2 border-primary/40 ps-3 text-sm"><p className="font-semibold">תגובת בעל הפרופיל</p><p className="whitespace-pre-wrap break-words">{responses.find((response) => response.review_id === r.id)?.body}</p></div>}
+                    {user && <Button variant="ghost" size="sm" className="mt-1 h-9 text-muted-foreground" onClick={() => setReportTarget(r.id)}>דיווח על ביקורת</Button>}
                   </li>
                 ))}
               </ul>
@@ -288,6 +308,7 @@ const PublicProfile = () => {
           </div>
         )}
       </div>
+      {reportTarget && <ReportReviewDialog reviewId={reportTarget} onClose={() => setReportTarget(null)} />}
     </div>
   );
 };

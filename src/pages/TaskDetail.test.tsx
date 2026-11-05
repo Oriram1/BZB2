@@ -10,7 +10,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   rpc: async () => ({ data: [{first_name: "מפרסם", last_name: "בדיקה"}] }),
   from: (table: string) => {
     const query = { select: () => query, eq: () => query, is: () => query,
-      maybeSingle: async () => ({ data: table === "user_avg_ratings" ? state.rating : null, error: null }),
+      maybeSingle: async () => ({ data: table === "user_role_ratings" ? state.rating : null, error: null }),
       single: async () => ({data: {
         id: "task", name: "משימת בדיקה", short_desc: "התיאור הקצר המקורי", full_desc: state.fullDescription,
         notes: state.notes, creator_id: "publisher", category: "other", payment: 100,

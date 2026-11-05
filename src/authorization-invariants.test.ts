@@ -79,12 +79,12 @@ describe("authorization invariants", () => {
     const guarded = new Set<string>();
     for (const { sql } of migrations) {
       for (const [, table] of sql.matchAll(
-        /CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?([a-z_]+)/g,
+        /CREATE TABLE (?:IF NOT EXISTS )?(?:(?:public|private)\.)?([a-z_]+)/g,
       )) {
         created.add(table);
       }
       for (const [, table] of sql.matchAll(
-        /ALTER TABLE (?:public\.)?([a-z_]+)\s+ENABLE ROW LEVEL SECURITY/g,
+        /ALTER TABLE (?:(?:public|private)\.)?([a-z_]+)\s+ENABLE ROW LEVEL SECURITY/g,
       )) {
         guarded.add(table);
       }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reviewWindowOpen } from "@/lib/reviewWindow";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface PendingRating { taskId: string; taskName: string; revieweeId: string; revieweeName: string }
@@ -18,10 +19,10 @@ export function usePendingRatings() {
     if (!convs?.length) { setItems([]); return; }
     const taskIds = [...new Set(convs.map((c) => c.task_id as string))];
     const [{ data: tasks }, { data: reviews }] = await Promise.all([
-      supabase.from("tasks").select("id, name").in("id", taskIds).eq("status", "completed").is("archived_at", null),
+      supabase.from("tasks").select("id, name, review_window_started_at").in("id", taskIds).eq("status", "completed").is("archived_at", null),
       supabase.from("reviews").select("task_id, reviewee_id").eq("reviewer_id", user.id).in("task_id", taskIds),
     ]);
-    const names = new Map((tasks ?? []).map((t) => [t.id, t.name]));
+    const names = new Map((tasks ?? []).filter((t) => reviewWindowOpen(t.review_window_started_at)).map((t) => [t.id, t.name]));
     const done = new Set((reviews ?? []).map((r) => `${r.task_id}:${r.reviewee_id}`));
     const pending = convs
       .filter((c) => names.has(c.task_id as string))

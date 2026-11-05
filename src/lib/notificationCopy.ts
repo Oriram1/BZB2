@@ -13,6 +13,11 @@ export type NotificationEvent =
   | "application_decided"
   | "message_received"
   | "review_approved"
+  | "review_reminder"
+  | "review_rejected"
+  | "review_response_approved"
+  | "review_report_resolved"
+  | "review_appeal_resolved"
   | "task_completed"
   | "parent_child_accepted"
   | "parent_digest"
@@ -104,6 +109,16 @@ export function notificationLine(
         body: `${text(data.sender_name, "משתמש")} ${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)}: ${text(data.message_content, "הודעה חדשה")}`,
       };
 
+    case "review_report_resolved":
+      return { emoji: "📋", title: "עדכון על דיווח", body: "הבדיקה הסתיימה. אפשר לראות את ההחלטה בפרופיל" };
+    case "review_appeal_resolved":
+      return { emoji: "📋", title: "עדכון על ערעור", body: "הערעור על הביקורת נבדק. אפשר לראות את ההחלטה בפרופיל" };
+    case "review_reminder":
+      return { emoji: "⭐", title: data.kind === "last" ? "הזמן לדרג עומד להסתיים" : "איך היה לעבוד יחד?", body: `דירוג קצר על "${text(data.task_name, "המטלה")}" יעזור לאחרים לבחור בביטחון` };
+    case "review_rejected":
+      return { emoji: "📝", title: "עדכון על הביקורת שכתבתם", body: data.removed ? "ביקורת שפרסמתם הוסרה לאחר בדיקה" : "הביקורת לא אושרה. אפשר לבדוק את הסיבה בפרופיל" };
+    case "review_response_approved":
+      return { emoji: "💬", title: "תגובה לביקורת שכתבתם", body: "התקבלה תגובה לביקורת שלכם" };
     case "review_approved":
       return { emoji: "⭐", title: "קיבלתם דירוג חדש", body: `הדירוג על "${text(data.task_name, "המטלה")}" אושר ומופיע בפרופיל שלכם` };
 
@@ -231,6 +246,11 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   application_decided: { email: true, push: true },
   message_received: { email: true, push: true },
   review_approved: { email: true, push: true },
+  review_reminder: { email: false, push: true },
+  review_rejected: { email: true, push: true },
+  review_response_approved: { email: true, push: true },
+  review_report_resolved: { email: true, push: true },
+  review_appeal_resolved: { email: true, push: true },
   task_completed: { email: true, push: false },
   parent_child_accepted: { email: true, push: true },
   parent_digest: { email: true, push: true },
@@ -282,6 +302,15 @@ export const SETTINGS_ROWS: {
     description: "מייל על ההודעה הראשונה, ועד מייל אחד לשעה בכל שיחה",
     roles: ["tasker", "bee"],
   },
+  { event: "review_report_resolved", label: "עדכון על דיווח ביקורת", description: "כשהתקבלה החלטה על דיווח שלכם", roles: ["tasker", "bee"] },
+  { event: "review_appeal_resolved", label: "עדכון על ערעור ביקורת", description: "כשהתקבלה החלטה על הערעור שלכם", roles: ["tasker", "bee"] },
+  {
+    event: "review_rejected", label: "עדכון על ביקורת שכתבתי", description: "כשהביקורת לא אושרה או הוסרה לאחר בדיקה", roles: ["tasker", "bee"],
+  },
+  {
+    event: "review_response_approved", label: "תגובה לביקורת שכתבתי", description: "כשמאושרת תגובה לביקורת שלכם", roles: ["tasker", "bee"],
+  },
+  { event: "review_reminder", label: "תזכורת לדרג", description: "תזכורת אחרי השלמת מטלה, ועוד אחת לפני שזמן הדירוג מסתיים", roles: ["tasker", "bee"] },
   {
     event: "review_approved",
     label: "דירוג חדש שהתקבל",

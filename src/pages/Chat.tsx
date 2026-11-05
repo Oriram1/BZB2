@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
 import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
+import { reviewWindowOpen } from "@/lib/reviewWindow";
 import { useNotifications } from "@/hooks/useNotifications";
 
 const MEDIA_BUCKET = "chat-media";
@@ -136,7 +137,7 @@ const Chat = () => {
         let completed = false;
         if (c.task_id) {
           const { data: task, error: taskError } = await supabase.from("tasks")
-            .select("name, status, archived_at, creator_id").eq("id", c.task_id).maybeSingle();
+            .select("name, status, archived_at, creator_id, review_window_started_at").eq("id", c.task_id).maybeSingle();
           if (taskError) {
             toast.error("לא הצלחנו לבדוק את מצב המשימה של השיחה");
             continue;
@@ -144,7 +145,7 @@ const Chat = () => {
           if (!task || task.status === "cancelled" || task.archived_at) continue;
           // A finished task closes its chat, but the other side still waits to be rated.
           if (task.status === "completed") {
-            if (reviewed.has(`${c.task_id}:${otherId}`)) continue;
+            if (reviewed.has(`${c.task_id}:${otherId}`) || !reviewWindowOpen(task.review_window_started_at)) continue;
             completed = true;
           }
           taskName = task.name;

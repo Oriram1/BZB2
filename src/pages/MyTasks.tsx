@@ -25,6 +25,8 @@ import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDateTime } from "@/lib/format";
+import { fetchAllPages } from "@/lib/fetchAllPages";
+import { reviewWindowOpen } from "@/lib/reviewWindow";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
 import {
   billingErrorText,
@@ -66,7 +68,9 @@ interface CandidateApplication {
   age: number | null;
   avatarUrl: string | null;
   completedTasks: number;
+  rating?: { average: number; count: number } | null;
   taskStatus: TaskStatus;
+  reviewWindowStartedAt: string | null;
 }
 
 interface PerformingTask {
@@ -77,6 +81,7 @@ interface PerformingTask {
   name: string;
   shortDesc: string;
   status: TaskStatus;
+  reviewWindowStartedAt: string | null;
   scheduledDate: string | null;
   scheduledTime: string | null;
   location: string;
@@ -119,6 +124,7 @@ const MyTasks = () => {
     () => performingTasks.filter(
       (task) => task.applicationStatus === "accepted"
         && task.status === "completed"
+        && reviewWindowOpen(task.reviewWindowStartedAt)
         && !submittedReviews.has(`${task.id}:${task.creatorId}`),
     ),
     [performingTasks, submittedReviews],
@@ -181,7 +187,7 @@ const MyTasks = () => {
       {
         const { data: taskRows, error: taskError } = await supabase
           .from("tasks")
-          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at")
+          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at, review_window_started_at")
           .eq("creator_id", user.id)
           .is("archived_at", null)
           .order("created_at", { ascending: false });
@@ -223,6 +229,7 @@ const MyTasks = () => {
                     avatarUrl: profile?.avatar_url ?? null,
                     completedTasks: completedTasks ?? 0,
                     taskStatus: task.status,
+                    reviewWindowStartedAt: task.review_window_started_at,
                   } satisfies CandidateApplication;
                 }),
               );
@@ -246,7 +253,7 @@ const MyTasks = () => {
           (ownApplications ?? []).map(async (application) => {
             const { data: task } = await supabase
               .from("tasks")
-              .select("id, creator_id, name, short_desc, status, scheduled_date, scheduled_time, location")
+              .select("id, creator_id, name, short_desc, status, scheduled_date, scheduled_time, location, review_window_started_at")
               .eq("id", application.task_id)
               .is("archived_at", null)
               .maybeSingle();
@@ -260,6 +267,7 @@ const MyTasks = () => {
               name: task.name,
               shortDesc: task.short_desc,
               status: task.status,
+              reviewWindowStartedAt: task.review_window_started_at,
               scheduledDate: task.scheduled_date,
               scheduledTime: task.scheduled_time,
               location: task.location,
@@ -270,6 +278,20 @@ const MyTasks = () => {
         nextPerformingTasks.push(...taskGroups.filter((task): task is PerformingTask => task !== null));
       }
 
+      const applicantIds = [...new Set(nextApplications.map((application) => application.applicantId))];
+      if (applicantIds.length) {
+        const { data: ratings, error: ratingsError } = await fetchAllPages((from, to) => supabase.from("user_role_ratings")
+          .select("user_id, avg_rating, review_count").eq("reviewee_role", "bee").in("user_id", applicantIds)
+          .order("user_id").range(from, to));
+        if (!ratingsError) {
+          const byUser = new Map(ratings.map((rating) => [rating.user_id, rating]));
+          for (const application of nextApplications) {
+            const rating = byUser.get(application.applicantId);
+            application.rating = rating?.avg_rating != null && rating.review_count
+              ? { average: rating.avg_rating, count: rating.review_count } : null;
+          }
+        }
+      }
       if (!cancelled && version === loadVersion) {
         setPublishedTasks(nextPublishedTasks);
         setApplications(nextApplications.sort((a, b) => Number(a.status !== "pending") - Number(b.status !== "pending")));
@@ -575,7 +597,7 @@ const MyTasks = () => {
                         </div>
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1"><Check size={13} /> {application.completedTasks} מטלות שהושלמו</span>
-                          <Link to={`/profile/${application.applicantId}`} className="inline-flex items-center gap-1 hover:underline"><Star size={13} /> דירוגים בפרופיל</Link>
+                          <Link to={`/profile/${application.applicantId}`} className="inline-flex items-center gap-1 hover:underline"><Star size={13} aria-hidden="true" /> {application.rating ? `${application.rating.average.toFixed(1)} (${application.rating.count} דירוגים)` : application.rating === null ? "עדיין אין דירוגים" : "דירוגים בפרופיל"}</Link>
                         </div>
                       </div>
                     </div>
@@ -614,11 +636,11 @@ const MyTasks = () => {
                       )}
                       {application.status === "accepted" && application.taskStatus === "completed" && (
                         <Button variant="outline" className="rounded-full font-bold"
-                          disabled={submittedReviews.has(`${application.taskId}:${application.applicantId}`)}
+                          disabled={submittedReviews.has(`${application.taskId}:${application.applicantId}`) || !reviewWindowOpen(application.reviewWindowStartedAt)}
                           onClick={() => setReviewTarget({ taskId: application.taskId, taskName: application.taskName,
                             revieweeId: application.applicantId, revieweeName: `${application.firstName} ${application.lastName}`.trim() })}>
                           <Star size={16} className="ms-1" />
-                          {submittedReviews.has(`${application.taskId}:${application.applicantId}`) ? "הדירוג נשלח" : "דירוג העובד"}
+                          {submittedReviews.has(`${application.taskId}:${application.applicantId}`) ? "הדירוג נשלח" : !reviewWindowOpen(application.reviewWindowStartedAt) ? "זמן הדירוג הסתיים" : "דירוג העובד"}
                         </Button>
                       )}
                       {application.status === "accepted" && application.taskStatus !== "completed" && application.taskStatus !== "cancelled" && (
@@ -825,11 +847,11 @@ const MyTasks = () => {
                   </div>
                   {task.applicationStatus === "accepted" && task.status === "completed" && (
                     <Button variant="outline" className="mt-4 rounded-full font-bold"
-                      disabled={submittedReviews.has(`${task.id}:${task.creatorId}`)}
+                      disabled={submittedReviews.has(`${task.id}:${task.creatorId}`) || !reviewWindowOpen(task.reviewWindowStartedAt)}
                       onClick={() => setReviewTarget({ taskId: task.id, taskName: task.name,
                         revieweeId: task.creatorId, revieweeName: "מפרסם המטלה" })}>
                       <Star size={16} className="ms-1" />
-                      {submittedReviews.has(`${task.id}:${task.creatorId}`) ? "הדירוג נשלח" : "דירוג המפרסם"}
+                      {submittedReviews.has(`${task.id}:${task.creatorId}`) ? "הדירוג נשלח" : !reviewWindowOpen(task.reviewWindowStartedAt) ? "זמן הדירוג הסתיים" : "דירוג המפרסם"}
                     </Button>
                   )}
                   {task.applicationStatus === "accepted" && task.status !== "completed" && task.status !== "cancelled" && (
