@@ -42,7 +42,7 @@ export default function TaskReviewPanel() {
       .from("tasks")
       .select("id, name, short_desc, payment, payment_due, insurance, uses_free_slot, publish_state, created_at, creator_id, payment_mode, charged_at")
       .in("publish_state", ["pending_review", "awaiting_charge", "pending_payment"])
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
     if (error) {
       toast.error("שגיאה בטעינת המשימות לאישור");
       setLoading(false);
@@ -102,6 +102,9 @@ export default function TaskReviewPanel() {
                   <div className="min-w-0">
                     <p className="font-extrabold">{task.name}</p>
                     <p className="text-sm text-muted-foreground">{task.short_desc}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      נוצרה: <time dateTime={task.created_at} dir="ltr">{new Date(task.created_at).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" })}</time>
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {task.creator_name} · תשלום למבצע {task.payment} ₪
                     </p>
