@@ -8,6 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import TaskCard from "@/components/tasks/TaskCard";
 import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
@@ -73,6 +74,13 @@ const TaskList = () => {
         .order("created_at", { ascending: false });
 
       if (!error && data) {
+        const creatorIds = [...new Set(data.map((task) => task.creator_id))];
+        const { data: ratingRows, error: ratingError } = creatorIds.length
+          ? await fetchAllPages((from, to) => supabase.from("user_avg_ratings")
+            .select("user_id, avg_rating, review_count").in("user_id", creatorIds)
+            .order("user_id").range(from, to))
+          : { data: [], error: null };
+        const ratings = new Map(ratingRows.map((rating) => [rating.user_id, rating]));
         // accepted_count lives on the task itself: RLS hides other people's
         // applications, so counting them here returned 0 and full tasks stayed up.
         const mapped: Task[] = data
@@ -95,6 +103,9 @@ const TaskList = () => {
             lat: t.latitude,
             lng: t.longitude,
             creatorId: t.creator_id,
+            creatorRating: ratingError ? undefined : ratings.has(t.creator_id)
+              ? { average: Number(ratings.get(t.creator_id)!.avg_rating), count: Number(ratings.get(t.creator_id)!.review_count) }
+              : null,
             publishState: t.publish_state,
           }));
         setTasks(mapped);

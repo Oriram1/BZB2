@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, MapPin, Calendar, Hourglass, Pencil, type LucideIcon } from "lucide-react";
+import { Users, MapPin, Calendar, Hourglass, Pencil, Star, type LucideIcon } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import { formatCurrency, formatDateTime, formatDuration, formatDistance } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ interface Task {
   /** Undefined when the user's location is unknown — never a placeholder value. */
   distance?: number;
   creatorId?: string;
+  creatorRating?: { average: number; count: number } | null;
   publishState?: TaskPublishState;
 }
 
@@ -119,6 +120,12 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
           {task.categoryLabel}
         </Badge>
       </div>
+      {task.creatorRating !== undefined && (
+        <div className="relative mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-foreground" aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}>
+          <Star size={13} className="fill-primary text-primary-ink" aria-hidden="true" />
+          {task.creatorRating ? <><span>דירוג המפרסם</span><bdi>{task.creatorRating.average.toFixed(1)}</bdi><span>({task.creatorRating.count})</span></> : "למפרסם עדיין אין דירוגים"}
+        </div>
+      )}
       {user && task.creatorId === user.id && task.publishState === "pending_review" && (
         <p className="relative mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
           המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
