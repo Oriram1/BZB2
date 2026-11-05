@@ -1514,6 +1514,7 @@ export type Database = {
         | "application_received"
         | "application_decided"
         | "message_received"
+        | "review_approved"
         | "task_completed"
         | "parent_child_accepted"
         | "parent_digest"
@@ -1698,6 +1699,7 @@ export const Constants = {
         "application_received",
         "application_decided",
         "message_received",
+        "review_approved",
         "task_completed",
         "parent_child_accepted",
         "parent_digest",

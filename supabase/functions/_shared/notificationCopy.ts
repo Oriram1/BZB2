@@ -11,6 +11,7 @@ export type NotificationEvent =
   | "application_received"
   | "application_decided"
   | "message_received"
+  | "review_approved"
   | "task_completed"
   | "parent_child_accepted"
   | "parent_digest"
@@ -157,6 +158,15 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
         paragraphs: [`${sender} ${say(about("sender_gender"), SUBJECT.sent)} ${toYou} הודעה: "${str(data.message_content, "הודעה חדשה")}"`],
         action: { label: "פתיחת הצ׳אט", url },
         manageUrl,
+      };
+    }
+
+    case "review_approved": {
+      const task = str(data.task_name, "המטלה");
+      return {
+        subject: "קיבלתם דירוג חדש ⭐", preheader: "הדירוג אושר ומופיע בפרופיל",
+        heading: "יש לכם דירוג חדש", paragraphs: [`הדירוג על "${task}" אושר ומופיע בפרופיל שלכם.`],
+        action: { label: "לצפייה בפרופיל", url }, manageUrl,
       };
     }
 
@@ -660,6 +670,9 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
         tag: `chat-${str(data.conversation_id)}`,
       };
 
+    case "review_approved":
+      return { title: "קיבלתם דירוג חדש ⭐", body: `הדירוג על "${str(data.task_name, "המטלה")}" אושר ומופיע בפרופיל`, url, tag: `review-${str(data.review_id)}` };
+
     case "task_completed":
       return {
         title: "המטלה הושלמה ✅",
@@ -844,6 +857,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   application_received: { email: true, push: true },
   application_decided: { email: true, push: true },
   message_received: { email: true, push: true },
+  review_approved: { email: true, push: true },
   task_completed: { email: true, push: false },
   parent_child_accepted: { email: true, push: true },
   parent_digest: { email: true, push: true },

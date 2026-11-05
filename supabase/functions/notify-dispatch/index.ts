@@ -16,11 +16,8 @@ import {
 } from "../_shared/notificationCopy.ts";
 import { formFor } from "../_shared/gender.ts";
 import { pushConfigured, sendPush } from "../_shared/push.ts";
+import { chatEmailAllowed } from "./chatEmail.ts";
 import { inQuietWindow, israelHour, resolveQuietHours } from "../_shared/quietHours.ts";
-/** Don't email someone who was looking at the app this recently. */
-const ACTIVE_WINDOW_MINUTES = 10;
-/** At most one chat email per conversation per hour. */
-const CHAT_EMAIL_COOLDOWN_MINUTES = 60;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -45,66 +42,6 @@ async function logDelivery(
     );
 }
 
-/**
- * Chat is the one event that can fire many times a minute, so email is held
- * back when the person is already in the app or was emailed about this
- * conversation recently. Push still goes out every time (the service worker
- * collapses it by tag).
- */
-async function chatEmailAllowed(
-  admin: SupabaseClient,
-  notification: NotificationRow,
-  userId: string,
-): Promise<{ allowed: boolean; unreadCount: number }> {
-  const conversationId = String(notification.data.conversation_id ?? "");
-
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("last_active_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  const siblings: { id: string; read_at: string | null; created_at: string }[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await admin
-      .from("notifications")
-      .select("id, read_at, created_at")
-      .eq("user_id", userId)
-      .eq("event_type", "message_received")
-      .eq("data->>conversation_id", conversationId)
-      .order("created_at", { ascending: false })
-      .range(from, from + 999);
-    if (error) throw error;
-    const page = (data ?? []) as { id: string; read_at: string | null; created_at: string }[];
-    siblings.push(...page);
-    if (page.length < 1000) break;
-  }
-
-  const unreadCount = (siblings ?? []).filter((row) => !row.read_at).length || 1;
-
-  if (profile?.last_active_at) {
-    const idleMs = Date.now() - new Date(profile.last_active_at).getTime();
-    if (idleMs < ACTIVE_WINDOW_MINUTES * 60_000) return { allowed: false, unreadCount };
-  }
-
-  const cutoff = new Date(Date.now() - CHAT_EMAIL_COOLDOWN_MINUTES * 60_000);
-  const recentIds = (siblings ?? [])
-    .filter((row) => row.id !== notification.id && new Date(row.created_at) > cutoff)
-    .map((row) => row.id);
-
-  if (recentIds.length > 0) {
-    const { data: recentEmails } = await admin
-      .from("notification_deliveries")
-      .select("id")
-      .eq("channel", "email")
-      .eq("status", "sent")
-      .in("notification_id", recentIds)
-      .limit(1);
-    if ((recentEmails ?? []).length > 0) return { allowed: false, unreadCount };
-  }
-
-  return { allowed: true, unreadCount };
-}
 
 /**
  * A parent contact has no auth.users row, so nothing about them can ride the
@@ -269,17 +206,9 @@ Deno.serve(async (req) => {
   let emailSkipReason: string | null = emailEnabled ? null : "disabled";
 
   if (!emailSkipReason && row.event_type === "message_received") {
-    // Chat is the one event quiet hours withhold on both channels: it is never
-    // urgent, and it is the only event this digest collects. Everything else
-    // keeps its email, because family_link_code expires in ten minutes and a
-    // code delivered at 07:00 is a dead code.
-    if (isQuiet) {
-      emailSkipReason = "quiet_hours";
-    } else {
-      const { allowed, unreadCount } = await chatEmailAllowed(admin, row, userId);
-      row.data.unread_count = unreadCount;
-      if (!allowed) emailSkipReason = "batched";
-    }
+    const { allowed, unreadCount } = await chatEmailAllowed(admin, row, userId);
+    row.data.unread_count = unreadCount;
+    if (!allowed) emailSkipReason = "batched";
   }
 
   // Hebrew inflects what is said TO the reader, not just about them. One read,

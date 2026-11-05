@@ -12,6 +12,7 @@ export type NotificationEvent =
   | "application_received"
   | "application_decided"
   | "message_received"
+  | "review_approved"
   | "task_completed"
   | "parent_child_accepted"
   | "parent_digest"
@@ -102,6 +103,9 @@ export function notificationLine(
         title: "הודעה חדשה",
         body: `${text(data.sender_name, "משתמש")} ${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)}: ${text(data.message_content, "הודעה חדשה")}`,
       };
+
+    case "review_approved":
+      return { emoji: "⭐", title: "קיבלתם דירוג חדש", body: `הדירוג על "${text(data.task_name, "המטלה")}" אושר ומופיע בפרופיל שלכם` };
 
     case "task_completed":
       return {
@@ -226,6 +230,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   application_received: { email: true, push: true },
   application_decided: { email: true, push: true },
   message_received: { email: true, push: true },
+  review_approved: { email: true, push: true },
   task_completed: { email: true, push: false },
   parent_child_accepted: { email: true, push: true },
   parent_digest: { email: true, push: true },
@@ -274,7 +279,13 @@ export const SETTINGS_ROWS: {
   {
     event: "message_received",
     label: "הודעה חדשה בצ׳אט",
-    description: "מיילים נשלחים מקובצים, ולא על כל הודעה בנפרד",
+    description: "מייל על ההודעה הראשונה, ועד מייל אחד לשעה בכל שיחה",
+    roles: ["tasker", "bee"],
+  },
+  {
+    event: "review_approved",
+    label: "דירוג חדש שהתקבל",
+    description: "כשהדירוג עליכם אושר ומופיע בפרופיל",
     roles: ["tasker", "bee"],
   },
   {

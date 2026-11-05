@@ -29,8 +29,8 @@ export function usePendingRatings() {
       .filter((p) => !done.has(`${p.taskId}:${p.revieweeId}`));
     if (!pending.length) { setItems([]); return; }
     const { data: profiles } = await supabase.from("profiles")
-      .select("id, first_name, last_name").in("id", [...new Set(pending.map((p) => p.revieweeId))]);
-    const who = new Map((profiles ?? []).map((p) => [p.id, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim()]));
+      .select("user_id, first_name, last_name").in("user_id", [...new Set(pending.map((p) => p.revieweeId))]);
+    const who = new Map((profiles ?? []).map((p) => [p.user_id, `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim()]));
     setItems(pending.map((p) => ({ ...p, taskName: names.get(p.taskId) ?? "", revieweeName: who.get(p.revieweeId) || "משתמש" })));
   }, [user]);
 
