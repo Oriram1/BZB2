@@ -209,6 +209,7 @@ const Chat = () => {
     void fetchConversations();
     const channel = supabase.channel(`chat-tasks-${user.id}-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, () => void fetchConversations())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => void fetchConversations())
       .subscribe();
     const refresh = () => { if (document.visibilityState === "visible") void fetchConversations(); };
     document.addEventListener("visibilitychange", refresh);

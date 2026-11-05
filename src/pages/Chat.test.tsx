@@ -8,6 +8,8 @@ const state = vi.hoisted(() => ({
   markRead: () => {},
   completed: false,
   taskChanged: undefined as (() => void) | undefined,
+  messageArrived: undefined as (() => void) | undefined,
+  showNewChat: false,
   messageReads: [] as string[],
   reviewed: [] as { task_id: string; reviewee_id: string }[],
   creator: "other",
@@ -23,6 +25,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   channel: () => {
     const channel = { on: (_event: string, filter: {table: string}, callback: () => void) => {
       if (filter.table === "tasks") state.taskChanged = callback;
+      if (filter.table === "messages" && !("filter" in filter)) state.messageArrived = callback;
       return channel;
     }, subscribe: () => channel };
     return channel;
@@ -31,6 +34,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
     let id = "";
     const result = () => {
       if (table === "conversations") return { data: [
+        ...(state.showNewChat ? [{ id: "new-chat", task_id: "open-task", participant_1: "me", participant_2: "other" }] : []),
         { id: "open-chat", task_id: "open-task", participant_1: "me", participant_2: "other" },
         { id: "closed-chat", task_id: "closed-task", participant_1: "me", participant_2: "other" },
       ], error: null };
@@ -52,7 +56,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
 } }));
 
 beforeEach(() => {
-  state.completed = false; state.taskChanged = undefined; state.messageReads = [];
+  state.completed = false; state.taskChanged = undefined; state.messageArrived = undefined; state.showNewChat = false; state.messageReads = [];
   state.reviewed = []; state.creator = "other";
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -89,4 +93,12 @@ it("offers completion only to the task's publisher", async () => {
   render(<MemoryRouter initialEntries={["/chat?conversation=open-chat"]}><Chat /></MemoryRouter>);
   await screen.findByTestId("composer");
   expect(screen.getByRole("button", { name: "הושלמה" })).toBeInTheDocument();
+});
+
+it("refreshes the conversation list when a message arrives", async () => {
+  render(<MemoryRouter initialEntries={["/chat"]}><Chat /></MemoryRouter>);
+  await screen.findByText("משימה פעילה");
+  state.showNewChat = true;
+  await act(async () => { state.messageArrived?.(); });
+  await waitFor(() => expect(screen.getAllByText("משימה פעילה")).toHaveLength(2));
 });
