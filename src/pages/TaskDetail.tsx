@@ -24,10 +24,13 @@ import {
   Eye,
   Pencil,
   Star,
+  MoreVertical,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import ApplyDialog from "@/components/tasks/ApplyDialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
@@ -45,7 +48,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 const statusLabels: Record<string, string> = {
@@ -100,6 +102,8 @@ const TaskDetail = () => {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [acceptedAsWorker, setAcceptedAsWorker] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", shortDesc: "", fullDesc: "", payment: "", location: "", notes: "", date: "", time: "", durationDays: "" });
@@ -197,7 +201,8 @@ const TaskDetail = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.id]);
 
-  const handleApply = async () => {
+  /** Opens the confirmation; the insert itself happens in `submitApplication`. */
+  const handleApply = () => {
     if (!user || !isBee) {
       if (!user) {
         toast.error("יש להתחבר כדי להגיש מועמדות");
@@ -207,12 +212,18 @@ const TaskDetail = () => {
       }
       return;
     }
-    if (!task) return;
+    setApplyOpen(true);
+  };
+
+  const submitApplication = async (message: string): Promise<boolean> => {
+    if (!task || !user) return false;
     setApplying(true);
     const { error } = await supabase.from("task_applications").insert({
       task_id: task.id,
       applicant_id: user.id,
+      message: message || null,
     });
+    setApplying(false);
     if (error) {
       if (error.code === "23505") {
         toast.info("כבר הגשת מועמדות למטלה זו");
@@ -220,16 +231,15 @@ const TaskDetail = () => {
       } else {
         toast.error("שגיאה בהגשת המועמדות");
       }
-    } else {
-      logUserActivity(user.id, "application_submitted", {
-        entityType: "task",
-        entityId: task.id,
-        details: { taskName: task.name },
-      });
-      toast.success("המועמדות נשלחה! 🐝");
-      setAlreadyApplied(true);
+      return false;
     }
-    setApplying(false);
+    logUserActivity(user.id, "application_submitted", {
+      entityType: "task",
+      entityId: task.id,
+      details: { taskName: task.name },
+    });
+    setAlreadyApplied(true);
+    return true;
   };
 
   const handleDeleteTask = async () => {
@@ -350,15 +360,17 @@ const TaskDetail = () => {
         titleIsPageHeading
         showBack={true}
         action={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleShare}
-            className="rounded-full text-primary-foreground hover:bg-foreground/10 shrink-0 h-10 w-10"
-            aria-label="שיתוף מטלה"
-          >
-            <Share2 size={18} />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleShare}
+              className="rounded-full text-primary-foreground hover:bg-foreground/10 shrink-0 h-11 w-11"
+              aria-label="שיתוף מטלה"
+            >
+              <Share2 size={18} />
+            </Button>
+          </div>
         }
       />
 
@@ -389,11 +401,30 @@ const TaskDetail = () => {
                 {categoryLabel(task.category)}
               </Badge>
             </div>
-            {!task.image_url && (
-              <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs">
-                {statusLabel}
-              </Badge>
+            <div className="flex items-center gap-1">
+              {!task.image_url && (
+                <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs">
+                  {statusLabel}
+                </Badge>
+              )}
+              <Button variant="ghost" size="icon" onClick={handleShare} className="md:hidden rounded-full h-11 w-11 text-muted-foreground" aria-label="שיתוף מטלה">
+                <Share2 size={18} />
+              </Button>
+            {isOwner && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground shrink-0 h-11 w-11" aria-label="עוד פעולות">
+                    <MoreVertical size={18} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem destructive onSelect={() => setDeleteOpen(true)}>
+                    <Trash2 size={16} aria-hidden="true" /> מחיקת המטלה
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
+            </div>
           </div>
 
           <div>
@@ -415,12 +446,52 @@ const TaskDetail = () => {
           </div>
         </div>
 
-        {isOwner && (
-          <Button className="w-full rounded-2xl font-bold" onClick={() => navigate("/my-tasks?tab=published")}>
-            {task.status === "completed" ? "המטלות והדירוגים שלי" : "ניהול וסיום המטלה"}
-          </Button>
-        )}
 
+        {/* Payment Hero Card */}
+        <div className="gradient-honey rounded-3xl p-5 text-primary-foreground shadow-lg shadow-amber-500/10 flex items-center justify-between">
+          <div>
+            <span className="text-xs opacity-90 block font-medium">תשלום מוצע</span>
+            <span className="text-3xl font-black tracking-tight">{formatCurrency(task.payment)}</span>
+            <span className="text-xs opacity-90 mr-1">/ {task.payment_type === "hour" ? "שעה" : "משימה"}</span>
+          </div>
+          <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3">
+            <DollarSign size={28} className="text-primary-foreground" />
+          </div>
+        </div>
+
+        {/* Creator Card */}
+        {creator && (
+          <div className="bg-card rounded-3xl p-4 border border-border/60 shadow-sm flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src={creatorAvatar}
+                alt="פרופיל"
+                className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shrink-0"
+              />
+              <div className="min-w-0">
+                <span className="text-xs text-muted-foreground block font-medium">פורסם על ידי</span>
+                <span className="font-bold text-foreground text-sm truncate block">
+                  {`${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() || "משתמש Busy Bee"}
+                </span>
+                {creatorRating !== undefined && (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-foreground">
+                    <Star size={12} className="fill-primary text-primary-ink" aria-hidden="true" />
+                    {creatorRating ? <><bdi>{creatorRating.average.toFixed(1)}</bdi> · {creatorRating.count} דירוגים</> : "עדיין אין דירוגים"}
+                  </span>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs font-bold shrink-0 border-border hover:bg-primary/10 hover:text-primary-ink"
+              onClick={() => navigate(`/profile/${creator.user_id}`)}
+            >
+              <User size={14} className="ms-1" />
+              פרופיל
+            </Button>
+          </div>
+        )}
         {!isOwner && task.status === "completed" && acceptedAsWorker && (
           <Button
             className="w-full rounded-2xl font-bold gap-2 gradient-honey text-primary-foreground"
@@ -452,18 +523,6 @@ const TaskDetail = () => {
             <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.notes}</p>
           </div>
         )}
-
-        {/* Payment Hero Card */}
-        <div className="gradient-honey rounded-3xl p-5 text-primary-foreground shadow-lg shadow-amber-500/10 flex items-center justify-between">
-          <div>
-            <span className="text-xs opacity-90 block font-medium">תשלום מוצע</span>
-            <span className="text-3xl font-black tracking-tight">{formatCurrency(task.payment)}</span>
-            <span className="text-xs opacity-90 mr-1">/ {task.payment_type === "hour" ? "שעה" : "משימה"}</span>
-          </div>
-          <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3">
-            <DollarSign size={28} className="text-primary-foreground" />
-          </div>
-        </div>
 
         {/* Ergonomic Details Chips Grid */}
         <div className="grid grid-cols-2 gap-3">
@@ -527,39 +586,6 @@ const TaskDetail = () => {
           </div>
         </div>
 
-        {/* Creator Card */}
-        {creator && (
-          <div className="bg-card rounded-3xl p-4 border border-border/60 shadow-sm flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <img
-                src={creatorAvatar}
-                alt="פרופיל"
-                className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shrink-0"
-              />
-              <div className="min-w-0">
-                <span className="text-xs text-muted-foreground block font-medium">פורסם על ידי</span>
-                <span className="font-bold text-foreground text-sm truncate block">
-                  {`${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() || "משתמש Busy Bee"}
-                </span>
-                {creatorRating !== undefined && (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-foreground">
-                    <Star size={12} className="fill-primary text-primary-ink" aria-hidden="true" />
-                    {creatorRating ? <><bdi>{creatorRating.average.toFixed(1)}</bdi> · {creatorRating.count} דירוגים</> : "עדיין אין דירוגים"}
-                  </span>
-                )}
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full text-xs font-bold shrink-0 border-border hover:bg-primary/10 hover:text-primary-ink"
-              onClick={() => navigate(`/profile/${creator.user_id}`)}
-            >
-              <User size={14} className="ms-1" />
-              פרופיל
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Floating Bottom Action Bar (Thumb Zone) */}
@@ -578,44 +604,44 @@ const TaskDetail = () => {
       {isOwner && (
         <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl rounded-3xl p-3 flex items-center gap-3">
           <Button
+            className="flex-1 h-12 rounded-2xl font-extrabold text-base gradient-honey text-primary-foreground shadow-md"
+            onClick={() => navigate("/my-tasks?tab=published")}
+          >
+            {task.status === "completed" ? "המטלות והדירוגים שלי" : "ניהול וסיום המטלה"}
+          </Button>
+          <Button
             variant="outline"
-            className="flex-1 h-12 rounded-2xl font-bold text-base border-border bg-card hover:bg-accent text-foreground"
+            className="h-12 px-5 rounded-2xl font-bold text-base border-border bg-card hover:bg-accent text-foreground"
             onClick={openEdit}
           >
             <Pencil size={16} className="ms-1" />
             עריכה
           </Button>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                className="h-12 px-5 rounded-2xl font-bold text-base gap-2"
-              >
-                <Trash2 size={18} />
-                מחיקה
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>מחיקת מטלה 🗑️</AlertDialogTitle>
-                <AlertDialogDescription>
-                  האם אתה בטוח שברצונך למחוק את המטלה "{task.name}"? פעולה זו תמחוק את המטלה לצמיתות ולא ניתן לבטלה.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-full font-bold">ביטול</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteTask}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full font-bold"
-                >
-                  מחק מטלה
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       )}
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת מטלה</AlertDialogTitle>
+            <AlertDialogDescription>
+              האם אתה בטוח שברצונך למחוק את המטלה "{task.name}"? פעולה זו תמחוק את המטלה לצמיתות ולא ניתן לבטלה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full font-bold">ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full font-bold"
+            >
+              מחק מטלה
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ApplyDialog open={applyOpen} onOpenChange={setApplyOpen} taskName={task.name} onSubmit={submitApplication} />
+
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent dir="rtl" className="max-w-lg max-h-[85dvh] overflow-y-auto">
           <DialogHeader>

@@ -69,8 +69,7 @@ test('wallet choice opens checkout immediately and an unpaid task never charges 
     await page.reload();
     await expect(page.getByText('הכרטיס השמור לא חויב.', { exact: false })).toBeVisible();
     await expect(page.getByRole('button', { name: 'לנסות שוב', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'תשלום ב-Bit', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'שלם עכשיו', exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('awaiting-payment.png'), fullPage: true, animations: 'disabled' });
   } finally {
     if (taskId) expect((await admin.from('tasks').delete().eq('id', taskId)).error).toBeNull();

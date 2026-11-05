@@ -2,7 +2,9 @@ import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, Eye, MessageCircle, Pencil, Plus, Star, UserRound, Users, X } from "lucide-react";
+import { Check, CreditCard, Eye, MessageCircle, MoreVertical, Pencil, Plus, Smartphone, Star, UserRound, Users, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import PageHeader from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +73,8 @@ interface CandidateApplication {
   rating?: { average: number; count: number } | null;
   taskStatus: TaskStatus;
   reviewWindowStartedAt: string | null;
+  /** The note the applicant wrote when applying, if any. */
+  message: string | null;
 }
 
 interface PerformingTask {
@@ -111,6 +115,8 @@ const MyTasks = () => {
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [performingTasks, setPerformingTasks] = useState<PerformingTask[]>([]);
   const [loading, setLoading] = useState(true);
+  /** The task whose payment method is being chosen. The choice itself happens in a dialog, not on the card. */
+  const [payChoice, setPayChoice] = useState<PublishedTask | null>(null);
   const [paymentSummary, setPaymentSummary] = useState<{ task: PublishedTask; oneTime: boolean; bit?: boolean } | null>(null);
   const [submittedReviews, setSubmittedReviews] = useState<Set<string>>(new Set());
   const [actionId, setActionId] = useState<string | null>(null);
@@ -158,8 +164,10 @@ const MyTasks = () => {
       ? "performing"
       : requestedTab === "published" && managesTasks
         ? "published"
+        // A publisher lands on their tasks, a worker on what they are doing.
+        // Candidates are one tap away, with a badge when any are waiting.
         : managesTasks
-          ? "applications"
+          ? "published"
           : "performing";
 
   useEffect(() => {
@@ -201,7 +209,7 @@ const MyTasks = () => {
             (taskRows ?? []).map(async (task) => {
               const { data: applicationRows } = await supabase
                 .from("task_applications")
-                .select("id, status, applicant_id")
+                .select("id, status, applicant_id, message")
                 .eq("task_id", task.id)
                 .is("archived_at", null);
 
@@ -230,6 +238,7 @@ const MyTasks = () => {
                     completedTasks: completedTasks ?? 0,
                     taskStatus: task.status,
                     reviewWindowStartedAt: task.review_window_started_at,
+                    message: application.message,
                   } satisfies CandidateApplication;
                 }),
               );
@@ -534,6 +543,7 @@ const MyTasks = () => {
       <div className="max-w-3xl mx-auto py-5 px-4 relative z-10">
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
           <TabsList className={`grid w-full h-auto rounded-2xl bg-card border border-border p-1 ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
+            {managesTasks && <TabsTrigger value="published" className="min-h-11 rounded-xl font-bold">מטלות שפרסמתי</TabsTrigger>}
             {managesTasks && (
               <TabsTrigger value="applications" className="relative min-h-11 rounded-xl font-bold gap-1.5">
                 מועמדויות
@@ -544,7 +554,6 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {managesTasks && <TabsTrigger value="published" className="min-h-11 rounded-xl font-bold">מטלות שפרסמתי</TabsTrigger>}
             {performsTasks && <TabsTrigger value="performing" className="min-h-11 rounded-xl font-bold">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
 
@@ -556,7 +565,10 @@ const MyTasks = () => {
                 <div className="rounded-3xl border border-border bg-card p-8 text-center">
                   <UserRound className="mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
                   <p className="font-bold">אין מועמדויות עדיין</p>
-                  <p className="text-sm text-muted-foreground mt-1">מועמדויות חדשות יופיעו כאן.</p>
+                  <p className="text-sm text-muted-foreground mt-1">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
+                  <Button className="mt-4 rounded-full gradient-honey text-primary-foreground" asChild>
+                    <Link to="/create-task">פרסום מטלה</Link>
+                  </Button>
                 </div>
               ) : applications.map((application) => {
                 const fullName = `${application.firstName} ${application.lastName}`.trim() || "משתמש";
@@ -602,6 +614,13 @@ const MyTasks = () => {
                       </div>
                     </div>
 
+                    {application.message && (
+                      <p className="mt-3 rounded-2xl bg-muted/60 px-3 py-2 text-sm text-foreground whitespace-pre-wrap">
+                        <span className="block text-xs font-bold text-muted-foreground mb-0.5">מה הם כתבו</span>
+                        {application.message}
+                      </p>
+                    )}
+
                     {/* A greyed-out approval button with no reason next to it reads
                         as a broken screen rather than a full task. */}
                     {full && application.status === "pending" && (
@@ -610,17 +629,15 @@ const MyTasks = () => {
                       </p>
                     )}
 
-                    <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-                      <Button asChild variant="outline" className="rounded-full font-bold">
-                        <Link to={`/profile/${application.applicantId}`}>צפייה בפרופיל</Link>
-                      </Button>
+                    {/* One main action, one quiet alternative, everything else in the menu. */}
+                    <div className="mt-4 flex items-center gap-2">
                       {application.status === "pending" && (
                         <>
                           <Button
                             onClick={() => updateApplicationStatus(application, "accepted")}
                             disabled={actionId === application.id || full}
                             title={full ? "כל המקומות במטלה תפוסים" : undefined}
-                            className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                            className="flex-1 min-h-11 rounded-full gradient-honey text-primary-foreground font-bold gap-1"
                           >
                             <Check size={16} /> אישור וקבלה
                           </Button>
@@ -628,14 +645,14 @@ const MyTasks = () => {
                             variant="outline"
                             onClick={() => updateApplicationStatus(application, "rejected")}
                             disabled={actionId === application.id}
-                            className="rounded-full font-bold text-destructive hover:text-destructive gap-1 col-span-2 sm:col-auto"
+                            className="min-h-11 rounded-full font-bold gap-1"
                           >
                             <X size={16} /> דחייה
                           </Button>
                         </>
                       )}
                       {application.status === "accepted" && application.taskStatus === "completed" && (
-                        <Button variant="outline" className="rounded-full font-bold"
+                        <Button className="flex-1 min-h-11 rounded-full font-bold gradient-honey text-primary-foreground"
                           disabled={submittedReviews.has(`${application.taskId}:${application.applicantId}`) || !reviewWindowOpen(application.reviewWindowStartedAt)}
                           onClick={() => setReviewTarget({ taskId: application.taskId, taskName: application.taskName,
                             revieweeId: application.applicantId, revieweeName: `${application.firstName} ${application.lastName}`.trim() })}>
@@ -644,22 +661,35 @@ const MyTasks = () => {
                         </Button>
                       )}
                       {application.status === "accepted" && application.taskStatus !== "completed" && application.taskStatus !== "cancelled" && (
-                        <Button
-                          onClick={() => openAcceptedConversation(application)}
-                          disabled={actionId === application.id}
-                          className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
-                        >
-                          <MessageCircle size={16} /> מעבר לצ׳אט
-                        </Button>
+                        <>
+                          <Button
+                            onClick={() => openAcceptedConversation(application)}
+                            disabled={actionId === application.id}
+                            className="flex-1 min-h-11 rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                          >
+                            <MessageCircle size={16} /> מעבר לצ׳אט
+                          </Button>
+                          <Button variant="outline" className="min-h-11 rounded-full font-bold" onClick={() => {
+                            const task = publishedTasks.find((item) => item.id === application.taskId);
+                            if (task) setConfirmComplete(task);
+                          }}>
+                            <Check size={16} className="ms-1" /> הושלמה
+                          </Button>
+                        </>
                       )}
-                      {application.status === "accepted" && application.taskStatus !== "completed" && application.taskStatus !== "cancelled" && (
-                        <Button variant="outline" className="rounded-full font-bold" onClick={() => {
-                          const task = publishedTasks.find((item) => item.id === application.taskId);
-                          if (task) setConfirmComplete(task);
-                        }}>
-                          <Check size={16} className="ms-1" /> סמן כהושלמה
-                        </Button>
-                      )}
+                      {application.status === "rejected" && <span className="flex-1" />}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-full" aria-label={`עוד פעולות עבור ${fullName}`}>
+                            <MoreVertical size={18} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem asChild>
+                            <Link to={`/profile/${application.applicantId}`}>צפייה בפרופיל</Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </article>
                 );
@@ -717,7 +747,7 @@ const MyTasks = () => {
                     {task.publish_state === "pending_review" && task.payment_mode === "one_time" && !task.charged_at && Number(task.payment_due) > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
-                          תשלום עכשיו
+                          שלם עכשיו
                         </Button>
                       </div>
                     )}
@@ -729,18 +759,11 @@ const MyTasks = () => {
                         <p className="mt-1 text-muted-foreground">
                           {task.payment_mode === "one_time" ? "בחרו אמצעי תשלום כדי להשלים את הפרסום. הכרטיס השמור לא חויב." : "כדאי לנסות כרטיס אחר או לפנות לחברת האשראי."} אם לא ישולם תוך 7 ימים המטלה תחזור לטיוטה, בלי חיוב.
                         </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {task.payment_mode !== "one_time" && <><Button size="sm" disabled={payingTask === task.id} onClick={() => retryPayment(task)} className="rounded-full font-bold">
-                            לנסות שוב
-                          </Button>
-                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: false })} className="rounded-full font-bold">
-                            לשלם בכרטיס אחר
-                          </Button></>}
-                          <Button size="sm" variant="outline" disabled={payingTask === task.id} onClick={() => setPaymentSummary({ task, oneTime: true })} className="rounded-full font-bold">
-                            תשלום חד-פעמי
+                        <div className="mt-3">
+                          <Button disabled={payingTask === task.id} onClick={() => setPayChoice(task)} className="w-full min-h-11 rounded-full gradient-honey text-primary-foreground font-extrabold">
+                            שלם עכשיו
                           </Button>
                         </div>
-                        <p className="mt-2 text-xs text-muted-foreground">בתשלום חד-פעמי לא נשמר כרטיס. Apple Pay, Google Pay ו-Bit נבחרים בדף התשלום, בכפוף להפעלתם אצל חברת הסליקה ולתמיכת המכשיר.</p>
                       </div>
                     )}
                     {(task.publish_state === "draft" || task.publish_state === "rejected") && (
@@ -931,6 +954,33 @@ const MyTasks = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={!!payChoice} onOpenChange={(open) => !open && setPayChoice(null)}>
+          <DialogContent dir="rtl" className="rounded-3xl sm:max-w-md">
+            <DialogHeader className="text-start">
+              <DialogTitle>איך לשלם?</DialogTitle>
+              <DialogDescription>
+                {Number(payChoice?.payment_due ?? 0)} ₪ עבור ״{payChoice?.name}״. זו עמלת הפרסום, לא התמורה לעובד.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              {payChoice && payChoice.payment_mode !== "one_time" && (
+                <Button className="min-h-12 justify-start gap-3 rounded-2xl font-bold" onClick={() => { const t = payChoice; setPayChoice(null); void retryPayment(t); }}>
+                  <CreditCard size={18} aria-hidden="true" /> הכרטיס השמור
+                </Button>
+              )}
+              {payChoice && payChoice.payment_mode !== "one_time" && (
+                <Button variant="outline" className="min-h-12 justify-start gap-3 rounded-2xl font-bold" onClick={() => { const t = payChoice; setPayChoice(null); setPaymentSummary({ task: t, oneTime: false }); }}>
+                  <CreditCard size={18} aria-hidden="true" /> כרטיס אחר
+                </Button>
+              )}
+              <Button variant={payChoice?.payment_mode === "one_time" ? "default" : "outline"} className="min-h-12 justify-start gap-3 rounded-2xl font-bold" onClick={() => { const t = payChoice!; setPayChoice(null); setPaymentSummary({ task: t, oneTime: true }); }}>
+                <Smartphone size={18} aria-hidden="true" /> תשלום חד-פעמי: כרטיס, Apple Pay, Google Pay או Bit
+              </Button>
+              <p className="text-xs text-muted-foreground">בתשלום חד-פעמי לא נשמר כרטיס. האפשרויות בדף התשלום תלויות בהפעלה אצל חברת הסליקה ובתמיכת המכשיר.</p>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <PaymentSummaryDialog open={!!paymentSummary} title={paymentSummary?.bit ? "סיכום תשלום ב-Bit" : "סיכום תשלום למטלה"}
           amount={Number(paymentSummary?.task.payment_due ?? 0)}

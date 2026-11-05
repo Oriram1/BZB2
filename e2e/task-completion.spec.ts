@@ -129,16 +129,17 @@ test('completion closes chat, records earnings and supports mutual ratings', asy
       await route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'payment_unavailable' }) });
     });
     await page.goto('/my-tasks?tab=published');
-    await expect(page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'שלם עכשיו', exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('payment-options.png'), fullPage: true });
-    await page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true }).click();
+    await page.getByRole('button', { name: 'שלם עכשיו', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /תשלום חד-פעמי/ }).click();
     await expect(page.getByRole('dialog')).toContainText('הכרטיס לא יישמר');
     await page.screenshot({ path: testInfo.outputPath('one-time-summary.png'), fullPage: false, animations: 'disabled' });
     await page.getByRole('button', { name: 'פתיחת דף מאובטח', exact: true }).click();
     await expect(page.getByText('שירות התשלום לא זמין כרגע. אפשר לנסות שוב בעוד כמה דקות', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'פתיחת דף מאובטח', exact: true })).toBeEnabled();
     await page.getByRole('dialog').getByRole('button', { name: 'חזרה', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'שלם עכשיו', exact: true })).toBeEnabled();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   } finally {
     await workerContext.close();

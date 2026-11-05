@@ -1,14 +1,10 @@
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, MapPin, Calendar, Hourglass, Pencil, Star, type LucideIcon } from "lucide-react";
+import { MapPin, Pencil, Star, Heart, ChevronLeft } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import { formatCurrency, formatDateTime, formatDuration, formatDistance } from "@/lib/format";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
 
 interface Task {
@@ -36,23 +32,23 @@ interface Task {
   publishState?: TaskPublishState;
 }
 
-/**
- * One field of the card grid. Same icon size, same order (icon then value) and the
- * same alignment every time, so the eye learns a single pattern and scans it fast.
- */
-const Field = ({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) => (
-  <div className="flex items-center gap-1.5 min-w-0">
-    <Icon size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-    <span className="sr-only">{label}: </span>
-    <span className="tabular truncate">{value}</span>
-  </div>
-);
+type TaskCardProps = {
+  task: Task;
+  index: number;
+  /** Whether the signed-in person saved this task. Hidden when no toggle is given. */
+  saved?: boolean;
+  onToggleSave?: (taskId: string) => void;
+};
 
-const TaskCard = ({ task, index }: { task: Task; index: number }) => {
-  const { user, roles } = useAuth();
-  const isBee = roles.includes("bee");
+/**
+ * Reading order follows what a worker decides on: the pay and the distance
+ * first, then what the job is, then when. Applying happens on the detail
+ * screen, where the whole task is visible, never from the list.
+ */
+const TaskCard = ({ task, index, saved = false, onToggleSave }: TaskCardProps) => {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [applying, setApplying] = useState(false);
+  const isOwner = Boolean(user && task.creatorId === user.id);
 
   const handleCardClick = () => {
     if (task.dbId) {
@@ -60,49 +56,23 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
     }
   };
 
-  const handleApply = async () => {
-    if (!user || !isBee) {
-      if (!user) {
-        toast.error("יש להתחבר כדי להגיש מועמדות");
-        navigate("/login");
-      } else {
-        toast.error("רק מקבלי מטלות יכולים להגיש מועמדות");
-      }
-      return;
-    }
-    if (!task.dbId || applying) return;
-    setApplying(true);
-    const { error } = await supabase.from("task_applications").insert({
-      task_id: task.dbId,
-      applicant_id: user.id,
-    });
-    setApplying(false);
-    if (error) {
-      if (error.code === "23505") {
-        toast.info("כבר הגשת מועמדות למטלה זו");
-      } else {
-        toast.error("לא הצלחנו לשלוח את המועמדות. כדאי לנסות שוב בעוד רגע");
-      }
-    } else {
-      logUserActivity(user.id, "application_submitted", {
-        entityType: "task",
-        entityId: task.dbId,
-        details: { taskName: task.name },
-      });
-      toast.success("המועמדות נשלחה");
-    }
-  };
+  const meta = [
+    formatDateTime(task.date, task.time),
+    formatDuration(task.duration),
+    task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label={`מטלה: ${task.name}`}
-      className="bg-card rounded-3xl p-6 border border-border card-hover cursor-pointer group relative overflow-hidden animate-fade-in opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="bg-card rounded-3xl p-5 border border-border card-hover cursor-pointer group relative overflow-hidden animate-fade-in opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       // Cap the stagger so a long list does not make the last card wait seconds.
       style={{ animationDelay: `${Math.min(index, 8) * 0.05}s`, animationFillMode: "forwards" }}
       onClick={handleCardClick}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           handleCardClick();
@@ -110,53 +80,64 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
       }}
     >
       <div className="absolute inset-0 gradient-honey opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500" />
-      <div className="flex items-start gap-3 relative">
-        <CategoryIcon category={task.category} className="shrink-0 group-hover:scale-110 transition-transform duration-300" />
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-lg text-foreground">{task.name}</h3>
-          <p className="text-muted-foreground text-sm mt-1 truncate">{task.shortDesc}</p>
-        </div>
-        <Badge variant="secondary" className="text-xs shrink-0 rounded-xl font-bold">
-          {task.categoryLabel}
-        </Badge>
-      </div>
-      {task.creatorRating !== undefined && (
-        <div className="relative mt-3 flex items-center gap-1.5 text-xs leading-5" aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}>
-          <span className="text-muted-foreground">דירוג המפרסם</span>
-          {task.creatorRating ? (
-            <>
-              <Star size={13} className="fill-primary-ink text-primary-ink" aria-hidden="true" />
-              <bdi className="font-bold tabular-nums text-foreground">{task.creatorRating.average.toFixed(1)}</bdi>
-              <span className="text-muted-foreground">({task.creatorRating.count === 1 ? "דירוג אחד" : `${task.creatorRating.count} דירוגים`})</span>
-            </>
-          ) : <span className="text-muted-foreground">אין עדיין דירוגים</span>}
-        </div>
-      )}
-      {user && task.creatorId === user.id && task.publishState === "pending_review" && (
-        <p className="relative mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
-          המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
-        </p>
-      )}
-      {/* Fixed field order — the optional distance sits last so nothing shifts when it is missing. */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground mt-4 pt-4 border-t border-border relative">
-        <Field icon={Calendar} label="מועד" value={formatDateTime(task.date, task.time)} />
-        <Field icon={Hourglass} label="משך" value={formatDuration(task.duration)} />
-        <Field
-          icon={Users}
-          label="עובדים"
-          value={task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`}
-        />
-        {/* Distance only renders when it was actually measured. */}
-        {task.distance !== undefined && (
-          <Field icon={MapPin} label="מרחק" value={formatDistance(task.distance)} />
-        )}
-      </div>
-      <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-border relative">
-        <p className="text-xl font-bold text-foreground tabular">
+
+      {/* Pay and distance: the two numbers a worker scans for. */}
+      <div className="relative flex items-start justify-between gap-3">
+        <p className="text-2xl font-extrabold text-foreground tabular leading-none">
           {formatCurrency(task.payment)}
           <span className="text-sm font-bold text-muted-foreground"> / {task.paymentType === "hour" ? "שעה" : "משימה"}</span>
         </p>
-        {user && task.creatorId === user.id ? (
+        <div className="flex items-center gap-1 shrink-0">
+          {task.distance !== undefined && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-foreground tabular">
+              <MapPin size={13} aria-hidden="true" />
+              <span className="sr-only">מרחק: </span>
+              {formatDistance(task.distance)}
+            </span>
+          )}
+          {onToggleSave && task.dbId && !isOwner && (
+            <button
+              type="button"
+              aria-pressed={saved}
+              aria-label={saved ? "הסרה מהמטלות השמורות" : "שמירת המטלה"}
+              onClick={(e) => { e.stopPropagation(); onToggleSave(task.dbId!); }}
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Heart size={20} className={cn(saved && "fill-destructive text-destructive")} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="relative mt-3 flex items-start gap-3">
+        <CategoryIcon category={task.category} className="shrink-0 group-hover:scale-110 transition-transform duration-300" />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-lg text-foreground leading-snug">{task.name}</h3>
+          <p className="text-muted-foreground text-sm mt-0.5 truncate">{task.shortDesc}</p>
+        </div>
+      </div>
+
+      <p className="relative mt-3 text-sm text-muted-foreground tabular">{meta}</p>
+
+      {isOwner && task.publishState === "pending_review" && (
+        <p className="relative mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+          המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
+        </p>
+      )}
+
+      <div className="relative mt-3 pt-3 border-t border-border flex items-center justify-between gap-3 min-h-11">
+        {task.creatorRating !== undefined ? (
+          <div className="flex items-center gap-1.5 text-xs leading-5" aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}>
+            {task.creatorRating ? (
+              <>
+                <Star size={13} className="fill-primary-ink text-primary-ink" aria-hidden="true" />
+                <bdi className="font-bold tabular-nums text-foreground">{task.creatorRating.average.toFixed(1)}</bdi>
+                <span className="text-muted-foreground">({task.creatorRating.count === 1 ? "דירוג אחד" : `${task.creatorRating.count} דירוגים`})</span>
+              </>
+            ) : <span className="text-muted-foreground">למפרסם אין עדיין דירוגים</span>}
+          </div>
+        ) : <span />}
+        {isOwner ? (
           <Button
             size="sm"
             variant="outline"
@@ -166,15 +147,10 @@ const TaskCard = ({ task, index }: { task: Task; index: number }) => {
             <Pencil size={14} />
             עריכה
           </Button>
-        ) : user && isBee && (
-          <Button
-            size="sm"
-            disabled={applying}
-            onClick={(e) => { e.stopPropagation(); handleApply(); }}
-            className="gradient-honey text-primary-foreground rounded-full border-none min-h-11 active:scale-95 transition-transform duration-200 font-bold shrink-0"
-          >
-            {applying ? "שולח..." : "להגיש מועמדות"}
-          </Button>
+        ) : (
+          <span className="inline-flex items-center gap-0.5 text-sm font-bold text-primary-ink" aria-hidden="true">
+            לפרטים <ChevronLeft size={16} />
+          </span>
         )}
       </div>
     </div>

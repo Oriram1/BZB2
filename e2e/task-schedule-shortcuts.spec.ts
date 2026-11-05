@@ -24,10 +24,8 @@ test('schedule shortcuts fill editable fields and keep three choices on one row'
     await expect(page).toHaveURL(/\/tasks$/, { timeout: 20_000 });
     await page.goto('/create-task');
     await page.getByRole('radio', { name: 'עבודות בית', exact: true }).check();
-    await page.getByRole('button', { name: 'הבא', exact: true }).click();
     await page.getByLabel('מה צריך לעשות?', { exact: true }).fill('בדיקת תאריך ושעה');
     await page.getByLabel('תיאור קצר (עד 120 תווים)', { exact: true }).fill('בדיקה מקומית');
-    await page.getByRole('button', { name: 'הבא', exact: true }).click();
     await page.getByLabel('תשלום מוצע', { exact: true }).fill('10');
     await page.getByRole('button', { name: 'הבא', exact: true }).click();
     await page.clock.install({ time: new Date('2027-01-31T12:00:00Z') });

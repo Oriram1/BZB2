@@ -29,14 +29,15 @@ test('one-time wallets and Bit preserve card choice and handle unavailable Bit',
     await page.locator('button[type=submit]').click();
     await expect(page).toHaveURL(/\/tasks$/, { timeout: 20_000 });
     await page.goto('/my-tasks?tab=published');
-    await expect(page.getByRole('button', { name: 'תשלום ב-Bit', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'שלם עכשיו', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('payment-methods.png'), fullPage: true, animations: 'disabled' });
-    await page.getByRole('button', { name: 'לשלם בכרטיס אחר', exact: true }).click();
+    await page.getByRole('button', { name: 'שלם עכשיו', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /כרטיס אחר/ }).click();
     await expect(page.getByRole('dialog')).toContainText('שמירת כרטיס מחייבת כרטיס אשראי רגיל');
     await page.getByRole('button', { name: 'חזרה', exact: true }).click();
-    await page.getByRole('button', { name: 'תשלום חד-פעמי', exact: true }).click();
+    await page.getByRole('button', { name: 'שלם עכשיו', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /תשלום חד-פעמי/ }).click();
     await expect(page.getByRole('dialog')).toContainText('הכרטיס לא יישמר');
     await page.getByRole('button', { name: 'חזרה', exact: true }).click();
     await page.context().route('**/functions/v1/task-pay', async route => {

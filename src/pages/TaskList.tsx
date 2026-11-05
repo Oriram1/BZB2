@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePermissionPrompt } from "@/components/PermissionPromptContext";
-import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus } from "lucide-react";
+import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus, Search, Heart, X } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
@@ -14,17 +14,33 @@ import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSavedTasks } from "@/hooks/useSavedTasks";
+import { cn } from "@/lib/utils";
 
 /** Top of the distance slider. One step past it means "do not filter by distance". */
 const MAX_DISTANCE_KM = 50;
 const NO_DISTANCE_LIMIT = MAX_DISTANCE_KM + 1;
+/** One-tap distances; the slider stays for anything in between. */
+const QUICK_DISTANCES = [1, 3, 5, 10, NO_DISTANCE_LIMIT];
+
+type SortKey = "new" | "near" | "price" | "soon";
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "new", label: "החדשות ביותר" },
+  { value: "near", label: "הכי קרוב" },
+  { value: "price", label: "התשלום הגבוה ביותר" },
+  { value: "soon", label: "המועד הקרוב ביותר" },
+];
 
 const TaskList = () => {
-  const { roles } = useAuth();
+  const { user, roles } = useAuth();
   const { pushPending } = usePermissionPrompt();
   const [locationDismissed, setLocationDismissed] = useState(false);
   const isTasker = roles.includes("tasker");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("new");
+  const [onlySaved, setOnlySaved] = useState(false);
+  const { saved, toggle: toggleSaved } = useSavedTasks();
   const [maxDistance, setMaxDistance] = useState(() => {
     const saved = localStorage.getItem("bzb_max_distance");
     return saved ? Number(saved) : 10;
@@ -128,11 +144,24 @@ const TaskList = () => {
     (t) => selectedCategory === "all" || t.category === selectedCategory,
   );
   // Without a measurable distance there is nothing to filter on, so show everything.
-  const filteredTasks = inCategory.filter(
-    (t) => t.distance === undefined || maxDistance >= NO_DISTANCE_LIMIT || t.distance <= maxDistance,
-  );
+  const needle = query.trim().toLowerCase();
+  const matchesQuery = (t: Task) =>
+    !needle || [t.name, t.shortDesc, t.location].some((field) => field.toLowerCase().includes(needle));
+  const when = (t: Task) => (t.date ? `${t.date}T${t.time || "00:00"}` : "9999");
+  const sorters: Record<SortKey, (a: Task, b: Task) => number> = {
+    // The fetch already returns newest first, so "new" keeps the incoming order.
+    new: () => 0,
+    near: (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity),
+    price: (a, b) => b.payment - a.payment,
+    soon: (a, b) => when(a).localeCompare(when(b)),
+  };
+  const filteredTasks = inCategory
+    .filter((t) => t.distance === undefined || maxDistance >= NO_DISTANCE_LIMIT || t.distance <= maxDistance)
+    .filter(matchesQuery)
+    .filter((t) => !onlySaved || (t.dbId !== undefined && saved.has(t.dbId)))
+    .sort(sorters[sortKey]);
   /** How many tasks the distance slider alone is holding back, for the empty state. */
-  const hiddenByDistance = inCategory.length - filteredTasks.length;
+  const hiddenByDistance = inCategory.filter(matchesQuery).filter((t) => t.distance !== undefined && maxDistance < NO_DISTANCE_LIMIT && t.distance > maxDistance).length;
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
@@ -153,7 +182,6 @@ const TaskList = () => {
       />
 
       <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
-        <div className="mb-4"><PendingRatingsCard /></div>
         <Dialog open={!pushPending && !locationDismissed && locationState !== "ready" && locationState !== "checking"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
           <DialogContent dir="rtl" className="rounded-2xl sm:max-w-md">
             <DialogHeader>
@@ -203,6 +231,50 @@ const TaskList = () => {
             </button>
             </div>
           </div>
+        </div>
+
+        {/* Search and sort sit above the filters: finding a job by name or ordering by pay is the first thing people try. */}
+        <div className="flex items-center gap-2 mb-3 animate-fade-in">
+          <div className="relative flex-1">
+            <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="חיפוש מטלה, תיאור או כתובת"
+              aria-label="חיפוש מטלות"
+              className="w-full h-11 rounded-2xl border border-border bg-card ps-9 pe-9 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery("")} aria-label="ניקוי החיפוש" className="absolute end-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
+                <X size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <label className="sr-only" htmlFor="task-sort">מיון</label>
+          <select
+            id="task-sort"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="h-11 shrink-0 rounded-2xl border border-border bg-card px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value} disabled={o.value === "near" && !userPos}>{o.label}</option>
+            ))}
+          </select>
+          {user && roles.includes("bee") && (
+            <button
+              type="button"
+              aria-pressed={onlySaved}
+              aria-label="מטלות שמורות בלבד"
+              title="שמורות"
+              onClick={() => setOnlySaved((v) => !v)}
+              className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                onlySaved ? "border-transparent gradient-honey text-primary-foreground" : "border-border bg-card text-muted-foreground")}
+            >
+              <Heart size={18} className={cn(onlySaved && "fill-current")} aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         {/* Filters: one scrolling row of categories, distance folded away behind its current value. */}
@@ -256,6 +328,20 @@ const TaskList = () => {
               </button>
               {distanceOpen && (
                 <div id="distance-filter-panel" className="px-4 pb-4">
+                  <div className="flex flex-wrap gap-2 pb-2" role="group" aria-label="מרחק מהיר">
+                    {QUICK_DISTANCES.map((km) => (
+                      <button
+                        key={km}
+                        type="button"
+                        aria-pressed={maxDistance === km}
+                        onClick={() => { setMaxDistance(km); localStorage.setItem("bzb_max_distance", String(km)); }}
+                        className={cn("min-h-11 rounded-2xl border px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          maxDistance === km ? "border-transparent gradient-honey text-primary-foreground" : "border-border bg-card text-foreground")}
+                      >
+                        {km >= NO_DISTANCE_LIMIT ? "הכול" : `${km} ק״מ`}
+                      </button>
+                    ))}
+                  </div>
                   <label htmlFor="distance-filter" className="sr-only">
                     מרחק מרבי בקילומטרים
                   </label>
@@ -297,7 +383,7 @@ const TaskList = () => {
           viewMode === "list" ? (
             <div className="grid md:grid-cols-2 gap-4">
               {filteredTasks.map((task, i) => (
-                <TaskCard key={task.id} task={task} index={i} />
+                <TaskCard key={task.id} task={task} index={i} saved={task.dbId ? saved.has(task.dbId) : false} onToggleSave={toggleSaved} />
               ))}
             </div>
           ) : (
@@ -313,6 +399,8 @@ const TaskList = () => {
             <span className="sr-only">טוען מטלות</span>
           </div>
         )}
+
+        {!loading && filteredTasks.length > 0 && <div className="mt-6"><PendingRatingsCard /></div>}
 
         {!loading && filteredTasks.length === 0 && (
           <div className="text-center py-16 animate-fade-in">

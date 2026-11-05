@@ -45,14 +45,17 @@ import {
 /** Kept in step with the tasks_short_desc_length constraint on public.tasks. */
 const SHORT_DESC_MAX = 120;
 
+/**
+ * Three screens: what is needed (category, details, pay and workers), when and
+ * where (with the optional photo, notes and insurance), then the summary and
+ * cost. The assistant can fill all of it from one sentence.
+ */
 const steps = [
-  { id: 1, label: "קטגוריה", icon: Tag },
-  { id: 2, label: "פרטים", icon: FileText },
-  { id: 3, label: "תשלום", icon: DollarSign },
-  { id: 4, label: "תיאום", icon: MapPin },
-  { id: 5, label: "תוספות", icon: Image },
-  { id: 6, label: "סיכום", icon: Check },
+  { id: 1, label: "מה צריך", icon: FileText },
+  { id: 2, label: "מתי ואיפה", icon: MapPin },
+  { id: 3, label: "סיכום", icon: Check },
 ];
+const SUMMARY_STEP = 3;
 
 /**
  * How a paid task is paid:
@@ -64,14 +67,14 @@ type TaskPaymentChoice = "saved_card" | "new_card" | "wallet";
 
 /** The wizard step where each required field lives, for landing on the first gap. */
 const stepOfField: Record<MissingField, number> = {
-  category: 1, taskName: 2, shortDesc: 2, payment: 3, location: 4, date: 4, time: 4,
+  category: 1, taskName: 1, shortDesc: 1, payment: 1, location: 2, date: 2, time: 2,
 };
 
 const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const onSummary = step === 6;
+  const onSummary = step === SUMMARY_STEP;
   const [cardSetupOpen, setCardSetupOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -136,7 +139,7 @@ const CreateTask = () => {
       setSelectedLng(saved.lng);
       setInsurance(saved.insurance);
       setRestoredImageUrl(saved.imageUrl);
-      setStep(6);
+      setStep(SUMMARY_STEP);
       sessionStorage.removeItem(TASK_DRAFT_KEY);
       toast.success("הכרטיס נשמר. אפשר לפרסם את המטלה");
     } catch {
@@ -179,7 +182,7 @@ const CreateTask = () => {
       ...(fields.duration !== null && { duration: String(fields.duration) }),
     }));
     setAssistantOpen(false);
-    setStep(missing.length ? Math.min(...missing.map((field) => stepOfField[field])) : 6);
+    setStep(missing.length ? Math.min(...missing.map((field) => stepOfField[field])) : SUMMARY_STEP);
     if (missing.length === 0) toast.success("הטופס מולא. בדקו את הפרטים לפני הפרסום");
 
     // Preserve the confirmed meeting point, including a manually adjusted pin.
@@ -253,10 +256,8 @@ const CreateTask = () => {
 
   const canProceed = () => {
     switch (step) {
-      case 1: return !!form.category;
-      case 2: return !!form.taskName && !!form.shortDesc && form.shortDesc.length <= SHORT_DESC_MAX;
-      case 3: return !!form.payment;
-      case 4: {
+      case 1: return !!form.category && !!form.taskName && !!form.shortDesc && form.shortDesc.length <= SHORT_DESC_MAX && !!form.payment;
+      case 2: {
         const duration = Number(form.duration);
         const validDuration = !form.duration || (duration >= 1 && duration <= 30);
         return !!form.location && !!form.date && !!form.time && validDuration;
@@ -474,7 +475,7 @@ const CreateTask = () => {
         </div>
 
         {/* Step Content */}
-        <div className="glass rounded-3xl shadow-glow p-6 sm:p-8 border border-border animate-pop-in" key={step}>
+        <div className="glass rounded-3xl shadow-glow p-6 sm:p-8 border border-border animate-pop-in space-y-8 [&>div+div]:border-t [&>div+div]:border-border [&>div+div]:pt-8" key={step}>
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <h2 className="text-xl font-bold text-foreground mb-2 text-start">בחירת קטגוריה</h2>
@@ -504,7 +505,7 @@ const CreateTask = () => {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 1 && (
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">פרטי המטלה</h2>
               <div>
@@ -546,7 +547,7 @@ const CreateTask = () => {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 1 && (
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">תשלום ועובדים</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -596,7 +597,15 @@ const CreateTask = () => {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 1 && (
+            <div>
+              <p className="rounded-2xl bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground">
+                עלות הפרסום: המטלה הראשונה שלכם חינם{fees ? `, ואחריה ${feeText(fees.task_fee)} למשימה (חינם למנויים)` : ""}. הסכום המדויק מוצג בסיכום, לפני שמשלמים.
+              </p>
+            </div>
+          )}
+
+          {step === 2 && (
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">מתי ואיפה?</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -718,7 +727,7 @@ const CreateTask = () => {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 2 && (
             <div className="flex flex-col gap-5">
               <h2 className="text-xl font-extrabold text-foreground mb-2 text-right">תמונה והערות</h2>
               <div>
@@ -790,12 +799,12 @@ const CreateTask = () => {
             </div>
           )}
 
-          {step === 6 && (
+          {step === SUMMARY_STEP && (
             <TaskReview form={form} imagePreview={imagePreview} insurance={insurance}
-              onChange={applyReviewChanges} onOpenExtras={() => setStep(5)} />
+              onChange={applyReviewChanges} onOpenExtras={() => setStep(2)} />
           )}
 
-          {step === 6 && quote && !quote.billing_off && (
+          {step === SUMMARY_STEP && quote && !quote.billing_off && (
             <div
               className="mt-5 rounded-3xl border border-border/60 bg-card/40 p-5 text-start"
               data-testid="publish-quote"
@@ -910,10 +919,10 @@ const CreateTask = () => {
               הקודם
             </Button>
 
-            {step < 6 ? (
+            {step < SUMMARY_STEP ? (
               <Button
                 onClick={async () => {
-                  if (step === 4 && form.location.trim() && selectedLat === null) {
+                  if (step === 2 && form.location.trim() && selectedLat === null) {
                     setLocationLoading(true);
                     const result = await geocodeAddress(form.location).catch(() => null);
                     if (result) {

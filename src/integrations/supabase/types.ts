@@ -1060,6 +1060,24 @@ export type Database = {
           },
         ]
       }
+      saved_tasks: {
+        Row: {
+          created_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          task_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_drafts: {
         Row: {
           created_at: string
