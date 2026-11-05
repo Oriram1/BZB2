@@ -94,6 +94,7 @@ const TaskDetail = () => {
   const isBee = roles.includes("bee");
   const [task, setTask] = useState<TaskData | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
+  const [creatorRating, setCreatorRating] = useState<{ average: number; count: number } | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
@@ -121,6 +122,11 @@ const TaskDetail = () => {
         return;
       }
       setTask(data);
+      setCreatorRating(undefined);
+      const { data: rating, error: ratingError } = await supabase.from("user_avg_ratings")
+        .select("avg_rating, review_count").eq("user_id", data.creator_id).maybeSingle();
+      if (ratingError) setCreatorRating(undefined);
+      else setCreatorRating(rating?.avg_rating != null && rating.review_count ? { average: rating.avg_rating, count: rating.review_count } : null);
 
       // Counting happens server-side: one view per person, never the creator's
       // own, and repeat visits do not add up. Failure is silent — a missed
@@ -533,6 +539,12 @@ const TaskDetail = () => {
                 <span className="font-bold text-foreground text-sm truncate block">
                   {`${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() || "משתמש Busy Bee"}
                 </span>
+                {creatorRating !== undefined && (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-foreground">
+                    <Star size={12} className="fill-primary text-primary-ink" aria-hidden="true" />
+                    {creatorRating ? <><bdi>{creatorRating.average.toFixed(1)}</bdi> · {creatorRating.count} דירוגים</> : "עדיין אין דירוגים"}
+                  </span>
+                )}
               </div>
             </div>
             <Button

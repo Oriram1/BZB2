@@ -2,14 +2,15 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import TaskDetail from "./TaskDetail";
-const state = vi.hoisted(() => ({ fullDescription: "הסבר מפורט של מפרסם המשימה\nשורה נוספת", notes: "הערה חשובה של המפרסם" }));
+const state = vi.hoisted(() => ({ fullDescription: "הסבר מפורט של מפרסם המשימה\nשורה נוספת", notes: "הערה חשובה של המפרסם", rating: { avg_rating: 4.8, review_count: 12 } as { avg_rating: number; review_count: number } | null }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, roles: [], profile: null }) }));
 vi.mock("@/components/PageHeader", () => ({ default: () => <header>פרטי משימה</header> }));
 vi.mock("@/components/tasks/TaskLocationMap", () => ({ default: () => <div data-testid="map">מפה</div> }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   rpc: async () => ({ data: [{first_name: "מפרסם", last_name: "בדיקה"}] }),
-  from: () => {
+  from: (table: string) => {
     const query = { select: () => query, eq: () => query, is: () => query,
+      maybeSingle: async () => ({ data: table === "user_avg_ratings" ? state.rating : null, error: null }),
       single: async () => ({data: {
         id: "task", name: "משימת בדיקה", short_desc: "התיאור הקצר המקורי", full_desc: state.fullDescription,
         notes: state.notes, creator_id: "publisher", category: "other", payment: 100,
@@ -34,4 +35,15 @@ it("shows the original short explanation when no detailed description exists", a
   task();
   const heading = await screen.findByRole("heading", {name: "תיאור המשימה"});
   expect(heading.parentElement?.parentElement).toHaveTextContent("התיאור הקצר המקורי");
+});
+
+it("shows the publisher's approved rating before applying", async () => {
+  state.rating = { avg_rating: 4.8, review_count: 12 };
+  task();
+  expect((await screen.findByText("4.8")).parentElement).toHaveTextContent("12 דירוגים");
+});
+it("shows when the publisher has no ratings", async () => {
+  state.rating = null;
+  task();
+  expect(await screen.findByText("עדיין אין דירוגים")).toBeInTheDocument();
 });
