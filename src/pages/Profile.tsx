@@ -110,6 +110,8 @@ const Profile = () => {
   const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0, estimatedEarnings: false, missingHours: false });
   const [beeStatsError, setBeeStatsError] = useState(false);
   const [reviewHistory, setReviewHistory] = useState<ReviewHistoryRow[]>([]);
+  const [receivedReviews, setReceivedReviews] = useState<Pick<ReviewHistoryRow, "id" | "rating" | "body" | "created_at">[]>([]);
+  const [receivedReviewsError, setReceivedReviewsError] = useState(false);
   const [familyCode, setFamilyCode] = useState<string | null>(null);
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
   const [familyQr, setFamilyQr] = useState<string | null>(null);
@@ -319,7 +321,7 @@ const Profile = () => {
     if (!user) return;
     const load = async () => {
       setLoadingData(true);
-      await Promise.all([loadTaskerData(), loadBeeData(), loadReviewHistory()]);
+      await Promise.all([loadTaskerData(), loadBeeData(), loadReviewHistory(), loadReceivedReviews()]);
       if (isBee) await Promise.all([loadParentContacts(), loadParentRequests()]);
       setLoadingData(false);
     };
@@ -393,6 +395,16 @@ const Profile = () => {
       setBeeStatsError(true);
       toast.error("לא הצלחנו לטעון את נתוני הביצוע וההכנסות");
     }
+  };
+
+  const loadReceivedReviews = async () => {
+    if (!user) return;
+    const { data, error } = await fetchAllPages((from, to) => supabase.from("reviews")
+      .select("id, rating, body, created_at")
+      .eq("reviewee_id", user.id).eq("status", "approved")
+      .order("created_at", { ascending: false }).order("id").range(from, to));
+    setReceivedReviewsError(Boolean(error));
+    setReceivedReviews(error ? [] : data);
   };
 
   const loadReviewHistory = async () => {
@@ -927,6 +939,34 @@ const Profile = () => {
             </Card>
           </>
         )}
+
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Star className="h-5 w-5 fill-yellow-400 text-yellow-500" aria-hidden="true" />
+              דירוגים וביקורות שקיבלתי
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingData ? <p className="text-sm text-muted-foreground">טוענים ביקורות...</p> : receivedReviewsError ? (
+              <p role="alert" className="text-sm text-destructive">לא הצלחנו לטעון את הביקורות. יש לרענן ולנסות שוב.</p>
+            ) : receivedReviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">עדיין אין ביקורות שאושרו.</p>
+            ) : (
+              <ul className="space-y-3">
+                {receivedReviews.map((review) => (
+                  <li key={review.id} className="rounded-2xl bg-muted/50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
+                      <time className="text-xs text-muted-foreground" dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString("he-IL")}</time>
+                    </div>
+                    {review.body && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">{review.body}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
         {reviewHistory.length > 0 && (
           <Card className="border-border">
