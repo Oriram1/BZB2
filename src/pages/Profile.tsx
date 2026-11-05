@@ -122,6 +122,8 @@ const Profile = () => {
   const [reviewHistory, setReviewHistory] = useState<ReviewHistoryRow[]>([]);
   const [receivedReviews, setReceivedReviews] = useState<Pick<ReviewHistoryRow, "id" | "rating" | "body" | "created_at" | "tags">[]>([]);
   const [receivedResponses, setReceivedResponses] = useState<ReviewResponse[]>([]);
+  const [receivedSort, setReceivedSort] = useState("newest");
+  const [receivedFilter, setReceivedFilter] = useState("all");
   const [receivedReviewsError, setReceivedReviewsError] = useState(false);
   const [familyCode, setFamilyCode] = useState<string | null>(null);
   const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
@@ -969,8 +971,19 @@ const Profile = () => {
             ) : receivedReviews.length === 0 ? (
               <p className="text-sm text-muted-foreground">עדיין אין ביקורות שאושרו.</p>
             ) : (
+              <>
+              <div className="mb-4 space-y-1" aria-label="התפלגות הדירוגים שקיבלתי">
+                {[5, 4, 3, 2, 1].map((stars) => {
+                  const count = receivedReviews.filter((review) => review.rating === stars).length;
+                  return <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="w-3">{stars}</span><Star size={12} className="fill-yellow-400 text-yellow-500" aria-hidden="true" /><div className="h-2 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-yellow-400" style={{ width: `${count / receivedReviews.length * 100}%` }} /></div><span className="w-5 text-end tabular-nums">{count}</span></div>;
+                })}
+              </div>
+              <div className="mb-4 flex flex-wrap gap-3 text-sm">
+                <label>מיון <select value={receivedSort} onChange={(event) => setReceivedSort(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="newest">החדשות ביותר</option><option value="highest">הגבוהות ביותר</option><option value="lowest">הנמוכות ביותר</option></select></label>
+                <label>סינון <select value={receivedFilter} onChange={(event) => setReceivedFilter(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="all">כל הדירוגים</option>{[5, 4, 3, 2, 1].map((stars) => <option key={stars} value={stars}>{stars} כוכבים</option>)}</select></label>
+              </div>
               <ul className="space-y-3">
-                {receivedReviews.map((review) => (
+                {[...receivedReviews].filter((review) => receivedFilter === "all" || review.rating === Number(receivedFilter)).sort((a, b) => receivedSort === "highest" ? b.rating - a.rating : receivedSort === "lowest" ? a.rating - b.rating : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((review) => (
                   <li key={review.id} className="rounded-2xl bg-muted/50 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
@@ -982,6 +995,7 @@ const Profile = () => {
                   </li>
                 ))}
               </ul>
+              </>
             )}
           </CardContent>
         </Card>
