@@ -235,10 +235,9 @@ test.describe('review tutorial reels', () => {
     let page!: Page;
     await record(browser, project, state, 'איך-קוראים-ביקורות', [
       { say: 'לפני שבוחרים עם מי לעבוד, שווה להציץ בפרופיל.', act: async () => { await expect(page.getByRole('heading', { name: 'דירוג וביקורות' })).toBeVisible({ timeout: 20000 }); await page.getByRole('heading', { name: 'דירוג וביקורות' }).scrollIntoViewIfNeeded(); } },
-      { say: 'רואים את הממוצע, ואת מספר הדירוגים שעומדים מאחוריו. ממוצע בלי כמות לא אומר הרבה.', act: async () => { await pause(page, 2500); } },
-      { say: 'ההתפלגות מראה כמה אנשים נתנו חמישה כוכבים, ארבעה, ועוד.', act: async () => { await page.getByLabel('התפלגות דירוגים').scrollIntoViewIfNeeded(); await pause(page, 1500); } },
-      { say: 'אפשר למיין לפי החדשות, הגבוהות או הנמוכות ביותר.', act: async () => { await page.getByLabel('מיון').selectOption('lowest'); } },
-      { say: 'ולסנן לפי מספר כוכבים.', act: async () => { await page.getByLabel('סינון').selectOption('5'); await pause(page, 800); await page.getByLabel('סינון').selectOption('all'); } },
+      { say: 'רואים את הממוצע, ואת מספר הדירוגים שעומדים מאחוריו. ממוצע בלי כמות לא אומר הרבה.', act: async () => { await pause(page, 2500); await page.screenshot({ path: '/tmp/bzb-frames/profile-new.png' }); } },
+      { say: 'ההתפלגות מראה כמה אנשים נתנו חמישה כוכבים, ארבעה, ועוד. ואפשר ללחוץ על שורה כדי לסנן.', act: async () => { await page.getByRole('group', { name: /התפלגות דירוגים/ }).scrollIntoViewIfNeeded(); await pause(page, 1500); await page.getByRole('button', { name: /דירוגים של 5 כוכבים/ }).click(); } },
+      { say: 'לוחצים שוב כדי לנקות, וממיינים לפי החדשות, הגבוהות או הנמוכות ביותר.', act: async () => { await page.getByRole('button', { name: /כוכבים ✕/ }).click(); await pause(page, 800); await page.getByLabel('מיון').selectOption('lowest'); } },
       { say: 'בכל ביקורת יש גם תגיות, כמו הגיע בזמן, ואם הייתה תגובה, רואים אותה מתחת.', act: async () => { await page.getByText('עבודה מצוינת ומסודרת').scrollIntoViewIfNeeded(); await pause(page, 2000); } },
       { say: 'אפשר לבחור לפי מה שחשוב לכם: הכול ברור, ובלי הפתעות.' },
     ], async (p) => { page = p; await p.goto(`/profile/${worker.id}`); });

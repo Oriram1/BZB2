@@ -24,7 +24,7 @@ it("keeps a rating section visible before the first review", async () => {
 it("shows approved reviews and their average", async () => {
   state.reviews = [4, 5].map((rating, index) => ({id: String(index), rating, body: `ביקורת ${index}`, created_at: "2026-01-01", reviewer_id: "reviewer"}));
   profile();
-  expect(await screen.findByText("4.5")).toBeInTheDocument();
+  expect(await screen.findByLabelText("ממוצע 4.5 מתוך 5")).toBeInTheDocument();
   expect(screen.getByText("(2)")).toBeInTheDocument();
   expect(screen.getByText("ביקורת 0")).toBeInTheDocument();
   expect(state.approvedOnly).toBe(true);
@@ -42,12 +42,12 @@ it("filters and sorts approved reviews while preserving the overall average", as
     { id: "2", rating: 5, body: "ביקורת גבוהה", created_at: "2026-02-01", reviewer_id: "b" },
   ];
   profile();
-  expect(await screen.findByText("3.5")).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("סינון"), { target: { value: "2" } });
+  expect(await screen.findByLabelText("ממוצע 3.5 מתוך 5")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /1 דירוגים של 2 כוכבים/ }));
   expect(screen.getByText("ביקורת נמוכה")).toBeInTheDocument();
   expect(screen.queryByText("ביקורת גבוהה")).not.toBeInTheDocument();
-  expect(screen.getByText("3.5")).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("סינון"), { target: { value: "all" } });
+  expect(screen.getByLabelText("ממוצע 3.5 מתוך 5")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /כוכבים ✕/ }));
   fireEvent.change(screen.getByLabelText("מיון"), { target: { value: "lowest" } });
   expect(screen.getByText("ביקורת נמוכה").compareDocumentPosition(screen.getByText("ביקורת גבוהה")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
@@ -58,9 +58,9 @@ it("separates publisher and worker reviews in the profile", async () => {
     { id: "2", rating: 5, body: "מבצע", created_at: "2026-02-01", reviewer_id: "b", reviewee_role: "bee" },
   ];
   profile();
-  await screen.findByText("3.5");
-  fireEvent.change(screen.getByLabelText("תפקיד"), { target: { value: "bee" } });
-  expect(screen.getByText("5.0")).toBeInTheDocument();
+  await screen.findByLabelText("ממוצע 3.5 מתוך 5");
+  fireEvent.click(screen.getByRole("tab", { name: "כמבצע מטלות" }));
+  expect(screen.getByLabelText("ממוצע 5.0 מתוך 5")).toBeInTheDocument();
   expect(screen.getByText("מבצע")).toBeInTheDocument();
   expect(screen.queryByText("מפרסם")).not.toBeInTheDocument();
 });
