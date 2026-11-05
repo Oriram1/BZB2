@@ -3,6 +3,7 @@ import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { categories } from "@/lib/categories";
+import LandingReviews from "@/components/LandingReviews";
 
 /** The global CSS reset kills animations; scrollIntoView is JS and has to ask itself. */
 const prefersReducedMotion = () =>
@@ -139,6 +140,8 @@ const Landing = () => {
           </div>
         </div>
       </section>
+
+      <LandingReviews />
 
       {/* CTA */}
       <section className="py-20 px-4 gradient-honey text-center relative overflow-hidden">
