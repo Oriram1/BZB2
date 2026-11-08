@@ -1,4 +1,4 @@
-import bzbLogo from "@/assets/bzb-logo.png";
+import bzbLogo from "@/assets/bzb-logo.webp";
 import { cn } from "@/lib/utils";
 
 interface BzbLogoProps {
