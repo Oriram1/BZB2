@@ -1,3 +1,4 @@
+import { firstPublicProfile } from "@/lib/publicProfile";
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -100,7 +101,7 @@ const PublicProfile = () => {
           .order("id")
           .range(from, to)),
       ]);
-      const profileData = Array.isArray(profileRows) ? profileRows[0] : profileRows;
+      const profileData = firstPublicProfile(profileRows);
 
       const reviewIds = (reviewRows ?? []).map((review) => review.id);
       const responseResult = reviewIds.length && !reviewError ? await fetchAllPages((from, to) => supabase.from("review_responses")

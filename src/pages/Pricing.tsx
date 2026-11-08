@@ -2,7 +2,7 @@ import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib
 import { formatPrice } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { PublishQuote } from "@/lib/taskBilling";
+import { fetchPublishQuote, type PublishQuote } from "@/lib/taskBilling";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import CheckoutConsentDialog from "@/components/billing/CheckoutConsentDialog";
@@ -86,10 +86,9 @@ const Pricing = () => {
     queryKey: ["pricing-publish-quote", user?.id],
     enabled: !authLoading && !!user && roles.includes("tasker"),
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("my_publish_quote", { _insurance: false });
-      if (error) throw error;
-      if (!data) throw new Error("missing_publish_quote");
-      return data as PublishQuote;
+      const quote = await fetchPublishQuote(false);
+      if (!quote) throw new Error("missing_publish_quote");
+      return quote;
     },
   });
   const freeTaskAvailable = !authLoading && !!user && roles.includes("tasker") && !quoteFetching && !quoteError && publishQuote?.free_slot === true;

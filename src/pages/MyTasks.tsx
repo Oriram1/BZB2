@@ -1,3 +1,4 @@
+import { completeTask as completeTaskAction } from "@/lib/taskActions";
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -478,17 +479,10 @@ const MyTasks = () => {
     toast.success("המטלה בוטלה");
   };
 
-  /** What the database refuses, said in the words the tasker used to get here. */
-  const completionError: Record<string, string> = {
-    no_accepted_worker: "אפשר לסמן מטלה כהושלמה רק אחרי שנבחר לה עובד",
-    task_cancelled: "המטלה בוטלה, אז אי אפשר לסמן אותה כהושלמה",
-  };
-
   const completeTask = async (task: PublishedTask) => {
-    const { error } = await supabase.rpc("complete_task", { _task_id: task.id });
-    if (error) {
-      const reason = Object.keys(completionError).find((key) => error.message.includes(key));
-      toast.error(reason ? completionError[reason] : "לא הצלחנו לסמן את המטלה כהושלמה");
+    const refusal = await completeTaskAction(task.id);
+    if (refusal) {
+      toast.error(refusal);
       return;
     }
 

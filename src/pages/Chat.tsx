@@ -1,3 +1,4 @@
+import { completeTask as completeTaskAction } from "@/lib/taskActions";
 import { useState, useRef, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -63,12 +64,6 @@ interface ReviewTarget {
   revieweeId: string;
   revieweeName: string;
 }
-
-/** What complete_task refuses, said in the words the publisher used to get here. */
-const completionError: Record<string, string> = {
-  no_accepted_worker: "אפשר לסמן מטלה כהושלמה רק אחרי שנבחר לה עובד",
-  task_cancelled: "המטלה בוטלה, אז אי אפשר לסמן אותה כהושלמה",
-};
 
 /** What a conversation row shows when the last message was a photo or a voice note. */
 const previewOf = (message: { content: string; attachment_type: string | null }) => {
@@ -378,11 +373,10 @@ const Chat = () => {
   const completeTask = async () => {
     if (!activeConv?.task_id || completing) return;
     setCompleting(true);
-    const { error } = await supabase.rpc("complete_task", { _task_id: activeConv.task_id });
+    const refusal = await completeTaskAction(activeConv.task_id);
     setCompleting(false);
-    if (error) {
-      const reason = Object.keys(completionError).find((key) => error.message.includes(key));
-      toast.error(reason ? completionError[reason] : "לא הצלחנו לסמן את המטלה כהושלמה");
+    if (refusal) {
+      toast.error(refusal);
       return;
     }
     logUserActivity(user?.id, "task_completed", { entityType: "task", entityId: activeConv.task_id, details: { name: activeConv.taskName } });

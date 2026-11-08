@@ -1,3 +1,4 @@
+import { getPublicProfile } from "@/lib/publicProfile";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,10 +149,7 @@ const TaskDetail = () => {
       //
       // The card renders either way. A missing profile costs the name, not the
       // whole "who posted this" section.
-      const { data: publicProfile } = await supabase.rpc("get_public_profile", {
-        _user_id: data.creator_id,
-      });
-      const profile = Array.isArray(publicProfile) ? publicProfile[0] : publicProfile;
+      const profile = await getPublicProfile(data.creator_id);
       setCreator({
         first_name: profile?.first_name ?? "",
         last_name: profile?.last_name ?? "",

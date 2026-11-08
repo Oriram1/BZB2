@@ -57,7 +57,7 @@ describe("architecture invariants", () => {
   });
 
   it("keeps task completion on one server command", () => {
-    const page = readFileSync(resolve(root, "src/pages/MyTasks.tsx"), "utf8");
+    const page = readFileSync(resolve(root, "src/lib/taskActions.ts"), "utf8");
     const migration = readFileSync(resolve(root, "supabase/migrations/20260805120000_canonical_task_completion.sql"), "utf8");
     expect(page).toContain('rpc("complete_task"');
     // Closing a task is what credits a bee, so the client must never write the
@@ -191,9 +191,11 @@ describe("architecture invariants", () => {
   // nothing, and the screen shows a fallback name forever. get_public_profile
   // is the sanctioned crossing: SECURITY DEFINER, public-safe columns only.
   it("reads unrelated profiles through get_public_profile, not the table", () => {
+    const reader = readFileSync(resolve(root, "src/lib/publicProfile.ts"), "utf8");
+    expect(reader).toContain("get_public_profile");
     for (const file of ["src/pages/TaskDetail.tsx", "src/pages/PublicProfile.tsx", "src/pages/ParentalHub.tsx"]) {
       const source = readFileSync(resolve(root, file), "utf8");
-      expect(source, `${file} should use the public-profile RPC`).toContain("get_public_profile");
+      expect(source, `${file} should use the public-profile reader`).toContain("@/lib/publicProfile");
     }
     // TaskDetail shows the publisher to any visitor; it must not read the table.
     const taskDetail = readFileSync(resolve(root, "src/pages/TaskDetail.tsx"), "utf8");

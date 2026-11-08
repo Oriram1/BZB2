@@ -137,3 +137,10 @@ export const billingErrorText = (code: string) => {
       return "משהו השתבש, נסו שוב בעוד רגע";
   }
 };
+
+/** Current price of publishing a task for this user, or null when it cannot be read. */
+export async function fetchPublishQuote(insurance: boolean): Promise<PublishQuote | null> {
+  const { data, error } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
+  if (error || !data) return null;
+  return data as unknown as PublishQuote;
+}

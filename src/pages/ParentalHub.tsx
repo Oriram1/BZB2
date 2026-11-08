@@ -1,3 +1,4 @@
+import { getPublicProfile } from "@/lib/publicProfile";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AlertCircle, Bell, CheckCircle2, KeyRound, MapPin, Shield, User } from "lucide-react";
@@ -99,10 +100,7 @@ const ParentalHub = () => {
           // Through the RPC, not the table: a parent is related to their child,
           // not to whoever published the task, so RLS hides that profile from
           // the direct read and the name came back empty every time.
-          const { data: taskerRows } = await supabase.rpc("get_public_profile", {
-            _user_id: task.creator_id,
-          });
-          const taskerProfile = Array.isArray(taskerRows) ? taskerRows[0] : taskerRows;
+          const taskerProfile = await getPublicProfile(task.creator_id);
 
           const taskerName =
             `${taskerProfile?.first_name ?? ""} ${taskerProfile?.last_name ?? ""}`.trim() ||

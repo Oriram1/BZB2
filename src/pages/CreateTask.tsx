@@ -30,7 +30,7 @@ import type { AssistantFields } from "@/lib/taskReview";
 import TaskReview from "@/components/tasks/TaskReview";
 import type { ReviewForm } from "@/lib/taskReview";
 import { logUserActivity } from "@/lib/activityLog";
-import { billingErrorText, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
+import { billingErrorText, fetchPublishQuote, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 import { feeText, useTaskFees } from "@/lib/taskFees";
 import {
   AlertDialog,
@@ -117,8 +117,8 @@ const CreateTask = () => {
     if (!user) return;
     let active = true;
     void (async () => {
-      const { data, error } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
-      if (active && !error && data) setQuote(data as unknown as PublishQuote);
+      const fresh = await fetchPublishQuote(insurance);
+      if (active && fresh) setQuote(fresh);
     })();
     return () => {
       active = false;
@@ -277,8 +277,7 @@ const CreateTask = () => {
       navigate("/login");
       return;
     }
-    const { data: fresh } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
-    const latest = (fresh as unknown as PublishQuote | null) ?? quote;
+    const latest = (await fetchPublishQuote(insurance)) ?? quote;
     if (latest) setQuote(latest);
     if (latest && !latest.billing_off && latest.due > 0) {
       setPaymentMode(latest.has_card ? "saved_card" : "new_card");
@@ -323,9 +322,9 @@ const CreateTask = () => {
     // used elsewhere, since the page loaded). Ask again before deciding whether
     // a card is needed; the insert trigger enforces the same answer.
     let currentQuote = quote;
-    const { data: fresh } = await supabase.rpc("my_publish_quote", { _insurance: insurance });
+    const fresh = await fetchPublishQuote(insurance);
     if (fresh) {
-      currentQuote = fresh as unknown as PublishQuote;
+      currentQuote = fresh;
       setQuote(currentQuote);
     }
 
