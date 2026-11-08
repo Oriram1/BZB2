@@ -1,11 +1,8 @@
-import { fullName, type ProfileOption } from "@/lib/adminData";
+import type { ProfileOption } from "@/lib/adminData";
 import { ChevronLeft, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDate, formatTime } from "@/lib/format";
-import { categoryLabel } from "@/lib/categories";
-import { roleLabel } from "@/lib/roles";
-import type { Json } from "@/integrations/supabase/types";
+import { displayName, formatDate, formatTime } from "@/lib/format";
 
 export function UserDetailLine({ email, createdAt }: { email?: string; createdAt?: string }) {
   return (
@@ -35,7 +32,7 @@ export function PersonRef({
   profile?: ProfileOption;
   userId: string;
 }) {
-  const name = profile ? fullName(profile) : "";
+  const name = profile ? displayName(profile) : "";
   if (name) return <bdi>{name}</bdi>;
   return (
     <span className="text-muted-foreground">

@@ -4,6 +4,8 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logUserActivity } from "@/lib/activityLog";
 import { notifyParentsOfSignIn } from "@/lib/parentNotify";
+import { Constants } from "@/integrations/supabase/types";
+import type { AppRole } from "@/lib/routes";
 import type { Gender } from "@shared/gender.ts";
 
 interface Profile {
@@ -29,7 +31,29 @@ interface AuthContextType {
   refreshUserState: () => Promise<void>;
 }
 
-type AppRole = "tasker" | "bee" | "parent" | "admin";
+/** How long to wait before the one retry of the first read after a sign-in; see loadUserState. */
+const SESSION_SETTLE_MS = 250;
+
+const isAppRole = (value: unknown): value is AppRole =>
+  (Constants.public.Enums.app_role as readonly unknown[]).includes(value);
+
+/**
+ * Reports whether the read itself failed, which is not the same as the user
+ * having no roles. Collapsing the two made a failed fetch look like a brand
+ * new account and sent the signup repair below at an account that already had
+ * a role — which the database then rejected, as it should.
+ *
+ * Exported because this is the only place that reads `user_roles`: sign-in
+ * flows that run before the provider has settled call it for the user they
+ * just signed in.
+ */
+export const fetchUserRoles = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  return { roles: data?.map((r) => r.role) ?? [], failed: Boolean(error) };
+};
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -55,10 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const getMetadataRole = (nextUser: User | null): AppRole | null => {
     const role = nextUser?.user_metadata?.app_role;
-    if (role === "tasker" || role === "bee" || role === "parent" || role === "admin") {
-      return role;
-    }
-    return null;
+    return isAppRole(role) ? role : null;
   };
 
   const fetchProfile = async (userId: string) => {
@@ -68,20 +89,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .eq("user_id", userId)
       .single();
     return data ?? null;
-  };
-
-  /**
-   * Reports whether the read itself failed, which is not the same as the user
-   * having no roles. Collapsing the two made a failed fetch look like a brand
-   * new account and sent the signup repair below at an account that already had
-   * a role — which the database then rejected, as it should.
-   */
-  const fetchRoles = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    return { roles: data?.map((r) => r.role) ?? [], failed: Boolean(error) };
   };
 
   const ensureUserRole = async (nextUser: User | null, currentRoles: string[], rolesFailed: boolean) => {
@@ -103,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // database's answer counts.
     if (error) console.warn("role repair insert rejected", error.code);
 
-    const repaired = await fetchRoles(nextUser.id);
+    const repaired = await fetchUserRoles(nextUser.id);
     return repaired.roles;
   };
 
@@ -116,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     let [nextProfile, nextRoles] = await Promise.all([
       fetchProfile(nextUser.id),
-      fetchRoles(nextUser.id),
+      fetchUserRoles(nextUser.id),
     ]);
 
     // Supabase notifies subscribers from inside signInWithIdToken, before the
@@ -124,10 +131,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // can go out unauthenticated and come back 401. The session is there a tick
     // later; one retry turns that race into a non-event.
     if (nextRoles.failed) {
-      await new Promise((settle) => window.setTimeout(settle, 250));
+      await new Promise((settle) => window.setTimeout(settle, SESSION_SETTLE_MS));
       [nextProfile, nextRoles] = await Promise.all([
         fetchProfile(nextUser.id),
-        fetchRoles(nextUser.id),
+        fetchUserRoles(nextUser.id),
       ]);
     }
 

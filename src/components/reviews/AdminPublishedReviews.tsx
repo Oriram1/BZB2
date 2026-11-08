@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchNames } from "@/lib/people";
 import { toast } from "sonner";
 
 type Published = { id: string; rating: number; body: string | null; published_at: string; reviewee_id: string; reviewer_id: string; task_name: string | null };
@@ -26,8 +27,7 @@ export default function AdminPublishedReviews() {
     if (error) { setFailed(true); setLoading(false); return; }
     const list = (data ?? []).map((r) => ({ ...r, published_at: r.published_at as string, task_name: (r.tasks as { name: string } | null)?.name ?? null }));
     const ids = [...new Set(list.flatMap((r) => [r.reviewer_id, r.reviewee_id]))];
-    const profiles = ids.length ? await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", ids) : { data: [] };
-    setNames(new Map((profiles.data ?? []).map((p) => [p.user_id, `${p.first_name} ${p.last_name}`.trim()])));
+    setNames(await fetchNames(ids));
     setRows(list); setFailed(false); setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);

@@ -3,10 +3,22 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, CircleAlert, Loader2 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { confirmCharge, confirmOrder, paymentFailureMessage } from "@/lib/billing";
+import { confirmCharge, confirmOrder, paymentFailureMessage, type Confirmation } from "@/lib/billing";
+import { NETWORK_ERROR } from "@/lib/invokeFunction";
+import { CREATE_TASK_RESUME_PATH, ROUTES } from "@/lib/routes";
+import { readStorage } from "@/lib/storage";
 import { TASK_DRAFT_KEY } from "@/lib/taskBilling";
 
 type Outcome = "checking" | "paid" | "failed" | "cancelled" | "unknown";
+type ChargeNote = "task" | "task-review" | "card" | "trial" | "trial-used" | "card-update";
+
+const chargeNoteFor = (charge: Confirmation): ChargeNote => {
+  if (charge.cardUpdated) return "card-update";
+  if (charge.trial) return "trial";
+  if (charge.trialRefused) return "trial-used";
+  if (charge.taskId) return charge.awaitingReview ? "task-review" : "task";
+  return "card";
+};
 
 const POLL_MS = 2_000;
 const MAX_POLLS = 8;
@@ -28,11 +40,11 @@ const BillingReturn = () => {
   const [failureReason, setFailureReason] = useState<string | undefined>();
   const [outcome, setOutcome] = useState<Outcome>("checking");
 
-  const [chargeNote, setChargeNote] = useState<"task" | "task-review" | "card" | "trial" | "trial-used" | "card-update" | null>(null);
+  const [chargeNote, setChargeNote] = useState<ChargeNote | null>(null);
 
   useEffect(() => {
     if (!orderId && !chargeId) {
-      navigate("/subscription", { replace: true });
+      navigate(ROUTES.subscription, { replace: true });
       return;
     }
 
@@ -43,41 +55,26 @@ const BillingReturn = () => {
 
     const run = async () => {
       for (let attempt = 0; attempt < polls; attempt += 1) {
-        // A card typed in for a task, or saved for later (and the free month).
-        if (chargeId) {
-          const charged = await confirmCharge(chargeId);
-          if (cancelled) return;
-          if (charged.ok && charged.data.status === "paid") {
-            if (charged.data.cardUpdated) setChargeNote("card-update");
-            else if (charged.data.trial) setChargeNote("trial");
-            else if (charged.data.trialRefused) setChargeNote("trial-used");
-            else if (charged.data.taskId) setChargeNote(charged.data.awaitingReview ? "task-review" : "task");
-            else {
-              setChargeNote("card");
-              // A task form was waiting for this card: put the person back on it.
-              let waiting = false;
-              try {
-                waiting = Boolean(sessionStorage.getItem(TASK_DRAFT_KEY));
-              } catch {
-                waiting = false;
-              }
-              if (waiting) {
-                navigate("/create-task?resume=1", { replace: true });
-                return;
-              }
-            }
-            return setOutcome("paid");
-          }
-          if (charged.ok && charged.data.status === "failed") { setFailureReason(charged.data.failureReason); return setOutcome("failed"); }
-          if (!charged.ok && charged.code !== "unknown") return setOutcome("unknown");
-          await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-          continue;
-        }
-        const result = await confirmOrder(orderId!);
+        const confirmed = chargeId ? await confirmCharge(chargeId) : await confirmOrder(orderId!);
         if (cancelled) return;
-        if (result.ok && result.data.status === "paid") return setOutcome("paid");
-        if (result.ok && result.data.status === "failed") { setFailureReason(result.data.failureReason); return setOutcome("failed"); }
-        if (!result.ok && result.code !== "unknown") return setOutcome("unknown");
+        if (confirmed.ok && confirmed.data.status === "paid") {
+          if (chargeId) {
+            const note = chargeNoteFor(confirmed.data);
+            setChargeNote(note);
+            // A task form was waiting for this card: put the person back on it.
+            if (note === "card" && readStorage(TASK_DRAFT_KEY, "session")) {
+              navigate(CREATE_TASK_RESUME_PATH, { replace: true });
+              return;
+            }
+          }
+          return setOutcome("paid");
+        }
+        if (confirmed.ok && confirmed.data.status === "failed") {
+          setFailureReason(confirmed.data.failureReason);
+          return setOutcome("failed");
+        }
+        // Only a lost connection is worth another try; any answer from the server is final.
+        if (!confirmed.ok && confirmed.code !== NETWORK_ERROR) return setOutcome("unknown");
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
       }
       if (!cancelled) setOutcome(hint === "cancel" ? "cancelled" : hint === "failed" ? "failed" : "unknown");
@@ -123,7 +120,7 @@ const BillingReturn = () => {
                     : "המנוי פעיל. שלחנו אישור במייל."}
             </p>
             <Button asChild className="gradient-honey text-primary-foreground border-none rounded-2xl font-extrabold">
-              <Link to={chargeNote === "task" || chargeNote === "task-review" ? "/my-tasks?tab=published" : "/subscription"}>
+              <Link to={chargeNote === "task" || chargeNote === "task-review" ? `${ROUTES.myTasks}?tab=published` : ROUTES.subscription}>
                 {chargeNote === "task" || chargeNote === "task-review" ? "למטלות שלי" : "למנוי שלי"}
               </Link>
             </Button>
@@ -138,7 +135,7 @@ const BillingReturn = () => {
             </h1>
             <p className="text-muted-foreground">{outcome === "cancelled" ? "הפעולה בוטלה. אפשר לחזור ולנסות שוב." : paymentFailureMessage(failureReason)}</p>
             <Button asChild className="rounded-2xl font-extrabold">
-              <Link to={cardUpdateFlow ? "/subscription" : "/pricing"}>{cardUpdateFlow ? "חזרה למנוי שלי" : "חזרה למסלולים"}</Link>
+              <Link to={cardUpdateFlow ? ROUTES.subscription : ROUTES.pricing}>{cardUpdateFlow ? "חזרה למנוי שלי" : "חזרה למסלולים"}</Link>
             </Button>
           </>
         )}
@@ -153,7 +150,7 @@ const BillingReturn = () => {
                 : "אם חויבתם, המנוי יופיע תוך דקות ספורות ותקבלו הודעה. אפשר לבדוק את מצב המנוי בדף שלו."}
             </p>
             <Button asChild className="rounded-2xl font-extrabold">
-              <Link to="/subscription">למנוי שלי</Link>
+              <Link to={ROUTES.subscription}>למנוי שלי</Link>
             </Button>
           </>
         )}

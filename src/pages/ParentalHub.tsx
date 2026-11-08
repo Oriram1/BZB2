@@ -1,5 +1,5 @@
 import { getPublicProfile } from "@/lib/publicProfile";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AlertCircle, Bell, CheckCircle2, KeyRound, MapPin, Shield, User } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
@@ -9,7 +9,10 @@ import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { displayName, formatDate, formatDateTime } from "@/lib/format";
+import { taskStatusLabel } from "@/lib/taskStatus";
+import { fetchProfiles } from "@/lib/people";
+import { functionErrorCode } from "@/lib/invokeFunction";
 import { toast } from "sonner";
 
 type ChildSummary = {
@@ -31,14 +34,6 @@ type ChildSummary = {
     time: string;
     read: boolean;
   }[];
-};
-
-const statusLabel = (status: string) => {
-  if (status === "accepted") return "התקבל";
-  if (status === "in_progress") return "בביצוע";
-  if (status === "completed") return "הושלם";
-  if (status === "rejected") return "נדחה";
-  return "ממתין";
 };
 
 const ParentalHub = () => {
@@ -67,15 +62,12 @@ const ParentalHub = () => {
       }
 
       const childIds = links.map((link) => link.child_user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, first_name, last_name, age")
-        .in("user_id", childIds);
+      const { byId: profiles } = await fetchProfiles(childIds);
 
       const nextChildren: ChildSummary[] = [];
 
       for (const childId of childIds) {
-        const profile = profiles?.find((item) => item.user_id === childId);
+        const profile = profiles.get(childId);
         const { data: apps } = await fetchAllPages((from, to) => supabase
           .from("task_applications")
           .select("id, status, created_at, task_id")
@@ -102,9 +94,7 @@ const ParentalHub = () => {
           // the direct read and the name came back empty every time.
           const taskerProfile = await getPublicProfile(task.creator_id);
 
-          const taskerName =
-            `${taskerProfile?.first_name ?? ""} ${taskerProfile?.last_name ?? ""}`.trim() ||
-            "מציע מטלה";
+          const taskerName = displayName(taskerProfile, "מציע מטלה");
 
           if (!activeTask && (app.status === "accepted" || task.status === "in_progress")) {
             activeTask = {
@@ -142,7 +132,7 @@ const ParentalHub = () => {
 
         nextChildren.push({
           userId: childId,
-          name: profile ? `${profile.first_name} ${profile.last_name}`.trim() : "ילד מקושר",
+          name: profile ? displayName(profile) : "ילד מקושר",
           age: profile?.age ?? null,
           activeTask,
           notifications,
@@ -156,7 +146,7 @@ const ParentalHub = () => {
     void load();
   }, [user, refreshKey]);
 
-  const redeemFamilyCode = async (code: string) => {
+  const redeemFamilyCode = useCallback(async (code: string) => {
     setRedeemingCode(true);
     try {
       const { data, error } = await supabase.functions.invoke<{
@@ -166,8 +156,9 @@ const ParentalHub = () => {
       }>("redeem-family-link-code", { body: { code } });
 
       if (error || !data?.ok) {
+        const reason = error ? await functionErrorCode(error, "invoke_failed") : data?.error;
         const message =
-          data?.error === "too_many_attempts"
+          reason === "too_many_attempts"
             ? "היו יותר מדי ניסיונות. אפשר לנסות שוב בעוד 10 דקות."
             : "הקישור אינו תקף או שפג תוקפו. בקשו מהילד/ה ליצור קוד QR חדש.";
         toast.error(message);
@@ -179,7 +170,7 @@ const ParentalHub = () => {
     } finally {
       setRedeemingCode(false);
     }
-  };
+  }, []);
 
   /** The child's QR / emailed link lands here with ?code=… — redeem it once, then clean the URL. */
   useEffect(() => {
@@ -187,8 +178,7 @@ const ParentalHub = () => {
     if (!code || !user) return;
     setSearchParams({}, { replace: true });
     void redeemFamilyCode(code.replace(/\D/g, ""));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, user]);
+  }, [searchParams, setSearchParams, user, redeemFamilyCode]);
 
   const unreadCount = useMemo(
     () => children.reduce((sum, child) => sum + child.notifications.filter((item) => !item.read).length, 0),
@@ -285,7 +275,7 @@ const ParentalHub = () => {
                           {formatDateTime(child.activeTask.scheduledDate, child.activeTask.scheduledTime)}
                         </p>
                         <Badge variant="secondary" className="rounded-lg font-bold mt-2">
-                          {statusLabel(child.activeTask.status)}
+                          {taskStatusLabel(child.activeTask.status)}
                         </Badge>
                       </div>
                     </div>

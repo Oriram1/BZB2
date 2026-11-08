@@ -10,9 +10,9 @@ import CategoryIcon from "@/components/tasks/CategoryIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { categories, categoryLabel } from "@/lib/categories";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import type { AssistantFields } from "@/lib/taskReview";
-import { assistantChanges, describeForm, fieldError, reviewLabels as labels, SHORT_DESC_MAX, todayIso, type ReviewField, type ReviewForm } from "@/lib/taskReview";
-import { toast } from "sonner";
+import type { AssistantFields } from "@/lib/taskForm";
+import { assistantChanges, describeForm, fieldError, reviewLabels as labels, todayIso, type ReviewField, type ReviewForm } from "@/lib/taskForm";
+import { SHORT_DESC_MAX } from "@shared/taskLimits.ts";import { toast } from "sonner";
 
 type Editor = "text" | "textarea" | "number" | "date" | "time" | "category" | "paymentType";
 

@@ -15,14 +15,15 @@
  */
 import { authenticatedClients, hasRole, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
 import { siteUrl } from "../_shared/email.ts";
-import { billingEnabled, createLowProfile } from "../_shared/cardcom.ts";
+import { createLowProfile } from "../_shared/cardcom.ts";
+import { billingGate } from "../_shared/billingGuards.ts";
+import { HOUR_MS, MAX_CHARGES_PER_HOUR } from "../_shared/billingPolicy.ts";
 import { chargeTask } from "../_shared/taskBilling.ts";
-
-const MAX_ATTEMPTS_PER_HOUR = 5;
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
-  if (!billingEnabled()) return json({ error: "billing_disabled" }, 503);
+  const gated = await billingGate(admin, user.id);
+  if (gated) return gated;
 
   const body = await readJsonObject(req);
   const action = String(body.action ?? "");
@@ -39,13 +40,13 @@ servePost(async (req) => {
     return json({ error: "tasker_only" }, 403);
   }
 
-  const since = new Date(Date.now() - 3_600_000).toISOString();
+  const since = new Date(Date.now() - HOUR_MS).toISOString();
   const { count } = await admin
     .from("billing_charges")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .gte("created_at", since);
-  if ((count ?? 0) >= MAX_ATTEMPTS_PER_HOUR * 3) return json({ error: "too_many_attempts" }, 429);
+  if ((count ?? 0) >= MAX_CHARGES_PER_HOUR) return json({ error: "too_many_attempts" }, 429);
 
   const base = siteUrl();
   const functionsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/billing-webhook`;

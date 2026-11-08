@@ -5,7 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissionPrompt } from "@/components/PermissionPromptContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { readStorage, writeStorage } from "@/lib/storage";
 import { isStandalone, pushConfigured, pushSupported, subscribeToPush, syncPushSubscription } from "@/lib/push";
+
+const dismissedKey = (userId: string) => `bzb.push-dismissed:${userId}`;
 
 export default function PushOnboarding() {
   const { user, loading } = useAuth();
@@ -25,7 +28,7 @@ export default function PushOnboarding() {
       try {
         if (await syncPushSubscription()) { if (!cancelled) setPushPending(false); return; }
         if (cancelled) return;
-        if (!sessionStorage.getItem(`bzb.push-dismissed:${userId}`)) {
+        if (!readStorage(dismissedKey(userId), "session")) {
           setBlocked(Notification.permission === "denied");
           setOpen(true);
         } else setPushPending(false);
@@ -38,7 +41,7 @@ export default function PushOnboarding() {
   }, [loading, userId, setPushPending]);
 
   const dismiss = () => {
-    if (userId) sessionStorage.setItem(`bzb.push-dismissed:${userId}`, "1");
+    if (userId) writeStorage(dismissedKey(userId), "1", "session");
     setOpen(false);
     setPushPending(false);
   };

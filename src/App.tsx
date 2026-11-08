@@ -1,6 +1,5 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 
@@ -9,6 +8,8 @@ import { DirectionProvider } from "@radix-ui/react-direction";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GoogleMapsProvider } from "@/components/tasks/GoogleMapsProvider";
 import RoleGuard from "@/components/RoleGuard";
+import { queryClient } from "@/lib/queryClient";
+import { ROUTE_ROLES, ROUTES } from "@/lib/routes";
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Login = lazy(() => import("./pages/Login"));
@@ -42,7 +43,10 @@ import { PermissionPromptProvider } from "./components/PermissionPromptContext";
 import CookieConsent from "./components/CookieConsent";
 import PerformanceInsights from "./components/PerformanceInsights";
 
-const queryClient = new QueryClient();
+/** A page only the roles in `ROUTE_ROLES` may open. */
+const guarded = (path: string, page: ReactNode) => (
+  <Route path={path} element={<RoleGuard allowedRoles={ROUTE_ROLES[path]}>{page}</RoleGuard>} />
+);
 
 /**
  * WCAG 2.4.1: every screen repeats the nav drawer and the floating trigger, so
@@ -97,55 +101,53 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <GoogleMapsProvider>
-        <TooltipProvider>
-          <Sonner />
-          <BrowserRouter>
-          <NavDrawerProvider>
-          <PermissionPromptProvider>
-            <ScrollToTop />
-            <SkipToContent />
-            <MobileNav />
-            <PresenceTracker />
-            <RouteViewport>
-              <Suspense fallback={<div role="status" aria-label="העמוד נטען" className="mx-auto max-w-5xl space-y-4 p-6"><div className="h-10 w-1/2 animate-pulse rounded bg-muted" /><div className="h-48 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded bg-muted" /></div>} >
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/register/:role" element={<Register />} />
-                <Route path="/create-task" element={<RoleGuard allowedRoles={["tasker"]}><CreateTask /></RoleGuard>} />
-                <Route path="/tasks" element={<TaskList />} />
-                <Route path="/task/:id" element={<TaskDetail />} />
-                <Route path="/my-tasks" element={<RoleGuard allowedRoles={["tasker", "bee"]}><MyTasks /></RoleGuard>} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/subscription" element={<RoleGuard allowedRoles={["tasker"]}><Subscription /></RoleGuard>} />
-                <Route path="/billing/return" element={<RoleGuard allowedRoles={["tasker"]}><BillingReturn /></RoleGuard>} />
-                <Route path="/parent" element={<RoleGuard allowedRoles={["parent"]}><ParentalHub /></RoleGuard>} />
-                <Route path="/parent/report/:date" element={<RoleGuard allowedRoles={["parent"]}><ParentReport /></RoleGuard>} />
-                <Route path="/parent/view/:token" element={<ParentView />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/chat" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Chat /></RoleGuard>} />
-                <Route path="/profile" element={<RoleGuard allowedRoles={["tasker", "bee"]}><Profile /></RoleGuard>} />
-                {/* Public profile of another user, linked from a task listing. Open to guests. */}
-                <Route path="/profile/:userId" element={<PublicProfile />} />
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              </Suspense>
-            </RouteViewport>
-            <InstallPrompt />
-            <PushOnboarding />
-            <CookieConsent />
-            <PerformanceInsights />
-            <FloatingNavTrigger />
-          </PermissionPromptProvider>
-          </NavDrawerProvider>
-          </BrowserRouter>
-        </TooltipProvider>
+        <Sonner />
+        <BrowserRouter>
+        <NavDrawerProvider>
+        <PermissionPromptProvider>
+          <ScrollToTop />
+          <SkipToContent />
+          <MobileNav />
+          <PresenceTracker />
+          <RouteViewport>
+            <Suspense fallback={<div role="status" aria-label="העמוד נטען" className="mx-auto max-w-5xl space-y-4 p-6"><div className="h-10 w-1/2 animate-pulse rounded bg-muted" /><div className="h-48 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded bg-muted" /></div>} >
+            <Routes>
+              <Route path={ROUTES.home} element={<Landing />} />
+              <Route path={ROUTES.auth} element={<Auth />} />
+              <Route path={ROUTES.login} element={<Login />} />
+              <Route path={ROUTES.resetPassword} element={<ResetPassword />} />
+              <Route path={ROUTES.authCallback} element={<AuthCallback />} />
+              <Route path={ROUTES.register} element={<Register />} />
+              {guarded(ROUTES.createTask, <CreateTask />)}
+              <Route path={ROUTES.tasks} element={<TaskList />} />
+              <Route path={ROUTES.task} element={<TaskDetail />} />
+              {guarded(ROUTES.myTasks, <MyTasks />)}
+              <Route path={ROUTES.pricing} element={<Pricing />} />
+              {guarded(ROUTES.subscription, <Subscription />)}
+              {guarded(ROUTES.billingReturn, <BillingReturn />)}
+              {guarded(ROUTES.parent, <ParentalHub />)}
+              {guarded(ROUTES.parentReport, <ParentReport />)}
+              <Route path={ROUTES.parentView} element={<ParentView />} />
+              <Route path={ROUTES.settings} element={<Settings />} />
+              {guarded(ROUTES.chat, <Chat />)}
+              {guarded(ROUTES.profile, <Profile />)}
+              {/* Public profile of another user, linked from a task listing. Open to guests. */}
+              <Route path={ROUTES.publicProfile} element={<PublicProfile />} />
+              <Route path={ROUTES.privacy} element={<PrivacyPolicy />} />
+              <Route path={ROUTES.terms} element={<Terms />} />
+              <Route path={ROUTES.admin} element={<Admin />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            </Suspense>
+          </RouteViewport>
+          <InstallPrompt />
+          <PushOnboarding />
+          <CookieConsent />
+          <PerformanceInsights />
+          <FloatingNavTrigger />
+        </PermissionPromptProvider>
+        </NavDrawerProvider>
+        </BrowserRouter>
       </GoogleMapsProvider>
     </AuthProvider>
   </QueryClientProvider>

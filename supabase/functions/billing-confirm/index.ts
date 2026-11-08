@@ -7,9 +7,8 @@
  * the other finds the order already settled.
  */
 import { authenticatedClients, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
-import { settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
+import { ORDER_COLUMNS, settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
 import { CHARGE_COLUMNS, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
-
 import { paymentFailureReason } from "../_shared/paymentFailure.ts";
 
 servePost(async (req) => {
@@ -41,7 +40,7 @@ servePost(async (req) => {
   // Scoped to the caller: someone else's order id reads as not found.
   const { data: order } = await admin
     .from("payment_orders")
-    .select("id, user_id, plan_id, kind, amount, status, low_profile_id, external_uniq_id, deal_number")
+    .select(ORDER_COLUMNS)
     .eq("id", orderId)
     .eq("user_id", user.id)
     .maybeSingle();

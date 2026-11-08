@@ -16,8 +16,31 @@ import {
   expiryMMYY,
   type TransactionInfo,
 } from "./cardcom.ts";
-import { evaluateLowProfileResult, evaluateTransaction, isHardDecline, notifyBilling, type PaidDetails } from "./billing.ts";
+import {
+  checkResultBinding,
+  evaluateLowProfileResult,
+  evaluateTransaction,
+  isHardDecline,
+  notifyBilling,
+  reportRejected,
+  type PaidDetails,
+} from "./billing.ts";
+import { cardExpired, PUBLISHED_TASKS_LINK, TRIAL_DAYS } from "./billingPolicy.ts";
 import { isCardCheckSuccess } from "./cardCheck.ts";
+
+/** Flags a charge row carries in `billing_charges.meta`; the settle path reads them back. */
+export type ChargeMeta = {
+  /** A card saved for the free month. */
+  trial?: boolean;
+  trial_days?: number;
+  /** A card saved to replace the one on the subscription. */
+  card_update?: boolean;
+  /** Paid once, without saving a card (wallet or Bit). */
+  payment_mode?: "one_time";
+  kept?: number;
+  from?: string;
+  credit?: number;
+};
 
 export type ChargeRow = {
   id: string;
@@ -30,7 +53,7 @@ export type ChargeRow = {
   low_profile_id: string | null;
   external_uniq_id: string | null;
   deal_number: number | null;
-  meta: Record<string, unknown> | null;
+  meta: ChargeMeta | null;
 };
 
 export const CHARGE_COLUMNS =
@@ -53,15 +76,6 @@ export function markChargeFailed(admin: SupabaseClient, chargeId: string, reason
 /** `c:` + 32 hex = 34 characters, well inside Cardcom's 50. */
 export function chargeExternalId(chargeId: string) {
   return `c:${chargeId.replaceAll("-", "")}`;
-}
-
-/** `MMYY` expiry → whether the card is past its last valid instant. */
-export function cardExpired(expiry: string | null | undefined, now = new Date()) {
-  if (!expiry || !/^\d{4}$/.test(expiry)) return false;
-  const month = Number(expiry.slice(0, 2));
-  const year = 2000 + Number(expiry.slice(2));
-  if (month < 1 || month > 12) return false;
-  return now.getTime() >= Date.UTC(year, month, 1);
 }
 
 export type ChargeOutcome =
@@ -120,7 +134,7 @@ export async function chargeSavedCard(
     taskId?: string | null;
     planId?: string | null;
     description: string;
-    meta?: Record<string, unknown>;
+    meta?: ChargeMeta;
   },
 ): Promise<ChargeOutcome & { charge?: ChargeRow }> {
   const { data: method } = await admin
@@ -226,7 +240,7 @@ export async function chargeTask(admin: SupabaseClient, taskId: string): Promise
     const { details } = outcome;
     const { data } = await markChargePaid(admin, outcome.chargeId, details);
     if ((data as { applied?: boolean } | null)?.applied) {
-      await notifyBilling(admin, task.creator_id, "task_approved", { task_id: task.id, task_name: task.name, amount }, "/my-tasks?tab=published");
+      await notifyBilling(admin, task.creator_id, "task_approved", { task_id: task.id, task_name: task.name, amount }, PUBLISHED_TASKS_LINK);
     }
     return { status: "paid", chargeId: outcome.chargeId, details };
   }
@@ -237,7 +251,7 @@ export async function chargeTask(admin: SupabaseClient, taskId: string): Promise
       task.creator_id,
       "task_payment_failed",
       { task_id: task.id, task_name: task.name, amount, reason: outcome.hard ? "card_declined_hard" : outcome.reason },
-      "/my-tasks?tab=published",
+      PUBLISHED_TASKS_LINK,
     );
   }
   return outcome;
@@ -262,12 +276,10 @@ export async function settleChargePage(
   const result = await getLpResult(charge.low_profile_id);
   const terminal = cardcomConfig().terminal;
 
-  if (result.ReturnValue !== charge.id) {
-    await markChargeFailed(admin, charge.id, "order_mismatch", result.ResponseCode ?? null);
-    return { status: "failed", taskId: charge.task_id };
-  }
-  if (result.TerminalNumber !== undefined && result.TerminalNumber !== terminal) {
-    await markChargeFailed(admin, charge.id, "terminal_mismatch", null);
+  const foreign = checkResultBinding(result, charge, terminal);
+  if (foreign) {
+    reportRejected(charge.id, foreign.reason);
+    await markChargeFailed(admin, charge.id, foreign.reason, foreign.code);
     return { status: "failed", taskId: charge.task_id };
   }
 
@@ -307,7 +319,7 @@ export async function settleChargePage(
       const { data: trial } = await admin.rpc("start_trial", {
         _user_id: charge.user_id,
         _plan_id: charge.plan_id,
-        _trial_days: Number(charge.meta?.trial_days ?? 30),
+        _trial_days: Number(charge.meta?.trial_days ?? TRIAL_DAYS),
         _card_last4: last4,
         _card_expiry: expiry,
       });
@@ -328,6 +340,7 @@ export async function settleChargePage(
   const verdict = evaluateLowProfileResult(result, { id: charge.id, amount: charge.amount }, terminal);
   if (verdict.kind === "pending") return { status: "pending", taskId: charge.task_id };
   if (verdict.kind === "failed") {
+    reportRejected(charge.id, verdict.reason);
     await markChargeFailed(admin, charge.id, verdict.reason, verdict.code);
     if (charge.task_id) {
       await notifyBilling(admin, charge.user_id, "task_payment_failed", {
@@ -335,7 +348,7 @@ export async function settleChargePage(
         task_name: await taskLabel(admin, charge.task_id),
         amount: charge.amount,
         reason: isHardDecline(verdict.code) ? "card_declined_hard" : verdict.reason,
-      }, "/my-tasks?tab=published");
+      }, PUBLISHED_TASKS_LINK);
     }
     return { status: "failed", taskId: charge.task_id };
   }
@@ -361,7 +374,7 @@ export async function settleChargePage(
       task_id: charge.task_id,
       task_name: await taskLabel(admin, charge.task_id),
       amount: charge.amount,
-    }, "/my-tasks?tab=published");
+    }, PUBLISHED_TASKS_LINK);
   }
   return { status: "paid", taskId: charge.task_id };
 }

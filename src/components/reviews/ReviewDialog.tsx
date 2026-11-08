@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { isUniqueViolation, mapDbError, REVIEW_ERRORS } from "@/lib/errors";
 
 interface ReviewDialogProps {
   open: boolean;
@@ -49,14 +50,12 @@ export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskN
       });
     setLoading(false);
     if (error) {
-      if (error.code === "23505") {
+      if (isUniqueViolation(error)) {
         toast.info("כבר דירגת את המטלה הזאת");
         onSubmitted?.();
         onClose();
-      } else if (error.message.includes("appeal_pending")) {
-        toast.error("קיים ערעור בבדיקה. אפשר לערוך אחרי שתתקבל החלטה");
       } else {
-        toast.error("לא הצלחנו לשלוח את הדירוג");
+        toast.error(mapDbError(error, REVIEW_ERRORS, "לא הצלחנו לשלוח את הדירוג"));
       }
       return;
     }

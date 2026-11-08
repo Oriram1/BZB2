@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageIssue, MAX_AGE, phoneIssue } from "./format";
+import { ageIssue, defaultAvatarUrl, displayName, formatDate, formatNis, MAX_AGE, phoneIssue, toDate } from "./format";
 
 describe("phoneIssue (live phone validation)", () => {
   it("says nothing for an empty field or a valid number", () => {
@@ -45,4 +45,39 @@ describe("ageIssue (live age validation)", () => {
   it("says nothing about an empty field", () => {
     expect(ageIssue("", 18)).toBeNull();
   });
+});
+
+describe("toDate / formatDate", () => {
+  it("rejects missing and unparsable input instead of returning an Invalid Date", () => {
+    expect(toDate(undefined)).toBeNull();
+    expect(toDate("")).toBeNull();
+    expect(toDate("not a date")).toBeNull();
+    expect(toDate(new Date("nope"))).toBeNull();
+    expect(formatDate("not a date")).toBe("לא צוין");
+  });
+
+  it("formats in the Israeli time zone, so a late-evening UTC time lands on the next local day", () => {
+    expect(formatDate("2026-04-16T22:30:00Z")).toBe("17.04.2026");
+  });
+});
+
+describe("formatNis", () => {
+  it("keeps whole shekels whole and shows agorot only when there are some", () => {
+    expect(formatNis(30)).toBe("30 ₪");
+    expect(formatNis(29.9)).toBe("29.90 ₪");
+  });
+});
+
+describe("displayName", () => {
+  it("joins the names and falls back when both are blank or the profile is missing", () => {
+    expect(displayName({ first_name: "נועה", last_name: "כהן" })).toBe("נועה כהן");
+    expect(displayName({ first_name: "נועה", last_name: "" })).toBe("נועה");
+    expect(displayName({ first_name: " ", last_name: null }, "משתמש")).toBe("משתמש");
+    expect(displayName(undefined, "משתמש")).toBe("משתמש");
+    expect(displayName(null)).toBe("");
+  });
+});
+
+it("builds the default avatar from the user id", () => {
+  expect(defaultAvatarUrl("abc")).toBe("https://api.dicebear.com/9.x/fun-emoji/svg?seed=abc");
 });

@@ -38,18 +38,6 @@ export function isStandalone() {
   );
 }
 
-/**
- * Push is offered to installed apps only.
- *
- * iOS enforces this anyway — Safari exposes PushManager to home-screen
- * installs alone — and we apply the same rule everywhere else on purpose: a
- * permission prompt fired from a throwaway browser tab is the classic way to
- * get denied permanently, and once denied the browser will not ask again.
- */
-export function needsInstall() {
-  return !isStandalone();
-}
-
 export async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
   try {
@@ -108,9 +96,13 @@ export async function syncPushSubscription() {
 export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
   if (!pushSupported()) return { ok: false, reason: "unsupported" };
   if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "not_configured" };
-  // Guarded here as well as in the UI: the permission prompt must never fire
-  // from a browser tab, whatever calls this.
-  if (needsInstall()) return { ok: false, reason: "install_required" };
+  // Push is offered to installed apps only. iOS enforces this anyway (Safari
+  // exposes PushManager to home-screen installs alone) and we apply the same
+  // rule everywhere on purpose: a permission prompt fired from a throwaway
+  // browser tab is the classic way to get denied permanently, and once denied
+  // the browser will not ask again. Guarded here as well as in the UI, whatever
+  // calls this.
+  if (!isStandalone()) return { ok: false, reason: "install_required" };
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return { ok: false, reason: "denied" };

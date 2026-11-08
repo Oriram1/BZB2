@@ -83,12 +83,8 @@ describe("architecture invariants", () => {
   });
 
   it("caps accepted workers at the number the task asked for", () => {
-    const page = readFileSync(resolve(root, "src/pages/MyTasks.tsx"), "utf8");
     const migration = readFileSync(resolve(root, "supabase/migrations/20260805160000_task_worker_capacity.sql"), "utf8");
-    // The screen hides the approval button when full, but two taskers racing on
-    // the last position is settled by the row lock, not by the button.
-    expect(page).toContain("workers_needed");
-    expect(page).toContain("task_positions_full");
+    // Two taskers racing on the last position are settled by the row lock, not by the button.
     expect(migration).toContain("FOR UPDATE");
     expect(migration).toContain("RAISE EXCEPTION 'task_positions_full'");
     expect(migration).toContain("BEFORE UPDATE OF status ON public.task_applications");
@@ -129,7 +125,7 @@ describe("architecture invariants", () => {
     expect(auth).toContain('console.error("edge_function_failure", error);');
     expect(auth).toContain('"Cache-Control": "no-store"');
     const reset = readFileSync(resolve(root, "supabase/functions/admin-reset-password/index.ts"), "utf8");
-    expect(reset).toContain("return errorResponse(e);");
+    expect(reset).toContain("servePost(");
     expect(reset).toContain('return json({ error: "password_reset_failed" }, 500);');
     expect(reset).not.toContain('return json({ error: updateErr.message }, 500);');
     const authHook = readFileSync(resolve(root, "supabase/functions/send-auth-email/index.ts"), "utf8");

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
 import { PasswordStrength } from "@/components/PasswordStrength";
+import { ROUTES } from "@/lib/routes";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const ResetPassword = () => {
     }
 
     toast.success("הסיסמה עודכנה בהצלחה");
-    navigate("/login", { replace: true });
+    navigate(ROUTES.login, { replace: true });
   };
 
   return (
@@ -90,7 +91,7 @@ const ResetPassword = () => {
               כדי לאפס סיסמה צריך לפתוח את הקישור שנשלח לאימייל.
             </p>
             <Button variant="outline" className="w-full rounded-2xl h-12 font-bold" asChild>
-<Link to="/login">חזרה למסך הכניסה</Link>
+<Link to={ROUTES.login}>חזרה למסך הכניסה</Link>
 </Button>
           </div>
         ) : (

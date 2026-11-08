@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Cookie, X } from "lucide-react";
 import { CONSENT_CHANGED, CONSENT_KEY, getStoredConsent, type ConsentLevel } from "@/lib/performanceConsent";
+import { ROUTES } from "@/lib/routes";
+import { writeStorage } from "@/lib/storage";
 
 const CookieConsent = () => {
   const [consent, setConsent] = useState<ConsentLevel>(getStoredConsent);
@@ -28,12 +30,8 @@ const CookieConsent = () => {
 
   const accept = (level: ConsentLevel) => {
     setConsent(level);
-    try {
-      localStorage.setItem(CONSENT_KEY, level!);
-      window.dispatchEvent(new Event(CONSENT_CHANGED));
-    } catch {
-      // Storage unavailable: the choice still applies for this page view.
-    }
+    // Without storage the choice still applies for this page view.
+    if (writeStorage(CONSENT_KEY, level!)) window.dispatchEvent(new Event(CONSENT_CHANGED));
   };
 
   return (
@@ -52,7 +50,7 @@ const CookieConsent = () => {
             <p id="cookie-consent-title" className="text-sm font-bold text-foreground mb-1">האתר משתמש בעוגיות</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               אנחנו משתמשים בעוגיות הכרחיות לתפקוד האתר, ובעוגיות אופציונליות לניתוח סטטיסטי ושיפור חוויית המשתמש.{" "}
-              <Link to="/privacy" className="text-primary-ink underline font-semibold rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Link to={ROUTES.privacy} className="text-primary-ink underline font-semibold rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                 מדיניות פרטיות
               </Link>
             </p>

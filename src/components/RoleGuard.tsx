@@ -2,11 +2,12 @@ import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { HOME_PATH, ROUTES, type AppRole } from "@/lib/routes";
 
 interface RoleGuardProps {
   children: React.ReactNode;
   requireAuth?: boolean;
-  allowedRoles?: string[];
+  allowedRoles?: AppRole[];
 }
 
 const RoleGuard = ({ children, requireAuth = true, allowedRoles }: RoleGuardProps) => {
@@ -21,7 +22,7 @@ const RoleGuard = ({ children, requireAuth = true, allowedRoles }: RoleGuardProp
 
     if (requireAuth && !user) {
       toast.error("יש להתחבר כדי לגשת לדף זה");
-      navigate("/login", { replace: true, state: { from: location.pathname + location.search } });
+      navigate(ROUTES.login, { replace: true, state: { from: location.pathname + location.search } });
       return;
     }
 
@@ -29,7 +30,7 @@ const RoleGuard = ({ children, requireAuth = true, allowedRoles }: RoleGuardProp
       const hasRole = allowedRoles.some((r) => roles.includes(r));
       if (!hasRole) {
         toast.error("אין לך הרשאה לגשת לדף זה");
-        navigate("/tasks", { replace: true });
+        navigate(HOME_PATH, { replace: true });
       }
     }
   }, [user, roles, loading, requireAuth, allowedRoles, navigate, location]);

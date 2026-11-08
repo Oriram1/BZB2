@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { cardcomConfig, cardcomMode, chargeToken, getDocumentUrl, createLowProfile, getLpResult, getTransactionByExternalId, refundTransaction } from "./cardcom.ts";
+import { cardcomConfig, chargeToken, getDocumentUrl, createLowProfile, getLpResult, getTransactionByExternalId, refundTransaction } from "./cardcom.ts";
 import {
   MOCK_API_NAME,
   MOCK_API_PASSWORD,
@@ -201,7 +201,7 @@ Deno.test("renewal: a token charge pays, a repeat is a duplicate, a decline fail
 Deno.test("refund needs the API password", async () => {
   const mock = useMock();
   try {
-    assertEquals((await refundTransaction({ transactionId: 9000, partialSum: 10 })).ok, true);
+    assertEquals((await refundTransaction({ transactionId: 9000 })).ok, true);
 
     Deno.env.set("CARDCOM_TEST_API_PASSWORD", "wrong");
     await assertRejects(() => refundTransaction({ transactionId: 9000 }), Error, "cardcom_http_401");
@@ -223,11 +223,11 @@ Deno.test("the mode picks which terminal is used, and anything but 'live' is tes
     set("CARDCOM_TEST_API_PASSWORD", "test-pw");
 
     set("CARDCOM_MODE");
-    assertEquals([cardcomMode(), cardcomConfig().terminal], ["test", 1000]);
+    assertEquals(cardcomConfig().terminal, 1000);
     set("CARDCOM_MODE", "Live ");
-    assertEquals(cardcomMode(), "test");
+    assertEquals(cardcomConfig().terminal, 1000);
     set("CARDCOM_MODE", "live");
-    assertEquals([cardcomMode(), cardcomConfig().terminal, cardcomConfig().apiName], ["live", 197542, "live-name"]);
+    assertEquals([cardcomConfig().terminal, cardcomConfig().apiName], [197542, "live-name"]);
 
     // Live selected but the test credentials are the only ones set: never fall back.
     set("CARDCOM_TERMINAL");

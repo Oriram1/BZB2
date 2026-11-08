@@ -1,5 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import { timingSafeEqual } from "./timingSafeEqual.ts";
+import { isUuid } from "./validate.ts";
+
+export { isUuid };
 
 const ALLOWED_ORIGINS = [
   "https://bzb-web.com",
@@ -26,12 +30,14 @@ export function corsOrigin(req: Request): string {
  */
 const requestContext = new AsyncLocalStorage<Request>();
 
-export function corsHeadersFor(req?: Request) {
+const DEFAULT_ALLOW_HEADERS = "authorization, x-client-info, apikey, content-type";
+
+export function corsHeadersFor(req?: Request, allowHeaders = DEFAULT_ALLOW_HEADERS) {
   return {
     // `Vary` keeps a proxy from serving one origin's headers to another.
     "Vary": "Origin",
     "Access-Control-Allow-Origin": req ? corsOrigin(req) : ALLOWED_ORIGINS[0],
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": allowHeaders,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 }
@@ -49,10 +55,6 @@ export function withCors(handler: (req: Request) => Response | Promise<Response>
       return await handler(req);
     });
 }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export const isUuid = (value: string) => UUID.test(value);
 
 export function json(body: unknown, status = 200, req?: Request) {
   return new Response(JSON.stringify(body), {
@@ -114,6 +116,62 @@ export async function adminClients(req: Request) {
   return clients;
 }
 
+const USERS_PER_PAGE = 200;
+
+async function* authUserPages(admin: SupabaseClient) {
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: USERS_PER_PAGE });
+    if (error) throw error;
+    yield data.users;
+    if (data.users.length < USERS_PER_PAGE) return;
+  }
+}
+
+/** Every auth user, across all pages. */
+export async function listAllUsers(admin: SupabaseClient) {
+  const users: User[] = [];
+  for await (const page of authUserPages(admin)) users.push(...page);
+  return users;
+}
+
+/** The auth user with this email (case-insensitive), searching every page. */
+export async function findUserByEmail(admin: SupabaseClient, email: string) {
+  const wanted = email.toLowerCase();
+  for await (const page of authUserPages(admin)) {
+    const match = page.find((user) => (user.email ?? "").toLowerCase() === wanted);
+    if (match) return match;
+  }
+  return null;
+}
+
+/**
+ * Runs an admin operation and records its outcome in `admin_audit_log`.
+ * `run` returns the failure (or `null` on success); `details` are logged
+ * either way and the failure message is added to them. Returns whether it succeeded.
+ */
+export async function auditedAdminAction(
+  admin: SupabaseClient,
+  entry: {
+    adminUserId: string;
+    action: string;
+    targetUserId?: string;
+    targetIdentifier?: string;
+    details?: JsonObject;
+  },
+  run: () => Promise<{ message: string } | null>,
+): Promise<boolean> {
+  const failure = await run();
+  await admin.from("admin_audit_log").insert({
+    admin_user_id: entry.adminUserId,
+    action: entry.action,
+    target_user_id: entry.targetUserId,
+    target_identifier: entry.targetIdentifier,
+    success: !failure,
+    details: failure ? { ...entry.details, error: failure.message } : entry.details ?? null,
+  });
+  return !failure;
+}
+
 export function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "unknown_error";
   if (message === "unauthorized") return json({ error: message }, 401);
@@ -127,16 +185,49 @@ export function errorResponse(error: unknown) {
   return json({ error: "internal_error" }, 500);
 }
 
-/** POST-only JSON endpoint: CORS preflight, method check, and any thrown error mapped by `errorResponse`. */
-export function servePost(handler: (req: Request) => Response | Promise<Response>) {
-  Deno.serve(withCors(async (req) => {
+/** POST-only JSON handler: CORS preflight, method check, and any thrown error mapped by `errorResponse`. */
+export function postHandler(handler: (req: Request) => Response | Promise<Response>) {
+  return withCors(async (req) => {
     if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
     try {
       return await handler(req);
     } catch (error) {
       return errorResponse(error);
     }
-  }));
+  });
+}
+
+export function servePost(handler: (req: Request) => Response | Promise<Response>) {
+  Deno.serve(postHandler(handler));
+}
+
+/**
+ * Entry point for pg_cron / pg_net callers: POST with the shared secret and a
+ * JSON object body. The handler gets a service-role client.
+ */
+export type CronContext = { admin: SupabaseClient; body: JsonObject };
+
+export function serveCron(
+  handler: (context: CronContext) => Response | Promise<Response>,
+  { maxBodyBytes }: { maxBodyBytes?: number } = {},
+) {
+  servePost(async (req) => {
+    const denied = rejectWithoutSecret(req);
+    if (denied) return denied;
+    const admin = serviceClient();
+    return await handler({ admin, body: await readJsonObject(req, maxBodyBytes) });
+  });
+}
+
+/** 429 with `Retry-After` when the user is over the named per-user quota, otherwise `null`. */
+export async function consumeQuota(admin: SupabaseClient, rpc: string, userId: string): Promise<Response | null> {
+  const { data: quota, error } = await admin.rpc(rpc, { _user_id: userId });
+  if (error) throw error;
+  if (!quota || typeof quota.allowed !== "boolean") throw new Error("invalid_quota_response");
+  if (quota.allowed) return null;
+  const response = json({ error: "rate_limit_exceeded" }, 429);
+  response.headers.set("Retry-After", String(quota.retry_after));
+  return response;
 }
 
 export type JsonObject = Record<string, unknown>;
@@ -151,22 +242,6 @@ export async function readJsonObject(req: Request, maxBytes = 32_768): Promise<J
   try { parsed = JSON.parse(raw); } catch { throw new Error("invalid_json"); }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid_json_object");
   return parsed as JsonObject;
-}
-
-/**
- * Compares without an early exit on the first differing byte, so response time
- * does not leak how much of a guessed secret was correct. Length is compared
- * up front and does leak — that is the standard trade-off and is harmless for
- * a fixed-length shared secret.
- */
-function timingSafeEqual(a: string, b: string): boolean {
-  const encoder = new TextEncoder();
-  const left = encoder.encode(a);
-  const right = encoder.encode(b);
-  if (left.length !== right.length) return false;
-  let diff = 0;
-  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
-  return diff === 0;
 }
 
 /** 401 response when the scheduler's shared secret is missing or wrong, otherwise `null`. */

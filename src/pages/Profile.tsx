@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { taskStatusLabel } from "@/lib/taskStatus";
 import { ReviewAppeal } from "@/components/reviews/ReviewAppeal";
 import { ReviewTags } from "@/components/reviews/ReviewTags";
@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { logUserActivity } from "@/lib/activityLog";
@@ -20,11 +19,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import {
-  User, Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
+  Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
   Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw, Mail, Star
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { displayName, formatCurrency, formatDate } from "@/lib/format";
 import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@shared/gender.ts";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
@@ -36,6 +35,10 @@ import { copyWithToast } from "@/lib/share";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { loadBeeStats, loadPublishedTaskCounts, type BeeStats } from "@/lib/profileStats";
 import { primaryRoleLabel } from "@/lib/roles";
+import { inBatches } from "@/lib/people";
+import { PARENT_CONTACT_ERRORS, mapDbError } from "@/lib/errors";
+import { useRoles } from "@/hooks/useRoles";
+import { functionErrorCode } from "@/lib/invokeFunction";
 
 interface ReviewHistoryRow {
   id: string;
@@ -89,12 +92,12 @@ interface TaskWithApps {
     id: string;
     status: string;
     applicant_id: string;
-    profile?: { first_name: string; last_name: string; age: number | null; avatar_url: string | null; user_id: string };
   }[];
 }
 
 const Profile = () => {
   const { user, profile, roles, loading: authLoading, refreshProfile } = useAuth();
+  const { isTasker, isBee, isAdmin } = useRoles();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -139,15 +142,19 @@ const Profile = () => {
 
   const [loadingData, setLoadingData] = useState(true);
 
-  const loadParentRequests = async () => {
+  const loadParentRequests = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("parent_contact_requests")
       .select("id, email, requested_at")
       .eq("child_user_id", user.id)
       .order("requested_at", { ascending: true });
+    if (error) {
+      toast.error("לא הצלחנו לטעון את בקשות ההורים");
+      return;
+    }
     setParentRequests(data ?? []);
-  };
+  }, [user]);
 
   /**
    * Approving reuses add-parent-contact rather than inserting directly, so an
@@ -163,13 +170,9 @@ const Profile = () => {
           "add-parent-contact",
           { body: { email: request.email } },
         );
-        const failure = error ? "invoke_failed" : data?.error;
+        const failure = error ? await functionErrorCode(error, "invoke_failed") : data?.error;
         if (failure && failure !== "already_added") {
-          toast.error(
-            failure === "limit_reached"
-              ? "אפשר לקשר עד 3 כתובות"
-              : "לא הצלחנו לאשר את הבקשה",
-          );
+          toast.error(mapDbError({ message: failure }, { limit_reached: PARENT_CONTACT_ERRORS.limit_reached }, "לא הצלחנו לאשר את הבקשה"));
           return;
         }
       }
@@ -191,15 +194,19 @@ const Profile = () => {
     }
   };
 
-  const loadParentContacts = async () => {
+  const loadParentContacts = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("parent_contacts")
       .select("id, email, created_at, view_token")
       .eq("child_user_id", user.id)
       .order("created_at", { ascending: true });
+    if (error) {
+      toast.error("לא הצלחנו לטעון את כתובות ההורים");
+      return;
+    }
     setParentContacts(data ?? []);
-  };
+  }, [user]);
 
   const addParentContact = async () => {
     const email = newParentEmail.trim().toLowerCase();
@@ -212,17 +219,9 @@ const Profile = () => {
         error?: string;
       }>("add-parent-contact", { body: { email } });
 
-      const failure = error ? "invoke_failed" : data?.error;
+      const failure = error ? await functionErrorCode(error, "invoke_failed") : data?.error;
       if (failure) {
-        toast.error(
-          failure === "already_added"
-            ? "הכתובת הזו כבר מקושרת"
-            : failure === "limit_reached"
-            ? "אפשר לקשר עד 3 כתובות"
-            : failure === "invalid_email"
-            ? "כתובת המייל לא תקינה"
-            : "לא הצלחנו לשמור את הכתובת. כדאי לנסות שוב.",
-        );
+        toast.error(mapDbError({ message: failure }, PARENT_CONTACT_ERRORS, "לא הצלחנו לשמור את הכתובת. כדאי לנסות שוב."));
         return;
       }
 
@@ -306,9 +305,6 @@ const Profile = () => {
     await copyWithToast(familyLinkUrl, { success: "הקישור הועתק", failure: "לא הצלחנו להעתיק את הקישור" });
   };
 
-  const isTasker = roles.includes("tasker");
-  const isBee = roles.includes("bee");
-
   useEffect(() => {
     if (profile) {
       setForm({
@@ -323,20 +319,7 @@ const Profile = () => {
     }
   }, [profile]);
 
-  useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      setLoadingData(true);
-      await Promise.all([loadTaskerData(), loadBeeData(), loadReviewHistory(), loadReceivedReviews()]);
-      if (isBee) await Promise.all([loadParentContacts(), loadParentRequests()]);
-      setLoadingData(false);
-    };
-    load();
-  // Loaders are local workflow functions; rerun only when auth or role state changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isTasker, isBee]);
-
-  const loadTaskerData = async () => {
+  const loadTaskerData = useCallback(async () => {
     if (!user) return;
     setTaskerStatsError(false);
     const { data: tasks, error } = await fetchAllPages((from, to) => supabase
@@ -353,14 +336,12 @@ const Profile = () => {
       return;
     }
 
-    const enriched: TaskWithApps[] = [];
-    let totalApplicants = 0;
-
-    for (const task of tasks) {
-      const { data: apps, error: appsError } = await fetchAllPages((from, to) => supabase
+    const applications: (TaskWithApps["applications"][number] & { task_id: string })[] = [];
+    for (const batch of inBatches(tasks.map((task) => task.id))) {
+      const { data: rows, error: appsError } = await fetchAllPages((from, to) => supabase
         .from("task_applications")
-        .select("id, status, applicant_id")
-        .eq("task_id", task.id)
+        .select("id, status, applicant_id, task_id")
+        .in("task_id", batch)
         .is("archived_at", null)
         .order("id")
         .range(from, to));
@@ -369,30 +350,22 @@ const Profile = () => {
         toast.error("לא הצלחנו לטעון את מספר המועמדויות");
         return;
       }
-
-      const enrichedApps = [];
-      for (const app of apps || []) {
-        const { data: p } = await supabase
-          .from("profiles")
-          .select("first_name, last_name, age, avatar_url, user_id")
-          .eq("user_id", app.applicant_id)
-          .single();
-        enrichedApps.push({ ...app, profile: p || undefined });
-      }
-      totalApplicants += (apps || []).length;
-      enriched.push({ ...task, applications: enrichedApps });
+      applications.push(...rows);
     }
 
-    setMyTasks(enriched);
+    setMyTasks(tasks.map((task) => ({
+      ...task,
+      applications: applications.filter((application) => application.task_id === task.id),
+    })));
     try {
-      setTaskerStats({ ...await loadPublishedTaskCounts(user.id), totalApplicants });
+      setTaskerStats({ ...await loadPublishedTaskCounts(user.id), totalApplicants: applications.length });
     } catch {
       setTaskerStatsError(true);
       toast.error("לא הצלחנו לטעון את נתוני המטלות שפרסמתם");
     }
-  };
+  }, [user]);
 
-  const loadBeeData = async () => {
+  const loadBeeData = useCallback(async () => {
     if (!user) return;
     setBeeStatsError(false);
     try {
@@ -401,9 +374,9 @@ const Profile = () => {
       setBeeStatsError(true);
       toast.error("לא הצלחנו לטעון את נתוני הביצוע וההכנסות");
     }
-  };
+  }, [user]);
 
-  const loadReceivedReviews = async () => {
+  const loadReceivedReviews = useCallback(async () => {
     if (!user) return;
     const { data, error } = await fetchAllPages((from, to) => supabase.from("reviews")
       .select("id, rating, body, created_at, tags")
@@ -416,16 +389,16 @@ const Profile = () => {
     setReceivedReviewsError(Boolean(responseResult.error));
     setReceivedReviews(data);
     setReceivedResponses(responseResult.error ? [] : responseResult.data);
-  };
+  }, [user]);
 
-  const loadReviewHistory = async () => {
+  const loadReviewHistory = useCallback(async () => {
     if (!user) return;
     const { data: reviews, error } = await supabase
       .from("reviews")
       .select("id, task_id, rating, body, created_at, status, published_at, rejection_reason, screening, tags")
       .eq("reviewer_id", user.id)
       .order("created_at", { ascending: false });
-    if (error) return;
+    if (error) { toast.error("לא הצלחנו לטעון את היסטוריית הדירוגים"); return; }
     const taskIds = [...new Set((reviews ?? []).map((review) => review.task_id))];
     const { data: tasks, error: tasksError } = taskIds.length
       ? await fetchAllPages((from, to) => supabase.from("tasks").select("id, name")
@@ -437,7 +410,19 @@ const Profile = () => {
       ...review, task_name: names.get(review.task_id) ?? "מטלה שהושלמה",
     }));
     setReviewHistory(rows);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      setLoadingData(true);
+      await Promise.all([loadTaskerData(), loadBeeData(), loadReviewHistory(), loadReceivedReviews()]);
+      if (isBee) await Promise.all([loadParentContacts(), loadParentRequests()]);
+      setLoadingData(false);
+    };
+    void load();
+  // isTasker is not read here: switching roles changes what these loaders must show, so it re-runs them.
+  }, [user, isTasker, isBee, loadTaskerData, loadBeeData, loadReviewHistory, loadReceivedReviews, loadParentContacts, loadParentRequests]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -482,9 +467,7 @@ const Profile = () => {
     );
   }
 
-  const defaultAvatar = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${user.id}`;
-  const displayAvatar = avatarUrl || defaultAvatar;
-  const displayName = `${form.first_name} ${form.last_name}`.trim() || user.email || "משתמש";
+  const name = displayName(form, user.email || "משתמש");
   const roleLabel = primaryRoleLabel(roles);
 
   return (
@@ -505,11 +488,10 @@ const Profile = () => {
           {/* Identity sits at the top, on the banner — avatar, name and role in
               one row, so the gradient is a backdrop rather than dead space. */}
           <div className="gradient-honey px-5 py-5">
-            {/* Mobile: vertical stack. Desktop: horizontal row. */}
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
               <AvatarPicker userId={user.id} currentAvatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
               <div className="min-w-0 text-center sm:text-right">
-                <h1 className="text-lg sm:text-2xl leading-tight font-extrabold text-foreground truncate max-w-[200px] sm:max-w-none sm:break-words sm:whitespace-normal">{displayName}</h1>
+                <h1 className="text-lg sm:text-2xl leading-tight font-extrabold text-foreground truncate max-w-[200px] sm:max-w-none sm:break-words sm:whitespace-normal">{name}</h1>
                 {roleLabel && (
                   <Badge className="bg-card text-foreground border-none font-bold mt-1.5 shadow-sm">{roleLabel}</Badge>
                 )}
@@ -1005,8 +987,7 @@ const Profile = () => {
           initialReview={{ id: editingReview.id, rating: editingReview.rating, body: editingReview.body, tags: editingReview.tags }} />}
         <ReviewReportsPanel />
         <PasswordCard />
-        {/* Account deletion — privacy right (hidden for admins) */}
-        {!roles.includes("admin") && <DeleteAccountCard />}
+        {!isAdmin && <DeleteAccountCard />}
       </div>
     </div>
   );

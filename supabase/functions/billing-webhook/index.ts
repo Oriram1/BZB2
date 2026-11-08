@@ -9,7 +9,7 @@
  * never a paid subscription.
  */
 import { readJsonObject, serviceClient, json } from "../_shared/auth.ts";
-import { settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
+import { ORDER_COLUMNS, settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
 import { CHARGE_COLUMNS, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
 /** Cardcom posts JSON; a form body is accepted too rather than losing a payment. */
@@ -39,9 +39,19 @@ Deno.serve(async (req) => {
   const lowProfileId = String(body.LowProfileId ?? body.lowprofilecode ?? "").trim();
   if (!lowProfileId || lowProfileId.length > 100) return json({ error: "missing_low_profile_id" }, 400);
 
+  // The claimed values are kept only to compare against what Cardcom confirms.
+  const recordEvent = (outcome: string, orderId?: string) =>
+    admin.from("payment_events").insert({
+      source: "webhook",
+      low_profile_id: lowProfileId,
+      order_id: orderId,
+      outcome,
+      payload: { ResponseCode: body.ResponseCode ?? null, ReturnValue: body.ReturnValue ?? null },
+    });
+
   const { data: order, error: orderError } = await admin
     .from("payment_orders")
-    .select("id, user_id, plan_id, kind, amount, status, low_profile_id, external_uniq_id, deal_number")
+    .select(ORDER_COLUMNS)
     .eq("low_profile_id", lowProfileId)
     .maybeSingle();
   if (orderError) {
@@ -63,12 +73,7 @@ Deno.serve(async (req) => {
     if (charge) {
       try {
         const settled = await settleChargePage(admin, charge as ChargeRow);
-        await admin.from("payment_events").insert({
-          source: "webhook",
-          low_profile_id: lowProfileId,
-          outcome: `charge_${settled.status}`,
-          payload: { ResponseCode: body.ResponseCode ?? null, ReturnValue: body.ReturnValue ?? null },
-        });
+        await recordEvent(`charge_${settled.status}`);
         return json({ ok: true, status: settled.status });
       } catch (error) {
         console.error("billing_webhook_charge_failed", error instanceof Error ? error.message : error);
@@ -89,14 +94,7 @@ Deno.serve(async (req) => {
 
   try {
     const { status } = await settleLowProfileOrder(admin, order as OrderRow);
-    await admin.from("payment_events").insert({
-      source: "webhook",
-      low_profile_id: lowProfileId,
-      order_id: order.id,
-      outcome: status,
-      // The claimed values, kept only to compare against what Cardcom confirms.
-      payload: { ResponseCode: body.ResponseCode ?? null, ReturnValue: body.ReturnValue ?? null },
-    });
+    await recordEvent(status, order.id);
     return json({ ok: true, status });
   } catch (error) {
     // Transient failure (Cardcom unreachable, DB error): answer 5xx so Cardcom

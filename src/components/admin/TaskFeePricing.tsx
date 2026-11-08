@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { formatPrice } from "@/lib/format";
+import { formatNis, formatPrice } from "@/lib/format";
 import { toast } from "sonner";
+import { mapDbError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +23,6 @@ const parseAmount = (raw: string) => {
   return Math.round(value * 100) / 100 === value ? value : null;
 };
 
-/** Admin control for the per-task fee and the insurance fee, with reset to default. */
 const TaskFeePricing = () => {
   const [fees, setFees] = useState<Fees | null>(null);
   const [drafts, setDrafts] = useState<Record<FeeKey, string>>({ task_fee: "", insurance_fee: "" });
@@ -48,7 +48,7 @@ const TaskFeePricing = () => {
     const { error } = await supabase.rpc("admin_set_task_fee", { _key: key, _amount: amount as number });
     setBusy(null);
     if (error) {
-      toast.error(error.message.includes("invalid_amount") ? `הסכום חייב להיות בין 0 ל-${MAX_AMOUNT} ₪, עם עד שתי ספרות אחרי הנקודה` : "השמירה נכשלה. נסו שוב");
+      toast.error(mapDbError(error, { invalid_amount: `הסכום חייב להיות בין 0 ל-${MAX_AMOUNT} ₪, עם עד שתי ספרות אחרי הנקודה` }, "השמירה נכשלה. נסו שוב"));
       return;
     }
     toast.success(amount === null ? "העמלה אופסה לברירת המחדל" : "העמלה עודכנה");
@@ -75,7 +75,7 @@ const TaskFeePricing = () => {
             <div key={key} className="rounded-2xl border border-border bg-card p-5 space-y-3">
               <h3 className="text-lg font-extrabold">{title}</h3>
               <p className="text-xs text-muted-foreground">{hint}</p>
-              <p className="text-sm">מחיר נוכחי: <strong>{formatPrice(current)} ₪</strong></p>
+              <p className="text-sm">מחיר נוכחי: <strong>{formatNis(current)}</strong></p>
               <div className="flex gap-2">
                 <Input
                   inputMode="decimal"
@@ -90,7 +90,7 @@ const TaskFeePricing = () => {
                 </Button>
               </div>
               <Button variant="outline" disabled={busy !== null || current === def} onClick={() => void save(key, null)}>
-                איפוס לברירת המחדל ({formatPrice(def)} ₪)
+                איפוס לברירת המחדל ({formatNis(def)})
               </Button>
               {drafts[key] !== "" && parsed === null && (
                 <p className="text-xs text-destructive">סכום בין 0 ל-{MAX_AMOUNT} ₪, עד שתי ספרות אחרי הנקודה</p>

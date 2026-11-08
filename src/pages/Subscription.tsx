@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { paymentErrorText } from "@/lib/paymentErrors";
 import { formatDate, formatPrice } from "@/lib/format";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CreditCard, Receipt, RefreshCw } from "lucide-react";
@@ -21,15 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { graceEnd } from "@shared/billingPolicy.ts";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAccess, useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  billingErrorMessage,
   cancelSubscription,
   changePlan,
   previewRefundCancellation,
-  graceEnd,
   isPaidPlan,
   usePlans,
   resumeSubscription,
@@ -39,6 +39,7 @@ import {
   type HistoryRow,
   type PlanId,
 } from "@/lib/billing";
+import { ROUTES } from "@/lib/routes";
 import { toast } from "sonner";
 
 const ORDER_STATUS: Record<HistoryRow["status"], string> = {
@@ -77,7 +78,7 @@ const Subscription = () => {
     const result = await previewRefundCancellation();
     setRefundChecking(false);
     if (!result.ok && !["refund_already_used", "window_passed", "nothing_to_refund", "no_active_subscription"].includes(result.code)) {
-      setRefundCheckError(billingErrorMessage(result.code));
+      setRefundCheckError(paymentErrorText(result.code));
       return;
     }
     setCanRefund(result.ok);
@@ -133,7 +134,7 @@ const Subscription = () => {
     setBusy(false);
     setConfirmCancel(false);
     if (!result.ok) {
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     toast.success("המנוי בוטל ולא יתחדש");
@@ -145,7 +146,7 @@ const Subscription = () => {
     const result = await resumeSubscription();
     setBusy(false);
     if (!result.ok) {
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     toast.success("המנוי ימשיך להתחדש");
@@ -159,7 +160,7 @@ const Subscription = () => {
     setBusy(false);
     setSwitchTo(null);
     if (!result.ok) {
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     toast.success(
@@ -180,7 +181,7 @@ const Subscription = () => {
     if (!result.ok) {
       paymentTab.close();
       setBusy(false);
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     const opened = paymentTab.navigate(result.data.url);
@@ -199,7 +200,7 @@ const Subscription = () => {
     if (!result.ok) {
       paymentTab.close();
       setBusy(false);
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     const opened = paymentTab.navigate(result.data.url);
@@ -231,7 +232,7 @@ const Subscription = () => {
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>אתם במסלול החינמי. מנוי מבטל את העמלה על משימות.</p>
               <Button asChild className="gradient-honey text-primary-foreground border-none rounded-2xl font-extrabold">
-                <Link to="/pricing">למסלולים</Link>
+                <Link to={ROUTES.pricing}>למסלולים</Link>
               </Button>
             </CardContent>
           </Card>
@@ -295,7 +296,7 @@ const Subscription = () => {
                 <div className="space-y-3 text-muted-foreground">
                   <p>המנוי הסתיים. החשבון נשאר פעיל במסלול החינמי.</p>
                   <Button asChild className="gradient-honey text-primary-foreground border-none rounded-2xl font-extrabold">
-                    <Link to="/pricing">לחידוש המנוי</Link>
+                    <Link to={ROUTES.pricing}>לחידוש המנוי</Link>
                   </Button>
                 </div>
               )}

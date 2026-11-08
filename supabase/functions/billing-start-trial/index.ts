@@ -3,19 +3,17 @@
  * subscription starts today, and the first charge is made by the renewal worker
  * when the month ends. One free month per user, ever (decided in SQL).
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { authenticatedClients, json, readJsonObject, servePost } from "../_shared/auth.ts";
 import { siteUrl } from "../_shared/email.ts";
-import { billingEnabled, createLowProfile } from "../_shared/cardcom.ts";
+import { createLowProfile } from "../_shared/cardcom.ts";
 import { cardCheckAmount } from "../_shared/cardCheck.ts";
-import { loadPlan } from "../_shared/billing.ts";
-import { PlanIntegrityError } from "../_shared/planPrice.ts";
-
-const TRIAL_DAYS = 30;
+import { billingGate, loadPlanOrReply } from "../_shared/billingGuards.ts";
+import { TRIAL_DAYS } from "../_shared/billingPolicy.ts";
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
-  if (!billingEnabled()) return json({ error: "billing_disabled" }, 503);
-  if (!(await hasRole(admin, user.id, "tasker"))) return json({ error: "tasker_only" }, 403);
+  const gated = await billingGate(admin, user.id, "tasker");
+  if (gated) return gated;
 
   const body = await readJsonObject(req);
   // The customer must know the card will be charged when the month ends.
@@ -43,14 +41,9 @@ servePost(async (req) => {
     return json({ error: "already_subscribed" }, 409);
   }
 
-  let plan: Awaited<ReturnType<typeof loadPlan>>;
-  try {
-    plan = await loadPlan(admin, String(body.plan_id ?? ""));
-  } catch (error) {
-    if (error instanceof PlanIntegrityError) return json({ error: "price_integrity_error" }, 503);
-    throw error;
-  }
-  if (!plan || !plan.active) return json({ error: "unknown_plan" }, 400);
+  const loaded = await loadPlanOrReply(admin, String(body.plan_id ?? ""));
+  if (loaded.reply) return loaded.reply;
+  const plan = loaded.plan;
 
   const id = crypto.randomUUID();
   const { error } = await admin.from("billing_charges").insert({

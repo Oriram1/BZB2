@@ -1,4 +1,5 @@
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
+import { paymentErrorText } from "@/lib/paymentErrors";
 import { formatPrice } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -10,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAccess, useSubscription } from "@/hooks/useSubscription";
-import { billingErrorMessage, isPaidPlan, periodShort, startCheckout, startTrial, usePlans, type PlanId } from "@/lib/billing";
+import { isPaidPlan, periodShort, startCheckout, startTrial, usePlans, type PlanId } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
 import { feeText, useTaskFees } from "@/lib/taskFees";
+import { ROUTES } from "@/lib/routes";
 import { toast } from "sonner";
 
 const basePlans = [
@@ -120,7 +122,7 @@ const Pricing = () => {
     } else if (!isPaidPlan(planId)) {
       return;
     } else if (subscribed) {
-      navigate("/subscription");
+      navigate(ROUTES.subscription);
     } else if (!isTasker) {
       toast.info("מנויים זמינים למציעי מטלות בלבד");
     } else {
@@ -137,7 +139,7 @@ const Pricing = () => {
     if (!result.ok) {
       paymentTab.close();
       setBusy(false);
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     const opened = paymentTab.navigate(result.data.url);
@@ -156,7 +158,7 @@ const Pricing = () => {
     if (!result.ok) {
       paymentTab.close();
       setBusy(false);
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     const opened = paymentTab.navigate(result.data.url);
@@ -195,7 +197,7 @@ const Pricing = () => {
         {subscribed && (
           <p className="text-center mb-8 text-sm">
             יש לכם מנוי פעיל.{" "}
-            <Link to="/subscription" className="font-bold underline text-primary-ink">
+            <Link to={ROUTES.subscription} className="font-bold underline text-primary-ink">
               לניהול המנוי
             </Link>
           </p>

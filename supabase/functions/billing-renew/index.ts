@@ -23,35 +23,27 @@ import {
   loadPlan,
   markOrderFailed,
   notifyBilling,
+  ORDER_COLUMNS,
+  type Plan,
   planFailure,
+  planName,
   renewalExternalId,
-  RETRY_OFFSETS_DAYS,
   settleLowProfileOrder,
   type OrderRow,
   type SubscriptionRow,
   type Verdict,
 } from "../_shared/billing.ts";
+import { cardExpired, graceEnd, HOUR_MS, RETRY_OFFSETS_DAYS } from "../_shared/billingPolicy.ts";
 import { PlanIntegrityError } from "../_shared/planPrice.ts";
 import { CHARGE_COLUMNS, chargeTask, markChargeFailed, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
-/** pg_net gives this function 55s; stop starting new charges well before that. */
+/** run_billing_renew (migration) calls this function with a 55s pg_net timeout; stop starting charges well before that. */
 const TIME_BUDGET_MS = 40_000;
 const CLAIM_LIMIT = 10;
 /** A charge with no answer this long is looked up rather than waited for. */
 const STALE_CHARGE_MS = 10 * 60_000;
 /** A hosted page nobody finished is dropped after this long. */
-const ABANDON_AFTER_MS = 48 * 3_600_000;
-
-const ORDER_COLUMNS = "id, user_id, plan_id, kind, amount, status, low_profile_id, external_uniq_id, deal_number";
-
-/** `MMYY` expiry → the last instant the card is valid, in UTC. */
-function cardExpired(expiry: string | null | undefined, now = new Date()) {
-  if (!expiry || !/^\d{4}$/.test(expiry)) return false;
-  const month = Number(expiry.slice(0, 2));
-  const year = 2000 + Number(expiry.slice(2));
-  if (month < 1 || month > 12) return false;
-  return now.getTime() >= Date.UTC(year, month, 1);
-}
+const ABANDON_AFTER_MS = 48 * HOUR_MS;
 
 /**
  * A renewal attempt failed. Records it and moves the subscription along the
@@ -61,17 +53,15 @@ function cardExpired(expiry: string | null | undefined, now = new Date()) {
 async function recordFailure(
   admin: SupabaseClient,
   sub: SubscriptionRow,
-  orderId: string,
+  order: Pick<OrderRow, "id" | "amount">,
   reason: string,
   code: number | null,
 ) {
-  await markOrderFailed(admin, orderId, reason, code);
+  await markOrderFailed(admin, order.id, reason, code);
 
-  const plan = await loadPlan(admin, sub.plan_id, { verify: false });
+  const name = await planName(admin, sub.plan_id);
   const outcome = planFailure(sub.renewal_attempts, new Date(sub.current_period_end));
-  const graceEnd = new Date(
-    new Date(sub.current_period_end).getTime() + RETRY_OFFSETS_DAYS[RETRY_OFFSETS_DAYS.length - 1] * 86_400_000,
-  );
+  const accessUntil = graceEnd(sub.current_period_end);
 
   // A card that will not recover is not charged again. The customer keeps access
   // until the end of the grace window, then the subscription ends (see the
@@ -82,7 +72,7 @@ async function recordFailure(
       .update({
         status: "past_due",
         renewal_attempts: RETRY_OFFSETS_DAYS.length,
-        next_attempt_at: graceEnd.toISOString(),
+        next_attempt_at: accessUntil.toISOString(),
         cancel_at_period_end: true,
         canceled_at: new Date().toISOString(),
       })
@@ -91,10 +81,10 @@ async function recordFailure(
       .select("id");
     if (data?.length) {
       await notifyBilling(admin, sub.user_id, "billing_payment_failed", {
-        plan_name: plan?.name,
-        amount: plan?.amount,
+        plan_name: name,
+        amount: order.amount,
         next_attempt_at: null,
-        access_until: graceEnd.toISOString(),
+        access_until: accessUntil.toISOString(),
         reason: "card_declined_hard",
       });
     }
@@ -110,7 +100,7 @@ async function recordFailure(
       .select("id");
     if (data?.length) {
       await notifyBilling(admin, sub.user_id, "billing_subscription_ended", {
-        plan_name: plan?.name,
+        plan_name: name,
         reason: "payment_failed",
       });
     }
@@ -129,10 +119,10 @@ async function recordFailure(
     .select("id");
   if (data?.length) {
     await notifyBilling(admin, sub.user_id, "billing_payment_failed", {
-      plan_name: plan?.name,
-      amount: plan?.amount,
+      plan_name: name,
+      amount: order.amount,
       next_attempt_at: outcome.nextAttemptAt.toISOString(),
-      access_until: graceEnd.toISOString(),
+      access_until: accessUntil.toISOString(),
       reason: reason === "card_expired" ? "card_expired" : "declined",
     });
   }
@@ -150,14 +140,14 @@ async function settleRenewal(
     return "paid";
   }
   if (verdict.kind === "failed") {
-    await recordFailure(admin, sub, order.id, verdict.reason, verdict.code);
+    await recordFailure(admin, sub, order, verdict.reason, verdict.code);
     return "failed";
   }
   return "pending";
 }
 
 async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promise<string> {
-  let plan: Awaited<ReturnType<typeof loadPlan>>;
+  let plan: Plan | null;
   try {
     // A downgrade chosen earlier takes effect here, at the period end.
     plan = await loadPlan(admin, sub.pending_plan_id ?? sub.plan_id);
@@ -199,7 +189,8 @@ async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promi
   const orderRow = order as OrderRow;
   if (orderRow.status === "paid" || orderRow.status === "refunded") return orderRow.status;
   if (orderRow.status === "failed") {
-    await recordFailure(admin, sub, orderRow.id, "declined", null);
+    // A replay of a failure already recorded on the order keeps its real reason and code.
+    await recordFailure(admin, sub, orderRow, orderRow.error ?? "declined", orderRow.response_code ?? null);
     return "failed";
   }
 
@@ -209,11 +200,11 @@ async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promi
     .eq("user_id", sub.user_id)
     .maybeSingle();
   if (!method?.token) {
-    await recordFailure(admin, sub, orderRow.id, "no_payment_method", null);
+    await recordFailure(admin, sub, orderRow, "no_payment_method", null);
     return "failed";
   }
   if (cardExpired(method.card_expiry)) {
-    await recordFailure(admin, sub, orderRow.id, "card_expired", null);
+    await recordFailure(admin, sub, orderRow, "card_expired", null);
     return "failed";
   }
 
@@ -250,6 +241,7 @@ async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promi
 
 async function reconcileStaleOrders(admin: SupabaseClient) {
   let settled = 0;
+  let errors = 0;
 
   const staleBefore = new Date(Date.now() - STALE_CHARGE_MS).toISOString();
   const { data: renewals } = await admin
@@ -272,6 +264,7 @@ async function reconcileStaleOrders(admin: SupabaseClient) {
       await settleRenewal(admin, sub as SubscriptionRow, order, verdict);
       settled += 1;
     } catch (error) {
+      errors += 1;
       console.error("billing_reconcile_failed", { orderId: order.id, error: error instanceof Error ? error.message : error });
     }
   }
@@ -292,11 +285,12 @@ async function reconcileStaleOrders(admin: SupabaseClient) {
       const { status } = await settleLowProfileOrder(admin, order);
       if (status === "pending") await markOrderFailed(admin, order.id, "abandoned", null);
     } catch (error) {
+      errors += 1;
       console.error("billing_abandon_failed", { orderId: order.id, error: error instanceof Error ? error.message : error });
     }
   }
 
-  return settled;
+  return { settled, errors };
 }
 
 /**
@@ -305,6 +299,7 @@ async function reconcileStaleOrders(admin: SupabaseClient) {
  */
 async function reconcileCharges(admin: SupabaseClient) {
   let swept = 0;
+  let errors = 0;
 
   const staleBefore = new Date(Date.now() - STALE_CHARGE_MS).toISOString();
   const { data: stuck } = await admin
@@ -318,6 +313,7 @@ async function reconcileCharges(admin: SupabaseClient) {
       await chargeTask(admin, task.id);
       swept += 1;
     } catch (error) {
+      errors += 1;
       console.error("billing_task_sweep_failed", { taskId: task.id, error: error instanceof Error ? error.message : error });
     }
   }
@@ -338,10 +334,11 @@ async function reconcileCharges(admin: SupabaseClient) {
       }
       swept += 1;
     } catch (error) {
+      errors += 1;
       console.error("billing_charge_abandon_failed", { chargeId: charge.id, error: error instanceof Error ? error.message : error });
     }
   }
-  return swept;
+  return { swept, errors };
 }
 
 Deno.serve(async (req) => {
@@ -359,15 +356,19 @@ Deno.serve(async (req) => {
   if (!billingEnabled()) return json({ ok: true, skipped: "billing_disabled", tasks: upkeep ?? null });
   try { cardcomConfig(); } catch { return json({ error: "cardcom_not_configured" }, 500); }
   const started = Date.now();
-  const summary = { reconciled: 0, ended: 0, charged: 0, failed: 0, unknown: 0, reminders: 0 };
+  const summary = { reconciled: 0, ended: 0, charged: 0, failed: 0, unknown: 0, reminders: 0, errors: 0 };
 
-  summary.reconciled = await reconcileStaleOrders(admin);
-  summary.reconciled += await reconcileCharges(admin);
+  const stale = await reconcileStaleOrders(admin);
+  const sweep = await reconcileCharges(admin);
+  summary.reconciled = stale.settled + sweep.swept;
+  summary.errors = stale.errors + sweep.errors;
 
   const { data: ended } = await admin.rpc("billing_finish_canceled");
   for (const sub of (ended ?? []) as SubscriptionRow[]) {
-    const plan = await loadPlan(admin, sub.plan_id, { verify: false });
-    await notifyBilling(admin, sub.user_id, "billing_subscription_ended", { plan_name: plan?.name, reason: "canceled" });
+    await notifyBilling(admin, sub.user_id, "billing_subscription_ended", {
+      plan_name: await planName(admin, sub.plan_id),
+      reason: "canceled",
+    });
     summary.ended += 1;
   }
 
@@ -383,6 +384,7 @@ Deno.serve(async (req) => {
     } catch (error) {
       // One bad subscription must not stop the rest. Its claim lapses in an
       // hour and it is picked up again.
+      summary.errors += 1;
       console.error("billing_renew_failed", { subscriptionId: sub.id, error: error instanceof Error ? error.message : error });
     }
   }

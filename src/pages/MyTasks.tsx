@@ -1,4 +1,11 @@
+import { ROUTES } from "@/lib/routes";
 import { completeTask as completeTaskAction } from "@/lib/taskActions";
+import { paymentErrorText } from "@/lib/paymentErrors";
+import { archiveTask as archiveTaskAction } from "@/lib/tasks";
+import { fetchProfiles, fetchRatings } from "@/lib/people";
+import { APPLICATION_ERRORS, CANCEL_TASK_ERRORS, mapDbError } from "@/lib/errors";
+import { isTaskDone, taskStatusLabel, type TaskStatus } from "@/lib/taskStatus";
+import { useRoles } from "@/hooks/useRoles";
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -26,13 +33,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { ensureAcceptedTaskConversation } from "@/lib/taskConversations";
 import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-import { formatDateTime } from "@/lib/format";
+import { displayName, formatDateTime, formatNis } from "@/lib/format";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { reviewWindowOpen } from "@/lib/reviewWindow";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
 import {
-  billingErrorText,
   payTaskWithNewCard,
   payTaskOnce,
   publishStateLabel,
@@ -42,8 +47,6 @@ import {
 } from "@/lib/taskBilling";
 
 type ApplicationStatus = "pending" | "accepted" | "rejected";
-/** The task_status enum, so a screen cannot invent a state the database rejects. */
-type TaskStatus = Database["public"]["Enums"]["task_status"];
 
 interface PublishedTask {
   id: string;
@@ -66,8 +69,7 @@ interface CandidateApplication {
   workersNeeded: number;
   applicantId: string;
   status: ApplicationStatus;
-  firstName: string;
-  lastName: string;
+  name: string;
   age: number | null;
   avatarUrl: string | null;
   completedTasks: number;
@@ -92,14 +94,6 @@ interface PerformingTask {
   location: string;
 }
 
-const taskStatusLabel = (status: TaskStatus) => {
-  if (status === "open") return "פתוחה";
-  if (status === "accepted") return "התקבלה";
-  if (status === "in_progress") return "בביצוע";
-  if (status === "completed") return "הושלמה";
-  return "בוטלה";
-};
-
 const applicationStatusLabel: Record<ApplicationStatus, string> = {
   pending: "ממתינה להחלטה",
   accepted: "התקבלה",
@@ -107,11 +101,10 @@ const applicationStatusLabel: Record<ApplicationStatus, string> = {
 };
 
 const MyTasks = () => {
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
+  const { isTasker, isBee } = useRoles();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isTasker = roles.includes("tasker");
-  const isBee = roles.includes("bee");
   const [publishedTasks, setPublishedTasks] = useState<PublishedTask[]>([]);
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [performingTasks, setPerformingTasks] = useState<PerformingTask[]>([]);
@@ -218,21 +211,17 @@ const MyTasks = () => {
           if (applicationsError) toast.error("לא הצלחנו לטעון את ההצעות למטלות");
 
           const applicantIds = [...new Set(applicationRows.map((application) => application.applicant_id))];
-          const [profilesResult, completedResults] = await Promise.all([
-            applicantIds.length
-              ? fetchAllPages((from, to) => supabase.from("profiles")
-                .select("user_id, first_name, last_name, age, avatar_url")
-                .in("user_id", applicantIds).order("user_id").range(from, to))
-              : Promise.resolve({ data: [], error: null }),
+          const [profiles, completedResults] = await Promise.all([
+            fetchProfiles(applicantIds),
             Promise.all(applicantIds.map(async (applicantId) => ({
               applicantId,
               result: await supabase.rpc("get_worker_completed_task_count", { _user_id: applicantId }),
             }))),
           ]);
-          if (profilesResult.error || completedResults.some(({ result }) => result.error)) {
+          if (profiles.failed || completedResults.some(({ result }) => result.error)) {
             toast.error("לא הצלחנו לטעון את כל פרטי המועמדים");
           }
-          const profilesById = new Map(profilesResult.data.map((profile) => [profile.user_id, profile]));
+          const profilesById = profiles.byId;
           const completedById = new Map(completedResults.map(({ applicantId, result }) => [applicantId, result.data]));
           const applicationsByTask = new Map<string, typeof applicationRows>();
           for (const application of applicationRows) {
@@ -250,8 +239,7 @@ const MyTasks = () => {
                 workersNeeded: task.workers_needed,
                 applicantId: application.applicant_id,
                 status: application.status,
-                firstName: profile?.first_name ?? "",
-                lastName: profile?.last_name ?? "",
+                name: displayName(profile),
                 age: profile?.age ?? null,
                 avatarUrl: profile?.avatar_url ?? null,
                 completedTasks: completedById.get(application.applicant_id) ?? 0,
@@ -297,19 +285,9 @@ const MyTasks = () => {
         }
       }
 
-      const applicantIds = [...new Set(nextApplications.map((application) => application.applicantId))];
-      if (applicantIds.length) {
-        const { data: ratings, error: ratingsError } = await fetchAllPages((from, to) => supabase.from("user_role_ratings")
-          .select("user_id, avg_rating, review_count").eq("reviewee_role", "bee").in("user_id", applicantIds)
-          .order("user_id").range(from, to));
-        if (!ratingsError) {
-          const byUser = new Map(ratings.map((rating) => [rating.user_id, rating]));
-          for (const application of nextApplications) {
-            const rating = byUser.get(application.applicantId);
-            application.rating = rating?.avg_rating != null && rating.review_count
-              ? { average: rating.avg_rating, count: rating.review_count } : null;
-          }
-        }
+      const ratings = await fetchRatings("bee", nextApplications.map((application) => application.applicantId));
+      if (ratings) {
+        for (const application of nextApplications) application.rating = ratings.get(application.applicantId) ?? null;
       }
       if (!cancelled && version === loadVersion) {
         setPublishedTasks(nextPublishedTasks);
@@ -352,11 +330,7 @@ const MyTasks = () => {
       .is("archived_at", null);
 
     if (error) {
-      toast.error(
-        error.message.includes("task_positions_full")
-          ? "כל המקומות במטלה כבר תפוסים"
-          : "לא הצלחנו לעדכן את המועמדות",
-      );
+      toast.error(mapDbError(error, APPLICATION_ERRORS, "לא הצלחנו לעדכן את המועמדות"));
       setActionId(null);
       return;
     }
@@ -407,7 +381,7 @@ const MyTasks = () => {
     const result = await retryTaskPayment(task.id);
     setPayingTask(null);
     if (!result.ok) {
-      toast.error(billingErrorText(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     setPublishState(task.id, result.data.state);
@@ -424,8 +398,8 @@ const MyTasks = () => {
     if (!result.ok) {
       paymentTab.close();
       setPayingTask(null);
-      toast.error(billingErrorText(result.code), result.code === "session_expired" ? {
-        action: { label: "כניסה מחדש", onClick: () => navigate("/login", { state: { from: "/my-tasks?tab=published" } }) },
+      toast.error(paymentErrorText(result.code), result.code === "session_expired" ? {
+        action: { label: "כניסה מחדש", onClick: () => navigate("/login", { state: { from: ROUTES.myPublishedTasks } }) },
       } : undefined);
       return;
     }
@@ -441,7 +415,7 @@ const MyTasks = () => {
     const result = await resubmitTask(task.id);
     setPayingTask(null);
     if (!result.ok) {
-      toast.error(billingErrorText(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     setPublishState(task.id, "pending_review");
@@ -473,11 +447,7 @@ const MyTasks = () => {
   const cancelTask = async (task: PublishedTask) => {
     const { error } = await supabase.rpc("cancel_task", { _task_id: task.id });
     if (error) {
-      toast.error(
-        error.message.includes("task_completed")
-          ? "המטלה כבר הושלמה, אז אי אפשר לבטל אותה"
-          : "לא הצלחנו לבטל את המטלה",
-      );
+      toast.error(mapDbError(error, CANCEL_TASK_ERRORS, "לא הצלחנו לבטל את המטלה"));
       return;
     }
 
@@ -508,13 +478,13 @@ const MyTasks = () => {
         taskId: task.id,
         taskName: task.name,
         revieweeId: accepted[0].applicantId,
-        revieweeName: `${accepted[0].firstName} ${accepted[0].lastName}`.trim(),
+        revieweeName: accepted[0].name,
       });
     }
   };
 
   const archiveTask = async (task: PublishedTask) => {
-    const { error } = await supabase.rpc("archive_task", { _task_id: task.id, _user_id: user!.id });
+    const error = await archiveTaskAction(user!.id, task);
     if (error) {
       toast.error("לא הצלחנו למחוק את המטלה");
       return;
@@ -522,7 +492,6 @@ const MyTasks = () => {
 
     setPublishedTasks((current) => current.filter((t) => t.id !== task.id));
     setApplications((current) => current.filter((a) => a.taskId !== task.id));
-    logUserActivity(user!.id, "task_deleted", { entityType: "task", entityId: task.id, details: { name: task.name } });
     toast.success("המטלה הועברה לארכיון");
   };
 
@@ -573,7 +542,7 @@ const MyTasks = () => {
                   </Button>
                 </div>
               ) : applications.map((application) => {
-                const fullName = `${application.firstName} ${application.lastName}`.trim() || "משתמש";
+                const fullName = application.name || "משתמש";
                 const highlighted = searchParams.get("application") === application.id;
                 const taken = acceptedByTask.get(application.taskId) ?? 0;
                 const full = taken >= application.workersNeeded;
@@ -586,7 +555,7 @@ const MyTasks = () => {
                     <div className="flex items-start gap-3">
                       <Avatar className="h-14 w-14 border border-border shrink-0">
                         <AvatarImage src={application.avatarUrl ?? undefined} alt={fullName} />
-                        <AvatarFallback>{application.firstName.slice(0, 1) || "🐝"}</AvatarFallback>
+                        <AvatarFallback>{application.name.slice(0, 1) || "🐝"}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -657,12 +626,12 @@ const MyTasks = () => {
                         <Button className="flex-1 min-h-11 rounded-full font-bold gradient-honey text-primary-foreground"
                           disabled={submittedReviews.has(`${application.taskId}:${application.applicantId}`) || !reviewWindowOpen(application.reviewWindowStartedAt)}
                           onClick={() => setReviewTarget({ taskId: application.taskId, taskName: application.taskName,
-                            revieweeId: application.applicantId, revieweeName: `${application.firstName} ${application.lastName}`.trim() })}>
+                            revieweeId: application.applicantId, revieweeName: application.name })}>
                           <Star size={16} className="ms-1" />
                           {submittedReviews.has(`${application.taskId}:${application.applicantId}`) ? "הדירוג נשלח" : !reviewWindowOpen(application.reviewWindowStartedAt) ? "זמן הדירוג הסתיים" : "דירוג העובד"}
                         </Button>
                       )}
-                      {application.status === "accepted" && application.taskStatus !== "completed" && application.taskStatus !== "cancelled" && (
+                      {application.status === "accepted" && !isTaskDone(application.taskStatus) && (
                         <>
                           <Button
                             onClick={() => openAcceptedConversation(application)}
@@ -711,7 +680,7 @@ const MyTasks = () => {
 </Button>
                 </div>
               ) : publishedTasks.map((task) => {
-                const closed = task.status === "completed" || task.status === "cancelled";
+                const closed = isTaskDone(task.status);
                 const canComplete = !closed && (acceptedByTask.get(task.id) ?? 0) > 0;
 
                 return (
@@ -740,9 +709,9 @@ const MyTasks = () => {
                         המטלה ממתינה לאישור. {Number(task.payment_due) > 0
                           ? task.payment_mode === "one_time"
                             ? task.charged_at
-                              ? `שילמתם ${Number(task.payment_due)} ₪. המטלה תעלה מיד אחרי האישור, ואם לא תאושר הכסף יוחזר.`
+                              ? `שילמתם ${formatNis(Number(task.payment_due))}. המטלה תעלה מיד אחרי האישור, ואם לא תאושר הכסף יוחזר.`
                               : "אפשר לשלם כבר עכשיו, או לבחור אמצעי תשלום אחרי האישור. הכרטיס השמור לא יחויב אוטומטית."
-                            : `הכרטיס יחויב ב־${Number(task.payment_due)} ₪ רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
+                            : `הכרטיס יחויב ב־${formatNis(Number(task.payment_due))} רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
                           : "היא תעלה לאפליקציה מיד אחרי האישור."}
                       </p>
                     )}
@@ -756,7 +725,7 @@ const MyTasks = () => {
                     {(task.publish_state === "pending_payment" || task.publish_state === "awaiting_charge") && (
                       <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
                         <p className="font-bold text-foreground">
-                          {task.payment_mode === "one_time" ? `המטלה אושרה וממתינה לתשלום (${Number(task.payment_due)} ₪).` : `המטלה אושרה אבל החיוב (${Number(task.payment_due)} ₪) לא עבר.`}
+                          {task.payment_mode === "one_time" ? `המטלה אושרה וממתינה לתשלום (${formatNis(Number(task.payment_due))}).` : `המטלה אושרה אבל החיוב (${formatNis(Number(task.payment_due))}) לא עבר.`}
                         </p>
                         <p className="mt-1 text-muted-foreground">
                           {task.payment_mode === "one_time" ? "בחרו אמצעי תשלום כדי להשלים את הפרסום. הכרטיס השמור לא חויב." : "כדאי לנסות כרטיס אחר או לפנות לחברת האשראי."} אם לא ישולם תוך 7 ימים המטלה תחזור לטיוטה, בלי חיוב.
@@ -864,7 +833,7 @@ const MyTasks = () => {
                       <h2 className="font-extrabold text-lg truncate">{task.name}</h2>
                       <p className="text-sm text-muted-foreground line-clamp-2">{task.shortDesc}</p>
                     </Link>
-                    <Badge variant="secondary" className="rounded-full">{task.status === "completed" || task.status === "cancelled" ? taskStatusLabel(task.status) : applicationStatusLabel[task.applicationStatus]}</Badge>
+                    <Badge variant="secondary" className="rounded-full">{isTaskDone(task.status) ? taskStatusLabel(task.status) : applicationStatusLabel[task.applicationStatus]}</Badge>
                   </div>
                   <div className="mt-3 text-sm text-muted-foreground space-y-1">
                     <p>{task.location}</p>
@@ -879,7 +848,7 @@ const MyTasks = () => {
                       {submittedReviews.has(`${task.id}:${task.creatorId}`) ? "הדירוג נשלח" : !reviewWindowOpen(task.reviewWindowStartedAt) ? "זמן הדירוג הסתיים" : "דירוג המפרסם"}
                     </Button>
                   )}
-                  {task.applicationStatus === "accepted" && task.status !== "completed" && task.status !== "cancelled" && (
+                  {task.applicationStatus === "accepted" && !isTaskDone(task.status) && (
                     <Button
                       onClick={async () => {
                         try {
@@ -918,7 +887,7 @@ const MyTasks = () => {
               <AlertDialogCancel className="rounded-full">חזרה</AlertDialogCancel>
               {/* Completed and cancelled are both terminal — complete_task credited
                   the bee already, so cancelling out of it would erase real earnings. */}
-              {confirmTask?.status !== "cancelled" && confirmTask?.status !== "completed" && (
+              {!(confirmTask && isTaskDone(confirmTask.status)) && (
                 <AlertDialogAction
                   onClick={() => { if (confirmTask) cancelTask(confirmTask); setConfirmTask(null); }}
                   className="rounded-full bg-amber-600 text-white hover:bg-amber-700"
@@ -962,7 +931,7 @@ const MyTasks = () => {
             <DialogHeader className="text-start">
               <DialogTitle>איך לשלם?</DialogTitle>
               <DialogDescription>
-                {Number(payChoice?.payment_due ?? 0)} ₪ עבור ״{payChoice?.name}״. זו עמלת הפרסום, לא התמורה לעובד.
+                {formatNis(Number(payChoice?.payment_due ?? 0))} עבור ״{payChoice?.name}״. זו עמלת הפרסום, לא התמורה לעובד.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2">

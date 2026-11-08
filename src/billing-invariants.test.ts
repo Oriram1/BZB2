@@ -47,7 +47,7 @@ describe("billing invariants", () => {
 
   it("takes the price from the plans table, never from the request", () => {
     const checkout = read("supabase/functions/billing-create-checkout/index.ts");
-    expect(checkout).toContain("loadPlan(admin");
+    expect(checkout).toContain("loadPlanOrReply(admin");
     expect(checkout).toContain("amount: plan.amount");
     expect(checkout).not.toMatch(/body\.amount/);
     // Automatic renewal needs recorded consent before any card page opens.
@@ -55,7 +55,8 @@ describe("billing invariants", () => {
   });
 
   it("refuses to start or renew a charge unless billing is switched on", () => {
-    expect(read("supabase/functions/billing-create-checkout/index.ts")).toContain("billing_disabled");
+    expect(read("supabase/functions/billing-create-checkout/index.ts")).toContain("billingGate(");
+    expect(read("supabase/functions/_shared/billingGuards.ts")).toContain("billing_disabled");
     expect(read("supabase/functions/billing-renew/index.ts")).toContain("billingEnabled()");
     expect(read("supabase/functions/_shared/cardcom.ts")).toContain('=== "true"');
   });
@@ -95,8 +96,7 @@ describe("billing invariants", () => {
   });
 
   it("declares every billing notification the functions can send", () => {
-    const billing = read("supabase/functions/_shared/billing.ts");
-    const union = billing.match(/export type BillingEvent =([\s\S]*?);/)?.[1] ?? "";
+    const union = read("supabase/functions/_shared/notificationEvents.ts").match(/export type NotificationEvent =([\s\S]*?);/)?.[1] ?? "";
     const events = [...union.matchAll(/"(billing_[a-z_]+)"/g)].map((match) => match[1]);
     expect(events.length).toBeGreaterThan(0);
     for (const event of events) {
@@ -108,14 +108,10 @@ describe("billing invariants", () => {
 
   it("charges only a price that carries a valid signature", () => {
     const billing = read("supabase/functions/_shared/billing.ts");
-    // loadPlan verifies by default; the callers that charge must not opt out.
     expect(billing).toContain("verifyPlan(data)");
     expect(billing).toContain("PlanIntegrityError");
-    expect(read("supabase/functions/billing-create-checkout/index.ts")).toContain("price_integrity_error");
-    const renew = read("supabase/functions/billing-renew/index.ts");
-    const chargeRenewal = renew.slice(renew.indexOf("async function chargeRenewal"));
-    expect(chargeRenewal.slice(0, 600)).not.toContain("verify: false");
-    expect(read("supabase/functions/billing-create-checkout/index.ts")).not.toContain("verify: false");
+    expect(read("supabase/functions/_shared/billingGuards.ts")).toContain("price_integrity_error");
+    expect(billing).not.toContain("verify: false");
   });
 
   it("changes prices only through the admin function, and keeps the signing key out of the database", () => {

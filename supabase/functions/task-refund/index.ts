@@ -8,6 +8,7 @@
 import { authenticatedClients, hasRole, json, rejectWithoutSecret, serviceClient, servePost } from "../_shared/auth.ts";
 import { billingEnabled, refundTransaction } from "../_shared/cardcom.ts";
 import { notifyBilling } from "../_shared/billing.ts";
+import { PUBLISHED_TASKS_LINK } from "../_shared/billingPolicy.ts";
 import { processTaskRefunds } from "../_shared/taskRefund.ts";
 
 servePost(async (req) => {
@@ -26,7 +27,7 @@ servePost(async (req) => {
 
   const summary = await processTaskRefunds(admin, {
     refund: refundTransaction,
-    notify: (userId, data) => notifyBilling(admin, userId, "task_refunded", data, "/my-tasks?tab=published"),
+    notify: (userId, data) => notifyBilling(admin, userId, "task_refunded", data, PUBLISHED_TASKS_LINK),
   });
   return json(summary);
 });

@@ -5,26 +5,23 @@
  * The amount comes from billing_plans, never from the request, and the card is
  * only ever typed into Cardcom's page, so no card data touches this server.
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { authenticatedClients, json, readJsonObject, servePost } from "../_shared/auth.ts";
 import { siteUrl } from "../_shared/email.ts";
-import { billingEnabled, createLowProfile } from "../_shared/cardcom.ts";
-import { buildDocument, loadPlan, markOrderFailed } from "../_shared/billing.ts";
-import { PlanIntegrityError } from "../_shared/planPrice.ts";
-
-/** Stops one account from minting hosted pages (each is a Cardcom API call). */
-const MAX_PENDING_PER_HOUR = 5;
+import { createLowProfile } from "../_shared/cardcom.ts";
+import { buildDocument, markOrderFailed } from "../_shared/billing.ts";
+import { billingGate, loadPlanOrReply } from "../_shared/billingGuards.ts";
+import { HOUR_MS, MAX_PENDING_ORDERS_PER_HOUR } from "../_shared/billingPolicy.ts";
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
-  if (!billingEnabled()) return json({ error: "billing_disabled" }, 503);
-  const body = await readJsonObject(req);
+  // Only people who post tasks buy a plan.
+  const gated = await billingGate(admin, user.id, "tasker");
+  if (gated) return gated;
 
+  const body = await readJsonObject(req);
   // Renewal is automatic, so the customer must have seen and accepted that
   // before any card is charged. The UI sends this only from its consent box.
   if (body.accept_renewal !== true) return json({ error: "consent_required" }, 400);
-
-  // Only people who post tasks buy a plan.
-  if (!(await hasRole(admin, user.id, "tasker"))) return json({ error: "tasker_only" }, 403);
 
   const { data: existing } = await admin
     .from("subscriptions")
@@ -37,25 +34,19 @@ servePost(async (req) => {
   // overdue renewal, on whatever card the customer now enters, and the new
   // card becomes the saved one. The plan is the one they already have.
   const overdue = existing?.status === "past_due" ? existing : null;
-  const planId = overdue ? overdue.plan_id : String(body.plan_id ?? "");
-  let plan: Awaited<ReturnType<typeof loadPlan>>;
-  try {
-    plan = await loadPlan(admin, planId);
-  } catch (error) {
-    // The stored price does not carry a valid signature: never charge it.
-    if (error instanceof PlanIntegrityError) return json({ error: "price_integrity_error" }, 503);
-    throw error;
-  }
-  if (!plan || !plan.active) return json({ error: "unknown_plan" }, 400);
+  const loaded = await loadPlanOrReply(admin, overdue ? overdue.plan_id : String(body.plan_id ?? ""));
+  if (loaded.reply) return loaded.reply;
+  const plan = loaded.plan;
 
-  const since = new Date(Date.now() - 3_600_000).toISOString();
+  // Stops one account from minting hosted pages (each is a Cardcom API call).
+  const since = new Date(Date.now() - HOUR_MS).toISOString();
   const { count } = await admin
     .from("payment_orders")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
     .eq("status", "pending")
     .gte("created_at", since);
-  if ((count ?? 0) >= MAX_PENDING_PER_HOUR) return json({ error: "too_many_attempts" }, 429);
+  if ((count ?? 0) >= MAX_PENDING_ORDERS_PER_HOUR) return json({ error: "too_many_attempts" }, 429);
 
   const { data: order, error: orderError } = await admin
     .from("payment_orders")

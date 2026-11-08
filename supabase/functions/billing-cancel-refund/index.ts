@@ -9,20 +9,20 @@
  * task fee; that difference is charged BEFORE the refund so nobody can walk away
  * with the refund and free tasks. The refund can be used once per user.
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
-import { billingEnabled, refundTransaction } from "../_shared/cardcom.ts";
+import { authenticatedClients, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
+import { refundTransaction } from "../_shared/cardcom.ts";
 import { notifyBilling } from "../_shared/billing.ts";
+import { billingGate } from "../_shared/billingGuards.ts";
+import { DEFAULT_TASK_FEE, round2 } from "../_shared/billingPolicy.ts";
 import { chargeSavedCard, markChargePaid } from "../_shared/taskBilling.ts";
-
-const round2 = (value: number) => Math.round(value * 100) / 100;
 
 type PlanRow = { task_id: string; name: string; locked: boolean; is_first: boolean };
 type UpgradeCharge = { id: string; amount: number | string; deal_number: number | null };
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
-  if (!billingEnabled()) return json({ error: "billing_disabled" }, 503);
-  if (!(await hasRole(admin, user.id, "tasker"))) return json({ error: "tasker_only" }, 403);
+  const gated = await billingGate(admin, user.id, "tasker");
+  if (gated) return gated;
 
   const body = await readJsonObject(req);
   const action = String(body.action ?? "preview");
@@ -60,8 +60,8 @@ servePost(async (req) => {
 
   const { data: planRows } = await admin.rpc("cancel_task_plan", { _user_id: user.id });
   const tasks = (planRows ?? []) as PlanRow[];
-  const { data: feeData } = await admin.rpc("billing_setting_number", { _key: "task_fee", _fallback: 3 });
-  const fee = Number(feeData ?? 3);
+  const { data: feeData } = await admin.rpc("billing_setting_number", { _key: "task_fee", _fallback: DEFAULT_TASK_FEE });
+  const fee = Number(feeData ?? DEFAULT_TASK_FEE);
 
   if (action === "preview") {
     const chargeable = tasks.filter((task) => !task.is_first).length;

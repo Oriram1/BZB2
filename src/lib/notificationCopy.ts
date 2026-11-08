@@ -9,8 +9,7 @@ import { dateHe, str } from "@shared/formatHe.ts";
  */
 import type { NotificationEvent, NotificationRow as SharedNotificationRow } from "@shared/notificationEvents.ts";
 import { formFor, RECIPIENT, say, SUBJECT, type Form } from "@shared/gender.ts";
-
-export type AppRole = "tasker" | "bee" | "parent";
+import type { AppRole } from "@/lib/routes";
 
 export type NotificationRow = SharedNotificationRow & {
   read_at: string | null;

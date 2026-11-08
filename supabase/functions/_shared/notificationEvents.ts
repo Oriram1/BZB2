@@ -39,14 +39,14 @@ export type NotificationEvent =
   | "billing_subscription_canceled"
   | "billing_subscription_ended"
   | "billing_refunded"
+  | "billing_plan_changed"
   | "task_approved"
   | "task_rejected"
   | "task_payment_failed"
   | "task_payment_reminder"
   | "task_returned_to_draft"
   | "tasks_hidden"
-  | "task_refunded"
-  | "billing_plan_changed";
+  | "task_refunded";
 
 export type NotificationRow = {
   id: string;
@@ -58,7 +58,7 @@ export type NotificationRow = {
 /**
  * Channel defaults for users who never touched the settings screen.
  * Operationally critical events default on; nice-to-know push defaults off.
- *  */
+ */
 export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push: boolean }> = {
   application_received: { email: true, push: true },
   application_decided: { email: true, push: true },
@@ -90,6 +90,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   billing_subscription_canceled: { email: true, push: true },
   billing_subscription_ended: { email: true, push: true },
   billing_refunded: { email: true, push: true },
+  billing_plan_changed: { email: true, push: false },
   task_approved: { email: true, push: true },
   task_rejected: { email: true, push: true },
   task_refunded: { email: true, push: true },
@@ -97,5 +98,4 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   task_payment_reminder: { email: true, push: false },
   task_returned_to_draft: { email: true, push: false },
   tasks_hidden: { email: true, push: true },
-  billing_plan_changed: { email: true, push: false },
 };

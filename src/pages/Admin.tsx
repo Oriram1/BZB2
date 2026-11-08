@@ -6,6 +6,11 @@ import TaskReviewPanel from "@/components/admin/TaskReviewPanel";
 import TrialBlocksPanel from "@/components/admin/TrialBlocksPanel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoles } from "@/hooks/useRoles";
+import { fetchProfiles } from "@/lib/people";
+import { invokeFunction } from "@/lib/invokeFunction";
+import { ACTIVE_TASK_STATUSES } from "@/lib/tasks";
+import { taskStatusLabel } from "@/lib/taskStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { Button } from "@/components/ui/button";
@@ -51,20 +56,18 @@ import {
 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
-import { formatDate, formatPhone, formatTime } from "@/lib/format";
-import { categoryLabel } from "@/lib/categories";
-import type { Json } from "@/integrations/supabase/types";
-import { roleLabel } from "@/lib/roles";
+import { formatDate, formatPhone } from "@/lib/format";
 import { UserDetailLine, StatCard } from "@/components/admin/shared";
 import { FamilyLinksPanel } from "@/components/admin/FamilyLinksPanel";
 import { ActivityPanel } from "@/components/admin/ActivityPanel";
 import { AdminLogPanel } from "@/components/admin/AdminLogPanel";
-import { AuditRow, ActivityRow, ProfileOption, ParentLinkRow, DashboardStats, DrilldownKind, DrilldownItem, AdminUserRow, AdminUsersResponse, UserAdminAction, DuplicatePhoneGroup, drilldownCopy, EMPTY_STATS, usersSelectedLabel, usersCountLabel, describeRoles } from "@/lib/adminData";
+import { AuditRow, ActivityRow, ProfileOption, ParentLinkRow, DashboardStats, DrilldownKind, DrilldownItem, AdminUserRow, AdminUsersResponse, UserAdminAction, DuplicatePhoneGroup, drilldownCopy, EMPTY_STATS, usersSelectedLabel, usersCountLabel, toUserItem } from "@/lib/adminData";
 
 const TAB_VALUES = ["overview", "users", "family", "activity", "log", "tasks", "reviews", "pricing", "trials"] as const;
 
 export default function Admin() {
-  const { user, roles, loading } = useAuth();
+  const { user, loading } = useAuth();
+  const { isAdmin } = useRoles();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab") ?? "";
@@ -126,8 +129,6 @@ export default function Admin() {
   const lastSelectedUserIdRef = useRef<string | null>(null);
   const checkboxShiftPressedRef = useRef(false);
 
-  const isAdmin = roles.includes("admin");
-
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -182,17 +183,9 @@ export default function Admin() {
       .filter((id) => !profilesByIdRef.current[id]);
 
     if (missingIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, first_name, last_name, age")
-        .in("user_id", missingIds);
-
-      if (profiles) {
-        setProfilesById((current) => {
-          const next = { ...current };
-          for (const profile of profiles) next[profile.user_id] = profile;
-          return next;
-        });
+      const { byId, failed } = await fetchProfiles(missingIds);
+      if (!failed) {
+        setProfilesById((current) => ({ ...current, ...Object.fromEntries(byId) }));
       }
     }
 
@@ -223,22 +216,13 @@ export default function Admin() {
       return;
     }
 
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("user_id, first_name, last_name, age")
-      .in("user_id", userIds);
-
-    if (profilesError) {
+    const { byId, failed } = await fetchProfiles(userIds);
+    if (failed) {
       toast.error("לא הצלחתי לטעון פרטי משתמשים");
       return;
     }
 
-    const nextProfiles = (profiles ?? []).reduce<Record<string, ProfileOption>>((acc, profile) => {
-      acc[profile.user_id] = profile;
-      return acc;
-    }, {});
-
-    setProfilesById(nextProfiles);
+    setProfilesById(Object.fromEntries(byId));
   };
 
   const loadStats = async () => {
@@ -254,7 +238,7 @@ export default function Admin() {
       supabase
         .from("tasks")
         .select("id", { count: "exact", head: true })
-        .in("status", ["accepted", "in_progress"])
+        .in("status", ACTIVE_TASK_STATUSES)
         .is("archived_at", null),
       supabase.from("parent_links").select("id", { count: "exact", head: true }),
     ]);
@@ -280,49 +264,25 @@ export default function Admin() {
   const loadUsersList = async () => {
     setUsersLoading(true);
     setUsersError(false);
-    try {
-      const { data, error } = await supabase.functions.invoke<AdminUsersResponse>(
-        "admin-manage-users",
-        { body: { action: "list" } },
-      );
-      if (error || data?.error) throw error ?? new Error(data?.error);
-
-      setUsersList(
-        (data?.users ?? []).map((adminUser) => ({
-          id: adminUser.id,
-          title: adminUser.displayName,
-          meta: describeRoles(adminUser.roles, adminUser.blocked),
-          href: `/profile/${adminUser.id}`,
-          email: adminUser.email,
-          createdAt: adminUser.createdAt,
-          emailConfirmed: adminUser.emailConfirmed,
-          blocked: adminUser.blocked,
-          manageable: !adminUser.roles.includes("admin"),
-        })),
-      );
-    } catch {
-      setUsersError(true);
-    } finally {
-      setUsersLoading(false);
-    }
+    const result = await invokeFunction<AdminUsersResponse>("admin-manage-users", { action: "list" });
+    if (result.ok) setUsersList((result.data?.users ?? []).map(toUserItem));
+    else setUsersError(true);
+    setUsersLoading(false);
   };
-
 
   const loadDuplicatePhones = useCallback(async () => {
     setDuplicatesLoading(true);
     setDuplicatesError(false);
-    try {
-      const [{ data: profiles, error: profilesError }, { data: adminData, error: adminError }] =
-        await Promise.all([
-          supabase.from("profiles").select("user_id, phone").not("phone", "is", null).neq("phone", ""),
-          supabase.functions.invoke<AdminUsersResponse>("admin-manage-users", {
-            body: { action: "list" },
-          }),
-        ]);
+    const [{ data: profiles, error: profilesError }, users] = await Promise.all([
+      supabase.from("profiles").select("user_id, phone").not("phone", "is", null).neq("phone", ""),
+      invokeFunction<AdminUsersResponse>("admin-manage-users", { action: "list" }),
+    ]);
 
-      if (profilesError || adminError || adminData?.error) throw profilesError ?? adminError;
-
-      const usersById = new Map((adminData?.users ?? []).map((row) => [row.id, row]));
+    if (profilesError || !users.ok) {
+      setDuplicatesError(true);
+      setDuplicatePhones([]);
+    } else {
+      const usersById = new Map((users.data?.users ?? []).map((row) => [row.id, row]));
 
       const byPhone = new Map<string, string[]>();
       for (const profile of profiles ?? []) {
@@ -338,29 +298,15 @@ export default function Admin() {
         const accounts = userIds
           .map((userId) => usersById.get(userId))
           .filter((row): row is AdminUserRow => Boolean(row))
-          .map((row) => ({
-            id: row.id,
-            title: row.displayName,
-            meta: describeRoles(row.roles, row.blocked),
-            href: `/profile/${row.id}`,
-            email: row.email,
-            createdAt: row.createdAt,
-            emailConfirmed: row.emailConfirmed,
-            blocked: row.blocked,
-            manageable: !row.roles.includes("admin"),
-          }));
+          .map(toUserItem);
 
         if (accounts.length > 1) groups.push({ phone, accounts });
       }
 
       groups.sort((a, b) => b.accounts.length - a.accounts.length);
       setDuplicatePhones(groups);
-    } catch {
-      setDuplicatesError(true);
-      setDuplicatePhones([]);
-    } finally {
-      setDuplicatesLoading(false);
     }
+    setDuplicatesLoading(false);
   }, []);
 
   useEffect(() => {
@@ -390,7 +336,7 @@ export default function Admin() {
       query =
         kind === "openTasks"
           ? query.eq("status", "open")
-          : query.in("status", ["accepted", "in_progress"]);
+          : query.in("status", ACTIVE_TASK_STATUSES);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -399,12 +345,7 @@ export default function Admin() {
         (data ?? []).map((task) => ({
           id: task.id,
           title: task.name,
-          meta:
-            task.status === "open"
-              ? "פתוחה"
-              : task.status === "accepted"
-                ? "אושרה"
-                : "בתהליך",
+          meta: taskStatusLabel(task.status),
           detail: task.location || "ללא מיקום",
           createdAt: task.created_at,
           href: `/task/${task.id}`,
@@ -454,17 +395,12 @@ export default function Admin() {
 
     setManagingUser(true);
     try {
-      const { data, error } = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
-        "admin-manage-users",
-        {
-          body: {
-            action: pendingUserAction.action,
-            userId: pendingUserAction.item.id,
-          },
-        },
-      );
+      const result = await invokeFunction<{ ok?: boolean; error?: string }>("admin-manage-users", {
+        action: pendingUserAction.action,
+        userId: pendingUserAction.item.id,
+      });
 
-      if (error || !data?.ok) {
+      if (!result.ok || !result.data?.ok) {
         toast.error("הפעולה לא הושלמה");
         return;
       }
@@ -493,19 +429,17 @@ export default function Admin() {
 
     setManagingUser(true);
     try {
-      const { data, error } = await supabase.functions.invoke<{
+      const result = await invokeFunction<{
         ok?: boolean;
         deleted?: string[];
         failed?: { userId: string; error: string }[];
         error?: string;
-      }>("admin-manage-users", {
-        body: { action: "delete_many", userIds: selectedUserIds },
-      });
+      }>("admin-manage-users", { action: "delete_many", userIds: selectedUserIds });
 
-      const deletedCount = data?.deleted?.length ?? 0;
-      const failedCount = data?.failed?.length ?? 0;
+      const deletedCount = result.ok ? result.data?.deleted?.length ?? 0 : 0;
+      const failedCount = result.ok ? result.data?.failed?.length ?? 0 : 0;
 
-      if (error || deletedCount === 0) {
+      if (deletedCount === 0) {
         toast.error("המחיקה הקבוצתית לא הושלמה");
         return;
       }

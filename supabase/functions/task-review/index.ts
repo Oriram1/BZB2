@@ -9,6 +9,7 @@
 import { authenticatedClients, hasRole, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
 import { billingEnabled } from "../_shared/cardcom.ts";
 import { notifyBilling } from "../_shared/billing.ts";
+import { PUBLISHED_TASKS_LINK } from "../_shared/billingPolicy.ts";
 import { chargeTask } from "../_shared/taskBilling.ts";
 
 servePost(async (req) => {
@@ -44,18 +45,18 @@ servePost(async (req) => {
   if (!result.ok) return json({ error: result.error ?? "decision_failed" }, 409);
 
   if (result.state === "rejected") {
-    await notifyBilling(admin, task.creator_id, "task_rejected", { task_id: task.id, task_name: task.name, note }, "/my-tasks?tab=published");
+    await notifyBilling(admin, task.creator_id, "task_rejected", { task_id: task.id, task_name: task.name, note }, PUBLISHED_TASKS_LINK);
     return json({ state: "rejected" });
   }
   if (result.state === "live") {
-    await notifyBilling(admin, task.creator_id, "task_approved", { task_id: task.id, task_name: task.name, amount: 0 }, "/my-tasks?tab=published");
+    await notifyBilling(admin, task.creator_id, "task_approved", { task_id: task.id, task_name: task.name, amount: 0 }, PUBLISHED_TASKS_LINK);
     return json({ state: "live" });
   }
 
   if (result.state === "pending_payment") {
     await notifyBilling(admin, task.creator_id, "task_payment_failed", {
       task_id: task.id, task_name: task.name, amount: result.due, reason: "manual_payment_required",
-    }, "/my-tasks?tab=published");
+    }, PUBLISHED_TASKS_LINK);
     return json({ state: "pending_payment", charge: "manual_payment_required" });
   }
 

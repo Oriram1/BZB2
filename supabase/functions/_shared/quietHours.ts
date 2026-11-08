@@ -6,7 +6,7 @@
  * test runner cannot load. Nothing in this file may import either.
  */
 
-import { ISRAEL_TZ as TIME_ZONE } from "./formatHe.ts";
+import { DAY_MS, israelOffset, israelParts } from "./time.ts";
 
 export const QUIET_DEFAULTS = { enabled: true, start: 22, end: 7 } as const;
 
@@ -39,41 +39,6 @@ export function inQuietWindow(hour: number, start: number, end: number) {
   return start <= end ? hour >= start && hour < end : hour >= start || hour < end;
 }
 
-function israelParts(now: Date) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: TIME_ZONE,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      hour12: false,
-    })
-      .formatToParts(now)
-      .map((part) => [part.type, part.value]),
-  );
-  // en-CA renders midnight as "24" rather than "00".
-  const hour = Number(parts.hour) % 24;
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour };
-}
-
-export function israelHour(now: Date) {
-  return israelParts(now).hour;
-}
-
-export function israelDate(now: Date) {
-  return israelParts(now).date;
-}
-
-/** Israel's UTC offset, as the "+03:00" suffix a Date constructor accepts. */
-function israelOffset(now: Date) {
-  const label =
-    new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, timeZoneName: "longOffset" })
-      .formatToParts(now)
-      .find((part) => part.type === "timeZoneName")?.value ?? "GMT+03:00";
-  return label.replace("GMT", "") || "+03:00";
-}
-
 /**
  * The UTC instant at which the quiet window that just ended began. Called at
  * the end hour, so a wrapping window started yesterday and a non-wrapping one
@@ -85,7 +50,7 @@ export function quietWindowStart(now: Date, start: number, end: number) {
   const hh = String(start).padStart(2, "0");
   const sameDay = new Date(`${date}T${hh}:00:00${offset}`);
   if (start <= end) return sameDay;
-  return new Date(sameDay.getTime() - 24 * 60 * 60 * 1000);
+  return new Date(sameDay.getTime() - DAY_MS);
 }
 
 /**

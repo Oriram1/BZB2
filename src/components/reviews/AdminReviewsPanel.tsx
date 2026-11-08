@@ -2,6 +2,7 @@ import { formatDate } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { Star, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchNames } from "@/lib/people";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -47,12 +48,7 @@ export default function AdminReviewsPanel() {
 
     const rows = data ?? [];
     const userIds = [...new Set(rows.flatMap((r) => [r.reviewer_id, r.reviewee_id]))];
-    const { data: profileRows } = userIds.length
-      ? await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", userIds)
-      : { data: [] };
-    const nameOf = new Map(
-      (profileRows ?? []).map((p) => [p.user_id, `${p.first_name} ${p.last_name}`.trim()]),
-    );
+    const nameOf = await fetchNames(userIds);
 
     setReviews(
       rows.map((r) => ({

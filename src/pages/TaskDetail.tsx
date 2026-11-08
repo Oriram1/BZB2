@@ -1,6 +1,6 @@
 import { shareOrCopy } from "@/lib/share";
 import { getPublicProfile } from "@/lib/publicProfile";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +12,6 @@ import CategoryIcon from "@/components/tasks/CategoryIcon";
 import PageHeader from "@/components/PageHeader";
 import TaskLocationMap from "@/components/tasks/TaskLocationMap";
 import {
-  ArrowRight,
   DollarSign,
   Users,
   MapPin,
@@ -34,11 +33,15 @@ import { Textarea } from "@/components/ui/textarea";
 import ApplyDialog from "@/components/tasks/ApplyDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
+import { defaultAvatarUrl, displayName, formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
 import { taskStatusLabel } from "@/lib/taskStatus";
+import { archiveTask } from "@/lib/tasks";
+import { fetchRatings } from "@/lib/people";
+import { isUniqueViolation } from "@/lib/errors";
+import { useRoles } from "@/hooks/useRoles";
 import { formFor, RECIPIENT, say } from "@shared/gender.ts";
 import { reviewWindowOpen } from "@/lib/reviewWindow";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
@@ -88,8 +91,8 @@ const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, roles, profile } = useAuth();
-  const isBee = roles.includes("bee");
+  const { user, profile } = useAuth();
+  const { isBee } = useRoles();
   const [task, setTask] = useState<TaskData | null>(null);
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [creatorRating, setCreatorRating] = useState<{ average: number; count: number } | null | undefined>(undefined);
@@ -124,9 +127,8 @@ const TaskDetail = () => {
       setTask(data);
       setCreatorRating(undefined);
       // Independent lookups can run together once the task identifies its creator.
-      const [ratingResult, viewResult, creatorProfile, applicationResult] = await Promise.all([
-        supabase.from("user_role_ratings").select("avg_rating, review_count")
-          .eq("user_id", data.creator_id).eq("reviewee_role", "tasker").maybeSingle(),
+      const [ratings, viewResult, creatorProfile, applicationResult] = await Promise.all([
+        fetchRatings("tasker", [data.creator_id]),
         user && data.creator_id !== user.id
           ? supabase.rpc("record_task_view", { _task_id: id })
           : Promise.resolve({ data: null, error: null }),
@@ -137,9 +139,7 @@ const TaskDetail = () => {
             .eq("task_id", id).eq("applicant_id", user.id).is("archived_at", null).maybeSingle()
           : Promise.resolve({ data: null, error: null }),
       ]);
-      const { data: rating, error: ratingError } = ratingResult;
-      if (ratingError) setCreatorRating(undefined);
-      else setCreatorRating(rating?.avg_rating != null && rating.review_count ? { average: rating.avg_rating, count: rating.review_count } : null);
+      setCreatorRating(ratings ? ratings.get(data.creator_id) ?? null : undefined);
       if (!viewResult.error && typeof viewResult.data === "number") {
         setTask((current) => (current && current.id === id ? { ...current, views_count: viewResult.data } : current));
       }
@@ -164,13 +164,30 @@ const TaskDetail = () => {
     fetchTask();
   }, [id, user, navigate]);
 
+  // The "edit" link on My Tasks lands here wanting the dialog open. Asked once,
+  // so saving an edit (which replaces `task`) does not reopen it.
+  const editRequested = useRef(Boolean(location.state?.openEdit));
+  const openEdit = useCallback((current: TaskData) => {
+    setEditForm({
+      name: current.name,
+      shortDesc: current.short_desc,
+      fullDesc: current.full_desc || "",
+      payment: String(current.payment),
+      location: current.location || "",
+      notes: current.notes || "",
+      date: current.scheduled_date || "",
+      time: current.scheduled_time || "",
+      durationDays: current.duration_hours ? String(Math.round(current.duration_hours / 24)) : "",
+    });
+    setEditOpen(true);
+  }, []);
   useEffect(() => {
-    if (task && location.state?.openEdit) {
-      openEdit();
+    if (task && editRequested.current) {
+      editRequested.current = false;
+      openEdit(task);
       window.history.replaceState({}, "");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task?.id]);
+  }, [task, openEdit]);
 
   /** Opens the confirmation; the insert itself happens in `submitApplication`. */
   const handleApply = () => {
@@ -196,7 +213,7 @@ const TaskDetail = () => {
     });
     setApplying(false);
     if (error) {
-      if (error.code === "23505") {
+      if (isUniqueViolation(error)) {
         toast.info("כבר הגשת מועמדות למטלה זו");
         setAlreadyApplied(true);
       } else {
@@ -216,35 +233,14 @@ const TaskDetail = () => {
   const handleDeleteTask = async () => {
     if (!task || !user || !isOwner) return;
     setLoading(true);
-    const { error } = await supabase.rpc("archive_task", { _task_id: task.id, _user_id: user.id });
+    const error = await archiveTask(user.id, task);
     setLoading(false);
     if (error) {
       toast.error("שגיאה במחיקת המטלה: " + error.message);
     } else {
-      logUserActivity(user.id, "task_deleted", {
-        entityType: "task",
-        entityId: task.id,
-        details: { name: task.name },
-      });
       toast.success("המטלה נמחקה בהצלחה 🗑️");
       navigate("/my-tasks");
     }
-  };
-
-  const openEdit = () => {
-    if (!task) return;
-    setEditForm({
-      name: task.name,
-      shortDesc: task.short_desc,
-      fullDesc: task.full_desc || "",
-      payment: String(task.payment),
-      location: task.location || "",
-      notes: task.notes || "",
-      date: task.scheduled_date || "",
-      time: task.scheduled_time || "",
-      durationDays: task.duration_hours ? String(Math.round(task.duration_hours / 24)) : "",
-    });
-    setEditOpen(true);
   };
 
   const handleSaveEdit = async () => {
@@ -291,14 +287,6 @@ const TaskDetail = () => {
       { success: "הקישור הועתק ללוח! 📋", failure: "לא הצלחנו להעתיק את הקישור" },
     );
 
-  const goBack = () => {
-    if (window.history.length > 2) {
-      navigate(-1);
-    } else {
-      navigate("/tasks");
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4 pt-20 max-w-xl mx-auto" dir="rtl">
@@ -315,7 +303,7 @@ const TaskDetail = () => {
   const isOwner = user?.id === task.creator_id;
   const isOwnPendingReview = isOwner && task.publish_state === "pending_review";
   const statusLabel = isOwnPendingReview ? "ממתינה לאישור" : taskStatusLabel(task.status);
-  const creatorAvatar = creator?.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${task.creator_id}`;
+  const creatorAvatar = creator?.avatar_url || defaultAvatarUrl(task.creator_id);
 
   return (
     <div className="min-h-screen bg-background pb-36" dir="rtl">
@@ -431,7 +419,7 @@ const TaskDetail = () => {
               <div className="min-w-0">
                 <span className="text-xs text-muted-foreground block font-medium">פורסם על ידי</span>
                 <span className="font-bold text-foreground text-sm truncate block">
-                  {`${creator.first_name ?? ""} ${creator.last_name ?? ""}`.trim() || "משתמש Busy Bee"}
+                  {displayName(creator, "משתמש Busy Bee")}
                 </span>
                 {creatorRating !== undefined && (
                   <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-foreground">
@@ -568,7 +556,7 @@ const TaskDetail = () => {
           <Button
             variant="outline"
             className="h-12 px-5 rounded-2xl font-bold text-base border-border bg-card hover:bg-accent text-foreground"
-            onClick={openEdit}
+            onClick={() => openEdit(task)}
           >
             <Pencil size={16} className="ms-1" />
             עריכה
@@ -656,7 +644,7 @@ const TaskDetail = () => {
           taskId={task.id}
           taskName={task.name}
           revieweeId={creator.user_id}
-          revieweeName={`${creator.first_name} ${creator.last_name}`.trim() || "מפרסם המטלה"}
+          revieweeName={displayName(creator, "מפרסם המטלה")}
         />
       )}
     </div>

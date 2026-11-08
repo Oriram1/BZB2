@@ -1,7 +1,8 @@
 import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, ShieldCheck, MessageCircle, UserCircle, Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { ROUTE_ROLES, ROUTES, type AppRole } from "@/lib/routes";
 
-export type NavItem = {
+type NavItem = {
   label: string;
   /** Shorter label for the mobile bottom bar; falls back to `label`. */
   shortLabel?: string;
@@ -9,28 +10,28 @@ export type NavItem = {
   icon: LucideIcon;
   guestOnly?: boolean;
   authOnly?: boolean;
-  requiredRoles?: string[];
+  requiredRoles?: AppRole[];
   bold?: boolean;
 };
 
 export const navItems: NavItem[] = [
   /* The landing page is a marketing screen — signed-in users have no use for
      it, so it only shows up in the guest menu. */
-  { label: "דף הבית", shortLabel: "בית", to: "/", icon: Home, guestOnly: true },
-  { label: "כניסה / הרשמה", shortLabel: "כניסה", to: "/auth", icon: LogIn, guestOnly: true },
-  { label: "מטלות זמינות", shortLabel: "מטלות", to: "/tasks", icon: ListTodo },
-  { label: "צור מטלה", shortLabel: "מטלה חדשה", to: "/create-task", icon: PlusCircle, authOnly: true, requiredRoles: ["tasker"] },
-  { label: "המטלות שלי", shortLabel: "שלי", to: "/my-tasks", icon: ClipboardList, authOnly: true, requiredRoles: ["tasker", "bee"] },
-  { label: "צ'אט", to: "/chat", icon: MessageCircle, authOnly: true, requiredRoles: ["tasker", "bee"] },
-  { label: "הפרופיל שלי", shortLabel: "פרופיל", to: "/profile", icon: UserCircle, authOnly: true, requiredRoles: ["tasker", "bee"] },
-  { label: "לוח הורים", shortLabel: "הורים", to: "/parent", icon: Shield, authOnly: true, requiredRoles: ["parent"] },
-  { label: "הגדרות התראות", shortLabel: "התראות", to: "/settings", icon: Bell, authOnly: true },
+  { label: "דף הבית", shortLabel: "בית", to: ROUTES.home, icon: Home, guestOnly: true },
+  { label: "כניסה / הרשמה", shortLabel: "כניסה", to: ROUTES.auth, icon: LogIn, guestOnly: true },
+  { label: "מטלות זמינות", shortLabel: "מטלות", to: ROUTES.tasks, icon: ListTodo },
+  { label: "צור מטלה", shortLabel: "מטלה חדשה", to: ROUTES.createTask, icon: PlusCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.createTask] },
+  { label: "המטלות שלי", shortLabel: "שלי", to: ROUTES.myTasks, icon: ClipboardList, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.myTasks] },
+  { label: "צ'אט", to: ROUTES.chat, icon: MessageCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.chat] },
+  { label: "הפרופיל שלי", shortLabel: "פרופיל", to: ROUTES.profile, icon: UserCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.profile] },
+  { label: "לוח הורים", shortLabel: "הורים", to: ROUTES.parent, icon: Shield, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.parent] },
+  { label: "הגדרות התראות", shortLabel: "התראות", to: ROUTES.settings, icon: Bell, authOnly: true },
   /* Pricing is about the commission a publisher pays, so it is noise in a bee's
      menu — but it is also the marketing page, so guests still get it. */
-  { label: "מנויים", to: "/pricing", icon: CreditCard, bold: true, requiredRoles: ["tasker"] },
+  { label: "מנויים", to: ROUTES.pricing, icon: CreditCard, bold: true, requiredRoles: ["tasker"] },
   /* Admin and parent are mutually exclusive roles, so the two shields never
      appear in the same menu. */
-  { label: "ניהול המערכת", shortLabel: "ניהול", to: "/admin", icon: ShieldCheck, authOnly: true, requiredRoles: ["admin"] },
+  { label: "ניהול המערכת", shortLabel: "ניהול", to: ROUTES.admin, icon: ShieldCheck, authOnly: true, requiredRoles: ["admin"] },
 ];
 
 /**

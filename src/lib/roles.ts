@@ -1,4 +1,4 @@
-export const ROLE_LABELS: Record<string, string> = {
+const ROLE_LABELS: Record<string, string> = {
   tasker: "מציע מטלות",
   bee: "מבצע מטלות",
   parent: "הורה",
@@ -14,4 +14,3 @@ export const primaryRoleLabel = (roles: string[]) => {
 };
 
 /** Every role starts on the task board; role-specific screens are one tap away in the nav. */
-export const HOME_PATH = "/tasks";

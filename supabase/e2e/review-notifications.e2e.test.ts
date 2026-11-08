@@ -35,7 +35,15 @@ const pushServer = Deno.serve({ port: 8791, hostname: "127.0.0.1", cert: Deno.re
   (req) => { pushHits.push(Number(req.headers.get("content-length") ?? 0)); return new Response(null, { status: 201 }); });
 
 await import("../functions/notify-dispatch/index.ts");
-await new Promise((resolve) => setTimeout(resolve, 500));
+for (let attempt = 0; ; attempt++) {
+  try {
+    await (await realFetch("http://127.0.0.1:8000/", { method: "OPTIONS" })).body?.cancel();
+    break;
+  } catch (error) {
+    if (attempt >= 50) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
 
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 const admin = createClient(url, service, { auth: { persistSession: false } });

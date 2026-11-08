@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { loadGoogleIdentity } from "./loadGoogleIdentity";
+import { readStorage, removeStorage, writeStorage } from "./storage";
 
 const GOOGLE_ROLE_KEY = "bzb-google-signup-role";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
@@ -49,8 +50,8 @@ const getGoogleIdentity = (): GoogleIdentityClient => {
 
 
 export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: HTMLElement, onReady?: () => void): Promise<User> => {
-  if (role) localStorage.setItem(GOOGLE_ROLE_KEY, role);
-  else localStorage.removeItem(GOOGLE_ROLE_KEY);
+  if (role) writeStorage(GOOGLE_ROLE_KEY, role);
+  else removeStorage(GOOGLE_ROLE_KEY);
 
   activeGoogleAuth = (async () => {
     if (!GOOGLE_CLIENT_ID) throw new Error("חסר Google Client ID");
@@ -104,7 +105,7 @@ export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: H
 };
 
 export const consumeGoogleSignupRole = (): GoogleSignupRole | null => {
-  const role = localStorage.getItem(GOOGLE_ROLE_KEY);
-  localStorage.removeItem(GOOGLE_ROLE_KEY);
+  const role = readStorage(GOOGLE_ROLE_KEY);
+  removeStorage(GOOGLE_ROLE_KEY);
   return role === "tasker" || role === "bee" || role === "parent" ? role : null;
 };

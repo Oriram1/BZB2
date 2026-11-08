@@ -1,5 +1,5 @@
 import { copyWithToast, shareOrCopy } from "@/lib/share";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Copy, Share2, QrCode } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

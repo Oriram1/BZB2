@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -106,7 +106,7 @@ export default function TrialBlocksPanel() {
                   </span>
                 )}
                 <span className="ms-auto text-xs text-muted-foreground">
-                  {new Date(row.created_at).toLocaleString("he-IL")}
+                  {formatDateTime(row.created_at, row.created_at)}
                 </span>
               </li>
             ))}

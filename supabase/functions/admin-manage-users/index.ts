@@ -1,27 +1,20 @@
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
-import { sendEmail } from "../_shared/email.ts";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import { auditedAdminAction, authenticatedClients, hasRole, isUuid, json, listAllUsers, readJsonObject, servePost } from "../_shared/auth.ts";
 import { formFor, say, SUBJECT } from "../_shared/gender.ts";
-import type { User } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import { childName, tryEmail } from "../_shared/people.ts";
 
-async function listAllUsers(admin: Awaited<ReturnType<typeof authenticatedClients>>["admin"]) {
-  const users: User[] = [];
-  for (let page = 1; ; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-    if (error) throw error;
-    users.push(...data.users);
-    if (data.users.length < 200) break;
-  }
-  return users;
-}
+const STORAGE_BUCKETS = ["avatars", "task-images"];
+const STORAGE_PAGE_SIZE = 100;
+const MAX_BULK_DELETE = 100;
+/** 100 years: the auth API has no permanent ban, so "blocked" is a ban that outlasts the account. */
+const BLOCK_DURATION = "876000h";
 
-type AdminClient = Awaited<ReturnType<typeof authenticatedClients>>["admin"];
-
-async function removeUserStorage(admin: AdminClient, userId: string) {
-  for (const bucket of ["avatars", "task-images"]) {
+async function removeUserStorage(admin: SupabaseClient, userId: string) {
+  for (const bucket of STORAGE_BUCKETS) {
     while (true) {
       const { data: files, error: listError } = await admin.storage
         .from(bucket)
-        .list(userId, { limit: 100 });
+        .list(userId, { limit: STORAGE_PAGE_SIZE });
       if (listError) throw listError;
       if (!files || files.length === 0) break;
 
@@ -33,15 +26,20 @@ async function removeUserStorage(admin: AdminClient, userId: string) {
         if (removeError) throw removeError;
       }
 
-      if (files.length < 100 || paths.length === 0) break;
+      if (files.length < STORAGE_PAGE_SIZE || paths.length === 0) break;
     }
   }
 }
 
-async function deleteUserCompletely(admin: AdminClient, userId: string) {
-  await removeUserStorage(admin, userId);
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) throw error;
+/** The failure to record in the audit log, or `null` once the user and their files are gone. */
+async function deleteUserCompletely(admin: SupabaseClient, userId: string) {
+  try {
+    await removeUserStorage(admin, userId);
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    return error;
+  } catch (error) {
+    return { message: error instanceof Error ? error.message : "user_delete_failed" };
+  }
 }
 
 servePost(async (req) => {
@@ -55,13 +53,9 @@ servePost(async (req) => {
       return json({ error: "admin_cannot_self_delete" }, 403);
     }
 
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("first_name, last_name, gender")
-      .eq("user_id", callerUser.id)
-      .single();
-    const displayName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || callerUser.email || "משתמש";
-    const form = formFor(profile?.gender);
+    const { name, gender } = await childName(admin, callerUser.id);
+    const displayName = name || callerUser.email || "משתמש";
+    const form = formFor(gender);
     const deleted = say(form, SUBJECT.deleted);
     const theirs = say(form, SUBJECT.his);
 
@@ -70,48 +64,39 @@ servePost(async (req) => {
       .select("email")
       .eq("child_user_id", callerUser.id);
 
-    try {
-      await deleteUserCompletely(admin, callerUser.id);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "self_delete_failed";
-      return json({ error: message }, 500);
+    const failure = await deleteUserCompletely(admin, callerUser.id);
+    if (failure) {
+      console.error("self_delete_failed", failure.message);
+      return json({ error: "self_delete_failed" }, 500);
     }
-
-    const emailTasks: Promise<unknown>[] = [];
 
     const { data: adminRoles } = await admin
       .from("user_roles")
       .select("user_id")
       .eq("role", "admin");
-    if (adminRoles?.length) {
-      const adminIds = adminRoles.map((r) => r.user_id);
-      const { data: adminUsers } = await admin.auth.admin.listUsers({ perPage: 200 });
-      const adminEmails = (adminUsers?.users ?? [])
-        .filter((u) => adminIds.includes(u.id) && u.email)
-        .map((u) => u.email!);
+    const adminLookups = await Promise.all(
+      (adminRoles ?? []).map((role) => admin.auth.admin.getUserById(role.user_id)),
+    );
+    const adminEmails = adminLookups.flatMap(({ data }) => (data.user?.email ? [data.user.email] : []));
 
-      for (const email of adminEmails) {
-        emailTasks.push(
-          sendEmail({
-            to: email,
-            tag: "account_deleted_admin",
-            content: {
-              subject: `חשבון נמחק — ${displayName}`,
-              preheader: `${displayName} ${deleted} את החשבון ${theirs}`,
-              heading: "חשבון נמחק מהמערכת",
-              paragraphs: [
-                `${say(form, SUBJECT.user)} ${displayName} (${callerUser.email ?? "ללא מייל"}) ${deleted} את החשבון ${theirs}.`,
-                "כל המידע נמחק לצמיתות.",
-              ],
-            },
-          }).catch((error) => console.error("parent_notification_failed", error)),
-        );
-      }
-    }
-
-    for (const contact of parentContacts ?? []) {
-      emailTasks.push(
-        sendEmail({
+    await Promise.all([
+      ...adminEmails.map((to) =>
+        tryEmail({
+          to,
+          tag: "account_deleted_admin",
+          content: {
+            subject: `חשבון נמחק — ${displayName}`,
+            preheader: `${displayName} ${deleted} את החשבון ${theirs}`,
+            heading: "חשבון נמחק מהמערכת",
+            paragraphs: [
+              `${say(form, SUBJECT.user)} ${displayName} (${callerUser.email ?? "ללא מייל"}) ${deleted} את החשבון ${theirs}.`,
+              "כל המידע נמחק לצמיתות.",
+            ],
+          },
+        })
+      ),
+      ...(parentContacts ?? []).map((contact) =>
+        tryEmail({
           to: contact.email,
           tag: "account_deleted_parent",
           content: {
@@ -123,11 +108,9 @@ servePost(async (req) => {
               `כל המידע ${theirs} נמחק לצמיתות מהמערכת.`,
             ],
           },
-        }).catch((error) => console.error("parent_notification_failed", error)),
-      );
-    }
-
-    await Promise.all(emailTasks);
+        })
+      ),
+    ]);
     return json({ ok: true });
   }
 
@@ -177,12 +160,10 @@ servePost(async (req) => {
     const requestedIds = Array.isArray(body.userIds)
       ? body.userIds.map((value: unknown) => String(value))
       : [];
-    const userIds = [...new Set(requestedIds)].filter((id) =>
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-    );
+    const userIds = [...new Set(requestedIds)].filter(isUuid);
 
     if (userIds.length === 0) return json({ error: "missing_user_ids" }, 400);
-    if (userIds.length > 100) return json({ error: "too_many_users" }, 400);
+    if (userIds.length > MAX_BULK_DELETE) return json({ error: "too_many_users" }, 400);
     if (userIds.includes(adminUser.id)) return json({ error: "cannot_manage_self" }, 400);
 
     const { data: protectedRoles } = await admin
@@ -198,27 +179,13 @@ servePost(async (req) => {
     const failed: { userId: string; error: string }[] = [];
 
     for (const userId of userIds) {
-      try {
-        await deleteUserCompletely(admin, userId);
-        deleted.push(userId);
-        await admin.from("admin_audit_log").insert({
-          admin_user_id: adminUser.id,
-          action: "delete_user",
-          target_user_id: userId,
-          success: true,
-          details: { source: "bulk_delete" },
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "user_delete_failed";
-        failed.push({ userId, error: message });
-        await admin.from("admin_audit_log").insert({
-          admin_user_id: adminUser.id,
-          action: "delete_user",
-          target_user_id: userId,
-          success: false,
-          details: { source: "bulk_delete", error: message },
-        });
-      }
+      const ok = await auditedAdminAction(
+        admin,
+        { adminUserId: adminUser.id, action: "delete_user", targetUserId: userId, details: { source: "bulk_delete" } },
+        () => deleteUserCompletely(admin, userId),
+      );
+      if (ok) deleted.push(userId);
+      else failed.push({ userId, error: "user_delete_failed" });
     }
 
     return json({ ok: failed.length === 0, deleted, failed });
@@ -238,73 +205,54 @@ servePost(async (req) => {
       return json({ error: "user_not_found" }, 404);
     }
 
-    const targetUser = targetUserData.user;
-    const metadataRole = String(targetUser.user_metadata?.app_role ?? "");
+    // Signup stores the chosen role in metadata; if the role row never landed, confirming repairs it.
+    const metadataRole = String(targetUserData.user.user_metadata?.app_role ?? "");
     const validRole =
       metadataRole === "tasker" || metadataRole === "bee" || metadataRole === "parent"
         ? metadataRole
         : null;
 
-    const { error: confirmError } = await admin.auth.admin.updateUserById(targetUserId, {
-      email_confirm: true,
-    });
-
-    let roleError: { message: string } | null = null;
-    if (!confirmError && validRole) {
-      const { error } = await admin
-        .from("user_roles")
-        .upsert(
-          { user_id: targetUserId, role: validRole },
-          { onConflict: "user_id,role", ignoreDuplicates: true },
-        );
-      roleError = error;
-    }
-
-    const operationError = confirmError ?? roleError;
-    await admin.from("admin_audit_log").insert({
-      admin_user_id: adminUser.id,
-      action: "confirm_user_email",
-      target_user_id: targetUserId,
-      success: !operationError,
-      details: operationError
-        ? { error: operationError.message }
-        : { role_repaired: validRole },
-    });
-
-    if (operationError) return json({ error: "user_confirmation_failed" }, 500);
+    const confirmed = await auditedAdminAction(
+      admin,
+      { adminUserId: adminUser.id, action: "confirm_user_email", targetUserId, details: { role_repaired: validRole } },
+      async () => {
+        const { error: confirmError } = await admin.auth.admin.updateUserById(targetUserId, { email_confirm: true });
+        if (confirmError || !validRole) return confirmError;
+        const { error: roleError } = await admin
+          .from("user_roles")
+          .upsert(
+            { user_id: targetUserId, role: validRole },
+            { onConflict: "user_id,role", ignoreDuplicates: true },
+          );
+        return roleError;
+      },
+    );
+    if (!confirmed) return json({ error: "user_confirmation_failed" }, 500);
     return json({ ok: true });
   }
 
   if (action === "block" || action === "unblock") {
-    const { error } = await admin.auth.admin.updateUserById(targetUserId, {
-      ban_duration: action === "block" ? "876000h" : "none",
-    });
-    await admin.from("admin_audit_log").insert({
-      admin_user_id: adminUser.id,
-      action: action === "block" ? "block_user" : "unblock_user",
-      target_user_id: targetUserId,
-      success: !error,
-      details: error ? { error: error.message } : null,
-    });
-    if (error) return json({ error: "user_update_failed" }, 500);
+    const updated = await auditedAdminAction(
+      admin,
+      { adminUserId: adminUser.id, action: action === "block" ? "block_user" : "unblock_user", targetUserId },
+      async () => {
+        const { error } = await admin.auth.admin.updateUserById(targetUserId, {
+          ban_duration: action === "block" ? BLOCK_DURATION : "none",
+        });
+        return error;
+      },
+    );
+    if (!updated) return json({ error: "user_update_failed" }, 500);
     return json({ ok: true });
   }
 
   if (action === "delete") {
-    let deleteError: Error | null = null;
-    try {
-      await deleteUserCompletely(admin, targetUserId);
-    } catch (error) {
-      deleteError = error instanceof Error ? error : new Error("user_delete_failed");
-    }
-    await admin.from("admin_audit_log").insert({
-      admin_user_id: adminUser.id,
-      action: "delete_user",
-      target_user_id: targetUserId,
-      success: !deleteError,
-      details: deleteError ? { error: deleteError.message } : null,
-    });
-    if (deleteError) return json({ error: "user_delete_failed" }, 500);
+    const removed = await auditedAdminAction(
+      admin,
+      { adminUserId: adminUser.id, action: "delete_user", targetUserId },
+      () => deleteUserCompletely(admin, targetUserId),
+    );
+    if (!removed) return json({ error: "user_delete_failed" }, 500);
     return json({ ok: true });
   }
 

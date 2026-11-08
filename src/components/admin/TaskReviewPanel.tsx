@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
+import { paymentErrorText } from "@/lib/paymentErrors";
 import { Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatNis } from "@/lib/format";
+import { fetchNames } from "@/lib/people";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { billingErrorText, publishStateLabel, reviewTask, type TaskPublishState } from "@/lib/taskBilling";
+import { publishStateLabel, reviewTask, type TaskPublishState } from "@/lib/taskBilling";
 
 interface QueueTask {
   id: string;
@@ -50,10 +53,7 @@ export default function TaskReviewPanel() {
     }
     const rows = data ?? [];
     const ids = [...new Set(rows.map((row) => row.creator_id))];
-    const { data: profiles } = ids.length
-      ? await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", ids)
-      : { data: [] };
-    const nameOf = new Map((profiles ?? []).map((p) => [p.user_id, `${p.first_name} ${p.last_name}`.trim()]));
+    const nameOf = await fetchNames(ids);
     setTasks(
       rows.map((row) => ({
         ...(row as unknown as QueueTask),
@@ -72,7 +72,7 @@ export default function TaskReviewPanel() {
     const result = await reviewTask(task.id, approve, approve ? undefined : notes[task.id]);
     setBusy(null);
     if (!result.ok) {
-      toast.error(billingErrorText(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     if (!approve) toast.success(task.charged_at ? "המשימה נדחתה. נפתחה בקשת החזר אוטומטי" : "המשימה נדחתה. לא חויבו");
@@ -106,7 +106,7 @@ export default function TaskReviewPanel() {
                       נוצרה: <time dateTime={task.created_at} dir="ltr">{new Date(task.created_at).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" })}</time>
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {task.creator_name} · תשלום למבצע {task.payment} ₪
+                      {task.creator_name} · תשלום למבצע {formatNis(Number(task.payment))}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -115,7 +115,7 @@ export default function TaskReviewPanel() {
                     </Badge>
                     <span className="text-xs font-bold">
                       {Number(task.payment_due) > 0
-                        ? `${task.charged_at ? "שולם מראש" : task.payment_mode === "one_time" ? "לתשלום חד-פעמי" : "לחיוב בכרטיס השמור"}: ${Number(task.payment_due)} ₪${task.insurance ? " (כולל ביטוח)" : ""}`
+                        ? `${task.charged_at ? "שולם מראש" : task.payment_mode === "one_time" ? "לתשלום חד-פעמי" : "לחיוב בכרטיס השמור"}: ${formatNis(Number(task.payment_due))}${task.insurance ? " (כולל ביטוח)" : ""}`
                         : task.uses_free_slot
                           ? "המטלה החינמית"
                           : "ללא חיוב"}

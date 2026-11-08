@@ -1,4 +1,3 @@
-import { switchMyRole } from "@/lib/roleSwitch";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,8 @@ import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useAuth } from "@/contexts/AuthContext";
-import { HOME_PATH, roleLabel } from "@/lib/roles";
+import { HOME_PATH, ROUTES } from "@/lib/routes";
+import { roleSwitchQuestion, useRoleSwitch } from "@/hooks/useRoleSwitch";
 import { logUserActivity } from "@/lib/activityLog";
 import { isPaidPlan, periodShort, usePlans } from "@/lib/billing";
 import { formFor, GENDER_LABEL, GENDER_OPTIONS, RECIPIENT, say, type Gender } from "@shared/gender.ts";
@@ -103,7 +103,7 @@ const Register = () => {
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressPosition, setAddressPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [phoneTaken, setPhoneTaken] = useState(false);
-  const [switchingRole, setSwitchingRole] = useState(false);
+  const { switching: switchingRole, switchTo: switchRole } = useRoleSwitch();
 
   useEffect(() => {
     if (!isGoogleSignup || !user) return;
@@ -150,7 +150,7 @@ const Register = () => {
           <BzbLogo className="mx-auto mb-5 h-20 w-20" />
           <h1 className="text-2xl font-extrabold text-foreground">החשבון כבר רשום</h1>
           <p className="mt-4 text-muted-foreground">
-            החשבון הזה רשום כ־{roleLabel(existingRole)}. האם לעבור ל־{roleLabel(requestedRole)}?
+            {roleSwitchQuestion(existingRole, requestedRole)}
           </p>
           <div className="mt-7 flex gap-3">
             <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => navigate(HOME_PATH, { replace: true })}>
@@ -159,15 +159,7 @@ const Register = () => {
             <Button
               className="flex-1 rounded-2xl gradient-honey text-primary-foreground"
               disabled={switchingRole}
-              onClick={async () => {
-                setSwitchingRole(true);
-                const switched = await switchMyRole(requestedRole, user?.id);
-                setSwitchingRole(false);
-                if (!switched) return;
-                await refreshUserState();
-                toast.success(`עברתם לתפקיד ${roleLabel(requestedRole)}`);
-                navigate(HOME_PATH, { replace: true });
-              }}
+              onClick={() => void switchRole(requestedRole)}
             >
               {switchingRole ? "מחליפים..." : "כן, לעבור"}
             </Button>
@@ -347,7 +339,7 @@ const Register = () => {
     }
 
     toast.success("ההרשמה נוצרה! בדקו את האימייל ואשרו את החשבון כדי להתחבר 📧");
-    navigate("/login");
+    navigate(ROUTES.login);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -547,7 +539,7 @@ const Register = () => {
 
           <p className="text-center text-sm text-muted-foreground">
             כבר רשומים?{" "}
-            <Link to="/login" className="text-primary-ink font-bold underline">
+            <Link to={ROUTES.login} className="text-primary-ink font-bold underline">
               התחברו
             </Link>
           </p>

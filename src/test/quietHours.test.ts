@@ -3,11 +3,10 @@ import {
   QUIET_DEFAULTS,
   buildDigestCards,
   inQuietWindow,
-  israelDate,
-  israelHour,
   quietWindowStart,
   resolveQuietHours,
 } from "../../supabase/functions/_shared/quietHours.ts";
+import { israelDate, israelHour } from "../../supabase/functions/_shared/time.ts";
 
 describe("resolveQuietHours", () => {
   it("falls back to 22->7 enabled when the row is missing", () => {

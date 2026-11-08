@@ -8,18 +8,16 @@
  *                      charged or refunded now.
  *   during the free month the plan simply changes; nothing has been paid yet.
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
-import { billingEnabled } from "../_shared/cardcom.ts";
-import { loadPlan, notifyBilling } from "../_shared/billing.ts";
+import { authenticatedClients, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { notifyBilling } from "../_shared/billing.ts";
+import { billingGate, loadPlanOrReply } from "../_shared/billingGuards.ts";
+import { round2 } from "../_shared/billingPolicy.ts";
 import { chargeSavedCard, markChargePaid } from "../_shared/taskBilling.ts";
-import { PlanIntegrityError } from "../_shared/planPrice.ts";
-
-const round2 = (value: number) => Math.round(value * 100) / 100;
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
-  if (!billingEnabled()) return json({ error: "billing_disabled" }, 503);
-  if (!(await hasRole(admin, user.id, "tasker"))) return json({ error: "tasker_only" }, 403);
+  const gated = await billingGate(admin, user.id, "tasker");
+  if (gated) return gated;
 
   const body = await readJsonObject(req);
   const planId = String(body.plan_id ?? "");
@@ -35,16 +33,12 @@ servePost(async (req) => {
     return json({ error: "same_plan" }, 409);
   }
 
-  let target: Awaited<ReturnType<typeof loadPlan>>;
-  try {
-    target = await loadPlan(admin, planId);
-  } catch (error) {
-    if (error instanceof PlanIntegrityError) return json({ error: "price_integrity_error" }, 503);
-    throw error;
-  }
-  if (!target || !target.active) return json({ error: "unknown_plan" }, 400);
-  const current = await loadPlan(admin, sub.plan_id, { verify: false });
-  if (!current) return json({ error: "unknown_plan" }, 400);
+  const loadedTarget = await loadPlanOrReply(admin, planId);
+  if (loadedTarget.reply) return loadedTarget.reply;
+  const target = loadedTarget.plan;
+  const loadedCurrent = await loadPlanOrReply(admin, sub.plan_id, { activeOnly: false });
+  if (loadedCurrent.reply) return loadedCurrent.reply;
+  const current = loadedCurrent.plan;
 
   const longer = target.period_months > current.period_months;
 

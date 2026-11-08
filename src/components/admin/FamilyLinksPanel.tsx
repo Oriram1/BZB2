@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { fullName, type ParentLinkRow, type ProfileOption } from "@/lib/adminData";
+import type { ParentLinkRow, ProfileOption } from "@/lib/adminData";
+import { displayName } from "@/lib/format";
+import { mapDbError } from "@/lib/errors";
 import { PersonRef, Timestamp } from "@/components/admin/shared";
 
 interface FamilyLinksPanelProps {
@@ -82,7 +84,7 @@ export function FamilyLinksPanel({ adminId, links, profilesById, onChanged }: Fa
       });
 
       if (error) {
-        toast.error(error.message.includes("duplicate") ? "הקישור הזה כבר קיים" : "יצירת הקישור נכשלה");
+        toast.error(mapDbError(error, { duplicate: "הקישור הזה כבר קיים" }, "יצירת הקישור נכשלה"));
         return;
       }
 
@@ -90,7 +92,7 @@ export function FamilyLinksPanel({ adminId, links, profilesById, onChanged }: Fa
         admin_user_id: adminId,
         action: "link_parent_child",
         target_user_id: selectedChild.user_id,
-        target_identifier: `${fullName(selectedParent)} -> ${fullName(selectedChild)}`,
+        target_identifier: `${displayName(selectedParent)} -> ${displayName(selectedChild)}`,
         success: true,
         details: {
           parent_user_id: selectedParent.user_id,
@@ -128,7 +130,7 @@ export function FamilyLinksPanel({ adminId, links, profilesById, onChanged }: Fa
         admin_user_id: adminId,
         action: "unlink_parent_child",
         target_user_id: link.child_user_id,
-        target_identifier: `${profilesById[link.parent_user_id] ? fullName(profilesById[link.parent_user_id]) : link.parent_user_id} -> ${profilesById[link.child_user_id] ? fullName(profilesById[link.child_user_id]) : link.child_user_id}`,
+        target_identifier: `${displayName(profilesById[link.parent_user_id], link.parent_user_id)} -> ${displayName(profilesById[link.child_user_id], link.child_user_id)}`,
         success: true,
         details: {
           parent_user_id: link.parent_user_id,
@@ -179,7 +181,7 @@ export function FamilyLinksPanel({ adminId, links, profilesById, onChanged }: Fa
             </div>
             {selectedParent && (
               <div className="text-sm rounded-md border bg-muted px-3 py-2">
-                נבחר הורה: {fullName(selectedParent)} {selectedParent.age ? `· גיל ${selectedParent.age}` : ""}
+                נבחר הורה: {displayName(selectedParent)} {selectedParent.age ? `· גיל ${selectedParent.age}` : ""}
               </div>
             )}
             {parentResults.length > 0 && (
@@ -192,11 +194,11 @@ export function FamilyLinksPanel({ adminId, links, profilesById, onChanged }: Fa
                     onClick={() => {
                       setSelectedParent(profile);
                       setParentResults([]);
-                      setParentQuery(fullName(profile));
+                      setParentQuery(displayName(profile));
                     }}
                   >
                     <div className="font-medium">
-                      <bdi>{fullName(profile)}</bdi>
+                      <bdi>{displayName(profile)}</bdi>
                     </div>
                     <bdi dir="ltr" className="block font-mono text-xs text-muted-foreground">
                       {profile.user_id}
@@ -230,7 +232,7 @@ export function FamilyLinksPanel({ adminId, links, profilesById, onChanged }: Fa
             </div>
             {selectedChild && (
               <div className="text-sm rounded-md border bg-muted px-3 py-2">
-                נבחר ילד: {fullName(selectedChild)} {selectedChild.age ? `· גיל ${selectedChild.age}` : ""}
+                נבחר ילד: {displayName(selectedChild)} {selectedChild.age ? `· גיל ${selectedChild.age}` : ""}
               </div>
             )}
             {childResults.length > 0 && (
@@ -243,11 +245,11 @@ export function FamilyLinksPanel({ adminId, links, profilesById, onChanged }: Fa
                     onClick={() => {
                       setSelectedChild(profile);
                       setChildResults([]);
-                      setChildQuery(fullName(profile));
+                      setChildQuery(displayName(profile));
                     }}
                   >
                     <div className="font-medium">
-                      <bdi>{fullName(profile)}</bdi>
+                      <bdi>{displayName(profile)}</bdi>
                     </div>
                     <bdi dir="ltr" className="block font-mono text-xs text-muted-foreground">
                       {profile.user_id}

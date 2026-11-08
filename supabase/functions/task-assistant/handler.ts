@@ -1,6 +1,7 @@
-import { ISRAEL_TZ } from "../_shared/formatHe.ts";
+import { ISRAEL_TZ, israelParts } from "../_shared/time.ts";
 import { CATEGORY_VALUES, SHORT_DESC_MAX, type CategoryValue } from "../_shared/taskLimits.ts";
-import { authenticatedClients, errorResponse, json, readJsonObject, withCors } from "../_shared/auth.ts";
+import { authenticatedClients, consumeQuota, json, postHandler, readJsonObject } from "../_shared/auth.ts";
+import { GeminiError, generateJson } from "../_shared/gemini.ts";
 
 /**
  * Turns a free-text task request ("window cleaning tomorrow evening, 50 shekels")
@@ -53,7 +54,7 @@ const responseSchema = {
 
 /** Today in Israel, so "מחר" and "ביום שלישי" resolve to the right calendar day. */
 export function israelToday(now = new Date()) {
-  const date = new Intl.DateTimeFormat("en-CA", { timeZone: ISRAEL_TZ }).format(now);
+  const { date } = israelParts(now);
   const weekday = new Intl.DateTimeFormat("he-IL", { timeZone: ISRAEL_TZ, weekday: "long" }).format(now);
   return { date, weekday };
 }
@@ -120,77 +121,36 @@ function readMessages(value: unknown): ChatMessage[] {
   return messages;
 }
 
-/** The provider refused or failed. Its HTTP status is safe to return and says why. */
-class ProviderError extends Error {
-  constructor(readonly status: number) {
-    super("assistant_provider_unavailable");
-  }
-}
-
-async function extract(messages: ChatMessage[], today: { date: string; weekday: string }) {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) throw new Error("server_not_configured");
-  // The "-latest" alias follows Google's current Flash-Lite, so a retired version never breaks us.
-  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-lite-latest";
-
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    signal: AbortSignal.timeout(15_000),
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt(today) }] },
-      contents: messages.map((message) => ({
-        role: message.role === "user" ? "user" : "model",
-        parts: [{ text: message.text }],
-      })),
-      generationConfig: { temperature: 0.1, responseMimeType: "application/json", responseSchema },
-    }),
+const extract = (messages: ChatMessage[], today: { date: string; weekday: string }) =>
+  generateJson({
+    system: systemPrompt(today),
+    contents: messages.map((message) => ({ role: message.role === "user" ? "user" : "model", text: message.text })),
+    schema: responseSchema,
+    temperature: 0.1,
   });
-  if (!response.ok) {
-    // Google's error body names the cause (bad key, API disabled, unknown model); it never echoes the key.
-    console.error("gemini_request_failed", response.status, (await response.text()).slice(0, 1_000));
-    throw new ProviderError(response.status);
-  }
-  const data = await response.json();
-  const output = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (typeof output !== "string") throw new Error("assistant_provider_rejected");
+
+export const handleTaskAssistant = postHandler(async (request) => {
+  // Authenticate and validate before spending quota or calling the paid provider.
+  const { user, admin } = await authenticatedClients(request);
+  const body = await readJsonObject(request, 16_384);
+  let messages: ChatMessage[];
   try {
-    return JSON.parse(output);
+    messages = readMessages(body.messages);
   } catch {
-    throw new Error("assistant_provider_rejected");
+    return json({ error: "invalid_messages" }, 400);
   }
-}
 
-export const handleTaskAssistant = withCors(async (request: Request) => {
-  if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  const limited = await consumeQuota(admin, "consume_task_assistant_quota", user.id);
+  if (limited) return limited;
 
+  const today = israelToday();
   try {
-    // Authenticate and validate before spending quota or calling the paid provider.
-    const { user, admin } = await authenticatedClients(request);
-    const body = await readJsonObject(request, 16_384);
-    let messages: ChatMessage[];
-    try {
-      messages = readMessages(body.messages);
-    } catch {
-      return json({ error: "invalid_messages" }, 400);
-    }
-
-    const { data: quota, error: quotaError } = await admin.rpc("consume_task_assistant_quota", { _user_id: user.id });
-    if (quotaError) throw quotaError;
-    if (!quota || typeof quota.allowed !== "boolean") throw new Error("invalid_quota_response");
-    if (!quota.allowed) {
-      const response = json({ error: "rate_limit_exceeded" }, 429);
-      response.headers.set("Retry-After", String(quota.retry_after));
-      return response;
-    }
-
-    const today = israelToday();
     const fields = sanitizeFields(await extract(messages, today), today.date);
     return json({ fields, missing: missingFields(fields) });
   } catch (error) {
-    if (error instanceof ProviderError) {
-      return json({ error: error.message, provider_status: error.status }, 502);
+    if (error instanceof GeminiError && error.status !== null) {
+      return json({ error: "assistant_provider_unavailable", provider_status: error.status }, 502);
     }
-    return errorResponse(error);
+    throw error;
   }
 });

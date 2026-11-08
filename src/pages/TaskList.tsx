@@ -8,7 +8,10 @@ import PageHeader from "@/components/PageHeader";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
-import { fetchAllPages } from "@/lib/fetchAllPages";
+import { fetchRatings } from "@/lib/people";
+import { usePersistedState } from "@/hooks/usePersistedState";
+import { useRoles } from "@/hooks/useRoles";
+import { toast } from "sonner";
 import TaskGrid from "@/components/tasks/TaskGrid";
 import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
@@ -17,8 +20,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSavedTasks } from "@/hooks/useSavedTasks";
 import { cn } from "@/lib/utils";
 
-/** Top of the distance slider. One step past it means "do not filter by distance". */
 const MAX_DISTANCE_KEY = "bzb_max_distance";
+const DEFAULT_MAX_DISTANCE_KM = 10;
+/** Top of the distance slider. One step past it means "do not filter by distance". */
 const MAX_DISTANCE_KM = 50;
 const NO_DISTANCE_LIMIT = MAX_DISTANCE_KM + 1;
 /** One-tap distances; the slider stays for anything in between. */
@@ -33,18 +37,18 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 const TaskList = () => {
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
+  const { isTasker, isBee } = useRoles();
   const { pushPending } = usePermissionPrompt();
   const [locationDismissed, setLocationDismissed] = useState(false);
-  const isTasker = roles.includes("tasker");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("new");
   const [onlySaved, setOnlySaved] = useState(false);
   const { saved, toggle: toggleSaved } = useSavedTasks();
-  const [maxDistance, setMaxDistance] = useState(() => {
-    const saved = localStorage.getItem(MAX_DISTANCE_KEY);
-    return saved ? Number(saved) : 10;
+  const [maxDistance, setMaxDistance] = usePersistedState(MAX_DISTANCE_KEY, DEFAULT_MAX_DISTANCE_KM, (raw) => {
+    const km = Number(raw);
+    return raw && !Number.isNaN(km) ? km : null;
   });
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   /** The distance slider starts collapsed: the current value is enough until the user wants to change it. */
@@ -90,14 +94,9 @@ const TaskList = () => {
         .is("archived_at", null)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        const creatorIds = [...new Set(data.map((task) => task.creator_id))];
-        const { data: ratingRows, error: ratingError } = creatorIds.length
-          ? await fetchAllPages((from, to) => supabase.from("user_role_ratings")
-            .select("user_id, avg_rating, review_count").eq("reviewee_role", "tasker").in("user_id", creatorIds)
-            .order("user_id").range(from, to))
-          : { data: [], error: null };
-        const ratings = new Map(ratingRows.map((rating) => [rating.user_id, rating]));
+      if (error) toast.error("לא הצלחנו לטעון את המטלות");
+      else if (data) {
+        const ratings = await fetchRatings("tasker", data.map((task) => task.creator_id));
         // accepted_count lives on the task itself: RLS hides other people's
         // applications, so counting them here returned 0 and full tasks stayed up.
         const mapped: Task[] = data
@@ -120,9 +119,7 @@ const TaskList = () => {
             lat: t.latitude,
             lng: t.longitude,
             creatorId: t.creator_id,
-            creatorRating: ratingError ? undefined : ratings.has(t.creator_id)
-              ? { average: Number(ratings.get(t.creator_id)!.avg_rating), count: Number(ratings.get(t.creator_id)!.review_count) }
-              : null,
+            creatorRating: ratings ? ratings.get(t.creator_id) ?? null : undefined,
             publishState: t.publish_state,
           }));
         setTasks(mapped);
@@ -261,7 +258,7 @@ const TaskList = () => {
               <option key={o.value} value={o.value} disabled={o.value === "near" && !userPos}>{o.label}</option>
             ))}
           </select>
-          {user && roles.includes("bee") && (
+          {user && isBee && (
             <button
               type="button"
               aria-pressed={onlySaved}
@@ -330,7 +327,7 @@ const TaskList = () => {
                         key={km}
                         type="button"
                         aria-pressed={maxDistance === km}
-                        onClick={() => { setMaxDistance(km); localStorage.setItem(MAX_DISTANCE_KEY, String(km)); }}
+                        onClick={() => setMaxDistance(km)}
                         className={cn("min-h-11 rounded-2xl border px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           maxDistance === km ? "border-transparent gradient-honey text-primary-foreground" : "border-border bg-card text-foreground")}
                       >
@@ -350,7 +347,7 @@ const TaskList = () => {
                     max={NO_DISTANCE_LIMIT}
                     aria-valuetext={maxDistance >= NO_DISTANCE_LIMIT ? "ללא הגבלה" : `${maxDistance} ק״מ`}
                     value={maxDistance}
-                    onChange={(e) => { const v = Number(e.target.value); setMaxDistance(v); localStorage.setItem(MAX_DISTANCE_KEY, String(v)); }}
+                    onChange={(e) => setMaxDistance(Number(e.target.value))}
                     className="w-full h-11 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
                   />
                 </div>
@@ -411,7 +408,7 @@ const TaskList = () => {
                 <Button
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => { setMaxDistance(NO_DISTANCE_LIMIT); localStorage.setItem(MAX_DISTANCE_KEY, String(NO_DISTANCE_LIMIT)); setDistanceOpen(true); }}
+                  onClick={() => { setMaxDistance(NO_DISTANCE_LIMIT); setDistanceOpen(true); }}
                 >
                   להציג בכל המרחקים
                 </Button>

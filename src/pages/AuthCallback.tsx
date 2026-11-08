@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchUserRoles } from "@/contexts/AuthContext";
 import { consumeGoogleSignupRole } from "@/lib/googleAuth";
+import { postAuthStep } from "@/lib/postAuth";
+import { registerPath, ROUTES } from "@/lib/routes";
 import { toast } from "sonner";
 
 const AuthCallback = () => {
@@ -14,21 +17,15 @@ const AuthCallback = () => {
       if (cancelled) return;
       if (error || !data.session) {
         toast.error("החיבור עם Google לא הושלם. כדאי לנסות שוב.");
-        navigate("/login", { replace: true });
+        navigate(ROUTES.login, { replace: true });
         return;
       }
 
-      const role = consumeGoogleSignupRole();
-      if (role) {
-        navigate(`/register/${role}?google=1`, { replace: true });
-      } else {
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.session.user.id);
-
-        navigate(roles && roles.length > 0 ? "/tasks" : "/auth?google=1", { replace: true });
-      }
+      const { roles } = await fetchUserRoles(data.session.user.id);
+      if (cancelled) return;
+      const step = postAuthStep(roles, consumeGoogleSignupRole());
+      // The register screen asks before moving an account that already has another role.
+      navigate(step.to ?? `${registerPath(step.switchTo)}?google=1`, { replace: true });
     });
 
     return () => {

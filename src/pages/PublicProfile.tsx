@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClipboardList, CheckCircle2, UserX, Pencil, Calendar, Star, Flag, CornerDownLeft } from "lucide-react";
-import { formatDate, formatCurrency } from "@/lib/format";
+import { defaultAvatarUrl, formatCurrency, formatDate } from "@/lib/format";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { categoryLabel } from "@/lib/categories";
 import { formFor, say, SUBJECT, type Gender } from "@shared/gender.ts";
@@ -161,7 +161,7 @@ const PublicProfile = () => {
   }
 
   const displayName = `${profile.first_name} ${profile.last_name}`.trim() || "משתמש";
-  const avatar = profile.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${profile.user_id}`;
+  const avatar = profile.avatar_url || defaultAvatarUrl(profile.user_id);
 
   return (
     <div className="min-h-screen bg-muted" dir="rtl">

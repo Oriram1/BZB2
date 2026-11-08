@@ -23,7 +23,6 @@ export interface ReviewForm {
 }
 export type ReviewField = keyof ReviewForm;
 
-export { SHORT_DESC_MAX };
 
 export const reviewLabels: Partial<Record<ReviewField, string>> = {
   category: "קטגוריה", taskName: "כותרת", shortDesc: "תיאור קצר", fullDesc: "תיאור מפורט",

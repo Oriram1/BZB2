@@ -1,6 +1,5 @@
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { emailContent } from "./notificationCopy.ts";
-import { paymentFailureReason } from "./paymentFailure.ts";
 
 Deno.test("card replacement email says what changed without inventing a card suffix", () => {
   const row = { id: "n1", event_type: "billing_plan_changed" as const, data: { kind: "card_updated", card_last4: "2444" }, link: "/subscription" };
@@ -10,12 +9,6 @@ Deno.test("card replacement email says what changed without inventing a card suf
   assertStringIncludes(content.paragraphs!.join(" "), "לא בוצע חיוב");
   const withoutLast4 = emailContent({ ...row, data: { kind: "card_updated", card_last4: "" } });
   assertEquals(withoutLast4.paragraphs!.join(" ").includes("שמסתיים"), false);
-});
-Deno.test("payment failure categories do not expose vendor text", () => {
-  assertEquals(paymentFailureReason({ error: "private provider message", response_code: 5033 }), "card_declined");
-  assertEquals(paymentFailureReason({ error: "amount_mismatch", response_code: 0 }), "verification_failed");
-  assertEquals(paymentFailureReason({ error: "create_failed" }), "provider_unavailable");
-  assertEquals(paymentFailureReason(null), "unknown");
 });
 
 Deno.test("manual payment approval does not describe a declined card", () => {

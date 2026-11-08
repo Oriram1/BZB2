@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export interface GeocodedAddress { formattedAddress: string; lat: number; lng: number; }
+interface GeocodedAddress { formattedAddress: string; lat: number; lng: number; }
 
 export const geocodeAddress = async (address: string): Promise<GeocodedAddress | null> => {
   if (typeof window !== "undefined" && typeof window.google?.maps?.Geocoder === "function") {

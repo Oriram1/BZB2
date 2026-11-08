@@ -10,13 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { logUserActivity } from "@/lib/activityLog";
 import { useAuth } from "@/contexts/AuthContext";
+import { HOME_PATH, ROUTES } from "@/lib/routes";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   // Only same-site paths: a crafted state must not turn login into an open redirect.
   const from = (location.state as { from?: unknown } | null)?.from;
-  const returnTo = typeof from === "string" && /^\/(?!\/)/.test(from) ? from : "/tasks";
+  const returnTo = typeof from === "string" && /^\/(?!\/)/.test(from) ? from : HOME_PATH;
   const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -118,7 +119,7 @@ const Login = () => {
 
           <p className="text-center text-sm text-muted-foreground mt-2">
             עדיין לא רשומים?{" "}
-            <Link to="/auth" className="text-primary-ink font-bold underline">
+            <Link to={ROUTES.auth} className="text-primary-ink font-bold underline">
               הירשמו עכשיו
             </Link>
           </p>

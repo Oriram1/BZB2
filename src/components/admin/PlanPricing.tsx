@@ -1,6 +1,6 @@
 import { functionErrorCode } from "@/lib/invokeFunction";
 import { useCallback, useEffect, useState } from "react";
-import { formatPrice } from "@/lib/format";
+import { formatDateTime, formatNis, formatPrice } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,7 +101,7 @@ const PlanPricing = () => {
       toast.error(ERRORS[code] ?? "השמירה נכשלה. נסו שוב");
       return;
     }
-    toast.success(`המחיר של ${confirm.plan.name} עודכן ל-${formatPrice(confirm.amount)} ₪`);
+    toast.success(`המחיר של ${confirm.plan.name} עודכן ל-${formatNis(confirm.amount)}`);
     setConfirm(null);
     invalidatePlans();
     await load();
@@ -135,7 +135,7 @@ const PlanPricing = () => {
                   <span className="text-sm text-muted-foreground">{periodShort(plan.period_months)}</span>
                 </div>
                 <p className="text-sm">
-                  מחיר נוכחי: <strong>{formatPrice(Number(plan.amount))} ₪</strong>
+                  מחיר נוכחי: <strong>{formatNis(Number(plan.amount))}</strong>
                   {!plan.price_signature && (
                     <span className="mr-2 text-destructive font-bold">· לא חתום: התשלום חסום עד לשמירה</span>
                   )}
@@ -169,7 +169,7 @@ const PlanPricing = () => {
                       }
                     }}
                   >
-                    איפוס למחיר המקורי ({formatPrice(originalAmount)} ₪)
+                    איפוס למחיר המקורי ({formatNis(originalAmount)})
                   </Button>
                 )}
                 {draft !== "" && parsed === null && (
@@ -192,11 +192,11 @@ const PlanPricing = () => {
             {history.map((row) => (
               <li key={row.id} className="flex items-center justify-between gap-3 p-3">
                 <span>
-                  {planName(row.plan_id)}: {formatPrice(Number(row.old_amount))} ₪ ← {formatPrice(Number(row.new_amount))} ₪
+                  {planName(row.plan_id)}: {formatNis(Number(row.old_amount))} ← {formatNis(Number(row.new_amount))}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {row.source === "admin_function" ? "אדמין" : "שינוי ישיר בבסיס הנתונים"} ·{" "}
-                  {new Date(row.changed_at).toLocaleString("he-IL")}
+                  {formatDateTime(row.changed_at, row.changed_at)}
                 </span>
               </li>
             ))}
@@ -210,7 +210,7 @@ const PlanPricing = () => {
             <AlertDialogTitle>{confirm?.reset ? "לאפס למחיר המקורי?" : "לשנות את מחיר המנוי?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {confirm &&
-                `המחיר של ${confirm.plan.name} ישתנה מ-${formatPrice(Number(confirm.plan.amount))} ₪ ל-${formatPrice(confirm.amount)} ₪. השינוי חל מיד על הזמנות חדשות, ועל חידושים עתידיים של מנויים קיימים.`}
+                `המחיר של ${confirm.plan.name} ישתנה מ-${formatNis(Number(confirm.plan.amount))} ל-${formatNis(confirm.amount)}. השינוי חל מיד על הזמנות חדשות, ועל חידושים עתידיים של מנויים קיימים.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,20 +1,16 @@
-import { useEffect, useState } from "react";
-import { RETRY_OFFSETS_DAYS } from "@shared/billingPolicy.ts";
-import { functionErrorCode, type Result } from "@/lib/invokeFunction";
+import { useQuery } from "@tanstack/react-query";
+import { invokeFunction } from "@/lib/invokeFunction";
+import { paymentErrorText } from "@/lib/paymentErrors";
+import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/integrations/supabase/client";
 
 export type PlanId = "quarterly" | "annual";
 
-export type PlanInfo = { name: string; price: number; periodMonths: number; period: string };
+type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
-/** Everything the screens say about a cadence comes from the plan's period, so a price change is the only edit needed. */
-const periodLabel = (months: number) => {
-  if (months === 12) return "שנה";
-  if (months === 1) return "חודש";
-  return `${months} חודשים`;
-};
+type PlanInfo = { name: string; price: number; periodMonths: number };
 
-/** Short form for a price line: "₪30 ל-3 חודשים" reads as "ל-3 חודשים" / "לשנה". */
+/** What the screens say about a plan's cadence comes from its period, so a price change is the only edit needed: "ל-3 חודשים" / "לשנה". */
 export const periodShort = (months: number) => {
   if (months === 12) return "לשנה";
   if (months === 1) return "לחודש";
@@ -23,40 +19,31 @@ export const periodShort = (months: number) => {
 
 type PlanRow = { id: string; name: string; amount: number | string; period_months: number; active: boolean };
 
-let plansCache: Partial<Record<PlanId, PlanInfo>> | null = null;
-let plansRequest: Promise<Partial<Record<PlanId, PlanInfo>>> | null = null;
+const plansQueryKey = ["billing-plans"] as const;
 
-const loadPlans = () => {
-  plansRequest ??= (async () => {
-    const { data } = await supabase
-      .from("billing_plans")
-      .select("id, name, amount, period_months, active")
-      .eq("active", true);
-    const result: Partial<Record<PlanId, PlanInfo>> = {};
-    for (const row of (data ?? []) as PlanRow[]) {
-      if (!isPaidPlan(row.id)) continue;
-      result[row.id] = {
-        name: row.name,
-        price: Number(row.amount),
-        periodMonths: row.period_months,
-        period: periodLabel(row.period_months),
-      };
-    }
-    plansCache = result;
-    return result;
-  })().catch(() => {
-    // Allow a later screen to try again instead of caching a failure.
-    plansRequest = null;
-    return {} as Partial<Record<PlanId, PlanInfo>>;
-  });
-  return plansRequest;
-};
+type Plans = Partial<Record<PlanId, PlanInfo>>;
+const NO_PLANS: Plans = {};
+
+async function fetchPlans(): Promise<Plans> {
+  const { data, error } = await supabase
+    .from("billing_plans")
+    .select("id, name, amount, period_months, active")
+    .eq("active", true);
+  if (error) throw error;
+  const result: Plans = {};
+  for (const row of (data ?? []) as PlanRow[]) {
+    if (!isPaidPlan(row.id)) continue;
+    result[row.id] = {
+      name: row.name,
+      price: Number(row.amount),
+      periodMonths: row.period_months,
+    };
+  }
+  return result;
+}
 
 /** Forget what was loaded, e.g. after an admin changes a price. */
-export const invalidatePlans = () => {
-  plansCache = null;
-  plansRequest = null;
-};
+export const invalidatePlans = () => queryClient.invalidateQueries({ queryKey: plansQueryKey });
 
 /**
  * The plans as the server has them. The price shown here and the amount
@@ -65,94 +52,52 @@ export const invalidatePlans = () => {
  * what a card is charged.
  */
 export function usePlans() {
-  const [plans, setPlans] = useState<Partial<Record<PlanId, PlanInfo>>>(plansCache ?? {});
-  const [loading, setLoading] = useState(plansCache === null);
-
-  useEffect(() => {
-    if (plansCache) return;
-    let active = true;
-    void loadPlans().then((loaded) => {
-      if (!active) return;
-      setPlans(loaded);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return { plans, loading };
+  const { data, isPending } = useQuery({ queryKey: plansQueryKey, queryFn: fetchPlans, staleTime: Infinity, retry: false });
+  return { plans: data ?? NO_PLANS, loading: isPending };
 }
 
 export const isPaidPlan = (value: string | null | undefined): value is PlanId =>
   value === "quarterly" || value === "annual";
 
-/** Days after a period ends that a failed renewal keeps being retried. */
-const GRACE_DAYS = RETRY_OFFSETS_DAYS[RETRY_OFFSETS_DAYS.length - 1];
-
-const ERROR_MESSAGES: Record<string, string> = {
-  consent_required: "צריך לאשר את תנאי החידוש האוטומטי כדי להמשיך",
-  unknown_plan: "המסלול לא נמצא",
-  tasker_only: "מנויים זמינים למציעי מטלות בלבד",
-  already_subscribed: "כבר יש לכם מנוי פעיל",
-  too_many_attempts: "יותר מדי ניסיונות תשלום. כדאי לנסות שוב בעוד שעה",
-  billing_disabled: "התשלומים עדיין לא נפתחו. נעדכן כשהמנויים יהיו זמינים",
-  popup_blocked: "הדפדפן חסם את דף התשלום. יש לאפשר חלונות קופצים לאתר ולנסות שוב",
-  network_error: "לא הצלחנו להתחבר לשירות התשלום. בדקו את החיבור ונסו שוב",
-  payment_unavailable: "שירות התשלום לא זמין כרגע. נסו שוב בעוד כמה דקות",
-  no_active_subscription: "לא נמצא מנוי פעיל",
-  cannot_resume: "אי אפשר לחדש את המנוי הזה. אפשר לרכוש מנוי חדש",
-  not_found: "ההזמנה לא נמצאה",
-  trial_already_used: "החודש החינם כבר נוצל",
-  same_plan: "זה כבר המסלול שלכם",
-  refund_already_used: "ביטול עם החזר ל־14 יום כבר נוצל, והמנוי הבא הוא עד הסוף",
-  window_passed: "עברו יותר מ־14 יום מהתשלום, ולכן אי אפשר לבטל עם החזר",
-  charge_failed: "החיוב על המשימות שנשארו נדחה. אפשר לנסות כרטיס אחר",
-  nothing_to_refund: "אין תשלום שאפשר להחזיר",
-  refund_requires_review: "אי אפשר להשלים את ההחזר אוטומטית כרגע. פנו לתמיכה לבדיקת החיובים",
-  no_active_subscription_refund: "אין מנוי פעיל",
-};
-
-export const billingErrorMessage = (code: string) =>
-  ERROR_MESSAGES[code] ?? "משהו השתבש. נסו שוב";
-
-/** The functions answer failures with `{ error: "<code>" }`; surface that code. */
-async function call<T>(name: string, body: Record<string, unknown>): Promise<Result<T>> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
-  if (!error) return { ok: true, data: data as T };
-
-  return { ok: false, code: await functionErrorCode(error, "unknown") };
-}
 
 /**
  * Opens a hosted payment page. `planId` is ignored by the server for a
  * subscription that is past due — it pays the plan they already have.
  */
 export const startCheckout = (planId: PlanId | null) =>
-  call<{ url: string; order_id: string }>("billing-create-checkout", {
+  invokeFunction<{ url: string; order_id: string }>("billing-create-checkout", {
     plan_id: planId,
     accept_renewal: true,
   });
 
-export const confirmOrder = (orderId: string) =>
-  call<{ status: "pending" | "paid" | "failed" | "refunded"; failureReason?: string }>("billing-confirm", { order_id: orderId });
+/** What `billing-confirm` reports. The flags apply to a charge (a task payment or saved card), never to a subscription order. */
+export type Confirmation = {
+  status: PaymentStatus;
+  taskId?: string | null;
+  trial?: boolean;
+  trialRefused?: boolean;
+  cardUpdated?: boolean;
+  awaitingReview?: boolean;
+  failureReason?: string;
+};
 
-export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+export const confirmOrder = (orderId: string) =>
+  invokeFunction<Confirmation>("billing-confirm", { order_id: orderId });
 
 /** A task payment or a saved card (not a subscription order). */
 export const confirmCharge = (chargeId: string) =>
-  call<{ status: PaymentStatus; taskId?: string | null; trial?: boolean; trialRefused?: boolean; cardUpdated?: boolean; awaitingReview?: boolean; failureReason?: string }>("billing-confirm", { charge_id: chargeId });
+  invokeFunction<Confirmation>("billing-confirm", { charge_id: chargeId });
 
 /** Replace the saved card without renewing or charging the subscription. */
 export const updateSubscriptionCard = () =>
-  call<{ url: string; charge_id: string }>("task-pay", { action: "update_card" });
+  invokeFunction<{ url: string; charge_id: string }>("task-pay", { action: "update_card" });
 
 /** The free month: saves a card on Cardcom's page, charges nothing now. */
 export const startTrial = (planId: PlanId) =>
-  call<{ url: string; charge_id: string }>("billing-start-trial", { plan_id: planId, accept_renewal: true });
+  invokeFunction<{ url: string; charge_id: string }>("billing-start-trial", { plan_id: planId, accept_renewal: true });
 
 export const changePlan = (planId: PlanId) =>
-  call<{ status: "upgraded" | "scheduled" | "changed" | "schedule_cleared"; charged?: number; credit?: number; effective?: string }>(
+  invokeFunction<{ status: "upgraded" | "scheduled" | "changed" | "schedule_cleared"; charged?: number; credit?: number; effective?: string }>(
     "billing-change-plan",
     { plan_id: planId },
   );
@@ -166,23 +111,20 @@ export type CancelPreview = {
 };
 
 export const previewRefundCancellation = () =>
-  call<CancelPreview>("billing-cancel-refund", { action: "preview" });
+  invokeFunction<CancelPreview>("billing-cancel-refund", { action: "preview" });
 
 export const confirmRefundCancellation = (deleteTaskIds: string[]) =>
-  call<{ status: "refunded"; refunded: number; difference_charged: number; tasks_kept: number; tasks_removed: number }>(
+  invokeFunction<{ status: "refunded"; refunded: number; difference_charged: number; tasks_kept: number; tasks_removed: number }>(
     "billing-cancel-refund",
     { action: "confirm", delete_task_ids: deleteTaskIds },
   );
 
 export const cancelSubscription = () =>
-  call<{ status: string; cancel_at_period_end: boolean; ends_at?: string }>("billing-cancel", {});
+  invokeFunction<{ status: string; cancel_at_period_end: boolean; ends_at?: string }>("billing-cancel", {});
 
 export const resumeSubscription = () =>
-  call<{ status: string; cancel_at_period_end: boolean }>("billing-cancel", { resume: true });
+  invokeFunction<{ status: string; cancel_at_period_end: boolean }>("billing-cancel", { resume: true });
 
-/** Last day a past-due subscription is still honoured. */
-export const graceEnd = (periodEnd: string) =>
-  new Date(new Date(periodEnd).getTime() + GRACE_DAYS * 86_400_000).toISOString();
 
 
 /** One line of the payment history: a subscription payment or any other charge. */

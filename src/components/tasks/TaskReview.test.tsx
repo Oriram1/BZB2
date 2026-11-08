@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import TaskReview from "./TaskReview";
-import { assistantChanges, fieldError, type ReviewForm } from "@/lib/taskReview";
+import { assistantChanges, fieldError, type ReviewForm } from "@/lib/taskForm";
 
 const state = vi.hoisted(() => ({ response: null as unknown, bodies: [] as unknown[] }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: {

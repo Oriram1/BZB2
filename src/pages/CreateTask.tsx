@@ -1,4 +1,6 @@
+import { ROUTES } from "@/lib/routes";
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
+import { paymentErrorText } from "@/lib/paymentErrors";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED, type PaymentTab } from "@/lib/paymentTab";
 import { useEffect, useState } from "react";
 import { addDays, addMonths, format } from "date-fns";
@@ -16,22 +18,24 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, Tag, FileText, DollarSign, MapPin, Image, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, FileText, MapPin, Image, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/lib/format";
-import { categories, categoryLabel } from "@/lib/categories";
+import { categories } from "@/lib/categories";
+import { readStorage, removeStorage, writeStorage } from "@/lib/storage";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import type { ConfirmedTaskLocation } from "@/components/tasks/AssistantLocation";
 import TaskAssistant, { type MissingField } from "@/components/tasks/TaskAssistant";
-import type { AssistantFields } from "@/lib/taskReview";
+import type { AssistantFields } from "@/lib/taskForm";
 import TaskReview from "@/components/tasks/TaskReview";
 import type { CategoryValue } from "@shared/taskLimits.ts";
-import { SHORT_DESC_MAX, todayIso, type ReviewForm } from "@/lib/taskReview";
-import { logUserActivity } from "@/lib/activityLog";
-import { billingErrorText, fetchPublishQuote, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
+import { todayIso, type ReviewForm } from "@/lib/taskForm";
+import { SHORT_DESC_MAX } from "@shared/taskLimits.ts";import { logUserActivity } from "@/lib/activityLog";
+import { mapDbError, PG_CHECK_VIOLATION, PG_INSUFFICIENT_PRIVILEGE } from "@/lib/errors";
+import { fetchPublishQuote, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 import { feeText, useTaskFees } from "@/lib/taskFees";
 import {
   AlertDialog,
@@ -87,7 +91,6 @@ const CreateTask = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [insurance, setInsurance] = useState(false);
   const [quote, setQuote] = useState<PublishQuote | null>(null);
   const fees = useTaskFees();
@@ -98,7 +101,6 @@ const CreateTask = () => {
   const [assistantOpen, setAssistantOpen] = useState(() => searchParams.get("resume") !== "1");
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
   const today = new Date();
-  const minimumDate = todayIso();
 
   const dateShortcuts = [
     { label: "מחר", value: format(addDays(today, 1), "yyyy-MM-dd") },
@@ -128,7 +130,7 @@ const CreateTask = () => {
   useEffect(() => {
     if (searchParams.get("resume") !== "1") return;
     try {
-      const raw = sessionStorage.getItem(TASK_DRAFT_KEY);
+      const raw = readStorage(TASK_DRAFT_KEY, "session");
       if (!raw) return;
       const saved = JSON.parse(raw) as {
         form: typeof form; lat: number | null; lng: number | null; insurance: boolean; imageUrl: string | null;
@@ -139,11 +141,12 @@ const CreateTask = () => {
       setInsurance(saved.insurance);
       setRestoredImageUrl(saved.imageUrl);
       setStep(SUMMARY_STEP);
-      sessionStorage.removeItem(TASK_DRAFT_KEY);
+      removeStorage(TASK_DRAFT_KEY, "session");
       toast.success("הכרטיס נשמר. אפשר לפרסם את המטלה");
     } catch {
       /* storage unavailable: the person starts again */
     }
+  // Once on arrival: later edits to the form must not restore the draft over them.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -237,11 +240,9 @@ const CreateTask = () => {
 
   const uploadImage = async (): Promise<string | null> => {
     if (!imageFile || !user) return null;
-    setUploadingImage(true);
     const ext = imageFile.name.split(".").pop();
     const path = `${user.id}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("task-images").upload(path, imageFile);
-    setUploadingImage(false);
     if (error) {
       toast.error("שגיאה בהעלאת התמונה");
       return null;
@@ -332,14 +333,7 @@ const CreateTask = () => {
     // and the form waits for it.
     if (!paysNow && currentQuote && !currentQuote.billing_off && currentQuote.due > 0
         && (choice === "new_card" || !currentQuote.has_card)) {
-      try {
-        sessionStorage.setItem(
-          TASK_DRAFT_KEY,
-          JSON.stringify({ form, lat: selectedLat, lng: selectedLng, insurance, imageUrl }),
-        );
-      } catch {
-        /* the person re-enters the form if storage is blocked */
-      }
+      writeStorage(TASK_DRAFT_KEY, JSON.stringify({ form, lat: selectedLat, lng: selectedLng, insurance, imageUrl }), "session");
       if (!paymentTab) {
         setLoading(false);
         setCardSetupOpen(true);
@@ -399,8 +393,8 @@ const CreateTask = () => {
           toast.info("המטלה נשלחה לאישור. דף התשלום נפתח בכרטיסייה נפרדת. אם המטלה לא תאושר, הכסף יוחזר.");
         } else {
           paymentTab.close();
-          toast.error(`${page.ok ? "דף התשלום נסגר." : billingErrorText(page.code)} המטלה נשמרה. אפשר לשלם עליה מ״המטלות שלי״.`, !page.ok && page.code === "session_expired" ? {
-            action: { label: "כניסה מחדש", onClick: () => navigate("/login", { state: { from: "/my-tasks?tab=published" } }) },
+          toast.error(`${page.ok ? "דף התשלום נסגר." : paymentErrorText(page.code)} המטלה נשמרה. אפשר לשלם עליה מ״המטלות שלי״.`, !page.ok && page.code === "session_expired" ? {
+            action: { label: "כניסה מחדש", onClick: () => navigate("/login", { state: { from: ROUTES.myPublishedTasks } }) },
           } : undefined);
         }
       } else if (quote && !quote.billing_off) {
@@ -953,16 +947,15 @@ const CreateTask = () => {
  * met yet.
  */
 const publishErrorMessage = (error: { message: string; code?: string }) => {
-  if (error.code === "23514" || error.message.includes("short_desc")) {
-    return `התיאור הקצר ארוך מדי — עד ${SHORT_DESC_MAX} תווים.`;
-  }
-  if (error.code === "42501") {
-    return "רק משתמש מסוג מציע מטלות יכול לפרסם מטלה.";
-  }
-  if (error.message === "card_required") return "צריך לשמור כרטיס אשראי לפני פרסום מטלה בתשלום.";
-  if (error.message === "too_many_submissions") return "שלחתם הרבה מטלות בשעה האחרונה. אפשר לנסות שוב בעוד כמה דקות.";
-  if (error.message === "too_many_pending_payment") return "יש כבר 3 מטלות שממתינות לתשלום. כדאי להסדיר אותן קודם.";
-  return "שגיאה בפרסום המטלה: " + error.message;
+  const shortDescTooLong = `התיאור הקצר ארוך מדי — עד ${SHORT_DESC_MAX} תווים.`;
+  return mapDbError(error, {
+    [PG_CHECK_VIOLATION]: shortDescTooLong,
+    short_desc: shortDescTooLong,
+    [PG_INSUFFICIENT_PRIVILEGE]: "רק משתמש מסוג מציע מטלות יכול לפרסם מטלה.",
+    card_required: "צריך לשמור כרטיס אשראי לפני פרסום מטלה בתשלום.",
+    too_many_submissions: "שלחתם הרבה מטלות בשעה האחרונה. אפשר לנסות שוב בעוד כמה דקות.",
+    too_many_pending_payment: "יש כבר 3 מטלות שממתינות לתשלום. כדאי להסדיר אותן קודם.",
+  }, "שגיאה בפרסום המטלה: " + error.message);
 };
 
 export default CreateTask;

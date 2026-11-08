@@ -6,7 +6,7 @@
  * no paid time left to honour, so it ends immediately.
  */
 import { authenticatedClients, json, readJsonObject, servePost } from "../_shared/auth.ts";
-import { loadPlan, notifyBilling } from "../_shared/billing.ts";
+import { notifyBilling, planName } from "../_shared/billing.ts";
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
@@ -50,9 +50,8 @@ servePost(async (req) => {
     })
     .eq("id", sub.id);
 
-  const plan = await loadPlan(admin, sub.plan_id, { verify: false });
   await notifyBilling(admin, user.id, "billing_subscription_canceled", {
-    plan_name: plan?.name,
+    plan_name: await planName(admin, sub.plan_id),
     ends_at: endsNow ? new Date().toISOString() : sub.current_period_end,
   });
 

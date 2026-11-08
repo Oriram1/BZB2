@@ -15,6 +15,8 @@ import {
   type LowProfileResult,
   type TransactionInfo,
 } from "./cardcom.ts";
+import { DAY_MS, RETRY_OFFSETS_DAYS } from "./billingPolicy.ts";
+import type { NotificationEvent } from "./notificationEvents.ts";
 import { PlanIntegrityError, verifyPlan } from "./planPrice.ts";
 
 /**
@@ -43,24 +45,21 @@ export function isHardDecline(code: number | null | undefined, codes = hardDecli
   return code !== null && code !== undefined && codes.has(code);
 }
 
-import { RETRY_OFFSETS_DAYS } from "./billingPolicy.ts";
-export { RETRY_OFFSETS_DAYS };
-
-export type BillingEvent =
-  | "billing_renewal_reminder"
-  | "billing_payment_succeeded"
-  | "billing_payment_failed"
-  | "billing_subscription_canceled"
-  | "billing_subscription_ended"
-  | "billing_refunded"
-  | "billing_plan_changed"
+/** The notifications the billing functions raise: the subscription ones and the task-charge ones. */
+export type BillingEvent = Extract<
+  NotificationEvent,
+  | `billing_${string}`
   | "task_approved"
   | "task_rejected"
   | "task_payment_failed"
   | "task_payment_reminder"
   | "task_returned_to_draft"
   | "tasks_hidden"
-  | "task_refunded";
+  | "task_refunded"
+>;
+
+export const ORDER_COLUMNS =
+  "id, user_id, plan_id, kind, amount, status, low_profile_id, external_uniq_id, deal_number, error, response_code";
 
 export type OrderRow = {
   id: string;
@@ -72,6 +71,8 @@ export type OrderRow = {
   low_profile_id: string | null;
   external_uniq_id: string | null;
   deal_number: number | null;
+  error?: string | null;
+  response_code?: number | null;
 };
 
 export type SubscriptionRow = {
@@ -105,8 +106,31 @@ export type Verdict =
   /** Same idempotency key seen before: look the earlier attempt up instead. */
   | { kind: "duplicate" };
 
+/** Failure reasons that mean the result did not match our record of the order. */
+export const VERIFICATION_FAILURES = ["order_mismatch", "terminal_mismatch", "amount_mismatch"];
+
+/** A paid-but-rejected order needs a human: money may have moved without a subscription to show for it. */
+export function reportRejected(orderId: string, reason: string) {
+  if (VERIFICATION_FAILURES.includes(reason)) console.error("billing_result_rejected", { orderId, reason });
+}
+
 export function amountsMatch(a: number | string, b: number | string) {
   return Math.abs(Number(a) - Number(b)) < 0.005;
+}
+
+/** A result that belongs to another order or terminal; `null` when it is ours. */
+export function checkResultBinding(
+  result: LowProfileResult,
+  order: Pick<OrderRow, "id">,
+  terminal: number,
+): Extract<Verdict, { kind: "failed" }> | null {
+  if (result.ReturnValue !== order.id) {
+    return { kind: "failed", reason: "order_mismatch", code: result.ResponseCode ?? null };
+  }
+  if (result.TerminalNumber !== undefined && result.TerminalNumber !== terminal) {
+    return { kind: "failed", reason: "terminal_mismatch", code: result.ResponseCode ?? null };
+  }
+  return null;
 }
 
 /**
@@ -119,12 +143,8 @@ export function evaluateLowProfileResult(
   order: Pick<OrderRow, "id" | "amount">,
   terminal: number,
 ): Verdict {
-  if (result.ReturnValue !== order.id) {
-    return { kind: "failed", reason: "order_mismatch", code: result.ResponseCode ?? null };
-  }
-  if (result.TerminalNumber !== undefined && result.TerminalNumber !== terminal) {
-    return { kind: "failed", reason: "terminal_mismatch", code: result.ResponseCode ?? null };
-  }
+  const foreign = checkResultBinding(result, order, terminal);
+  if (foreign) return foreign;
 
   const tx = result.TranzactionInfo;
   if (!tx) return { kind: "pending" };
@@ -193,7 +213,7 @@ export function planFailure(
 ): { expired: true } | { expired: false; attempts: number; nextAttemptAt: Date } {
   const attempts = attemptsSoFar + 1;
   if (attempts >= RETRY_OFFSETS_DAYS.length) return { expired: true };
-  const next = new Date(periodEnd.getTime() + RETRY_OFFSETS_DAYS[attempts] * 86_400_000);
+  const next = new Date(periodEnd.getTime() + RETRY_OFFSETS_DAYS[attempts] * DAY_MS);
   return { expired: false, attempts, nextAttemptAt: next };
 }
 
@@ -227,13 +247,21 @@ export async function notifyBilling(
   if (error) console.error("billing_notify_failed", { event, error: error.message });
 }
 
+export type Plan = {
+  id: string;
+  name: string;
+  amount: number | string;
+  period_months: number;
+  renewal_reminder_days: number;
+  active: boolean;
+};
+
 /**
- * Loads a plan. By default the row's price signature is verified first, and a
- * plan that does not verify throws `PlanIntegrityError`: a charge never uses an
- * amount that did not come through the admin function. Pass `verify: false` only
- * where the price is not used (a name for a notification).
+ * Loads a plan whose price signature verifies. A plan that does not verify
+ * throws `PlanIntegrityError`: a charge never uses an amount that did not come
+ * through the admin function. Use `planName` where only the name is needed.
  */
-export async function loadPlan(admin: SupabaseClient, planId: string, options: { verify?: boolean } = {}) {
+export async function loadPlan(admin: SupabaseClient, planId: string): Promise<Plan | null> {
   const { data } = await admin
     .from("billing_plans")
     .select("id, name, amount, period_months, renewal_reminder_days, active, price_signature")
@@ -241,19 +269,18 @@ export async function loadPlan(admin: SupabaseClient, planId: string, options: {
     .maybeSingle();
   if (!data) return null;
 
-  if (options.verify !== false && !(await verifyPlan(data))) {
+  if (!(await verifyPlan(data))) {
     console.error("billing_plan_integrity_failed", { planId });
     throw new PlanIntegrityError(planId);
   }
   const { price_signature: _signature, ...plan } = data;
-  return plan as {
-    id: string;
-    name: string;
-    amount: number | string;
-    period_months: number;
-    renewal_reminder_days: number;
-    active: boolean;
-  };
+  return plan as Plan;
+}
+
+/** A plan's display name for a notification; nothing is charged from it, so the price is not verified. */
+export async function planName(admin: SupabaseClient, planId: string): Promise<string | undefined> {
+  const { data } = await admin.from("billing_plans").select("name").eq("id", planId).maybeSingle();
+  return data?.name;
 }
 
 /** Grants the paid period (idempotently) and tells the user, once. */
@@ -333,11 +360,7 @@ export async function settleLowProfileOrder(
     return { status: "paid" };
   }
   if (verdict.kind === "failed") {
-    // A paid-but-rejected order (wrong amount, foreign order id) needs a human:
-    // money may have moved without a subscription to show for it.
-    if (verdict.reason === "amount_mismatch" || verdict.reason === "order_mismatch" || verdict.reason === "terminal_mismatch") {
-      console.error("billing_result_rejected", { orderId: order.id, reason: verdict.reason });
-    }
+    reportRejected(order.id, verdict.reason);
     await markOrderFailed(admin, order.id, verdict.reason, verdict.code);
     return { status: "failed" };
   }

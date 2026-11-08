@@ -29,8 +29,10 @@ export function useSubscription() {
         .select("*")
         .eq("user_id", userId)
         .maybeSingle();
+      if (error) console.error("subscription read failed", error);
       result = { subscription: error ? null : data, failed: Boolean(error) };
-    } catch {
+    } catch (error) {
+      console.error("subscription read failed", error);
       result = { subscription: null, failed: true };
     }
     if (current !== request.current.version) return null;

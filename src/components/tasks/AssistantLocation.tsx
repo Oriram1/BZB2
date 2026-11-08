@@ -9,8 +9,8 @@ import GoogleMapPicker from "./GoogleMapPicker";
 export interface ConfirmedTaskLocation {
   query: string;
   formattedAddress: string;
-  lat: number | null;
-  lng: number | null;
+  lat: number;
+  lng: number;
 }
 
 interface Props {
@@ -83,11 +83,6 @@ export default function AssistantLocation({ query, onConfirm }: Props) {
           <Button type="button" className="mt-3 w-full" disabled={loading || !selected?.precise}
             onClick={() => { if (selected?.precise) onConfirm({ query, formattedAddress: selected.formattedAddress, lat: selected.lat, lng: selected.lng }); }}>
             אישור נקודת המפגש
-          </Button>
-          {/* TEMP: bypass while Google Maps billing is disabled. Remove once billing is fixed. */}
-          <Button type="button" variant="ghost" className="mt-1 w-full text-muted-foreground"
-            onClick={() => onConfirm({ query, formattedAddress: search.trim() || query, lat: null, lng: null })}>
-            המשך בלי מפה
           </Button>
         </>
       )}

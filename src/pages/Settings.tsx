@@ -19,11 +19,12 @@ import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { rowsForRoles } from "@/lib/notificationCopy";
+import { ROUTES } from "@/lib/routes";
 import { CHANNEL_DEFAULTS, type NotificationEvent } from "@shared/notificationEvents.ts";
 import {
   currentSubscription,
   isIos,
-  needsInstall,
+  isStandalone,
   pushConfigured,
   pushSupported,
   subscribeToPush,
@@ -54,7 +55,7 @@ const Settings = () => {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      navigate("/login");
+      navigate(ROUTES.login);
       return;
     }
 
@@ -158,7 +159,7 @@ const Settings = () => {
   // Push is an installed-app feature. In a browser tab we explain how to
   // install rather than firing a permission prompt that would likely be denied
   // — and a denied prompt is not something the app can ask for a second time.
-  const showInstallHint = needsInstall();
+  const showInstallHint = !isStandalone();
   const pushUnavailable = !pushSupported() || !pushConfigured();
 
   if (authLoading) {

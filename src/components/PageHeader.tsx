@@ -5,11 +5,11 @@ import BzbLogo from "@/components/BzbLogo";
 import { Button } from "@/components/ui/button";
 import { NavDrawerTrigger } from "@/components/MobileNav";
 import { useRegisterHeader } from "@/components/NavDrawerContext";
+import { HOME_PATH, ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface PageHeaderProps {
-  /** Short page name shown next to the logo. */
   title?: string;
   /**
    * Render `title` as the page's `<h1>`. Off by default because most screens
@@ -19,7 +19,6 @@ interface PageHeaderProps {
   titleIsPageHeading?: boolean;
   /** Page-specific call to action. Hidden on mobile — the bottom bar covers navigation there. */
   action?: ReactNode;
-  /** Optional icon rendered before the title. */
   icon?: ReactNode;
   showBack?: boolean;
   className?: string;
@@ -66,7 +65,7 @@ export function PageHeader({
         <NavDrawerTrigger />
 
         <Link
-          to={user ? "/tasks" : "/"}
+          to={user ? HOME_PATH : ROUTES.home}
           aria-label="לדף הבית"
           className="flex items-center gap-2 shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
         >

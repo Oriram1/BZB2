@@ -7,7 +7,6 @@ import {
   isHardDecline,
   planFailure,
   renewalExternalId,
-  RETRY_OFFSETS_DAYS,
 } from "./billing.ts";
 
 const order = { id: "11111111-1111-1111-1111-111111111111", amount: "30.00" };
@@ -81,7 +80,6 @@ Deno.test("a token charge: 0 is paid, 608 is a repeat to look up, anything else 
 
 Deno.test("retries land on days 3, 7 and 14 after the period ended, then the subscription expires", () => {
   const periodEnd = new Date("2026-12-30T10:00:00Z");
-  assertEquals(RETRY_OFFSETS_DAYS, [0, 3, 7, 14]);
 
   const afterFirst = planFailure(0, periodEnd);
   assertEquals(afterFirst.expired, false);

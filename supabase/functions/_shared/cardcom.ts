@@ -8,6 +8,7 @@
  * a failure: callers reconcile it later through `ExternalUniqTranId` rather than
  * assuming the money did or did not move.
  */
+import { J5 } from "./cardCheck.ts";
 
 const BASE_URL = "https://secure.cardcom.solutions/api/v11";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "host.docker.internal"]);
@@ -47,9 +48,7 @@ export type CardcomConfig = {
  * else, including unset, is test, so going live is always a deliberate secret
  * change and never a missing one.
  */
-type CardcomMode = "test" | "live";
-
-export function cardcomMode(): CardcomMode {
+function cardcomMode(): "test" | "live" {
   return Deno.env.get("CARDCOM_MODE") === "live" ? "live" : "test";
 }
 
@@ -134,8 +133,6 @@ export function expiryMMYY(month?: number, year?: number): string | null {
   return `${String(month).padStart(2, "0")}${yy}`;
 }
 
-import { J5 } from "./cardCheck.ts";
-
 export type LowProfileOperation = "ChargeOnly" | "ChargeAndCreateToken" | "CreateTokenOnly";
 
 export async function createLowProfile(params: {
@@ -173,7 +170,6 @@ export async function createLowProfile(params: {
   }>("/LowProfile/Create", {
     TerminalNumber: config.terminal,
     ApiName: config.apiName,
-    // Charge now and keep a token, which is what renewals charge against.
     Operation: params.operation ?? "ChargeAndCreateToken",
     ReturnValue: params.returnValue,
     Amount: params.cardCheckAmount && params.cardCheckAmount > 0 ? params.cardCheckAmount : params.amount,
@@ -240,26 +236,20 @@ export async function getTransactionByExternalId(externalUniqTranId: string): Pr
   });
 }
 
+/** Refunds the whole transaction. */
 export async function refundTransaction(params: {
   transactionId: number;
-  partialSum?: number;
-}): Promise<{ ok: boolean; code?: number; description?: string; newTransactionId?: number }> {
+}): Promise<{ ok: boolean; code?: number; description?: string }> {
   const config = cardcomConfig();
-  const result = await post<{ ResponseCode?: number; Description?: string; NewTranzactionId?: number }>(
+  const result = await post<{ ResponseCode?: number; Description?: string }>(
     "/Transactions/RefundByTransactionId",
     {
       ApiName: config.apiName,
       ApiPassword: config.apiPassword,
       TransactionId: params.transactionId,
-      PartialSum: params.partialSum,
     },
   );
-  return {
-    ok: result.ResponseCode === 0,
-    code: result.ResponseCode,
-    description: result.Description,
-    newTransactionId: result.NewTranzactionId,
-  };
+  return { ok: result.ResponseCode === 0, code: result.ResponseCode, description: result.Description };
 }
 
 /**

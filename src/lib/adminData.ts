@@ -1,6 +1,5 @@
 import { categoryLabel } from "@/lib/categories";
 import { roleLabel } from "@/lib/roles";
-import { formatDate, formatTime } from "@/lib/format";
 import type { UserActivityAction } from "@/lib/activityLog";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -80,6 +79,19 @@ export interface AdminUsersResponse {
 
 export type UserAdminAction = "block" | "unblock" | "delete" | "confirm_email";
 
+/** One account as a row in the users list. Admins are listed but never offered management actions. */
+export const toUserItem = (row: AdminUserRow): DrilldownItem => ({
+  id: row.id,
+  title: row.displayName,
+  meta: describeRoles(row.roles, row.blocked),
+  href: `/profile/${row.id}`,
+  email: row.email,
+  createdAt: row.createdAt,
+  emailConfirmed: row.emailConfirmed,
+  blocked: row.blocked,
+  manageable: !row.roles.includes("admin"),
+});
+
 export interface DuplicatePhoneGroup {
   phone: string;
   accounts: DrilldownItem[];
@@ -129,9 +141,6 @@ export const userActionLabel: Record<UserActivityAction, string> = {
   profile_updated: "עדכון פרופיל",
   role_switched: "החלפת תפקיד",
 };
-
-export const fullName = (profile: Pick<ProfileOption, "first_name" | "last_name">) =>
-  `${profile.first_name} ${profile.last_name}`.trim();
 
 /**
  * Details are free-form jsonb, so render only the handful of keys we actually

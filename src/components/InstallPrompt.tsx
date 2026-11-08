@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isIos, isStandalone } from "@/lib/push";
+import { readStorage, writeStorage } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 
 const FIRST_REMINDER_DAYS = 7;
@@ -26,7 +27,7 @@ const fallbackKey = (userId: string) => `bzb.install-prompt:${userId}`;
 
 const getFallbackPreference = (userId: string): PromptPreference | null => {
   try {
-    const value = localStorage.getItem(fallbackKey(userId));
+    const value = readStorage(fallbackKey(userId));
     return value ? JSON.parse(value) as PromptPreference : null;
   } catch {
     return null;
@@ -111,7 +112,7 @@ const InstallPrompt = () => {
       installed_at: preference?.installed_at ?? null,
     };
 
-    localStorage.setItem(fallbackKey(user.id), JSON.stringify(nextPreference));
+    writeStorage(fallbackKey(user.id), JSON.stringify(nextPreference));
     setPreference(nextPreference);
     setEligible(false);
     setVisible(false);

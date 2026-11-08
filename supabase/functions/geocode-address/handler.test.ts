@@ -1,71 +1,71 @@
 import { assertEquals } from "jsr:@std/assert@1";
+import { postRequest, withFakeSupabase } from "../_shared/testkit.ts";
 import { handleGeocode } from "./handler.ts";
 
-Deno.test("geocode handler authenticates, validates and gates provider access on quota", async () => {
-  const originalFetch = globalThis.fetch;
-  const keys = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_MAPS_SERVER_API_KEY"];
-  const previous = keys.map(key => Deno.env.get(key));
-  Deno.env.set(keys[0], "https://supabase.test");
-  for (const key of keys.slice(1)) Deno.env.set(key, "test-key");
-  let providerCalls = 0;
-  let allow = true;
-  let quotaFailure = false;
-  let providerStatus = "OK";
-  globalThis.fetch = ((input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.includes("/auth/v1/user")) return Promise.resolve(Response.json({
-      id: "11111111-1111-4111-8111-111111111111", aud: "authenticated", role: "authenticated",
-    }));
-    if (url.includes("/rpc/consume_geocode_quota")) {
-      return Promise.resolve(quotaFailure
-        ? Response.json({ message: "database unavailable" }, { status: 500 })
-        : Response.json({ allowed: allow, retry_after: allow ? 0 : 30 }));
-    }
+const ADDRESS = '{"address":"Tel Aviv"}';
+const TEL_AVIV = { results: [{ formatted_address: "Tel Aviv", geometry: { location: { lat: 32.08, lng: 34.78 } } }], status: "OK" };
+
+/** Fake quota RPC and Google; `provider.calls` counts paid lookups. */
+function fakeBackend(state: { quota: Response; google: unknown }) {
+  const provider = { calls: 0 };
+  const route = (url: string) => {
+    if (url.includes("/rpc/consume_geocode_quota")) return state.quota.clone();
     if (url.startsWith("https://maps.googleapis.com/")) {
-      providerCalls++;
-      return Promise.resolve(Response.json({ status: providerStatus, results: providerStatus === "OK" ? [{
-        formatted_address: "Tel Aviv", geometry: { location: { lat: 32.08, lng: 34.78 } },
-      }] : [] }));
+      provider.calls++;
+      return Response.json(state.google);
     }
-    throw new Error("unexpected network call");
-  }) as typeof fetch;
-  const request = (body: string, token = true) => new Request("https://edge.test", {
-    method: "POST", body,
-    headers: { ...(token ? { Authorization: "Bearer user-token" } : {}), Origin: "https://bzb-web.com" },
-  });
-  try {
-    assertEquals((await handleGeocode(request('{"address":"Tel Aviv"}', false))).status, 401);
-    assertEquals((await handleGeocode(request('{'))).status, 400);
-    assertEquals((await handleGeocode(request('{"address":""}'))).status, 400);
-    assertEquals(providerCalls, 0);
-    let result = await handleGeocode(request('{"address":"Tel Aviv"}'));
-    assertEquals(result.status, 200);
-    assertEquals(await result.json(), { formattedAddress: "Tel Aviv", lat: 32.08, lng: 34.78 });
-    assertEquals(providerCalls, 1);
-    allow = false;
-    result = await handleGeocode(request('{"address":"Tel Aviv"}'));
-    assertEquals(result.status, 429);
-    assertEquals(result.headers.get("Retry-After"), "30");
-    assertEquals(result.headers.get("Access-Control-Allow-Origin"), "https://bzb-web.com");
-    assertEquals(providerCalls, 1);
-    allow = true;
-    quotaFailure = true;
-    assertEquals((await handleGeocode(request('{"address":"Tel Aviv"}'))).status, 500);
-    assertEquals(providerCalls, 1);
-    quotaFailure = false;
-    providerStatus = "ZERO_RESULTS";
-    assertEquals(await (await handleGeocode(request('{"address":"Unknown"}'))).json(), {
-      formattedAddress: null, lat: null, lng: null,
-    });
-    providerStatus = "REQUEST_DENIED";
-    result = await handleGeocode(request('{"address":"Tel Aviv"}'));
-    assertEquals(result.status, 500);
-    assertEquals(await result.json(), { error: "internal_error" });
-  } finally {
-    globalThis.fetch = originalFetch;
-    keys.forEach((key, index) => {
-      if (previous[index] === undefined) Deno.env.delete(key);
-      else Deno.env.set(key, previous[index]!);
-    });
-  }
-});
+  };
+  return { provider, route };
+}
+
+const allowed = () => Response.json({ allowed: true, retry_after: 0 });
+const run = (state: Parameters<typeof fakeBackend>[0], test: (backend: ReturnType<typeof fakeBackend>) => Promise<void>) => {
+  const backend = fakeBackend(state);
+  return withFakeSupabase({ env: { GOOGLE_MAPS_SERVER_API_KEY: "test-key" }, route: backend.route }, () => test(backend));
+};
+
+Deno.test("geocode rejects unauthenticated and invalid requests before touching the provider", () =>
+  run({ quota: allowed(), google: TEL_AVIV }, async ({ provider }) => {
+    assertEquals((await handleGeocode(postRequest(ADDRESS, false))).status, 401);
+    assertEquals((await handleGeocode(postRequest("{"))).status, 400);
+    assertEquals((await handleGeocode(postRequest('{"address":""}'))).status, 400);
+    assertEquals((await handleGeocode(postRequest(JSON.stringify({ address: "x".repeat(501) })))).status, 400);
+    assertEquals(provider.calls, 0);
+  }));
+
+Deno.test("geocode returns the provider's first match", () =>
+  run({ quota: allowed(), google: TEL_AVIV }, async ({ provider }) => {
+    const response = await handleGeocode(postRequest(ADDRESS));
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { formattedAddress: "Tel Aviv", lat: 32.08, lng: 34.78 });
+    assertEquals(provider.calls, 1);
+  }));
+
+Deno.test("geocode answers 429 with Retry-After and skips the provider when over quota", () =>
+  run({ quota: Response.json({ allowed: false, retry_after: 30 }), google: TEL_AVIV }, async ({ provider }) => {
+    const response = await handleGeocode(postRequest(ADDRESS));
+    assertEquals(response.status, 429);
+    assertEquals(response.headers.get("Retry-After"), "30");
+    assertEquals(response.headers.get("Access-Control-Allow-Origin"), "https://bzb-web.com");
+    assertEquals(provider.calls, 0);
+  }));
+
+Deno.test("geocode fails closed when the quota check itself fails", () =>
+  run({ quota: Response.json({ message: "database unavailable" }, { status: 500 }), google: TEL_AVIV }, async ({ provider }) => {
+    assertEquals((await handleGeocode(postRequest(ADDRESS))).status, 500);
+    assertEquals(provider.calls, 0);
+  }));
+
+Deno.test("geocode reports an unknown address as nulls, not an error", () =>
+  run({ quota: allowed(), google: { status: "ZERO_RESULTS", results: [] } }, async () => {
+    const response = await handleGeocode(postRequest('{"address":"Unknown"}'));
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { formattedAddress: null, lat: null, lng: null });
+  }));
+
+Deno.test("geocode hides a provider rejection behind internal_error", () =>
+  run({ quota: allowed(), google: { status: "REQUEST_DENIED", results: [] } }, async () => {
+    const response = await handleGeocode(postRequest(ADDRESS));
+    assertEquals(response.status, 500);
+    assertEquals(await response.json(), { error: "internal_error" });
+  }));

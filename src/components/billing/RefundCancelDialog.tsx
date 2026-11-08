@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { paymentErrorText } from "@/lib/paymentErrors";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -10,9 +11,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { formatNis } from "@/lib/format";
 import { toast } from "sonner";
 import {
-  billingErrorMessage,
   confirmRefundCancellation,
   previewRefundCancellation,
   type CancelPreview,
@@ -46,7 +47,7 @@ export default function RefundCancelDialog({ open, onOpenChange, onDone }: Props
       if (!active) return;
       setLoading(false);
       if (!result.ok) {
-        toast.error(billingErrorMessage(result.code));
+        toast.error(paymentErrorText(result.code));
         onOpenChange(false);
         return;
       }
@@ -77,7 +78,7 @@ export default function RefundCancelDialog({ open, onOpenChange, onDone }: Props
     const result = await confirmRefundCancellation([...dropped]);
     setBusy(false);
     if (!result.ok) {
-      toast.error(billingErrorMessage(result.code));
+      toast.error(paymentErrorText(result.code));
       return;
     }
     toast.success("המנוי בוטל והסכום יוחזר לכרטיס");
@@ -100,14 +101,14 @@ export default function RefundCancelDialog({ open, onOpenChange, onDone }: Props
         ) : (
           <div className="space-y-4 text-sm">
             <p>
-              סכום להחזר: <strong>{Number(preview.refund_amount).toLocaleString("he-IL")} ₪</strong>
+              סכום להחזר: <strong>{formatNis(Number(preview.refund_amount))}</strong>
             </p>
 
             {preview.tasks.length > 0 && (
               <div className="space-y-2">
                 <p className="font-bold">מה לעשות עם המטלות שלכם?</p>
                 <p className="text-muted-foreground">
-                  כל מטלה שנשארת עולה {preview.task_fee} ₪, חוץ מהמטלה הראשונה שלכם שנשארת חינם. מטלה שמבצע כבר קיבל אי אפשר למחוק.
+                  כל מטלה שנשארת עולה {formatNis(preview.task_fee)}, חוץ מהמטלה הראשונה שלכם שנשארת חינם. מטלה שמבצע כבר קיבל אי אפשר למחוק.
                 </p>
                 <ul className="divide-y divide-border rounded-2xl border border-border">
                   {preview.tasks.map((task) => (
@@ -115,7 +116,7 @@ export default function RefundCancelDialog({ open, onOpenChange, onDone }: Props
                       <div className="min-w-0">
                         <p className="truncate font-bold">{task.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {task.is_first ? "המטלה הראשונה, נשארת חינם" : task.locked ? "כבר התקבלה, נשארת וחויבת" : `נשארת ב־${preview.task_fee} ₪`}
+                          {task.is_first ? "המטלה הראשונה, נשארת חינם" : task.locked ? "כבר התקבלה, נשארת וחויבת" : `נשארת ב־${formatNis(preview.task_fee)}`}
                         </p>
                       </div>
                       {!task.is_first && !task.locked && (
@@ -135,7 +136,7 @@ export default function RefundCancelDialog({ open, onOpenChange, onDone }: Props
 
             <p className="rounded-2xl bg-muted p-3">
               {difference > 0
-                ? `לפני ההחזר נחייב ${difference.toLocaleString("he-IL")} ₪ על המטלות שנשארות, ואז נחזיר את סכום המנוי.`
+                ? `לפני ההחזר נחייב ${formatNis(difference)} על המטלות שנשארות, ואז נחזיר את סכום המנוי.`
                 : "אין חיוב על מטלות, והסכום יוחזר במלואו."}
             </p>
           </div>

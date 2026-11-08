@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency, formatLongDate } from "@/lib/format";
+import { ROUTES } from "@/lib/routes";
 
 type DigestCard = { title: string; lines: string[] };
 
@@ -45,7 +46,7 @@ const ParentReport = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate("/login");
+      navigate(ROUTES.login);
       return;
     }
 
@@ -170,7 +171,7 @@ const ParentReport = () => {
         <Button
           variant="outline"
           className="w-full rounded-2xl font-bold h-12"
-          onClick={() => navigate("/parent")}
+          onClick={() => navigate(ROUTES.parent)}
         >
           למרכז ההורים
         </Button>

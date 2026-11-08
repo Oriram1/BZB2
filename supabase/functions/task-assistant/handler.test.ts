@@ -1,4 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
+import { postRequest, withFakeSupabase } from "../_shared/testkit.ts";
 import { handleTaskAssistant, israelToday, missingFields, sanitizeFields } from "./handler.ts";
 
 Deno.test("sanitizeFields keeps only values the form accepts", () => {
@@ -15,73 +16,86 @@ Deno.test("sanitizeFields keeps only values the form accepts", () => {
   assertEquals(missingFields(fields), ["category", "payment", "date", "time"]);
 });
 
+Deno.test("sanitizeFields keeps valid values and treats today as bookable", () => {
+  const fields = sanitizeFields({
+    category: "housework", taskName: "ניקוי חלונות", shortDesc: "ניקוי חלונות בדירה", payment: 49.6,
+    paymentType: "hour", workers: 2, location: "רמת גן", date: "2026-11-03", time: "18:30", duration: 1,
+  }, "2026-11-03");
+  assertEquals([fields.category, fields.payment, fields.paymentType, fields.workers, fields.date, fields.time], ["housework", 50, "hour", 2, "2026-11-03", "18:30"]);
+  assertEquals(missingFields(fields), []);
+});
+
 Deno.test("israelToday reports the Israeli calendar day", () => {
   // 23:30 UTC on 3 Nov is already 4 Nov in Israel.
   assertEquals(israelToday(new Date("2026-11-03T23:30:00Z")).date, "2026-11-04");
 });
 
-Deno.test("task assistant authenticates, validates and gates the model on quota", async () => {
-  const originalFetch = globalThis.fetch;
-  const keys = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "GEMINI_API_KEY"];
-  const previous = keys.map(key => Deno.env.get(key));
-  Deno.env.set(keys[0], "https://supabase.test");
-  for (const key of keys.slice(1)) Deno.env.set(key, "test-key");
-  let modelCalls = 0;
-  let allow = true;
-  let providerStatus = 200;
-  let modelOutput = JSON.stringify({
-    category: "housework", taskName: "ניקוי חלונות", shortDesc: "ניקוי חלונות בדירה", fullDesc: null,
-    payment: 50, paymentType: "task", workers: 1, location: "רמת גן", date: null, time: null, duration: null,
-  });
-  globalThis.fetch = ((input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.includes("/auth/v1/user")) return Promise.resolve(Response.json({
-      id: "11111111-1111-4111-8111-111111111111", aud: "authenticated", role: "authenticated",
-    }));
-    if (url.includes("/rpc/consume_task_assistant_quota")) {
-      return Promise.resolve(Response.json({ allowed: allow, retry_after: allow ? 0 : 30 }));
-    }
-    if (url.startsWith("https://generativelanguage.googleapis.com/")) {
-      modelCalls++;
-      if (providerStatus !== 200) return Promise.resolve(Response.json({ error: { status: "PERMISSION_DENIED" } }, { status: providerStatus }));
-      return Promise.resolve(Response.json({ candidates: [{ content: { parts: [{ text: modelOutput }] } }] }));
-    }
-    throw new Error("unexpected network call");
-  }) as typeof fetch;
-  const request = (body: string, token = true) => new Request("https://edge.test", {
-    method: "POST", body,
-    headers: { ...(token ? { Authorization: "Bearer user-token" } : {}), Origin: "https://bzb-web.com" },
-  });
-  const ask = JSON.stringify({ messages: [{ role: "user", text: "ניקוי חלונות ברמת גן, 50 שקל" }] });
-  try {
-    assertEquals((await handleTaskAssistant(request(ask, false))).status, 401);
-    assertEquals((await handleTaskAssistant(request('{"messages":[]}'))).status, 400);
-    assertEquals((await handleTaskAssistant(request('{"messages":[{"role":"system","text":"x"}]}'))).status, 400);
-    assertEquals(modelCalls, 0);
+const ASK = JSON.stringify({ messages: [{ role: "user", text: "ניקוי חלונות ברמת גן, 50 שקל" }] });
+const EXTRACTED = {
+  category: "housework", taskName: "ניקוי חלונות", shortDesc: "ניקוי חלונות בדירה", fullDesc: null,
+  payment: 50, paymentType: "task", workers: 1, location: "רמת גן", date: null, time: null, duration: null,
+};
 
-    let result = await handleTaskAssistant(request(ask));
-    assertEquals(result.status, 200);
-    const body = await result.json();
+/** Fake quota RPC and Gemini; `model.calls` counts paid calls. */
+function run(
+  state: { allow?: boolean; model: () => Response },
+  test: (model: { calls: number }) => Promise<void>,
+) {
+  const model = { calls: 0 };
+  return withFakeSupabase({
+    env: { GEMINI_API_KEY: "test-key" },
+    route: (url) => {
+      if (url.includes("/rpc/consume_task_assistant_quota")) {
+        const allowed = state.allow ?? true;
+        return Response.json({ allowed, retry_after: allowed ? 0 : 30 });
+      }
+      if (url.startsWith("https://generativelanguage.googleapis.com/")) {
+        model.calls++;
+        return state.model();
+      }
+    },
+  }, () => test(model));
+}
+
+const modelReplies = (text: string) => () => Response.json({ candidates: [{ content: { parts: [{ text }] } }] });
+
+Deno.test("task assistant rejects unauthenticated and malformed requests before the model", () =>
+  run({ model: modelReplies("{}") }, async (model) => {
+    assertEquals((await handleTaskAssistant(postRequest(ASK, false))).status, 401);
+    assertEquals((await handleTaskAssistant(postRequest('{"messages":[]}'))).status, 400);
+    assertEquals((await handleTaskAssistant(postRequest('{"messages":[{"role":"system","text":"x"}]}'))).status, 400);
+    assertEquals((await handleTaskAssistant(postRequest('{"messages":[{"role":"assistant","text":"x"}]}'))).status, 400);
+    assertEquals(model.calls, 0);
+  }));
+
+Deno.test("task assistant returns sanitized fields and what is still missing", () =>
+  run({ model: modelReplies(JSON.stringify(EXTRACTED)) }, async (model) => {
+    const response = await handleTaskAssistant(postRequest(ASK));
+    assertEquals(response.status, 200);
+    const body = await response.json();
     assertEquals(body.fields.taskName, "ניקוי חלונות");
     assertEquals(body.missing, ["date", "time"]);
-    assertEquals(modelCalls, 1);
+    assertEquals(model.calls, 1);
+  }));
 
-    allow = false;
-    result = await handleTaskAssistant(request(ask));
-    assertEquals(result.status, 429);
-    assertEquals(result.headers.get("Retry-After"), "30");
-    assertEquals(modelCalls, 1);
+Deno.test("task assistant answers 429 with Retry-After and skips the model when over quota", () =>
+  run({ allow: false, model: modelReplies(JSON.stringify(EXTRACTED)) }, async (model) => {
+    const response = await handleTaskAssistant(postRequest(ASK));
+    assertEquals(response.status, 429);
+    assertEquals(response.headers.get("Retry-After"), "30");
+    assertEquals(model.calls, 0);
+  }));
 
-    allow = true;
-    modelOutput = "not json";
-    assertEquals((await handleTaskAssistant(request(ask))).status, 500);
+Deno.test("task assistant hides unparseable model output behind internal_error", () =>
+  run({ model: modelReplies("not json") }, async () => {
+    const response = await handleTaskAssistant(postRequest(ASK));
+    assertEquals(response.status, 500);
+    assertEquals(await response.json(), { error: "internal_error" });
+  }));
 
-    providerStatus = 403;
-    result = await handleTaskAssistant(request(ask));
-    assertEquals(result.status, 502);
-    assertEquals(await result.json(), { error: "assistant_provider_unavailable", provider_status: 403 });
-  } finally {
-    globalThis.fetch = originalFetch;
-    keys.forEach((key, index) => previous[index] === undefined ? Deno.env.delete(key) : Deno.env.set(key, previous[index]!));
-  }
-});
+Deno.test("task assistant passes the provider's HTTP status through as a 502", () =>
+  run({ model: () => Response.json({ error: { status: "PERMISSION_DENIED" } }, { status: 403 }) }, async () => {
+    const response = await handleTaskAssistant(postRequest(ASK));
+    assertEquals(response.status, 502);
+    assertEquals(await response.json(), { error: "assistant_provider_unavailable", provider_status: 403 });
+  }));

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import TaskAssistant from "./TaskAssistant";
-import type { AssistantFields } from "@/lib/taskReview";
+import type { AssistantFields } from "@/lib/taskForm";
 
 const state = vi.hoisted(() => ({
   responses: [] as { data: unknown; error: unknown }[],

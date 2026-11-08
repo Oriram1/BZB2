@@ -1,4 +1,5 @@
-import { functionErrorCode, type Result } from "@/lib/invokeFunction";
+import { invokeFunction } from "@/lib/invokeFunction";
+import { paymentErrorText } from "@/lib/paymentErrors";
 import { supabase } from "@/integrations/supabase/client";
 
 /** Where an unsent task form waits while the person saves a card on Cardcom. */
@@ -41,55 +42,28 @@ export const publishStateLabel: Record<TaskPublishState, string> = {
 // checks, so a plain union would not narrow and `result.code` would not resolve.
 type PageResult = { ok: true; url: string; code?: undefined } | { ok: false; code: string; url?: undefined };
 
-async function invoke<T>(name: string, body: Record<string, unknown>): Promise<Result<T>> {
-  let { data, error } = await supabase.functions.invoke(name, { body });
-  // A 401 is returned before a payment is created. Retry only this case, once,
-  // after obtaining a fresh user session; never replay an uncertain payment.
-  if (error && (error as { context?: Response }).context?.status === 401) {
-    const refreshed = await supabase.auth.refreshSession();
-    if (refreshed.error || !refreshed.data.session) return { ok: false, code: "session_expired" };
-    ({ data, error } = await supabase.functions.invoke(name, {
-      body,
-      headers: { Authorization: `Bearer ${refreshed.data.session.access_token}` },
-    }));
-    if (error && (error as { context?: Response }).context?.status === 401) {
-      return { ok: false, code: "session_expired" };
-    }
-  }
-  if (error) return { ok: false, code: await functionErrorCode(error, "network_error") };
-  if (data && typeof data === "object" && "error" in data) return { ok: false, code: String((data as { error: unknown }).error) };
-  return { ok: true, data: data as T };
+async function hostedPage(body: Record<string, unknown>): Promise<PageResult> {
+  const result = await invokeFunction<{ url: string }>("task-pay", body);
+  return result.ok ? { ok: true, url: result.data.url } : { ok: false, code: result.code };
 }
 
 /** Opens Cardcom's page to save a card without charging it. */
-export async function startTaskCardSetup(): Promise<PageResult> {
-  const result = await invoke<{ url: string }>("task-pay", { action: "card_setup" });
-  if (!result.ok) return { ok: false, code: result.code };
-  return { ok: true, url: result.data.url };
-}
+export const startTaskCardSetup = () => hostedPage({ action: "card_setup" });
 
 /** Charges the saved card again for a task that is waiting for payment. */
 export function retryTaskPayment(taskId: string) {
-  return invoke<{ state: TaskPublishState; charge: string }>("task-pay", { action: "retry", task_id: taskId });
+  return invokeFunction<{ state: TaskPublishState; charge: string }>("task-pay", { action: "retry", task_id: taskId });
 }
 
 /** Opens Cardcom's page to pay a waiting task with a different card. */
-export async function payTaskWithNewCard(taskId: string): Promise<PageResult> {
-  const result = await invoke<{ url: string }>("task-pay", { action: "new_card", task_id: taskId });
-  if (!result.ok) return { ok: false, code: result.code };
-  return { ok: true, url: result.data.url };
-}
+export const payTaskWithNewCard = (taskId: string) => hostedPage({ action: "new_card", task_id: taskId });
 
 /** A one-time hosted charge; wallets require activation on the Cardcom terminal. */
-export async function payTaskOnce(taskId: string, method: "wallet" | "bit" = "wallet"): Promise<PageResult> {
-  const result = await invoke<{ url: string }>("task-pay", { action: method, task_id: taskId });
-  if (!result.ok) return { ok: false, code: result.code };
-  return { ok: true, url: result.data.url };
-}
+export const payTaskOnce = (taskId: string, method: "wallet" | "bit" = "wallet") => hostedPage({ action: method, task_id: taskId });
 
 /** Admin: approve or reject a task in the review queue. */
 export function reviewTask(taskId: string, approve: boolean, note?: string) {
-  return invoke<{ state: TaskPublishState; charge?: string }>("task-review", { task_id: taskId, approve, note });
+  return invokeFunction<{ state: TaskPublishState; charge?: string }>("task-review", { task_id: taskId, approve, note });
 }
 
 /** Sends a draft or rejected task back into the review queue. */
@@ -102,31 +76,6 @@ export async function resubmitTask(taskId: string) {
     : { ok: false as const, code: result?.error ?? "failed", due: undefined };
 }
 
-export const billingErrorText = (code: string) => {
-  switch (code) {
-    case "session_expired":
-    case "unauthorized":
-      return "ההתחברות פגה. יש להיכנס שוב כדי לפתוח את דף התשלום. לא בוצע חיוב";
-    case "bit_unavailable":
-      return "תשלום ב-Bit עדיין לא זמין. אפשר לשלם בכרטיס או בארנק דיגיטלי";
-    case "payment_unavailable":
-      return "שירות התשלום לא זמין כרגע. אפשר לנסות שוב בעוד כמה דקות";
-    case "network_error":
-      return "לא הצלחנו להתחבר לשירות התשלום. בדקו את החיבור ונסו שוב";
-    case "not_found":
-      return "המטלה לא נמצאה או שאין הרשאה לתשלום";
-    case "card_required":
-      return "צריך לשמור כרטיס אשראי קודם";
-    case "too_many_attempts":
-      return "יותר מדי ניסיונות, אפשר לנסות שוב בעוד שעה";
-    case "billing_disabled":
-      return "התשלומים לא פעילים כרגע";
-    case "not_waiting_for_payment":
-      return "המטלה כבר לא ממתינה לתשלום";
-    default:
-      return "משהו השתבש, נסו שוב בעוד רגע";
-  }
-};
 
 /** Current price of publishing a task for this user, or null when it cannot be read. */
 export async function fetchPublishQuote(insurance: boolean): Promise<PublishQuote | null> {

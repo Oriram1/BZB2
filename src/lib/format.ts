@@ -38,12 +38,17 @@ const currencyFormatterWithAgorot = new Intl.NumberFormat("he-IL", {
 /** Placeholder shown instead of an empty or unparsable value. */
 const EMPTY = "לא צוין";
 
+/** A valid Date from a string or Date, or null for missing and unparsable input. */
+export function toDate(value?: string | Date | null): Date | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 /** "2026-04-16" -> "16/04/2026". Returns EMPTY for missing/invalid input. */
 export function formatDate(value?: string | Date | null): string {
-  if (!value) return EMPTY;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return EMPTY;
-  return dateFormatter.format(date);
+  const date = toDate(value);
+  return date ? dateFormatter.format(date) : EMPTY;
 }
 
 /** Combines task date/time as "dd/mm/yyyy hh:mm". */
@@ -60,10 +65,8 @@ export function formatDateTime(
 
 /** "2026-04-16" -> "יום חמישי, 16 באפריל 2026". For detail screens. */
 export function formatLongDate(value?: string | Date | null): string {
-  if (!value) return EMPTY;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return EMPTY;
-  return longDateFormatter.format(date);
+  const date = toDate(value);
+  return date ? longDateFormatter.format(date) : EMPTY;
 }
 
 /** "14:00:00" -> "14:00". Accepts a time string or a Date. */
@@ -122,9 +125,8 @@ export function distanceKm(
 
 /** "לפני 5 דקות" / "אתמול". For notification feeds, where exact times add noise. */
 export function formatRelativeTime(value?: string | Date | null): string {
-  if (!value) return EMPTY;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return EMPTY;
+  const date = toDate(value);
+  if (!date) return EMPTY;
 
   const seconds = Math.round((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return "עכשיו";
@@ -220,3 +222,18 @@ export function formatPhone(input: string): string {
 /** `29.9` -> "29.90", `30` -> "30": no trailing zeros unless there are agorot. */
 export const formatPrice = (price: number) =>
   Number.isInteger(price) ? String(price) : price.toFixed(2);
+
+/** Running-text price: `29.9` -> "29.90 ₪", `30` -> "30 ₪". formatCurrency is the prefix style for cards. */
+export const formatNis = (amount: number) => `${formatPrice(amount)} ₪`;
+
+/** "First Last" from a profile row, or the fallback when both names are empty or the profile is missing. */
+export function displayName(
+  profile: { first_name?: string | null; last_name?: string | null } | null | undefined,
+  fallback = "",
+): string {
+  return `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || fallback;
+}
+
+/** The generated avatar shown while an account has not picked a picture. */
+export const defaultAvatarUrl = (userId: string) =>
+  `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${userId}`;

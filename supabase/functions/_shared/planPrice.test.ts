@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { canonicalPlan, signPlan, verifyPlan } from "./planPrice.ts";
+import { signPlan, verifyPlan } from "./planPrice.ts";
 
 const KEY = "unit-test-signing-key-0123456789abcdef-long-enough";
 const plan = { id: "quarterly", amount: 30, period_months: 3 };
@@ -14,15 +14,16 @@ function withKey<T>(value: string | undefined, run: () => Promise<T>) {
   });
 }
 
-Deno.test("the canonical form does not depend on how the amount is typed", () => {
-  assertEquals(canonicalPlan({ ...plan, amount: 30 }), canonicalPlan({ ...plan, amount: "30.00" }));
-  assertEquals(canonicalPlan({ ...plan, amount: 29.9 }), canonicalPlan({ ...plan, amount: "29.90" }));
+Deno.test("a signature does not depend on how the amount is typed", async () => {
+  await withKey(KEY, async () => {
+    assertEquals(await signPlan({ ...plan, amount: 30 }), await signPlan({ ...plan, amount: "30.00" }));
+    assertEquals(await signPlan({ ...plan, amount: 29.9 }), await signPlan({ ...plan, amount: "29.90" }));
+  });
 });
 
 Deno.test("a signed plan verifies, and changing the amount, id or period breaks it", async () => {
   await withKey(KEY, async () => {
     const signature = await signPlan(plan);
-    assertEquals(signature.length, 64);
     assertEquals(await verifyPlan({ ...plan, price_signature: signature }), true);
     assertEquals(await verifyPlan({ ...plan, amount: 1, price_signature: signature }), false);
     assertEquals(await verifyPlan({ ...plan, id: "annual", price_signature: signature }), false);

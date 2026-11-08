@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { type AssistantFields } from "@/lib/taskReview";
+import { type AssistantFields } from "@/lib/taskForm";
 import { addDays, format } from "date-fns";
 import { ArrowUp, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { categories } from "@/lib/categories";
+import { formatNis } from "@/lib/format";
 import { toast } from "sonner";
 import idleBee from "@/assets/assistant/bee-idle.webp";
 import thinkingBee from "@/assets/assistant/bee-thinking.webp";
@@ -155,7 +156,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
               ["תחום", categories.find((category) => category.value === result.fields.category)?.label],
               ["מיקום", confirmedLocation?.formattedAddress],
               ["מועד", [result.fields.date, result.fields.time].filter(Boolean).join(" · ")],
-              ["תשלום", result.fields.payment != null ? `${result.fields.payment} ₪${result.fields.paymentType === "hour" ? " לשעה" : ""}` : null],
+              ["תשלום", result.fields.payment != null ? `${formatNis(result.fields.payment)}${result.fields.paymentType === "hour" ? " לשעה" : ""}` : null],
             ].map(([label, value]) => (
               <div key={label} className="min-w-0">
                 <dt className="mb-1 text-xs text-muted-foreground">{label}</dt>

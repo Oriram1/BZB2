@@ -4,6 +4,7 @@
  * The database stores `event_type` + `data` only, so this module is the single
  * source of truth for what a user actually reads — in email and in push alike.
  */
+import { PUBLISHED_TASKS_LINK } from "./billingPolicy.ts";
 import { siteUrl, type EmailContent } from "./email.ts";
 import type { NotificationEvent, NotificationRow } from "./notificationEvents.ts";
 import { dateHe, str } from "./formatHe.ts";
@@ -430,7 +431,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           amount ? `אישרנו את המטלה "${task}" וחייבנו את הכרטיס ב־${amount}.` : `אישרנו את המטלה "${task}". המטלה הראשונה שלכם חינם.`,
           "המטלה כבר גלויה לעוזרים באזור.",
         ],
-        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        action: { label: "למטלות שלי", url: `${base}${PUBLISHED_TASKS_LINK}` },
         manageUrl,
       };
     }
@@ -446,7 +447,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           `המטלה "${task}" הוסרה, ולכן זיכינו את הכרטיס${amount ? ` בסך ${amount}` : ""}.`,
           "הסכום יופיע בדף החשבון בדרך כלל תוך כמה ימי עסקים.",
         ],
-        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        action: { label: "למטלות שלי", url: `${base}${PUBLISHED_TASKS_LINK}` },
         manageUrl,
       };
     }
@@ -462,7 +463,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           `המטלה "${task}" לא אושרה לפרסום. לא חויבתם, והיא לא נספרה כמטלה החינמית שלכם.`,
           ...(note ? [`הערה מהצוות: ${note}`] : []),
         ],
-        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        action: { label: "למטלות שלי", url: `${base}${PUBLISHED_TASKS_LINK}` },
         manageUrl,
       };
     }
@@ -477,7 +478,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
         paragraphs: [`המטלה "${task}" אושרה. הכרטיס השמור לא חויב.`,
           `אפשר לשלם${amount ? ` ${amount}` : ""} בכרטיס אחר, Apple Pay, Google Pay או Bit. המטלה תפורסם לאחר התשלום.`,
           "אם לא ישולם תוך 7 ימים, המטלה תחזור לטיוטה."],
-        action: { label: "לבחירת אמצעי תשלום", url: `${base}/my-tasks?tab=published` }, manageUrl,
+        action: { label: "לבחירת אמצעי תשלום", url: `${base}${PUBLISHED_TASKS_LINK}` }, manageUrl,
       };
       return {
         subject: `החיוב על המטלה "${task}" נדחה`,
@@ -487,7 +488,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           `החיוב${amount ? ` (${amount})` : ""} על המטלה "${task}" נדחה, כדאי לנסות כרטיס אחר או לפנות לחברת האשראי.`,
           "המטלה אושרה וממתינה לתשלום. אם לא ישולם תוך 7 ימים היא תחזור לטיוטה, בלי חיוב ובלי מחיקה.",
         ],
-        action: { label: "לתשלום", url: `${base}/my-tasks?tab=published` },
+        action: { label: "לתשלום", url: `${base}${PUBLISHED_TASKS_LINK}` },
         manageUrl,
       };
     }
@@ -501,7 +502,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
         paragraphs: [
           `המטלה "${task}" אושרה אבל עדיין לא שולמה. נשארו 4 ימים לפני שהיא חוזרת לטיוטה.`,
         ],
-        action: { label: "לתשלום", url: `${base}/my-tasks?tab=published` },
+        action: { label: "לתשלום", url: `${base}${PUBLISHED_TASKS_LINK}` },
         manageUrl,
       };
     }
@@ -516,7 +517,7 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
           `לא קיבלנו תשלום על המטלה "${task}" תוך 7 ימים, ולכן היא חזרה לטיוטה. לא חויבתם ולא נמחק כלום.`,
           "אפשר לחזור אליה ולפרסם אותה שוב בכל עת.",
         ],
-        action: { label: "למטלות שלי", url: `${base}/my-tasks?tab=published` },
+        action: { label: "למטלות שלי", url: `${base}${PUBLISHED_TASKS_LINK}` },
         manageUrl,
       };
     }

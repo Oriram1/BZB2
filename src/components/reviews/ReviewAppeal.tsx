@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { runAction } from "@/lib/errors";
 
 type Appeal = { status: string; decision: string | null; decision_note: string | null };
 export function ReviewAppeal({ reviewId }: { reviewId: string }) {
@@ -21,12 +22,13 @@ export function ReviewAppeal({ reviewId }: { reviewId: string }) {
   const send = async () => {
     if (!reason.trim() || busy) return;
     setBusy(true);
-    try {
+    const sent = await runAction(async () => {
       const { error } = await supabase.rpc("appeal_review_decision", { _review_id: reviewId, _reason: reason.trim() });
       if (error) throw error;
-      toast.success("הערעור נשלח לבדיקה"); setOpen(false); await load();
-    } catch { toast.error("לא הצלחנו לשלוח את הערעור"); }
-    finally { setBusy(false); }
+      return true;
+    }, "לא הצלחנו לשלוח את הערעור");
+    if (sent) { toast.success("הערעור נשלח לבדיקה"); setOpen(false); await load(); }
+    setBusy(false);
   };
   if (loading) return null;
   if (failed) return <p role="alert" className="mt-2 text-xs text-destructive">לא הצלחנו לטעון את מצב הערעור.</p>;

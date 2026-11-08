@@ -9,19 +9,20 @@
  * table comment in 20260806220100_parent_contact_prefs_and_requests.sql.
  */
 import { json, readJsonObject, serviceClient, servePost } from "../_shared/auth.ts";
+import { DB_RAISE, UNIQUE_VIOLATION } from "../_shared/dbErrors.ts";
+import { MINUTE_MS } from "../_shared/time.ts";
+import { normalizeEmail } from "../_shared/validate.ts";
 
 /** One request per share token per 10 minutes. */
-const THROTTLE_MS = 10 * 60 * 1000;
+const THROTTLE_MS = 10 * MINUTE_MS;
 
 servePost(async (req) => {
   const body = await readJsonObject(req);
   const token = String(body.token ?? "");
-  const email = String(body.email ?? "").trim().toLowerCase();
+  const email = normalizeEmail(body.email);
 
   if (!token) return json({ error: "missing_token" }, 400);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
-    return json({ error: "invalid_email" }, 400);
-  }
+  if (!email) return json({ error: "invalid_email" }, 400);
 
   const admin = serviceClient();
 
@@ -63,8 +64,8 @@ servePost(async (req) => {
   if (insertError) {
     // A duplicate request is the same outcome as the first one from the
     // requester's point of view: it is pending. Not an error.
-    if (insertError.code === "23505") return json({ status: "pending" });
-    if (insertError.message.includes("parent_request_limit_reached")) {
+    if (insertError.code === UNIQUE_VIOLATION) return json({ status: "pending" });
+    if (insertError.message.includes(DB_RAISE.parentRequestLimit)) {
       return json({ error: "limit_reached" }, 409);
     }
     return json({ error: "request_failed" }, 500);

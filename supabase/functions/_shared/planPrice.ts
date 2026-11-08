@@ -11,6 +11,8 @@
  * charged. The key is not in the database, so database access alone cannot forge
  * a valid signature.
  */
+import { timingSafeEqual } from "./timingSafeEqual.ts";
+
 const encoder = new TextEncoder();
 
 export class PlanIntegrityError extends Error {
@@ -22,7 +24,7 @@ export class PlanIntegrityError extends Error {
 type SignablePlan = { id: string; amount: number | string; period_months: number };
 
 /** Versioned, fixed-format string; two decimals so 30 and "30.00" sign the same. */
-export function canonicalPlan(plan: SignablePlan): string {
+function canonicalPlan(plan: SignablePlan): string {
   return `v1|${plan.id}|${Number(plan.amount).toFixed(2)}|${plan.period_months}`;
 }
 
@@ -44,13 +46,6 @@ const toHex = (buffer: ArrayBuffer) =>
 export async function signPlan(plan: SignablePlan): Promise<string> {
   const key = await importKey();
   return toHex(await crypto.subtle.sign("HMAC", key, encoder.encode(canonicalPlan(plan))));
-}
-
-function timingSafeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 export async function verifyPlan(plan: SignablePlan & { price_signature?: string | null }): Promise<boolean> {

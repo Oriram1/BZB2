@@ -1,4 +1,3 @@
-import { ISRAEL_TZ } from "../_shared/formatHe.ts";
 /**
  * Tells a child's parent contacts that the child just signed in.
  *
@@ -11,10 +10,10 @@ import { ISRAEL_TZ } from "../_shared/formatHe.ts";
  * so a refreshed tab or a second device costs nothing.
  */
 import { authenticatedClients, hasRole, json, servePost } from "../_shared/auth.ts";
-import { sendEmail } from "../_shared/email.ts";
-import { emailContent } from "../_shared/notificationCopy.ts";
+import { childName, mailParentContact } from "../_shared/people.ts";
+import { DAY_MS, ISRAEL_TZ } from "../_shared/time.ts";
 
-const THROTTLE_MS = 24 * 60 * 60 * 1000;
+const THROTTLE_MS = DAY_MS;
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
@@ -31,13 +30,7 @@ servePost(async (req) => {
 
   if (!contacts?.length) return json({ notified: 0 });
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("first_name, last_name, gender")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const childName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+  const child = await childName(admin, user.id);
   const signedInAt = new Intl.DateTimeFormat("he-IL", {
     dateStyle: "short",
     timeStyle: "short",
@@ -46,36 +39,23 @@ servePost(async (req) => {
 
   let notified = 0;
   for (const contact of contacts) {
-    try {
-      await sendEmail({
-        to: contact.email,
-        tag: "child_signed_in",
-        content: emailContent({
-          id: contact.id,
-          event_type: "child_signed_in",
-          data: { child_name: childName, signed_in_at: signedInAt, child_gender: profile?.gender, view_token: contact.view_token },
-          link: `/parent/view/${contact.view_token}`,
-        }),
-      });
-      // Stamped only on success, so a failed send is retried next sign-in
-      // instead of being silently swallowed for a day.
-      const { error: stampError } = await admin
-        .from("parent_contacts")
-        .update({ last_notified_at: new Date().toISOString() })
-        .eq("id", contact.id);
-      if (stampError) {
-        console.error("parent_notification_stamp_failed", {
-          contactId: contact.id,
-          error: stampError.message,
-        });
-      }
-      notified += 1;
-    } catch (error) {
-      console.error("parent_notification_send_failed", {
-        contactId: contact.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+    const sent = await mailParentContact(contact, "child_signed_in", {
+      child_name: child.name,
+      signed_in_at: signedInAt,
+      child_gender: child.gender,
+    });
+    if (!sent) continue;
+
+    // Stamped only on success, so a failed send is retried next sign-in
+    // instead of being silently swallowed for a day.
+    const { error: stampError } = await admin
+      .from("parent_contacts")
+      .update({ last_notified_at: new Date().toISOString() })
+      .eq("id", contact.id);
+    if (stampError) {
+      console.error("parent_notification_stamp_failed", { contactId: contact.id, error: stampError.message });
     }
+    notified += 1;
   }
 
   return json({ notified });

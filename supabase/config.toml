@@ -10,11 +10,11 @@ verify_jwt = false
 [functions.notify-dispatch]
 verify_jwt = false
 
-# Invoked by pg_cron on the hour, same shared-secret authentication.
 # Invoked by pg_net from the reviews trigger, same shared-secret authentication.
 [functions.review-screen]
 verify_jwt = false
 
+# Invoked by pg_cron on the hour, same shared-secret authentication.
 [functions.send-parent-digest]
 verify_jwt = false
 
