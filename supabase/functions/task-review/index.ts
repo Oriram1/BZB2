@@ -6,12 +6,10 @@
  * task waits (pending_payment) for another card, and the admin sees that state.
  * Reject: nothing is charged and no free slot is used.
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { authenticatedClients, hasRole, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
 import { billingEnabled } from "../_shared/cardcom.ts";
 import { notifyBilling } from "../_shared/billing.ts";
 import { chargeTask } from "../_shared/taskBilling.ts";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
@@ -19,7 +17,7 @@ servePost(async (req) => {
 
   const body = await readJsonObject(req);
   const taskId = String(body.task_id ?? "");
-  if (!UUID.test(taskId)) return json({ error: "invalid_task" }, 400);
+  if (!isUuid(taskId)) return json({ error: "invalid_task" }, 400);
   if (typeof body.approve !== "boolean") return json({ error: "approve_required" }, 400);
   const note = typeof body.note === "string" ? body.note.slice(0, 500) : null;
 

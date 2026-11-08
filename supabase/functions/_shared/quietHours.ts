@@ -6,7 +6,7 @@
  * test runner cannot load. Nothing in this file may import either.
  */
 
-const TIME_ZONE = "Asia/Jerusalem";
+import { ISRAEL_TZ as TIME_ZONE } from "./formatHe.ts";
 
 export const QUIET_DEFAULTS = { enabled: true, start: 22, end: 7 } as const;
 

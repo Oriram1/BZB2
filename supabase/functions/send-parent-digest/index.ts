@@ -13,7 +13,7 @@ import { emailContent } from "../_shared/notificationCopy.ts";
 import { formFor, say, SUBJECT } from "../_shared/gender.ts";
 import { rejectWithoutSecret, serviceClient, json } from "../_shared/auth.ts";
 
-const TIME_ZONE = "Asia/Jerusalem";
+import { ISRAEL_TZ as TIME_ZONE } from "../_shared/formatHe.ts";
 const DEFAULT_DIGEST_HOUR = 20;
 
 function israelParts() {

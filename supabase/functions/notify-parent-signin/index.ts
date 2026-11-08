@@ -1,3 +1,4 @@
+import { ISRAEL_TZ } from "../_shared/formatHe.ts";
 /**
  * Tells a child's parent contacts that the child just signed in.
  *
@@ -40,7 +41,7 @@ servePost(async (req) => {
   const signedInAt = new Intl.DateTimeFormat("he-IL", {
     dateStyle: "short",
     timeStyle: "short",
-    timeZone: "Asia/Jerusalem",
+    timeZone: ISRAEL_TZ,
   }).format(new Date());
 
   let notified = 0;

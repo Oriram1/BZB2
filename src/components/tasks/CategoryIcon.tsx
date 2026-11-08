@@ -1,15 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- the icon registry is part of this component's public API. */
-import { Home, Wrench, BookOpen, Baby, PawPrint, Leaf, Package, type LucideIcon } from "lucide-react";
-
-const categoryIconMap: Record<string, LucideIcon> = {
-  housework: Home,
-  handyman: Wrench,
-  tutoring: BookOpen,
-  babysitting: Baby,
-  pets: PawPrint,
-  gardening: Leaf,
-  other: Package,
-};
+import { categoryIcon } from "@/lib/categories";
 
 const categoryColorMap: Record<string, string> = {
   housework: "bg-primary/10 text-primary-ink",
@@ -29,7 +18,7 @@ interface CategoryIconProps {
 }
 
 const CategoryIcon = ({ category, size = 20, showBg = true, className = "" }: CategoryIconProps) => {
-  const Icon = categoryIconMap[category] || Package;
+  const Icon = categoryIcon(category);
   const colors = categoryColorMap[category] || categoryColorMap.other;
 
   if (!showBg) return <Icon size={size} className={className} />;
@@ -41,5 +30,5 @@ const CategoryIcon = ({ category, size = 20, showBg = true, className = "" }: Ca
   );
 };
 
-export { CategoryIcon, categoryIconMap };
+export { CategoryIcon };
 export default CategoryIcon;

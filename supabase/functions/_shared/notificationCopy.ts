@@ -6,12 +6,10 @@
  */
 import { siteUrl, type EmailContent } from "./email.ts";
 import type { NotificationEvent, NotificationRow } from "./notificationEvents.ts";
+import { dateHe, str } from "./formatHe.ts";
 import { formFor, RECIPIENT, say, SUBJECT, type Form } from "./gender.ts";
 
 export type PushPayload = { title: string; body: string; url: string; tag: string };
-
-const str = (value: unknown, fallback = "") =>
-  typeof value === "string" && value.trim() ? value.trim() : fallback;
 
 function shekels(data: Record<string, unknown>) {
   const amount = Number(data.payment);
@@ -25,19 +23,6 @@ function price(value: unknown) {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount <= 0) return "";
   return `₪${amount.toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;
-}
-
-/** An ISO instant as a calendar date in Israel: 30.12.2026. */
-function dateHe(value: unknown) {
-  if (typeof value !== "string") return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return new Intl.DateTimeFormat("he-IL", {
-    timeZone: "Asia/Jerusalem",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(parsed);
 }
 
 function when(data: Record<string, unknown>) {

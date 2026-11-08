@@ -18,6 +18,7 @@ import { useSavedTasks } from "@/hooks/useSavedTasks";
 import { cn } from "@/lib/utils";
 
 /** Top of the distance slider. One step past it means "do not filter by distance". */
+const MAX_DISTANCE_KEY = "bzb_max_distance";
 const MAX_DISTANCE_KM = 50;
 const NO_DISTANCE_LIMIT = MAX_DISTANCE_KM + 1;
 /** One-tap distances; the slider stays for anything in between. */
@@ -42,7 +43,7 @@ const TaskList = () => {
   const [onlySaved, setOnlySaved] = useState(false);
   const { saved, toggle: toggleSaved } = useSavedTasks();
   const [maxDistance, setMaxDistance] = useState(() => {
-    const saved = localStorage.getItem("bzb_max_distance");
+    const saved = localStorage.getItem(MAX_DISTANCE_KEY);
     return saved ? Number(saved) : 10;
   });
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
@@ -329,7 +330,7 @@ const TaskList = () => {
                         key={km}
                         type="button"
                         aria-pressed={maxDistance === km}
-                        onClick={() => { setMaxDistance(km); localStorage.setItem("bzb_max_distance", String(km)); }}
+                        onClick={() => { setMaxDistance(km); localStorage.setItem(MAX_DISTANCE_KEY, String(km)); }}
                         className={cn("min-h-11 rounded-2xl border px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           maxDistance === km ? "border-transparent gradient-honey text-primary-foreground" : "border-border bg-card text-foreground")}
                       >
@@ -349,7 +350,7 @@ const TaskList = () => {
                     max={NO_DISTANCE_LIMIT}
                     aria-valuetext={maxDistance >= NO_DISTANCE_LIMIT ? "ללא הגבלה" : `${maxDistance} ק״מ`}
                     value={maxDistance}
-                    onChange={(e) => { const v = Number(e.target.value); setMaxDistance(v); localStorage.setItem("bzb_max_distance", String(v)); }}
+                    onChange={(e) => { const v = Number(e.target.value); setMaxDistance(v); localStorage.setItem(MAX_DISTANCE_KEY, String(v)); }}
                     className="w-full h-11 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
                   />
                 </div>
@@ -414,7 +415,7 @@ const TaskList = () => {
                 <Button
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => { setMaxDistance(NO_DISTANCE_LIMIT); localStorage.setItem("bzb_max_distance", String(NO_DISTANCE_LIMIT)); setDistanceOpen(true); }}
+                  onClick={() => { setMaxDistance(NO_DISTANCE_LIMIT); localStorage.setItem(MAX_DISTANCE_KEY, String(NO_DISTANCE_LIMIT)); setDistanceOpen(true); }}
                 >
                   להציג בכל המרחקים
                 </Button>

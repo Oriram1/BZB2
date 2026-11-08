@@ -6,13 +6,11 @@
  * reports what the database now says. Whichever of the two arrives first wins;
  * the other finds the order already settled.
  */
-import { authenticatedClients, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { authenticatedClients, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
 import { settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
 import { CHARGE_COLUMNS, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
 import { paymentFailureReason } from "../_shared/paymentFailure.ts";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
@@ -20,7 +18,7 @@ servePost(async (req) => {
   // A task or card-setup page is a charge, not a subscription order.
   if (body.charge_id !== undefined) {
     const chargeId = String(body.charge_id);
-    if (!UUID.test(chargeId)) return json({ error: "invalid_charge" }, 400);
+    if (!isUuid(chargeId)) return json({ error: "invalid_charge" }, 400);
     const { data: charge } = await admin
       .from("billing_charges")
       .select(CHARGE_COLUMNS)
@@ -38,7 +36,7 @@ servePost(async (req) => {
   }
 
   const orderId = String(body.order_id ?? "");
-  if (!UUID.test(orderId)) return json({ error: "invalid_order" }, 400);
+  if (!isUuid(orderId)) return json({ error: "invalid_order" }, 400);
 
   // Scoped to the caller: someone else's order id reads as not found.
   const { data: order } = await admin

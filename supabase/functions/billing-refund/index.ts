@@ -5,11 +5,9 @@
  * access it paid for goes with it. Cardcom is asked first; nothing changes in
  * our database unless Cardcom confirms the refund.
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { authenticatedClients, hasRole, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
 import { refundTransaction } from "../_shared/cardcom.ts";
 import { notifyBilling } from "../_shared/billing.ts";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 servePost(async (req) => {
   const { user, admin } = await authenticatedClients(req);
@@ -17,7 +15,7 @@ servePost(async (req) => {
 
   const body = await readJsonObject(req);
   const orderId = String(body.order_id ?? "");
-  if (!UUID.test(orderId)) return json({ error: "invalid_order" }, 400);
+  if (!isUuid(orderId)) return json({ error: "invalid_order" }, 400);
 
   const { data: order } = await admin
     .from("payment_orders")

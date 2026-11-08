@@ -1,3 +1,4 @@
+import { dateHe, str } from "@shared/formatHe.ts";
 /**
  * Client-side notification wording: the one-liners behind the bell and the
  * labels on the settings screen.
@@ -14,21 +15,6 @@ export type AppRole = "tasker" | "bee" | "parent";
 export type NotificationRow = SharedNotificationRow & {
   read_at: string | null;
   created_at: string;
-};
-
-const text = (value: unknown, fallback = "") =>
-  typeof value === "string" && value.trim() ? value.trim() : fallback;
-
-const dateHe = (value: unknown) => {
-  if (typeof value !== "string") return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return new Intl.DateTimeFormat("he-IL", {
-    timeZone: "Asia/Jerusalem",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(parsed);
 };
 
 /**
@@ -50,7 +36,7 @@ export function notificationLine(
       return {
         emoji: "🐝",
         title: "מועמדות חדשה",
-        body: `${text(data.applicant_name, say(about("applicant_gender"), SUBJECT.candidate))} ${say(about("applicant_gender"), SUBJECT.submitted)} מועמדות ל"${text(data.task_name, `המטלה ${say(to, RECIPIENT.yours)}`)}"`,
+        body: `${str(data.applicant_name, say(about("applicant_gender"), SUBJECT.candidate))} ${say(about("applicant_gender"), SUBJECT.submitted)} מועמדות ל"${str(data.task_name, `המטלה ${say(to, RECIPIENT.yours)}`)}"`,
       };
 
     case "application_decided":
@@ -58,19 +44,19 @@ export function notificationLine(
         ? {
             emoji: "🎉",
             title: "התקבלת!",
-            body: `התקבלת למטלה "${text(data.task_name, "המטלה")}"`,
+            body: `התקבלת למטלה "${str(data.task_name, "המטלה")}"`,
           }
         : {
             emoji: "💬",
             title: "עדכון על המועמדות",
-            body: `המועמדות ל"${text(data.task_name, "המטלה")}" לא התקבלה הפעם`,
+            body: `המועמדות ל"${str(data.task_name, "המטלה")}" לא התקבלה הפעם`,
           };
 
     case "message_received":
       return {
         emoji: "✉️",
         title: "הודעה חדשה",
-        body: `${text(data.sender_name, "משתמש")} ${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)}: ${text(data.message_content, "הודעה חדשה")}`,
+        body: `${str(data.sender_name, "משתמש")} ${say(about("sender_gender"), SUBJECT.sent)} ${say(to, RECIPIENT.toYou)}: ${str(data.message_content, "הודעה חדשה")}`,
       };
 
     case "review_report_resolved":
@@ -78,33 +64,33 @@ export function notificationLine(
     case "review_appeal_resolved":
       return { emoji: "📋", title: "עדכון על ערעור", body: "הערעור על הביקורת נבדק. אפשר לראות את ההחלטה בפרופיל" };
     case "review_reminder":
-      return { emoji: "⭐", title: data.kind === "last" ? "הזמן לדרג עומד להסתיים" : "איך היה לעבוד יחד?", body: `דירוג קצר על "${text(data.task_name, "המטלה")}" יעזור לאחרים לבחור בביטחון` };
+      return { emoji: "⭐", title: data.kind === "last" ? "הזמן לדרג עומד להסתיים" : "איך היה לעבוד יחד?", body: `דירוג קצר על "${str(data.task_name, "המטלה")}" יעזור לאחרים לבחור בביטחון` };
     case "review_rejected":
       return { emoji: "📝", title: "עדכון על הביקורת שכתבתם", body: data.removed ? "ביקורת שפרסמתם הוסרה לאחר בדיקה" : "הביקורת לא אושרה. אפשר לבדוק את הסיבה בפרופיל" };
     case "review_response_approved":
       return { emoji: "💬", title: "תגובה לביקורת שכתבתם", body: "התקבלה תגובה לביקורת שלכם" };
     case "review_approved":
-      return { emoji: "⭐", title: "קיבלתם דירוג חדש", body: `הדירוג על "${text(data.task_name, "המטלה")}" אושר ומופיע בפרופיל שלכם` };
+      return { emoji: "⭐", title: "קיבלתם דירוג חדש", body: `הדירוג על "${str(data.task_name, "המטלה")}" אושר ומופיע בפרופיל שלכם` };
 
     case "task_completed":
       return {
         emoji: "✅",
         title: "המטלה הושלמה",
-        body: `"${text(data.task_name, "המטלה")}" סומנה כהושלמה`,
+        body: `"${str(data.task_name, "המטלה")}" סומנה כהושלמה`,
       };
 
     case "parent_child_accepted":
       return {
         emoji: "👋",
         title: `עדכון על ${say(about("child_gender"), SUBJECT.child)}`,
-        body: `${text(data.child_name, say(about("child_gender"), SUBJECT.child))} ${say(about("child_gender"), SUBJECT.accepted)} למטלה "${text(data.task_name, "מטלה")}"`,
+        body: `${str(data.child_name, say(about("child_gender"), SUBJECT.child))} ${say(about("child_gender"), SUBJECT.accepted)} למטלה "${str(data.task_name, "מטלה")}"`,
       };
 
     case "parent_digest":
       return {
         emoji: "📊",
         title: "הדוח היומי",
-        body: text(data.summary, "סיכום הפעילות של הילדים שלך"),
+        body: str(data.summary, "סיכום הפעילות של הילדים שלך"),
       };
 
     case "family_link_code":
@@ -125,28 +111,28 @@ export function notificationLine(
         title: "בקשה לקבל עדכונים עליך",
         // Passive on purpose. The requester is a stranger who typed an address,
         // so there is no gender to inflect on and no slash form to fall back to.
-        body: `התקבלה בקשה מהכתובת ${text(data.email, "שהוזנה")} לקבל עדכונים על הפעילות ${say(to, RECIPIENT.yours)}`,
+        body: `התקבלה בקשה מהכתובת ${str(data.email, "שהוזנה")} לקבל עדכונים על הפעילות ${say(to, RECIPIENT.yours)}`,
       };
 
     case "task_cancelled":
       return {
         emoji: "❌",
         title: "מטלה בוטלה",
-        body: `"${text(data.task_name, "המטלה")}" בוטלה על ידי ${text(data.canceller_name, "המפרסם")}`,
+        body: `"${str(data.task_name, "המטלה")}" בוטלה על ידי ${str(data.canceller_name, "המפרסם")}`,
       };
 
     case "billing_renewal_reminder":
       return {
         emoji: "🔔",
         title: "המנוי מתחדש בקרוב",
-        body: `${text(data.plan_name, "המנוי")} יתחדש ב־${dateHe(data.renews_at) || "בקרוב"}`,
+        body: `${str(data.plan_name, "המנוי")} יתחדש ב־${dateHe(data.renews_at) || "בקרוב"}`,
       };
 
     case "billing_payment_succeeded":
       return {
         emoji: "✅",
         title: "התשלום התקבל",
-        body: `מנוי ${text(data.plan_name, "BZB")} בתוקף עד ${dateHe(data.period_end) || "סוף התקופה"}`,
+        body: `מנוי ${str(data.plan_name, "BZB")} בתוקף עד ${dateHe(data.period_end) || "סוף התקופה"}`,
       };
 
     case "billing_payment_failed":
@@ -174,20 +160,20 @@ export function notificationLine(
       return { emoji: "💸", title: "בוצע זיכוי", body: "הסכום זוכה לכרטיס והמנוי הסתיים" };
 
     case "task_approved":
-      return { emoji: "✅", title: "המטלה פורסמה", body: `"${text(data.task_name, "המטלה")}" אושרה וגלויה לעוזרים` };
+      return { emoji: "✅", title: "המטלה פורסמה", body: `"${str(data.task_name, "המטלה")}" אושרה וגלויה לעוזרים` };
 
     case "task_rejected":
-      return { emoji: "🚫", title: "המטלה לא אושרה", body: `"${text(data.task_name, "המטלה")}" לא אושרה. לא חויבתם` };
+      return { emoji: "🚫", title: "המטלה לא אושרה", body: `"${str(data.task_name, "המטלה")}" לא אושרה. לא חויבתם` };
 
     case "task_payment_failed":
       if (data.reason === "manual_payment_required") return { emoji: "💳", title: "המטלה אושרה - נדרש תשלום", body: "הכרטיס השמור לא חויב. אפשר לבחור אמצעי תשלום ולהשלים את הפרסום" };
-      return { emoji: "⚠️", title: "החיוב נדחה", body: `"${text(data.task_name, "המטלה")}" ממתינה לתשלום. אפשר לנסות כרטיס אחר` };
+      return { emoji: "⚠️", title: "החיוב נדחה", body: `"${str(data.task_name, "המטלה")}" ממתינה לתשלום. אפשר לנסות כרטיס אחר` };
 
     case "task_payment_reminder":
-      return { emoji: "⏳", title: "המטלה ממתינה לתשלום", body: `"${text(data.task_name, "המטלה")}" תחזור לטיוטה בעוד כמה ימים` };
+      return { emoji: "⏳", title: "המטלה ממתינה לתשלום", body: `"${str(data.task_name, "המטלה")}" תחזור לטיוטה בעוד כמה ימים` };
 
     case "task_returned_to_draft":
-      return { emoji: "📝", title: "המטלה חזרה לטיוטה", body: `"${text(data.task_name, "המטלה")}" לא שולמה, ולא חויבתם` };
+      return { emoji: "📝", title: "המטלה חזרה לטיוטה", body: `"${str(data.task_name, "המטלה")}" לא שולמה, ולא חויבתם` };
 
     case "tasks_hidden":
       return { emoji: "🙈", title: "משימות הוסתרו", body: "המנוי הסתיים. חידוש יחזיר אותן מיד" };

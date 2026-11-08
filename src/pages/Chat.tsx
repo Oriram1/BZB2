@@ -1,3 +1,4 @@
+import { isTaskClosed } from "@/lib/taskStatus";
 import { completeTask as completeTaskAction } from "@/lib/taskActions";
 import { useState, useRef, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -318,7 +319,7 @@ const Chat = () => {
       const { data: task, error } = await supabase.from("tasks")
         .select("status, archived_at").eq("id", conversation.task_id).maybeSingle();
       if (error) throw error;
-      if (!task || task.status === "completed" || task.status === "cancelled" || task.archived_at) {
+      if (!task || isTaskClosed(task)) {
         setConversations((current) => current.filter((item) => item.id !== activeChat));
         setActiveChat(null);
         setShowSidebar(true);

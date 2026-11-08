@@ -13,12 +13,11 @@
  * The amount is always the task's own payment_due, set by the database when the
  * task was submitted; nothing about the price comes from the request.
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { authenticatedClients, hasRole, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
 import { siteUrl } from "../_shared/email.ts";
 import { billingEnabled, createLowProfile } from "../_shared/cardcom.ts";
 import { chargeTask } from "../_shared/taskBilling.ts";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ATTEMPTS_PER_HOUR = 5;
 
 servePost(async (req) => {
@@ -72,7 +71,7 @@ servePost(async (req) => {
   }
 
   const taskId = String(body.task_id ?? "");
-  if (!UUID.test(taskId)) return json({ error: "invalid_task" }, 400);
+  if (!isUuid(taskId)) return json({ error: "invalid_task" }, 400);
   const { data: task } = await admin
     .from("tasks")
     .select("id, creator_id, name, payment_due, publish_state, payment_mode, charged_at")

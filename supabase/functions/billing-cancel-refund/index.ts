@@ -9,12 +9,11 @@
  * task fee; that difference is charged BEFORE the refund so nobody can walk away
  * with the refund and free tasks. The refund can be used once per user.
  */
-import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
+import { authenticatedClients, hasRole, json, readJsonObject, servePost, isUuid } from "../_shared/auth.ts";
 import { billingEnabled, refundTransaction } from "../_shared/cardcom.ts";
 import { notifyBilling } from "../_shared/billing.ts";
 import { chargeSavedCard, markChargePaid } from "../_shared/taskBilling.ts";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
 type PlanRow = { task_id: string; name: string; locked: boolean; is_first: boolean };
@@ -76,7 +75,7 @@ servePost(async (req) => {
   }
 
   const requested = Array.isArray(body.delete_task_ids) ? body.delete_task_ids.map(String) : [];
-  if (requested.some((id) => !UUID.test(id))) return json({ error: "invalid_task" }, 400);
+  if (requested.some((id) => !isUuid(id))) return json({ error: "invalid_task" }, 400);
   // Locked tasks and the first task are never removed, whatever was sent.
   const droppable = new Set(tasks.filter((task) => !task.locked && !task.is_first).map((task) => task.task_id));
   const toDelete = requested.filter((id) => droppable.has(id));

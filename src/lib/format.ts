@@ -5,7 +5,7 @@
  * locale and the Asia/Jerusalem time zone rather than hand-built strings.
  */
 
-const TIME_ZONE = "Asia/Jerusalem";
+import { ISRAEL_TZ as TIME_ZONE } from "@shared/formatHe.ts";
 
 const dateFormatter = new Intl.DateTimeFormat("he-IL", {
   day: "2-digit",

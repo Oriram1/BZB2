@@ -50,6 +50,10 @@ export function withCors(handler: (req: Request) => Response | Promise<Response>
     });
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const isUuid = (value: string) => UUID.test(value);
+
 export function json(body: unknown, status = 200, req?: Request) {
   return new Response(JSON.stringify(body), {
     status,

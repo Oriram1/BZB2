@@ -137,11 +137,11 @@ export const startCheckout = (planId: PlanId | null) =>
 export const confirmOrder = (orderId: string) =>
   call<{ status: "pending" | "paid" | "failed" | "refunded"; failureReason?: string }>("billing-confirm", { order_id: orderId });
 
-export type ChargeStatus = "pending" | "paid" | "failed" | "refunded";
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 /** A task payment or a saved card (not a subscription order). */
 export const confirmCharge = (chargeId: string) =>
-  call<{ status: ChargeStatus; taskId?: string | null; trial?: boolean; trialRefused?: boolean; cardUpdated?: boolean; awaitingReview?: boolean; failureReason?: string }>("billing-confirm", { charge_id: chargeId });
+  call<{ status: PaymentStatus; taskId?: string | null; trial?: boolean; trialRefused?: boolean; cardUpdated?: boolean; awaitingReview?: boolean; failureReason?: string }>("billing-confirm", { charge_id: chargeId });
 
 /** Replace the saved card without renewing or charging the subscription. */
 export const updateSubscriptionCard = () =>
@@ -184,20 +184,19 @@ export const resumeSubscription = () =>
 export const graceEnd = (periodEnd: string) =>
   new Date(new Date(periodEnd).getTime() + GRACE_DAYS * 86_400_000).toISOString();
 
-export type HistoryStatus = "pending" | "paid" | "failed" | "refunded";
 
 /** One line of the payment history: a subscription payment or any other charge. */
 export type HistoryRow = {
   id: string;
   label: string;
   amount: number;
-  status: HistoryStatus;
+  status: PaymentStatus;
   date: string;
   document_url: string | null;
 };
 
-type OrderInput = { id: string; amount: number | string; status: HistoryStatus; kind: string; paid_at: string | null; created_at: string; document_url: string | null };
-type ChargeInput = { id: string; amount: number | string; status: HistoryStatus; purpose: string; paid_at: string | null; created_at: string; document_url: string | null };
+type OrderInput = { id: string; amount: number | string; status: PaymentStatus; kind: string; paid_at: string | null; created_at: string; document_url: string | null };
+type ChargeInput = { id: string; amount: number | string; status: PaymentStatus; purpose: string; paid_at: string | null; created_at: string; document_url: string | null };
 
 const ORDER_LABEL: Record<string, string> = { initial: "מנוי: תשלום ראשון", renewal: "חידוש מנוי" };
 const CHARGE_LABEL: Record<string, string> = {

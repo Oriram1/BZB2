@@ -1,3 +1,4 @@
+import { ISRAEL_TZ } from "../_shared/formatHe.ts";
 import { CATEGORY_VALUES, SHORT_DESC_MAX, type CategoryValue } from "../_shared/taskLimits.ts";
 import { authenticatedClients, errorResponse, json, readJsonObject, withCors } from "../_shared/auth.ts";
 
@@ -52,8 +53,8 @@ const responseSchema = {
 
 /** Today in Israel, so "מחר" and "ביום שלישי" resolve to the right calendar day. */
 export function israelToday(now = new Date()) {
-  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(now);
-  const weekday = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", weekday: "long" }).format(now);
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: ISRAEL_TZ }).format(now);
+  const weekday = new Intl.DateTimeFormat("he-IL", { timeZone: ISRAEL_TZ, weekday: "long" }).format(now);
   return { date, weekday };
 }
 
