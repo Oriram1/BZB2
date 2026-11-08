@@ -1,3 +1,4 @@
+import { functionErrorCode } from "@/lib/invokeFunction";
 import { useCallback, useEffect, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import { toast } from "sonner";
@@ -95,14 +96,7 @@ const PlanPricing = () => {
     setBusy(false);
 
     let code = data?.error;
-    if (error && !code) {
-      try {
-        const payload = await (error as { context?: Response }).context?.json();
-        code = payload?.error ?? "update_failed";
-      } catch {
-        code = "update_failed";
-      }
-    }
+    if (error && !code) code = await functionErrorCode(error, "update_failed");
     if (code) {
       toast.error(ERRORS[code] ?? "השמירה נכשלה. נסו שוב");
       return;

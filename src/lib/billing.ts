@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { RETRY_OFFSETS_DAYS } from "@shared/billingPolicy.ts";
+import { functionErrorCode, type Result } from "@/lib/invokeFunction";
 import { supabase } from "@/integrations/supabase/client";
 
 export type PlanId = "quarterly" | "annual";
@@ -115,24 +116,12 @@ const ERROR_MESSAGES: Record<string, string> = {
 export const billingErrorMessage = (code: string) =>
   ERROR_MESSAGES[code] ?? "משהו השתבש. נסו שוב";
 
-// Both keys exist on both arms: the project does not compile with strict null
-// checks, so a plain union would not narrow and `result.code` would not resolve.
-type Result<T> = { ok: true; data: T; code?: undefined } | { ok: false; code: string; data?: undefined };
-
 /** The functions answer failures with `{ error: "<code>" }`; surface that code. */
 async function call<T>(name: string, body: Record<string, unknown>): Promise<Result<T>> {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (!error) return { ok: true, data: data as T };
 
-  let code = "unknown";
-  try {
-    const response = (error as { context?: Response }).context;
-    const payload = response ? await response.json() : null;
-    if (typeof payload?.error === "string") code = payload.error;
-  } catch {
-    // Not a JSON error body (network failure); keep the generic code.
-  }
-  return { ok: false, code };
+  return { ok: false, code: await functionErrorCode(error, "unknown") };
 }
 
 /**

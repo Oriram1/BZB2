@@ -1,3 +1,4 @@
+import { functionErrorCode, type Result } from "@/lib/invokeFunction";
 import { supabase } from "@/integrations/supabase/client";
 
 /** Where an unsent task form waits while the person saves a card on Cardcom. */
@@ -39,7 +40,6 @@ export const publishStateLabel: Record<TaskPublishState, string> = {
 // Both keys exist on both arms: the project does not compile with strict null
 // checks, so a plain union would not narrow and `result.code` would not resolve.
 type PageResult = { ok: true; url: string; code?: undefined } | { ok: false; code: string; url?: undefined };
-type Result<T> = { ok: true; data: T; code?: undefined } | { ok: false; code: string; data?: undefined };
 
 async function invoke<T>(name: string, body: Record<string, unknown>): Promise<Result<T>> {
   let { data, error } = await supabase.functions.invoke(name, { body });
@@ -56,17 +56,7 @@ async function invoke<T>(name: string, body: Record<string, unknown>): Promise<R
       return { ok: false, code: "session_expired" };
     }
   }
-  if (error) {
-    let code = "network_error";
-    try {
-      const response = (error as { context?: Response }).context;
-      const payload = response ? await response.json() : null;
-      if (payload?.error) code = String(payload.error);
-    } catch {
-      /* keep the generic code */
-    }
-    return { ok: false, code };
-  }
+  if (error) return { ok: false, code: await functionErrorCode(error, "network_error") };
   if (data && typeof data === "object" && "error" in data) return { ok: false, code: String((data as { error: unknown }).error) };
   return { ok: true, data: data as T };
 }
