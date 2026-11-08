@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import type { NotificationRow } from "../_shared/notificationCopy.ts";
+import type { NotificationRow } from "../_shared/notificationEvents.ts";
 
 const CHAT_EMAIL_COOLDOWN_MINUTES = 60;
 

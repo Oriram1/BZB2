@@ -8,12 +8,8 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 import { readJsonObject, rejectWithoutSecret, serviceClient } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
-import {
-  CHANNEL_DEFAULTS,
-  emailContent,
-  pushPayload,
-  type NotificationRow,
-} from "../_shared/notificationCopy.ts";
+import { emailContent, pushPayload } from "../_shared/notificationCopy.ts";
+import { CHANNEL_DEFAULTS, type NotificationRow } from "../_shared/notificationEvents.ts";
 import { formFor } from "../_shared/gender.ts";
 import { pushConfigured, sendPush } from "../_shared/push.ts";
 import { chatEmailAllowed } from "./chatEmail.ts";

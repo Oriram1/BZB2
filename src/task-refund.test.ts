@@ -149,7 +149,7 @@ describe("refund wiring", () => {
 
   it("declares the refunded event everywhere it is used", () => {
     expect(read("supabase/migrations/20261019120000_task_refunded_event.sql")).toContain("'task_refunded'");
-    const copy = read("supabase/functions/_shared/notificationCopy.ts");
+    const copy = read("supabase/functions/_shared/notificationCopy.ts") + read("supabase/functions/_shared/notificationEvents.ts");
     expect(copy.match(/task_refunded/g)?.length).toBeGreaterThanOrEqual(4);
   });
 

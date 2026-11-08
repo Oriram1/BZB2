@@ -2,52 +2,16 @@
  * Client-side notification wording: the one-liners behind the bell and the
  * labels on the settings screen.
  *
- * Email and push copy lives in supabase/functions/_shared/notificationCopy.ts.
- * The split is deliberate — those are long-form messages, these are glanceable
- * lines — but the event list and channel defaults must stay in step.
+ * Email and push copy lives in supabase/functions/_shared/notificationCopy.ts:
+ * those are long-form messages, these are glanceable lines. The event list and
+ * channel defaults come from the shared notificationEvents.ts.
  */
+import type { NotificationEvent, NotificationRow as SharedNotificationRow } from "@shared/notificationEvents.ts";
 import { formFor, RECIPIENT, say, SUBJECT, type Form } from "@shared/gender.ts";
-
-export type NotificationEvent =
-  | "application_received"
-  | "application_decided"
-  | "message_received"
-  | "review_approved"
-  | "review_reminder"
-  | "review_rejected"
-  | "review_response_approved"
-  | "review_report_resolved"
-  | "review_appeal_resolved"
-  | "task_completed"
-  | "parent_child_accepted"
-  | "parent_digest"
-  | "family_link_code"
-  | "quiet_hours_digest"
-  | "task_cancelled"
-  // Raised by a parent from the public view page; the child approves it.
-  | "parent_contact_requested"
-  // Subscription billing, raised by the billing functions.
-  | "billing_renewal_reminder"
-  | "billing_payment_succeeded"
-  | "billing_payment_failed"
-  | "billing_subscription_canceled"
-  | "billing_subscription_ended"
-  | "billing_refunded"
-  | "task_approved"
-  | "task_rejected"
-  | "task_payment_failed"
-  | "task_payment_reminder"
-  | "task_returned_to_draft"
-  | "tasks_hidden"
-  | "billing_plan_changed";
 
 export type AppRole = "tasker" | "bee" | "parent";
 
-export type NotificationRow = {
-  id: string;
-  event_type: NotificationEvent;
-  data: Record<string, unknown>;
-  link: string | null;
+export type NotificationRow = SharedNotificationRow & {
   read_at: string | null;
   created_at: string;
 };
@@ -239,39 +203,6 @@ export function notificationLine(
       return { emoji: "🔔", title: "התראה", body: "" };
   }
 }
-
-/** Mirrors CHANNEL_DEFAULTS in the edge-function copy module. */
-export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push: boolean }> = {
-  application_received: { email: true, push: true },
-  application_decided: { email: true, push: true },
-  message_received: { email: true, push: true },
-  review_approved: { email: true, push: true },
-  review_reminder: { email: false, push: true },
-  review_rejected: { email: true, push: true },
-  review_response_approved: { email: true, push: true },
-  review_report_resolved: { email: true, push: true },
-  review_appeal_resolved: { email: true, push: true },
-  task_completed: { email: true, push: false },
-  parent_child_accepted: { email: true, push: true },
-  parent_digest: { email: true, push: true },
-  family_link_code: { email: true, push: false },
-  quiet_hours_digest: { email: true, push: true },
-  task_cancelled: { email: true, push: true },
-  parent_contact_requested: { email: true, push: true },
-  billing_renewal_reminder: { email: true, push: true },
-  billing_payment_succeeded: { email: true, push: true },
-  billing_payment_failed: { email: true, push: true },
-  billing_subscription_canceled: { email: true, push: true },
-  billing_subscription_ended: { email: true, push: true },
-  billing_refunded: { email: true, push: true },
-  task_approved: { email: true, push: true },
-  task_rejected: { email: true, push: true },
-  task_payment_failed: { email: true, push: true },
-  task_payment_reminder: { email: true, push: false },
-  task_returned_to_draft: { email: true, push: false },
-  tasks_hidden: { email: true, push: true },
-  billing_plan_changed: { email: true, push: false },
-};
 
 /**
  * Rows on the settings screen. `family_link_code` is missing on purpose: it is

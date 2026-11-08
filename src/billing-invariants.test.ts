@@ -101,8 +101,8 @@ describe("billing invariants", () => {
     expect(events.length).toBeGreaterThan(0);
     for (const event of events) {
       expect(eventsMigration, `${event} missing from enum migration`).toContain(`'${event}'`);
-      expect(read("supabase/functions/_shared/notificationCopy.ts"), `${event} edge copy`).toContain(`${event}: {`);
-      expect(read("src/lib/notificationCopy.ts"), `${event} client copy`).toContain(`${event}: {`);
+      expect(read("supabase/functions/_shared/notificationEvents.ts"), `${event} edge defaults`).toContain(`${event}: {`);
+      expect(read("src/lib/notificationCopy.ts"), `${event} client copy`).toContain(`case "${event}"`);
     }
   });
 

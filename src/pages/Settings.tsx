@@ -15,13 +15,11 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import {
-  CHANNEL_DEFAULTS,
-  rowsForRoles,
-  type NotificationEvent,
-} from "@/lib/notificationCopy";
+import { rowsForRoles } from "@/lib/notificationCopy";
+import { CHANNEL_DEFAULTS, type NotificationEvent } from "@shared/notificationEvents.ts";
 import {
   currentSubscription,
   isIos,
@@ -104,7 +102,7 @@ const Settings = () => {
     const { error } = await supabase.from("notification_preferences").upsert(
       {
         user_id: user.id,
-        event_type: event,
+        event_type: event as Database["public"]["Enums"]["notification_event"],
         email_enabled: next.email,
         push_enabled: next.push,
       },

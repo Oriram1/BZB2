@@ -1,5 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { CHANNEL_DEFAULTS, emailContent, pushPayload, type NotificationRow } from "../_shared/notificationCopy.ts";
+import { emailContent, pushPayload } from "../_shared/notificationCopy.ts";
+import { CHANNEL_DEFAULTS, type NotificationRow } from "../_shared/notificationEvents.ts";
 
 const EVENTS = ["review_approved", "review_reminder", "review_rejected", "review_response_approved", "review_report_resolved", "review_appeal_resolved"] as const;
 
