@@ -57,7 +57,9 @@ import { categoryLabel } from "@/lib/categories";
 import type { Json } from "@/integrations/supabase/types";
 import { roleLabel } from "@/lib/roles";
 import { UserDetailLine, PersonRef, Timestamp, StatCard } from "@/components/admin/shared";
-import { AuditRow, ActivityRow, ProfileOption, ParentLinkRow, DashboardStats, DrilldownKind, DrilldownItem, AdminUserRow, AdminUsersResponse, UserAdminAction, DuplicatePhoneGroup, drilldownCopy, EMPTY_STATS, actionLabel, userActionLabel, fullName, activityDetail, usersSelectedLabel, usersCountLabel, describeRoles } from "@/lib/adminData";
+import { ActivityPanel } from "@/components/admin/ActivityPanel";
+import { AdminLogPanel } from "@/components/admin/AdminLogPanel";
+import { AuditRow, ActivityRow, ProfileOption, ParentLinkRow, DashboardStats, DrilldownKind, DrilldownItem, AdminUserRow, AdminUsersResponse, UserAdminAction, DuplicatePhoneGroup, drilldownCopy, EMPTY_STATS, fullName, usersSelectedLabel, usersCountLabel, describeRoles } from "@/lib/adminData";
 
 const TAB_VALUES = ["overview", "users", "family", "activity", "log", "tasks", "reviews", "pricing", "trials"] as const;
 
@@ -1313,110 +1315,11 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="activity" className="space-y-6">
-            <Card className="p-5 border-border/80 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-extrabold text-lg">פעילות משתמשים</h2>
-                  <p className="text-sm text-muted-foreground">
-                    פעולות שבוצעו על ידי משתמשי המערכת
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl"
-                  disabled={activityLoading}
-                  onClick={() => void loadActivity()}
-                >
-                  <RefreshCw className={activityLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-                  רענון
-                </Button>
-              </div>
-              {activityLoading && activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">טוען...</p>
-              ) : activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">אין רשומות עדיין</p>
-              ) : (
-                <ul className="space-y-2">
-                  {activity.map((row) => {
-                    const detail = activityDetail(row.details);
-                    return (
-                      <li
-                        key={row.id}
-                        className="text-sm border rounded-md p-3 flex flex-col gap-1"
-                      >
-                        <span className="font-bold">
-                          {userActionLabel[row.action] ?? row.action}
-                        </span>
-                        <div className="text-muted-foreground">
-                          משתמש: <PersonRef profile={profilesById[row.user_id]} userId={row.user_id} />
-                        </div>
-                        {detail && <div className="text-muted-foreground">{detail}</div>}
-                        <Timestamp value={row.created_at} />
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </Card>
+            <ActivityPanel activity={activity} loading={activityLoading} profilesById={profilesById} onRefresh={() => void loadActivity()} />
           </TabsContent>
 
           <TabsContent value="log" className="space-y-6">
-            <Card className="p-5 border-border/80 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-extrabold text-lg">פעולות מנהלים</h2>
-                  <p className="text-sm text-muted-foreground">פעולות שבוצעו על ידי מנהלי המערכת</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl"
-                  onClick={() => void loadAudit()}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  רענון
-                </Button>
-              </div>
-              {audit.length === 0 ? (
-                <p className="text-sm text-muted-foreground">אין רשומות עדיין</p>
-              ) : (
-                <ul className="space-y-2">
-                  {audit.map((row) => (
-                    <li
-                      key={row.id}
-                      className="text-sm border rounded-md p-3 flex flex-col gap-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold">{actionLabel[row.action] ?? row.action}</span>
-                        <span
-                          className={
-                            row.success
-                              ? "text-green-600 text-xs"
-                              : "text-red-600 text-xs"
-                          }
-                        >
-                          {row.success ? "הצלחה" : "כשל"}
-                        </span>
-                      </div>
-                      <div className="text-muted-foreground">
-                        יעד:{" "}
-                        {row.target_identifier ? (
-                          <bdi dir="auto">{row.target_identifier}</bdi>
-                        ) : row.target_user_id ? (
-                          <bdi dir="ltr" className="font-mono text-xs">{row.target_user_id}</bdi>
-                        ) : (
-                          "—"
-                        )}
-                      </div>
-                      <Timestamp value={row.created_at} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
+            <AdminLogPanel audit={audit} onRefresh={() => void loadAudit()} />
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-6">
