@@ -10,9 +10,6 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 import { sendEmail } from "../_shared/email.ts";
 import { emailContent } from "../_shared/notificationCopy.ts";
-// These three were used throughout buildChildCard but never imported, so every
-// run threw ReferenceError before it built a single card. The digest has been
-// dead since the gender rewrite; this is the fix.
 import { formFor, say, SUBJECT } from "../_shared/gender.ts";
 import { rejectWithoutSecret } from "../_shared/auth.ts";
 

@@ -8,8 +8,6 @@ Deno.serve(withCors(async (req) => {
     const { user, admin } = await authenticatedClients(req);
     const body = await readJsonObject(req, 16_384);
     const action = String(body.action ?? "subscribe");
-    // `readJsonObject` returns unknown-valued properties, so the browser's
-    // PushSubscription shape has to be named before it can be read.
     const subscription = (body.subscription ?? {}) as {
       endpoint?: unknown;
       keys?: { p256dh?: unknown; auth?: unknown } | null;
@@ -31,8 +29,6 @@ Deno.serve(withCors(async (req) => {
     const auth = String(subscription.keys?.auth ?? "");
     if (!p256dh || !auth) return json({ error: "missing_keys" }, 400);
 
-    // Endpoint is unique: re-subscribing on the same device refreshes the row
-    // instead of piling up duplicates, and reassigns it if the account changed.
     const { error } = await admin.from("push_subscriptions").upsert(
       {
         user_id: user.id,

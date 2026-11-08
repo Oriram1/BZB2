@@ -499,7 +499,6 @@ const MyTasks = () => {
     logUserActivity(user?.id, "task_completed", { entityType: "task", entityId: task.id, details: { name: task.name } });
     toast.success("המטלה סומנה כהושלמה. התשלום נרשם לעובדים שביצעו אותה");
 
-    // Prompt publisher to review accepted workers
     const accepted = applications.filter((a) => a.taskId === task.id && a.status === "accepted");
     if (accepted.length > 0) {
       setReviewTarget({

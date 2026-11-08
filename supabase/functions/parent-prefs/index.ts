@@ -44,9 +44,6 @@ Deno.serve(withCors(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Resolve the token to a row first. Updating straight through the token and
-    // inferring "not found" from an empty result conflates a bad token with a
-    // failed write, and reports both as a 500.
     const { data: contact } = await admin
       .from("parent_contacts")
       .select("id")

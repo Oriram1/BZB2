@@ -8,7 +8,6 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" dir="rtl">
-      {/* Animated background */}
       <div className="absolute inset-0 gradient-hero opacity-90" />
       <div className="absolute top-10 right-10 w-72 h-72 bg-accent/20 rounded-full blur-3xl animate-blob" />
       <div className="absolute bottom-10 left-10 w-96 h-96 bg-primary/15 rounded-full blur-3xl animate-blob animation-delay-2000" />

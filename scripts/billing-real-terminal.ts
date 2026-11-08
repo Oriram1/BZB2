@@ -92,14 +92,11 @@ if (step === "users") {
   state.subscribe = r.data;
   save(state);
 } else if (step === "settle") {
-  // Asks the deployed functions what Cardcom says about the pages already paid.
   const out: Record<string, unknown> = {};
   if (state.cardSetup?.charge_id) out.cardSetup = (await fn("billing-confirm", state.owner.token, { charge_id: state.cardSetup.charge_id }, anon)).data;
   if (state.subscribe?.order_id) out.subscribe = (await fn("billing-confirm", state.payer.token, { order_id: state.subscribe.order_id }, anon)).data;
   console.log(JSON.stringify(out));
 } else if (step === "tasks") {
-  // Free task, then a paid task and a paid + insured task, all approved by the
-  // admin user, charged to the card saved on the real test terminal.
   const owner = state.owner;
   const post = async (path: string, body: unknown, token: string) =>
     (await fetch(`${URL_}${path}`, {

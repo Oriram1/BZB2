@@ -104,7 +104,6 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
-  // Load conversations
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -226,7 +225,6 @@ const Chat = () => {
     };
   }, [requestedConversation, user]);
 
-  // Load messages for active chat + mark as read
   useEffect(() => {
     if (!activeChat || !user) {
       setMessages([]);
@@ -426,7 +424,6 @@ const Chat = () => {
       <PageHeader title="הודעות" titleIsPageHeading className="shrink-0" />
 
       <div className="mx-auto flex w-full min-h-0 max-w-6xl flex-1 overflow-hidden">
-        {/* Sidebar */}
         <div className={`${showSidebar ? "flex" : "hidden"} md:flex min-h-0 w-full flex-col border-l border-border bg-card md:w-72 lg:w-80`}>
           <div className="shrink-0 border-b border-border p-3">
             <Input placeholder="חפש שיחה..." className="rounded-2xl h-10 text-sm" />
@@ -482,7 +479,6 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Chat area */}
         <div className={`${!showSidebar ? "flex" : "hidden"} md:flex min-h-0 flex-1 flex-col bg-card`}>
           {activeConv ? (
             <>

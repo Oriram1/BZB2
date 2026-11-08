@@ -97,8 +97,6 @@ async function fanOutToParentContacts(
     .eq("user_id", userId)
     .maybeSingle();
 
-  // Left empty when unknown so the copy layer picks the gendered fallback
-  // rather than this file hard-coding a slash form.
   const childName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
 
   for (const contact of contacts) {
@@ -201,9 +199,6 @@ Deno.serve(async (req) => {
   const quiet = resolveQuietHours(settings ?? null);
   const isQuiet = !cardUpdate && quiet.enabled && inQuietWindow(israelHour(new Date()), quiet.start, quiet.end);
 
-  // One variable, one write. The previous shape logged "batched" and then
-  // immediately overwrote it with "disabled" via the same upsert key, which is
-  // why every skipped email in the log claims the wrong reason.
   let emailSkipReason: string | null = emailEnabled ? null : "disabled";
 
   if (!emailSkipReason && row.event_type === "message_received") {
@@ -212,8 +207,6 @@ Deno.serve(async (req) => {
     if (!allowed) emailSkipReason = "batched";
   }
 
-  // Hebrew inflects what is said TO the reader, not just about them. One read,
-  // shared by both channels below.
   const { data: recipientProfile } = await admin
     .from("profiles")
     .select("gender")

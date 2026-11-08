@@ -91,7 +91,6 @@ const ParentView = () => {
 
   return (
     <div className="min-h-screen bg-muted" dir="rtl">
-      {/* Header */}
       <div className="gradient-honey px-4 pb-6 pt-8 text-center">
         <Avatar className="mx-auto h-20 w-20 border-4 border-white shadow-md">
           {child.avatar_url && <AvatarImage src={child.avatar_url} />}
@@ -108,7 +107,6 @@ const ParentView = () => {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-4">
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <Card className="border-border text-center">
             <CardContent className="py-4">
@@ -145,7 +143,6 @@ const ParentView = () => {
 
         <ParentSubscribeCard token={token!} childGender={child.gender} childName={childName} />
 
-        {/* Tasks */}
         <Card className="border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">

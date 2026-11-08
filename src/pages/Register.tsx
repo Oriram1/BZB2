@@ -182,7 +182,6 @@ const Register = () => {
 
   const updateField = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
-    // Clear the field's error as soon as the user starts fixing it.
     setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
   };
 

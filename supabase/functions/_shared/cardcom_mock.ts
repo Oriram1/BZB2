@@ -43,7 +43,6 @@ function reply(body: unknown, status = 200) {
  * the customer finishing the page and redirects like Cardcom would.
  */
 export function startMockCardcom(port = 0, publicBaseOverride?: string, options: { bitEnabled?: boolean } = {}): MockCardcom {
-  // With port 0 the real port is only known once the server is listening.
   let publicBase = publicBaseOverride ?? `http://127.0.0.1:${port}`;
   const pages = new Map<string, MockPayment>();
   const charges = new Map<string, number>();
@@ -62,7 +61,6 @@ export function startMockCardcom(port = 0, publicBaseOverride?: string, options:
       if (!page) return new Response("unknown page", { status: 404 });
       const outcome = requestUrl.searchParams.get("outcome");
       if (!outcome) {
-        // A stand-in for Cardcom's card page: three buttons instead of a card form.
         const link = (value: string, label: string) =>
           `<p><a href="${requestUrl.pathname}?outcome=${value}" style="font:20px sans-serif">${label}</a></p>`;
         return new Response(

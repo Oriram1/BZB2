@@ -79,7 +79,6 @@ const ScrollToTop = () => {
 
   useEffect(() => {
     if (navigationType === "POP") return;
-    // An anchor link asked for a specific place on the page; honour it.
     if (hash) return;
     window.scrollTo(0, 0);
   }, [pathname, hash, navigationType]);

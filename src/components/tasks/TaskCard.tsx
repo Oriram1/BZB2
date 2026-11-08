@@ -68,7 +68,6 @@ const TaskCard = ({ task, index, saved = false, onToggleSave }: TaskCardProps) =
       tabIndex={0}
       aria-label={`מטלה: ${task.name}`}
       className="bg-card rounded-3xl p-5 border border-border card-hover cursor-pointer group relative overflow-hidden animate-fade-in opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      // Cap the stagger so a long list does not make the last card wait seconds.
       style={{ animationDelay: `${Math.min(index, 8) * 0.05}s`, animationFillMode: "forwards" }}
       onClick={handleCardClick}
       onKeyDown={(e) => {

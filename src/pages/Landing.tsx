@@ -13,7 +13,6 @@ const Landing = () => {
   const { user } = useAuth();
   return (
     <div className="min-h-screen flex flex-col overflow-hidden">
-      {/* Hero Section */}
       <div
         className="relative flex-1 flex flex-col items-center justify-center text-center px-4 py-24 min-h-[90vh]"
         style={{
@@ -22,10 +21,8 @@ const Landing = () => {
           backgroundPosition: "center"
         }}>
         
-        {/* Animated gradient overlay */}
         <div className="absolute inset-0 gradient-hero opacity-80" />
         
-        {/* Floating blobs for energy */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-accent/20 rounded-full blur-3xl animate-blob" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/15 rounded-full blur-3xl animate-blob animation-delay-2000" />
         <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-secondary/20 rounded-full blur-3xl animate-blob animation-delay-4000" />
@@ -66,7 +63,6 @@ const Landing = () => {
           )}
         </div>
 
-        {/* Scroll indicator */}
         <button
           type="button"
           aria-label="דלג לסעיף איך זה עובד"
@@ -84,7 +80,6 @@ const Landing = () => {
         </button>
       </div>
 
-      {/* Features Section */}
       <section id="how-it-works" className="py-20 px-4 bg-card relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
@@ -117,7 +112,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Categories */}
       <section className="py-20 px-4 bg-muted">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-4xl font-extrabold mb-4 text-foreground">קטגוריות</h2>
@@ -143,7 +137,6 @@ const Landing = () => {
 
       <LandingReviews />
 
-      {/* CTA */}
       <section className="py-20 px-4 gradient-honey text-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-primary-foreground/5 honeycomb-pattern" />
         <div className="max-w-2xl mx-auto relative">
@@ -162,7 +155,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="py-8 px-4 bg-foreground text-center" dir="rtl">
         <div className="flex justify-center gap-4 mb-3">
           <Link to="/terms" className="text-background/70 text-sm font-medium hover:text-background underline transition-colors rounded px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background focus-visible:ring-offset-2 focus-visible:ring-offset-foreground">

@@ -117,8 +117,6 @@ Deno.serve(async (req) => {
   const date = israelDate(now);
   const base = siteUrl();
 
-  // Candidates are everyone who was sent a held-back chat notification, which
-  // is a far smaller set than every user and needs no separate roster.
   const { data: candidates } = await admin
     .from("notification_deliveries")
     .select("user_id")

@@ -180,7 +180,6 @@ const Settings = () => {
       <PageHeader title="הגדרות התראות" titleIsPageHeading icon={<Bell size={18} />} />
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-        {/* Push enrolment */}
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -232,7 +231,6 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Channel matrix */}
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">מה לשלוח לי</CardTitle>
@@ -312,7 +310,6 @@ const Settings = () => {
           </Card>
         )}
 
-        {/* Quiet hours */}
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">

@@ -54,7 +54,6 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
     const map = mapRef.current;
     if (!map) return;
 
-    // Clear old markers
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 

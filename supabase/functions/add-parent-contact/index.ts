@@ -43,8 +43,6 @@ Deno.serve(withCors(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    // Left empty when unknown so the copy layer picks the gendered fallback
-    // rather than this file hard-coding a slash form.
     const childName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
 
     // The contact is saved either way. A bounced welcome is worth reporting so

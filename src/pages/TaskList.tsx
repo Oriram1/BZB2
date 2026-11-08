@@ -143,13 +143,11 @@ const TaskList = () => {
   const inCategory = tasksWithDistance.filter(
     (t) => selectedCategory === "all" || t.category === selectedCategory,
   );
-  // Without a measurable distance there is nothing to filter on, so show everything.
   const needle = query.trim().toLowerCase();
   const matchesQuery = (t: Task) =>
     !needle || [t.name, t.shortDesc, t.location].some((field) => field.toLowerCase().includes(needle));
   const when = (t: Task) => (t.date ? `${t.date}T${t.time || "00:00"}` : "9999");
   const sorters: Record<SortKey, (a: Task, b: Task) => number> = {
-    // The fetch already returns newest first, so "new" keeps the incoming order.
     new: () => 0,
     near: (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity),
     price: (a, b) => b.payment - a.payment,
@@ -277,9 +275,7 @@ const TaskList = () => {
           )}
         </div>
 
-        {/* Filters: one scrolling row of categories, distance folded away behind its current value. */}
         <div className="glass rounded-3xl border border-border mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          {/* A single row that scrolls sideways instead of wrapping into three fixed rows. */}
           <div
             className="flex gap-2 overflow-x-auto px-4 pt-4 pb-4 [mask-image:linear-gradient(to_left,#000_calc(100%-1.5rem),transparent)]"
             role="group"
@@ -306,7 +302,6 @@ const TaskList = () => {
             })}
           </div>
 
-          {/* Only offer a distance filter when we can actually measure distance. */}
           {userPos && (
             <div className="border-t border-border">
               <button
@@ -378,7 +373,6 @@ const TaskList = () => {
                 : `נמצאו ${filteredTasks.length} מטלות`}
         </p>
 
-        {/* Content */}
         {!loading && filteredTasks.length > 0 && (
           viewMode === "list" ? (
             <div className="grid md:grid-cols-2 gap-4">

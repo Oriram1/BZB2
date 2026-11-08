@@ -64,7 +64,6 @@ Deno.serve(withCors(async (req) => {
       return json({ state: "pending_payment", charge: "manual_payment_required" });
     }
 
-    // Approved and due: charge now.
     const outcome = await chargeTask(admin, task.id);
     const { data: after } = await admin.from("tasks").select("publish_state").eq("id", task.id).single();
     return json({ state: after?.publish_state ?? "awaiting_charge", charge: outcome.status });

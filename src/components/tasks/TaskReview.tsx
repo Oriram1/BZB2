@@ -37,7 +37,6 @@ function Row({ icon: Icon, field, display, editor, form, highlighted, onSave, co
   const [companionDraft, setCompanionDraft] = useState(companion ? form[companion] : "");
   const error = editing ? fieldError(field, draft) : null;
   const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
-  // Focus follows the person's own tap on the pencil, so the field they chose is ready to type in.
   useEffect(() => { if (editing) fieldRef.current?.focus(); }, [editing]);
   const label = labels[field] ?? field;
 
@@ -194,7 +193,6 @@ export default function TaskReview({ form, imagePreview, insurance, onChange, on
         <p className="mt-1 text-sm text-muted-foreground">ככה המטלה תיראה לדבורים. אפשר לתקן כל שורה בעיפרון.</p>
       </div>
 
-      {/* Preview: what a bee sees in the feed. */}
       <article className="overflow-hidden rounded-3xl border border-primary/30 bg-card shadow-honey" aria-label="תצוגה מקדימה של המטלה">
         <div className="gradient-honey flex items-center justify-between gap-3 px-5 py-3 text-primary-foreground">
           <span className="inline-flex items-center gap-2 text-sm font-bold">
@@ -214,7 +212,6 @@ export default function TaskReview({ form, imagePreview, insurance, onChange, on
         </div>
       </article>
 
-      {/* Change by asking. */}
       <form className="rounded-3xl border border-border bg-primary/5 p-4" onSubmit={(event) => { event.preventDefault(); void askBusy(); }}>
         <label htmlFor="ask-busy" className="mb-2 flex items-center gap-1.5 text-sm font-bold text-foreground">
           <Sparkles size={16} className="text-primary-ink" aria-hidden /> רוצים לשנות משהו? תגידו לביזי
@@ -231,7 +228,6 @@ export default function TaskReview({ form, imagePreview, insurance, onChange, on
         </div>
       </form>
 
-      {/* Every field, editable in place. */}
       <section className="rounded-3xl border border-border bg-card/60 p-2" aria-label="פרטי המטלה">
         <Row {...rowProps} icon={FileText} field="category" editor="category" highlighted={isHighlighted("category")} display={categoryLabel(form.category)} />
         <Row {...rowProps} icon={FileText} field="taskName" editor="text" highlighted={isHighlighted("taskName")} display={form.taskName} />

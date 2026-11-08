@@ -185,7 +185,6 @@ const CreateTask = () => {
     setStep(missing.length ? Math.min(...missing.map((field) => stepOfField[field])) : SUMMARY_STEP);
     if (missing.length === 0) toast.success("הטופס מולא. בדקו את הפרטים לפני הפרסום");
 
-    // Preserve the confirmed meeting point, including a manually adjusted pin.
     if (location && location.query === fields.location) {
       updateForm("location", location.formattedAddress);
       setSelectedLat(location.lat);
@@ -441,7 +440,6 @@ const CreateTask = () => {
             <Sparkles size={16} /> לתאר במילים ולתת לביזי למלא
           </Button>
         )}
-        {/* Progress Steps */}
         <div className="flex items-center justify-between mb-8 px-1 sm:px-2 overflow-x-auto py-2" role="region" aria-label="שלבי התקדמות">
           {steps.map((s, i) => {
             const Icon = s.icon;
@@ -474,7 +472,6 @@ const CreateTask = () => {
           })}
         </div>
 
-        {/* Step Content */}
         <div className="glass rounded-3xl shadow-glow p-6 sm:p-8 border border-border animate-pop-in space-y-8 [&>div+div]:border-t [&>div+div]:border-border [&>div+div]:pt-8" key={step}>
           {step === 1 && (
             <div className="flex flex-col gap-4">
@@ -620,16 +617,13 @@ const CreateTask = () => {
                     value={form.date ? form.date.split("-").reverse().join("/") : ""}
                     onChange={(e) => {
                       const raw = e.target.value.replace(/[^0-9/]/g, "");
-                      // auto-insert slashes
                       let formatted = raw;
                       if (raw.length === 2 && !raw.includes("/")) formatted = raw + "/";
                       if (raw.length === 5 && raw.split("/").length === 2) formatted = raw + "/";
-                      // convert dd/mm/yyyy → yyyy-mm-dd for storage
                       const parts = formatted.split("/");
                       if (parts.length === 3 && parts[2].length === 4) {
                         updateForm("date", `${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`);
                       } else {
-                        // store display value temporarily (not valid ISO yet)
                         updateForm("date", formatted.length <= 10 ? formatted : form.date);
                       }
                     }}
@@ -774,7 +768,6 @@ const CreateTask = () => {
                 />
               </div>
 
-              {/* Insurance option */}
               <div className="bg-muted/50 rounded-2xl p-4 sm:p-5 border border-border">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-xl">🛡️</span>
@@ -907,7 +900,6 @@ const CreateTask = () => {
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* Navigation */}
           <div className="flex items-center justify-between mt-8 gap-4">
             <Button
               variant="outline"

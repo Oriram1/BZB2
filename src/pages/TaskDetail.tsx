@@ -159,7 +159,6 @@ const TaskDetail = () => {
         user_id: data.creator_id,
       });
 
-      // Check if user already applied
       if (user) {
         const { data: app } = await supabase
           .from("task_applications")
@@ -347,7 +346,6 @@ const TaskDetail = () => {
 
   return (
     <div className="min-h-screen bg-background pb-36" dir="rtl">
-      {/* Standard App Page Header */}
       <PageHeader
         title={task.name}
         titleIsPageHeading
@@ -368,7 +366,6 @@ const TaskDetail = () => {
       />
 
       <div className="max-w-xl mx-auto px-4 pt-4 space-y-5">
-        {/* Cover Image */}
         {task.image_url && (
           <div className="relative rounded-3xl overflow-hidden shadow-sm border border-border/60">
             <img
@@ -385,7 +382,6 @@ const TaskDetail = () => {
           </div>
         )}
 
-        {/* Title Header Card */}
         <div className="bg-card rounded-3xl p-5 border border-border/60 shadow-sm space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -440,7 +436,6 @@ const TaskDetail = () => {
         </div>
 
 
-        {/* Payment Hero Card */}
         <div className="gradient-honey rounded-3xl p-5 text-primary-foreground shadow-lg shadow-amber-500/10 flex items-center justify-between">
           <div>
             <span className="text-xs opacity-90 block font-medium">תשלום מוצע</span>
@@ -452,7 +447,6 @@ const TaskDetail = () => {
           </div>
         </div>
 
-        {/* Creator Card */}
         {creator && (
           <div className="bg-card rounded-3xl p-4 border border-border/60 shadow-sm flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -495,7 +489,6 @@ const TaskDetail = () => {
           </Button>
         )}
 
-        {/* Detailed Description */}
         {(task.full_desc || task.short_desc) && (
           <div className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-6 border-2 border-primary/30 shadow-md space-y-3">
             <div className="flex items-center gap-2 text-foreground font-black text-lg">
@@ -506,7 +499,6 @@ const TaskDetail = () => {
           </div>
         )}
 
-        {/* Notes Card */}
         {task.notes && (
           <div className="bg-amber-500/5 dark:bg-amber-500/10 rounded-3xl p-5 border border-amber-500/20 shadow-sm space-y-2">
             <div className="flex items-center gap-2 text-foreground font-extrabold text-base mb-1">
@@ -517,7 +509,6 @@ const TaskDetail = () => {
           </div>
         )}
 
-        {/* Ergonomic Details Chips Grid */}
         <div className="grid grid-cols-2 gap-3">
           {task.location && (
             <div className="col-span-2 bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
@@ -581,7 +572,6 @@ const TaskDetail = () => {
 
       </div>
 
-      {/* Floating Bottom Action Bar (Thumb Zone) */}
       {!isOwner && task.status === "open" && isBee && (
         <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl rounded-3xl p-3">
           <Button

@@ -51,7 +51,6 @@ export default function RefundCancelDialog({ open, onOpenChange, onDone }: Props
         return;
       }
       setPreview(result.data);
-      // Start from "drop what can be dropped", the cheapest outcome.
       setDropped(new Set(result.data.tasks.filter((task) => !task.locked && !task.is_first).map((task) => task.id)));
     });
     return () => {

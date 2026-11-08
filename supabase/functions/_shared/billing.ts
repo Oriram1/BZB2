@@ -127,7 +127,6 @@ export function evaluateLowProfileResult(
   }
 
   const tx = result.TranzactionInfo;
-  // No card transaction yet: the customer has not finished (or not started).
   if (!tx) return { kind: "pending" };
 
   if (tx.ResponseCode !== 0) {

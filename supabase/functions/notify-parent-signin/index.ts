@@ -19,13 +19,8 @@ Deno.serve(withCors(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
-    // No request body is read here — the caller's access token is the entire
-    // input. `supabase.functions.invoke("notify-parent-signin")` sends no body
-    // at all, so parsing one would reject every real call for nothing.
     const { user, admin } = await authenticatedClients(req);
 
-    // Only a child account has parents to notify. Anyone else is a quiet no-op
-    // rather than an error — the client fires this for every sign-in.
     if (!(await hasRole(admin, user.id, "bee"))) return json({ notified: 0 });
 
     const cutoff = new Date(Date.now() - THROTTLE_MS).toISOString();
@@ -44,8 +39,6 @@ Deno.serve(withCors(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    // Left empty when unknown so the copy layer picks the gendered fallback
-    // rather than this file hard-coding a slash form.
     const childName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
     const signedInAt = new Intl.DateTimeFormat("he-IL", {
       dateStyle: "short",
@@ -80,7 +73,6 @@ Deno.serve(withCors(async (req) => {
         }
         notified += 1;
       } catch (error) {
-        // One bad address must not stop the rest.
         console.error("parent_notification_send_failed", {
           contactId: contact.id,
           error: error instanceof Error ? error.message : String(error),

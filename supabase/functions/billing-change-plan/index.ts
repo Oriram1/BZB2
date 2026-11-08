@@ -31,7 +31,6 @@ Deno.serve(withCors(async (req) => {
     if (!sub || sub.status !== "active") return json({ error: "no_active_subscription" }, 409);
 
     if (planId === sub.plan_id) {
-      // Choosing the current plan cancels a scheduled change.
       if (sub.pending_plan_id) {
         await admin.from("subscriptions").update({ pending_plan_id: null }).eq("id", sub.id);
         return json({ status: "schedule_cleared" });

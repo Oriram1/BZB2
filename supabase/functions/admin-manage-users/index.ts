@@ -53,7 +53,6 @@ Deno.serve(withCors(async (req) => {
     const body = await readJsonObject(req, 64_000);
     const action = String(body.action ?? "list");
 
-    // Self-deletion: any authenticated user can delete their own account.
     if (action === "delete_self") {
       if (await hasRole(admin, callerUser.id, "admin")) {
         return json({ error: "admin_cannot_self_delete" }, 403);
@@ -65,8 +64,6 @@ Deno.serve(withCors(async (req) => {
         .eq("user_id", callerUser.id)
         .single();
       const displayName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || callerUser.email || "משתמש";
-      // The person who just deleted the account is on file, so the emails about
-      // it address them by their own gender rather than with a slash form.
       const form = formFor(profile?.gender);
       const deleted = say(form, SUBJECT.deleted);
       const theirs = say(form, SUBJECT.his);
@@ -137,7 +134,6 @@ Deno.serve(withCors(async (req) => {
       return json({ ok: true });
     }
 
-    // All other actions require admin role.
     const adminUser = callerUser;
     if (!(await hasRole(admin, adminUser.id, "admin"))) throw new Error("forbidden");
 

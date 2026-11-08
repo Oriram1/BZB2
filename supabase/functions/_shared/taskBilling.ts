@@ -303,7 +303,6 @@ export async function settleChargePage(
       _card_expiry: expiry,
     });
 
-    // A card saved for the free month starts the trial.
     if (charge.meta?.trial === true && charge.plan_id) {
       const { data: trial } = await admin.rpc("start_trial", {
         _user_id: charge.user_id,
@@ -326,7 +325,6 @@ export async function settleChargePage(
     return { status: "paid", taskId: charge.task_id };
   }
 
-  // A card typed in for a waiting task: charged on the page.
   const verdict = evaluateLowProfileResult(result, { id: charge.id, amount: charge.amount }, terminal);
   if (verdict.kind === "pending") return { status: "pending", taskId: charge.task_id };
   if (verdict.kind === "failed") {
@@ -351,7 +349,6 @@ export async function settleChargePage(
     _document_url: d.documentUrl,
   });
   if (applyError) throw applyError;
-  // The new card becomes the saved card, so later charges and renewals use it.
   if (d.token && charge.meta?.payment_mode !== "one_time") {
     await admin.rpc("save_payment_method", {
       _user_id: charge.user_id,

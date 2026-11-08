@@ -978,7 +978,6 @@ export default function Admin() {
             ))}
           </TabsList>
 
-          {/* ─── Overview Tab ─── */}
           <TabsContent value="overview" className="space-y-6">
             <section aria-labelledby="overview-title">
               <h2 id="overview-title" className="mb-3 text-lg font-extrabold">תמונת מצב</h2>
@@ -991,7 +990,6 @@ export default function Admin() {
             </section>
           </TabsContent>
 
-          {/* ─── Users Tab ─── */}
           <TabsContent value="users" className="space-y-6">
             <section>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1356,7 +1354,6 @@ export default function Admin() {
             </section>
           </TabsContent>
 
-          {/* ─── Family Tab ─── */}
           <TabsContent value="family" className="space-y-6">
             <Card className="p-5 space-y-4 border-border/80 shadow-sm">
               <div>
@@ -1524,7 +1521,6 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* ─── User Activity Tab ─── */}
           <TabsContent value="activity" className="space-y-6">
             <Card className="p-5 border-border/80 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3">
@@ -1575,7 +1571,6 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* ─── Log Tab ─── */}
           <TabsContent value="log" className="space-y-6">
             <Card className="p-5 border-border/80 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3">
@@ -1633,18 +1628,15 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* ─── Task review queue ─── */}
           <TabsContent value="tasks" className="space-y-6">
             <TaskReviewPanel />
           </TabsContent>
 
-          {/* ─── Reviews Tab ─── */}
           <TabsContent value="reviews" className="space-y-6">
             <AdminReviewsPanel />
             <AdminReviewQueues />
             <AdminPublishedReviews />
           </TabsContent>
-                  {/* ─── Pricing Tab ─── */}
           <TabsContent value="pricing" className="space-y-6">
             <PlanPricing />
             <TaskFeePricing />
@@ -1691,7 +1683,6 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Tasks drilldown dialog */}
       <Dialog
         open={activeDrilldown !== null}
         onOpenChange={(open) => {

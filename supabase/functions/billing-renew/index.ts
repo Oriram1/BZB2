@@ -258,7 +258,6 @@ async function chargeRenewal(admin: SupabaseClient, sub: SubscriptionRow): Promi
 async function reconcileStaleOrders(admin: SupabaseClient) {
   let settled = 0;
 
-  // Renewals whose answer never arrived.
   const staleBefore = new Date(Date.now() - STALE_CHARGE_MS).toISOString();
   const { data: renewals } = await admin
     .from("payment_orders")
@@ -314,7 +313,6 @@ async function reconcileStaleOrders(admin: SupabaseClient) {
 async function reconcileCharges(admin: SupabaseClient) {
   let swept = 0;
 
-  // Approved tasks whose charge did not finish (the function died, Cardcom timed out).
   const staleBefore = new Date(Date.now() - STALE_CHARGE_MS).toISOString();
   const { data: stuck } = await admin
     .from("tasks")
@@ -331,7 +329,6 @@ async function reconcileCharges(admin: SupabaseClient) {
     }
   }
 
-  // Pages nobody finished. Ask once more before giving up.
   const abandonBefore = new Date(Date.now() - ABANDON_AFTER_MS).toISOString();
   const { data: pages } = await admin
     .from("billing_charges")
@@ -369,7 +366,6 @@ Deno.serve(async (req) => {
   const { data: upkeep, error: upkeepError } = await admin.rpc("task_billing_maintenance");
   if (upkeepError) console.error("task_billing_maintenance_failed", upkeepError.message);
 
-  // Nothing to charge while billing is off.
   if (!billingEnabled()) return json({ ok: true, skipped: "billing_disabled", tasks: upkeep ?? null });
   try { cardcomConfig(); } catch { return json({ error: "cardcom_not_configured" }, 500); }
   const started = Date.now();

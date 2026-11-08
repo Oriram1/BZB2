@@ -130,8 +130,6 @@ export function MobileNav() {
         aria-label="תפריט ניווט"
         {...inertWhenClosed(open)}
         className={cn(
-          // Logical inset: start-0 is the right edge in Hebrew, the left edge if
-          // the app is ever switched to LTR. border-e faces the page content.
           "fixed top-0 start-0 z-50 h-full w-72 bg-background border-e border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
           open ? "translate-x-0" : "rtl:translate-x-full ltr:-translate-x-full"
         )}
@@ -215,12 +213,10 @@ export function MobileNav() {
         </div>
 
         <div className="flex-1 overflow-hidden relative">
-          {/* Two panels side by side, sliding via transform */}
           <div
             className="flex h-full transition-transform duration-300 ease-in-out"
             style={{ transform: showNotifications ? "translateX(100%)" : "translateX(0)" }}
           >
-            {/* Menu panel */}
             <div className="w-full shrink-0 overflow-y-auto py-2">
               {filteredItems.map((item) => {
                 const isActive = location.pathname === item.to;
@@ -245,7 +241,6 @@ export function MobileNav() {
               })}
             </div>
 
-            {/* Notifications panel */}
             <div className="w-full shrink-0 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" } as React.CSSProperties}>
               {loading ? (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">טוען…</p>

@@ -113,12 +113,10 @@ const Profile = () => {
     setAddressLoading(false);
   };
 
-  // Tasker state
   const [taskerStats, setTaskerStats] = useState<TaskStats>({ total: 0, open: 0, inProgress: 0, completed: 0, cancelled: 0, totalApplicants: 0 });
   const [taskerStatsError, setTaskerStatsError] = useState(false);
   const [myTasks, setMyTasks] = useState<TaskWithApps[]>([]);
 
-  // Bee state
   const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0, estimatedEarnings: false, missingHours: false });
   const [beeStatsError, setBeeStatsError] = useState(false);
   const [editingReview, setEditingReview] = useState<ReviewHistoryRow | null>(null);
@@ -526,7 +524,6 @@ const Profile = () => {
 
       <div className="max-w-3xl mx-auto py-8 px-4 relative z-10 space-y-6">
         <PendingRatingsCard />
-        {/* Profile Card */}
         <Card className="border-border overflow-hidden">
           {/* Identity sits at the top, on the banner — avatar, name and role in
               one row, so the gradient is a backdrop rather than dead space. */}
@@ -832,7 +829,6 @@ const Profile = () => {
           </Card>
         )}
 
-        {/* Stats */}
         {(isTasker || taskerStats.total > 0 || taskerStatsError) && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

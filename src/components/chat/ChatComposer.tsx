@@ -71,7 +71,6 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
   const chunksRef = useRef<Blob[]>([]);
   const cancelledRef = useRef(false);
 
-  // Grow with the text, then scroll — a long message must not eat the screen.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -309,8 +308,6 @@ export function ChatComposer({ onSend, disabled = false }: ChatComposerProps) {
             value={text}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
-              // Enter sends on a keyboard; Shift+Enter and the phone's own
-              // return key keep adding lines.
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 sendTyped();

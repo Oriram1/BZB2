@@ -68,8 +68,6 @@ export function ParentNotificationPrefs({ token, email, prefs, childGender, chil
 
   const toggle = async (key: keyof ParentPrefs, value: boolean) => {
     const previous = current;
-    // Optimistic: the switch is the whole interaction, and a switch that waits
-    // on a round trip before moving feels broken.
     setCurrent({ ...current, [key]: value });
     setSaving(key);
 

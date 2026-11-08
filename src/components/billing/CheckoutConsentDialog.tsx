@@ -36,7 +36,6 @@ const CheckoutConsentDialog = ({ open, plan, busy, overdue = false, onOpenChange
   const { plans } = usePlans();
   const info = plan ? plans[plan] ?? null : null;
 
-  // Never carry a previous tick into the next purchase.
   useEffect(() => {
     if (!open) setAgreed(false);
   }, [open]);

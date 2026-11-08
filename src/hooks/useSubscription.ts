@@ -31,7 +31,6 @@ export function useSubscription() {
         .maybeSingle();
       result = { subscription: error ? null : data, failed: Boolean(error) };
     } catch {
-      // A rejected transport request must leave loading and show a retryable error.
       result = { subscription: null, failed: true };
     }
     if (current !== request.current.version) return null;

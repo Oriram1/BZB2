@@ -64,7 +64,6 @@ const GoogleMapPicker = ({ lat, lng, onLocationSelect, onAddressFound }: GoogleM
     mapRef.current = map;
   }, [isLoaded, reverseGeocode]);
 
-  // Update marker when lat/lng changes
   useEffect(() => {
     if (!mapRef.current) return;
     if (markerRef.current) {

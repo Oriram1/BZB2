@@ -97,7 +97,6 @@ export function useNotifications() {
   const markConversationNotificationsRead = useCallback(async (conversationId: string) => {
     if (!user) return;
     const now = new Date().toISOString();
-    // Optimistic update in state
     setItems((prev) =>
       prev.map((item) =>
         item.event_type === "message_received" &&
@@ -107,7 +106,6 @@ export function useNotifications() {
           : item,
       ),
     );
-    // Update DB — filter by conversation_id inside the JSONB data column
     await supabase
       .from("notifications")
       .update({ read_at: now })

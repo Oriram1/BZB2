@@ -32,7 +32,6 @@ export default function ReviewDialog({ open, onClose, onSubmitted, taskId, taskN
     if (!open || !user) return;
     let cancelled = false;
     void supabase.from("tasks").select("creator_id").eq("id", taskId).maybeSingle().then(({ data }) => {
-      // The reviewee is the worker when the reviewer owns the task.
       if (!cancelled && data) setOptions(data.creator_id === user.id ? TAGS_FOR_WORKER : TAGS_FOR_PUBLISHER);
     });
     return () => { cancelled = true; };

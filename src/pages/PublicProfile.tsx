@@ -168,7 +168,6 @@ const PublicProfile = () => {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {!isSelf && userId && <PendingRatingsCard onlyUserId={userId} />}
-        {/* Identity */}
         <div className="bg-card rounded-3xl border border-border p-6">
           <div className="flex items-center gap-4">
             <img
@@ -221,7 +220,6 @@ const PublicProfile = () => {
           </div>
         )}
 
-        {/* Open tasks by this user */}
         {isTasker && (
           <div className="bg-card rounded-3xl border border-border p-5">
             <h2 className="font-bold text-foreground mb-3">מטלות פתוחות</h2>
@@ -258,7 +256,6 @@ const PublicProfile = () => {
           </div>
         )}
 
-        {/* Reviews section */}
         <section className="rounded-3xl border border-border bg-card p-5 sm:p-6" aria-labelledby="reviews-heading">
           <h2 id="reviews-heading" className="text-lg font-extrabold text-foreground">דירוג וביקורות</h2>
 
