@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,24 +25,23 @@ const ApplyDialog = ({ open, onOpenChange, taskName, onSubmit }: ApplyDialogProp
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const handleOpenChange = (next: boolean) => {
-    onOpenChange(next);
-    if (!next) {
-      // Let the closing animation finish before the form resets.
-      setTimeout(() => { setSent(false); setMessage(""); }, 200);
+  useEffect(() => {
+    if (open) {
+      setSent(false);
+      setMessage("");
     }
-  };
+  }, [open]);
 
   const submit = async () => {
     setSending(true);
     const ok = await onSubmit(message.trim());
     setSending(false);
     if (ok) setSent(true);
-    else handleOpenChange(false);
+    else onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="rounded-3xl sm:max-w-md">
         {sent ? (
           <div className="text-center space-y-4 py-2">
@@ -89,7 +88,7 @@ const ApplyDialog = ({ open, onOpenChange, taskName, onSubmit }: ApplyDialogProp
               <Button onClick={submit} disabled={sending} className="h-12 rounded-2xl font-extrabold gradient-honey text-primary-foreground">
                 {sending ? "שולח..." : "שליחת מועמדות"}
               </Button>
-              <Button variant="ghost" onClick={() => handleOpenChange(false)} disabled={sending} className="h-11 rounded-2xl font-bold">
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={sending} className="h-11 rounded-2xl font-bold">
                 ביטול
               </Button>
             </div>
