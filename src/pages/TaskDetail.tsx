@@ -75,7 +75,6 @@ interface TaskData {
   image_url: string | null;
   creator_id: string;
   views_count: number;
-  created_at: string;
 }
 
 interface CreatorProfile {
@@ -112,9 +111,9 @@ const TaskDetail = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("tasks")
-      .select("*")
-      .eq("id", id)
-      .is("archived_at", null)
+        .select("id, name, short_desc, full_desc, category, payment, payment_type, location, latitude, longitude, scheduled_date, scheduled_time, duration_hours, review_window_started_at, workers_needed, status, publish_state, notes, image_url, creator_id, views_count")
+        .eq("id", id)
+        .is("archived_at", null)
         .single();
 
       if (error || !data) {
@@ -124,59 +123,40 @@ const TaskDetail = () => {
       }
       setTask(data);
       setCreatorRating(undefined);
-      const { data: rating, error: ratingError } = await supabase.from("user_role_ratings")
-        .select("avg_rating, review_count").eq("user_id", data.creator_id).eq("reviewee_role", "tasker").maybeSingle();
+      // Independent lookups can run together once the task identifies its creator.
+      const [ratingResult, viewResult, creatorProfile, applicationResult] = await Promise.all([
+        supabase.from("user_role_ratings").select("avg_rating, review_count")
+          .eq("user_id", data.creator_id).eq("reviewee_role", "tasker").maybeSingle(),
+        user && data.creator_id !== user.id
+          ? supabase.rpc("record_task_view", { _task_id: id })
+          : Promise.resolve({ data: null, error: null }),
+        // This RPC exposes only the publisher's public profile under RLS.
+        getPublicProfile(data.creator_id),
+        user
+          ? supabase.from("task_applications").select("id, status")
+            .eq("task_id", id).eq("applicant_id", user.id).is("archived_at", null).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      const { data: rating, error: ratingError } = ratingResult;
       if (ratingError) setCreatorRating(undefined);
       else setCreatorRating(rating?.avg_rating != null && rating.review_count ? { average: rating.avg_rating, count: rating.review_count } : null);
-
-      // Counting happens server-side: one view per person, never the creator's
-      // own, and repeat visits do not add up. Failure is silent — a missed
-      // count is not worth interrupting the page for.
-      if (user && data.creator_id !== user.id) {
-        const { data: viewCount, error: viewError } = await supabase.rpc("record_task_view", {
-          _task_id: id,
-        });
-        if (!viewError && typeof viewCount === "number") {
-          setTask((current) => (current && current.id === id ? { ...current, views_count: viewCount } : current));
-        }
+      if (!viewResult.error && typeof viewResult.data === "number") {
+        setTask((current) => (current && current.id === id ? { ...current, views_count: viewResult.data } : current));
       }
-
-      // Read the publisher through get_public_profile, not the profiles table.
-      // RLS deliberately hides a profile from anyone with no relationship to it,
-      // and a visitor browsing a task has none — so the direct read returned
-      // nothing and the card fell back to "משתמש Busy Bee" for every task. The
-      // RPC is the sanctioned way across that boundary: it is SECURITY DEFINER
-      // and returns only the columns that are safe to show publicly.
-      //
-      // The card renders either way. A missing profile costs the name, not the
-      // whole "who posted this" section.
-      const profile = await getPublicProfile(data.creator_id);
       setCreator({
-        first_name: profile?.first_name ?? "",
-        last_name: profile?.last_name ?? "",
-        avatar_url: profile?.avatar_url ?? null,
+        first_name: creatorProfile?.first_name ?? "",
+        last_name: creatorProfile?.last_name ?? "",
+        avatar_url: creatorProfile?.avatar_url ?? null,
         user_id: data.creator_id,
       });
-
-      if (user) {
-        const { data: app } = await supabase
-          .from("task_applications")
-          .select("id, status")
-          .eq("task_id", id)
-          .eq("applicant_id", user.id)
-          .is("archived_at", null)
-          .maybeSingle();
-        if (app) setAlreadyApplied(true);
-        setAcceptedAsWorker(app?.status === "accepted");
-        if (app?.status === "accepted" && data.status === "completed" && data.creator_id !== user.id) {
-          const { data: review } = await supabase.from("reviews")
-            .select("id")
-            .eq("task_id", id)
-            .eq("reviewer_id", user.id)
-            .eq("reviewee_id", data.creator_id)
-            .maybeSingle();
-          setWorkerReviewSubmitted(Boolean(review));
-        }
+      const app = applicationResult.data;
+      setAlreadyApplied(Boolean(app));
+      setAcceptedAsWorker(app?.status === "accepted");
+      if (user && app?.status === "accepted" && data.status === "completed" && data.creator_id !== user.id) {
+        const { data: review } = await supabase.from("reviews")
+          .select("id").eq("task_id", id).eq("reviewer_id", user.id)
+          .eq("reviewee_id", data.creator_id).maybeSingle();
+        setWorkerReviewSubmitted(Boolean(review));
       }
 
       setLoading(false);
