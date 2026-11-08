@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { type AssistantFields } from "@/lib/taskReview";
 import { addDays, format } from "date-fns";
 import { ArrowUp, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,21 +11,6 @@ import idleBee from "@/assets/assistant/bee-idle.webp";
 import thinkingBee from "@/assets/assistant/bee-thinking.webp";
 import "./TaskAssistantBee.css";
 import AssistantLocation, { type ConfirmedTaskLocation } from "./AssistantLocation";
-
-/** What the task-assistant function returns; null means "not said". */
-export interface AssistantFields {
-  category: string | null;
-  taskName: string | null;
-  shortDesc: string | null;
-  fullDesc: string | null;
-  payment: number | null;
-  paymentType: "task" | "hour" | null;
-  workers: number | null;
-  location: string | null;
-  date: string | null;
-  time: string | null;
-  duration: number | null;
-}
 
 export type MissingField = "category" | "taskName" | "shortDesc" | "payment" | "location" | "date" | "time";
 

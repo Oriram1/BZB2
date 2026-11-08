@@ -12,7 +12,7 @@
  * `{ plan_id, resign: true }` re-signs the current amount, for the first
  * rollout and after a rotation of the signing key.
  */
-import { adminClients, errorResponse, json, readJsonObject, withCors } from "../_shared/auth.ts";
+import { adminClients, json, readJsonObject, withCors } from "../_shared/auth.ts";
 import { signPlan } from "../_shared/planPrice.ts";
 
 const MIN_AMOUNT = 0.1;

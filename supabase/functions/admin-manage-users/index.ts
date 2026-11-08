@@ -104,7 +104,7 @@ servePost(async (req) => {
                 "כל המידע נמחק לצמיתות.",
               ],
             },
-          }).catch(() => {}),
+          }).catch((error) => console.error("parent_notification_failed", error)),
         );
       }
     }
@@ -123,7 +123,7 @@ servePost(async (req) => {
               `כל המידע ${theirs} נמחק לצמיתות מהמערכת.`,
             ],
           },
-        }).catch(() => {}),
+        }).catch((error) => console.error("parent_notification_failed", error)),
       );
     }
 

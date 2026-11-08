@@ -1,4 +1,17 @@
-import type { AssistantFields } from "@/components/tasks/TaskAssistant";
+/** What the task-assistant function returns; null means "not said". */
+export interface AssistantFields {
+  category: string | null;
+  taskName: string | null;
+  shortDesc: string | null;
+  fullDesc: string | null;
+  payment: number | null;
+  paymentType: "task" | "hour" | null;
+  workers: number | null;
+  location: string | null;
+  date: string | null;
+  time: string | null;
+  duration: number | null;
+}
 
 /** The create-task form as CreateTask keeps it: every value is the string an input holds. */
 export interface ReviewForm {
