@@ -32,7 +32,7 @@ import {
   type Verdict,
 } from "../_shared/billing.ts";
 import { PlanIntegrityError } from "../_shared/planPrice.ts";
-import { CHARGE_COLUMNS, chargeTask, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
+import { CHARGE_COLUMNS, chargeTask, markChargeFailed, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
 /** pg_net gives this function 55s; stop starting new charges well before that. */
 const TIME_BUDGET_MS = 40_000;
@@ -334,7 +334,7 @@ async function reconcileCharges(admin: SupabaseClient) {
     try {
       const { status } = await settleChargePage(admin, charge);
       if (status === "pending") {
-        await admin.rpc("billing_charge_failed", { _charge_id: charge.id, _reason: "abandoned", _code: null });
+        await markChargeFailed(admin, charge.id, "abandoned", null);
       }
       swept += 1;
     } catch (error) {

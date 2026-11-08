@@ -11,7 +11,7 @@
 import { authenticatedClients, hasRole, json, readJsonObject, servePost } from "../_shared/auth.ts";
 import { billingEnabled } from "../_shared/cardcom.ts";
 import { loadPlan, notifyBilling } from "../_shared/billing.ts";
-import { chargeSavedCard } from "../_shared/taskBilling.ts";
+import { chargeSavedCard, markChargePaid } from "../_shared/taskBilling.ts";
 import { PlanIntegrityError } from "../_shared/planPrice.ts";
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
@@ -84,12 +84,7 @@ servePost(async (req) => {
     if (outcome.status === "failed") return json({ error: "charge_failed", reason: outcome.reason }, 402);
     if (outcome.status !== "paid") return json({ error: "charge_unknown" }, 502);
     chargeId = outcome.chargeId;
-    await admin.rpc("billing_charge_paid", {
-      _charge_id: outcome.chargeId,
-      _deal_number: outcome.details.dealNumber,
-      _document_number: outcome.details.documentNumber,
-      _document_url: outcome.details.documentUrl,
-    });
+    await markChargePaid(admin, outcome.chargeId, outcome.details);
   }
 
   const { data: applied } = await admin.rpc("apply_plan_upgrade", { _user_id: user.id, _plan_id: target.id });

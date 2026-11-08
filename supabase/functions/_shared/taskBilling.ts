@@ -36,6 +36,20 @@ export type ChargeRow = {
 export const CHARGE_COLUMNS =
   "id, user_id, purpose, task_id, plan_id, amount, status, low_profile_id, external_uniq_id, deal_number, meta";
 
+/** Records a charge as paid in SQL; `applied` in the result says whether this call was the one that did it. */
+export function markChargePaid(admin: SupabaseClient, chargeId: string, details: PaidDetails | null) {
+  return admin.rpc("billing_charge_paid", {
+    _charge_id: chargeId,
+    _deal_number: details?.dealNumber ?? null,
+    _document_number: details?.documentNumber ?? null,
+    _document_url: details?.documentUrl ?? null,
+  });
+}
+
+export function markChargeFailed(admin: SupabaseClient, chargeId: string, reason: string, code: number | null) {
+  return admin.rpc("billing_charge_failed", { _charge_id: chargeId, _reason: reason, _code: code });
+}
+
 /** `c:` + 32 hex = 34 characters, well inside Cardcom's 50. */
 export function chargeExternalId(chargeId: string) {
   return `c:${chargeId.replaceAll("-", "")}`;
@@ -137,7 +151,7 @@ export async function chargeSavedCard(
   }
 
   const fail = async (reason: string, code: number | null): Promise<ChargeOutcome & { charge?: ChargeRow }> => {
-    await admin.rpc("billing_charge_failed", { _charge_id: charge!.id, _reason: reason, _code: code });
+    await markChargeFailed(admin, charge!.id, reason, code);
     return { status: "failed", chargeId: charge!.id, reason, code, hard: isHardDecline(code), charge: charge! };
   };
 
@@ -210,12 +224,7 @@ export async function chargeTask(admin: SupabaseClient, taskId: string): Promise
 
   if (outcome.status === "paid") {
     const { details } = outcome;
-    const { data } = await admin.rpc("billing_charge_paid", {
-      _charge_id: outcome.chargeId,
-      _deal_number: details.dealNumber,
-      _document_number: details.documentNumber,
-      _document_url: details.documentUrl,
-    });
+    const { data } = await markChargePaid(admin, outcome.chargeId, details);
     if ((data as { applied?: boolean } | null)?.applied) {
       await notifyBilling(admin, task.creator_id, "task_approved", { task_id: task.id, task_name: task.name, amount }, "/my-tasks?tab=published");
     }
@@ -254,11 +263,11 @@ export async function settleChargePage(
   const terminal = cardcomConfig().terminal;
 
   if (result.ReturnValue !== charge.id) {
-    await admin.rpc("billing_charge_failed", { _charge_id: charge.id, _reason: "order_mismatch", _code: result.ResponseCode ?? null });
+    await markChargeFailed(admin, charge.id, "order_mismatch", result.ResponseCode ?? null);
     return { status: "failed", taskId: charge.task_id };
   }
   if (result.TerminalNumber !== undefined && result.TerminalNumber !== terminal) {
-    await admin.rpc("billing_charge_failed", { _charge_id: charge.id, _reason: "terminal_mismatch", _code: null });
+    await markChargeFailed(admin, charge.id, "terminal_mismatch", null);
     return { status: "failed", taskId: charge.task_id };
   }
 
@@ -267,11 +276,7 @@ export async function settleChargePage(
   if (charge.purpose === "card_setup") {
     // 700 and 701 are a successful J2 or J5 card check (see cardCheck.ts).
     if (tx && !isCardCheckSuccess(tx.ResponseCode)) {
-      await admin.rpc("billing_charge_failed", {
-        _charge_id: charge.id,
-        _reason: (tx.Description ?? result.Description ?? "declined").slice(0, 200),
-        _code: tx.ResponseCode ?? null,
-      });
+      await markChargeFailed(admin, charge.id, (tx.Description ?? result.Description ?? "declined").slice(0, 200), tx.ResponseCode ?? null);
       return { status: "failed", taskId: charge.task_id };
     }
     const token = result.TokenInfo?.Token ?? tx?.Token ?? null;
@@ -286,12 +291,7 @@ export async function settleChargePage(
       if (error) throw error;
       return { status: "paid", cardUpdated: true };
     }
-    const { data: applied } = await admin.rpc("billing_charge_paid", {
-      _charge_id: charge.id,
-      _deal_number: null,
-      _document_number: null,
-      _document_url: null,
-    });
+    const { data: applied } = await markChargePaid(admin, charge.id, null);
     if (!(applied as { applied?: boolean } | null)?.applied) {
       return { status: "paid", taskId: charge.task_id, trial: charge.meta?.trial === true };
     }
@@ -328,7 +328,7 @@ export async function settleChargePage(
   const verdict = evaluateLowProfileResult(result, { id: charge.id, amount: charge.amount }, terminal);
   if (verdict.kind === "pending") return { status: "pending", taskId: charge.task_id };
   if (verdict.kind === "failed") {
-    await admin.rpc("billing_charge_failed", { _charge_id: charge.id, _reason: verdict.reason, _code: verdict.code });
+    await markChargeFailed(admin, charge.id, verdict.reason, verdict.code);
     if (charge.task_id) {
       await notifyBilling(admin, charge.user_id, "task_payment_failed", {
         task_id: charge.task_id,
@@ -342,12 +342,7 @@ export async function settleChargePage(
   if (verdict.kind !== "paid") return { status: "pending", taskId: charge.task_id };
 
   const d = verdict.details;
-  const { data: applied, error: applyError } = await admin.rpc("billing_charge_paid", {
-    _charge_id: charge.id,
-    _deal_number: d.dealNumber,
-    _document_number: d.documentNumber,
-    _document_url: d.documentUrl,
-  });
+  const { data: applied, error: applyError } = await markChargePaid(admin, charge.id, d);
   if (applyError) throw applyError;
   if (d.token && charge.meta?.payment_mode !== "one_time") {
     await admin.rpc("save_payment_method", {
