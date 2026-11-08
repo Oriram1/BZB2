@@ -61,6 +61,14 @@ export function json(body: unknown, status = 200, req?: Request) {
   });
 }
 
+/** Service-role client for handlers that authenticate by other means (shared secret, token, provider webhook). */
+export function serviceClient(): SupabaseClient {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("server_not_configured");
+  return createClient(url, key);
+}
+
 export async function authenticatedClients(req: Request): Promise<{
   user: User;
   admin: SupabaseClient;

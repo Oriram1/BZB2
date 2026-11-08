@@ -7,11 +7,11 @@
  * Nothing happened today for any child → no notification at all. An empty
  * digest is noise, and noise is what makes people mute the whole channel.
  */
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 import { sendEmail } from "../_shared/email.ts";
 import { emailContent } from "../_shared/notificationCopy.ts";
 import { formFor, say, SUBJECT } from "../_shared/gender.ts";
-import { rejectWithoutSecret } from "../_shared/auth.ts";
+import { rejectWithoutSecret, serviceClient } from "../_shared/auth.ts";
 
 const TIME_ZONE = "Asia/Jerusalem";
 const DEFAULT_DIGEST_HOUR = 20;
@@ -119,11 +119,7 @@ Deno.serve(async (req) => {
   const denied = rejectWithoutSecret(req);
   if (denied) return denied;
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
-
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = serviceClient();
   const { date, hour } = israelParts();
   const since = dayStartUtc(date);
 

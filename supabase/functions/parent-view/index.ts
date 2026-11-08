@@ -2,8 +2,7 @@
  * Public endpoint: returns a child's recent tasks and stats given a valid
  * parent_contacts.view_token. No auth required — the token IS the auth.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { withCors, json, errorResponse, readJsonObject } from "../_shared/auth.ts";
+import { withCors, json, errorResponse, readJsonObject, serviceClient } from "../_shared/auth.ts";
 
 Deno.serve(withCors(async (req) => {
   try {
@@ -11,9 +10,7 @@ Deno.serve(withCors(async (req) => {
     if (typeof token !== "string" || !token.trim()) return json({ error: "missing_token" }, 400);
     if (token.length > 256) return json({ error: "invalid_token" }, 400);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(supabaseUrl, serviceKey);
+    const admin = serviceClient();
 
     const { data: contact } = await admin
       .from("parent_contacts")

@@ -12,8 +12,8 @@
  * idempotency key, and reminders are marked in the same statement that finds
  * them.
  */
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { rejectWithoutSecret } from "../_shared/auth.ts";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import { rejectWithoutSecret, serviceClient } from "../_shared/auth.ts";
 import { billingEnabled, cardcomConfig, chargeToken, getTransactionByExternalId, type TransactionInfo } from "../_shared/cardcom.ts";
 import {
   applyVerdict,
@@ -356,10 +356,7 @@ Deno.serve(async (req) => {
   const denied = rejectWithoutSecret(req);
   if (denied) return denied;
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = serviceClient();
 
   // Task upkeep is pure database work (reminders, drafts, hidden tasks), so it
   // runs even when charging is off. It does nothing unless tasks are in those states.

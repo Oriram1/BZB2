@@ -8,8 +8,7 @@
  * answer that. Keeping the two apart is the whole point of the queue — see the
  * table comment in 20260806220100_parent_contact_prefs_and_requests.sql.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { withCors, json, errorResponse, readJsonObject } from "../_shared/auth.ts";
+import { withCors, json, errorResponse, readJsonObject, serviceClient } from "../_shared/auth.ts";
 
 /** One request per share token per 10 minutes. */
 const THROTTLE_MS = 10 * 60 * 1000;
@@ -27,10 +26,7 @@ Deno.serve(withCors(async (req) => {
       return json({ error: "invalid_email" }, 400);
     }
 
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const admin = serviceClient();
 
     const { data: contact } = await admin
       .from("parent_contacts")

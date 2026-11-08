@@ -5,8 +5,7 @@
  * and right after an admin deletes a task (the admin's own session). Anyone
  * else is refused. It touches only requests the database queued.
  */
-import { authenticatedClients, errorResponse, hasRole, json, rejectWithoutSecret, withCors } from "../_shared/auth.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import { authenticatedClients, errorResponse, hasRole, json, rejectWithoutSecret, withCors, serviceClient } from "../_shared/auth.ts";
 import { billingEnabled, refundTransaction } from "../_shared/cardcom.ts";
 import { notifyBilling } from "../_shared/billing.ts";
 import { processTaskRefunds } from "../_shared/taskRefund.ts";
@@ -19,10 +18,7 @@ Deno.serve(withCors(async (req) => {
     if (req.headers.get("x-notify-secret")) {
       const denied = rejectWithoutSecret(req);
       if (denied) return denied;
-      const supabaseUrl = Deno.env.get("SUPABASE_URL");
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
-      admin = createClient(supabaseUrl, serviceKey);
+      admin = serviceClient();
     } else {
       const clients = await authenticatedClients(req);
       if (!(await hasRole(clients.admin, clients.user.id, "admin"))) return json({ error: "forbidden" }, 403);

@@ -8,8 +8,7 @@
  * against our own record of the order. A forged request can trigger a lookup,
  * never a paid subscription.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { readJsonObject } from "../_shared/auth.ts";
+import { readJsonObject, serviceClient } from "../_shared/auth.ts";
 import { settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
 import { CHARGE_COLUMNS, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
 
@@ -34,10 +33,7 @@ async function readBody(req: Request): Promise<Record<string, unknown>> {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = serviceClient();
 
   let body: Record<string, unknown>;
   try {

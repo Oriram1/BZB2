@@ -6,8 +6,7 @@
  * checked first — is the only path in. The read side lives in parent-view,
  * which already loads this row.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { withCors, json, errorResponse, readJsonObject } from "../_shared/auth.ts";
+import { withCors, json, errorResponse, readJsonObject, serviceClient } from "../_shared/auth.ts";
 
 /** The only columns a parent may set. Anything else in the body is ignored. */
 const EDITABLE = [
@@ -39,10 +38,7 @@ Deno.serve(withCors(async (req) => {
     }
     if (Object.keys(update).length === 0) return json({ error: "no_valid_prefs" }, 400);
 
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const admin = serviceClient();
 
     const { data: contact } = await admin
       .from("parent_contacts")

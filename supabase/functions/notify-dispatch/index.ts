@@ -5,8 +5,8 @@
  * Reads preferences, applies the batching and quiet-hours rules, sends on the
  * enabled channels, and records the outcome in `notification_deliveries`.
  */
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { readJsonObject, rejectWithoutSecret } from "../_shared/auth.ts";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
+import { readJsonObject, rejectWithoutSecret, serviceClient } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import {
   CHANNEL_DEFAULTS,
@@ -134,11 +134,7 @@ Deno.serve(async (req) => {
   const denied = rejectWithoutSecret(req);
   if (denied) return denied;
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceKey) return json({ error: "server_not_configured" }, 500);
-
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = serviceClient();
 
   // Not wrapped by `withCors`/`errorResponse`, so a throw here would escape the
   // handler and become an unstructured 500 instead of the documented 400/413.
