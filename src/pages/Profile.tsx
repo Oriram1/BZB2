@@ -6,7 +6,7 @@ import ReviewReportsPanel from "@/components/reviews/ReviewReportsPanel";
 import { ReviewResponseEditor, type ReviewResponse } from "@/components/reviews/ReviewResponseEditor";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,15 +21,15 @@ import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import {
   User, Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
-  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw, Mail, Trash2, AlertTriangle, Star
+  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw, Mail, Star
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@shared/gender.ts";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { PasswordCard } from "@/components/profile/PasswordCard";
+import { DeleteAccountCard } from "@/components/profile/DeleteAccountCard";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import QRCode from "qrcode";
 import { fetchAllPages } from "@/lib/fetchAllPages";
@@ -94,7 +94,6 @@ interface TaskWithApps {
 
 const Profile = () => {
   const { user, profile, roles, loading: authLoading, refreshProfile } = useAuth();
-  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -138,9 +137,6 @@ const Profile = () => {
   const [savingParentContact, setSavingParentContact] = useState(false);
 
   const [loadingData, setLoadingData] = useState(true);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [deleting, setDeleting] = useState(false);
 
   const loadParentRequests = async () => {
     if (!user) return;
@@ -465,27 +461,6 @@ const Profile = () => {
       setEditing(false);
     }
     setSaving(false);
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!user || deleteConfirmText !== "מחק את החשבון") return;
-    setDeleting(true);
-    try {
-      const { error } = await supabase.functions.invoke("admin-manage-users", {
-        body: { action: "delete_self" },
-      });
-      if (error) {
-        toast.error("לא הצלחנו למחוק את החשבון. נסו שוב או פנו אלינו ב-privacy@bzb.co.il");
-        setDeleting(false);
-        return;
-      }
-      await supabase.auth.signOut();
-      toast.success("החשבון נמחק. נתראה 👋");
-      navigate("/", { replace: true });
-    } catch {
-      toast.error("שגיאה במחיקת החשבון");
-      setDeleting(false);
-    }
   };
 
   if (authLoading) {
@@ -1029,67 +1004,7 @@ const Profile = () => {
         <ReviewReportsPanel />
         <PasswordCard />
         {/* Account deletion — privacy right (hidden for admins) */}
-        {!roles.includes("admin") && <><Card className="border-destructive/30">
-          <CardContent className="pt-5 pb-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold text-foreground">מחיקת חשבון</p>
-                <p className="text-xs text-muted-foreground">מחיקה לצמיתות של כל המידע שלך מהמערכת</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDeleteDialog(true)}
-                className="rounded-xl font-bold text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive shrink-0"
-              >
-                <Trash2 className="w-4 h-4" />
-                מחיקה
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent className="max-w-md rounded-3xl" dir="rtl">
-            <DialogHeader>
-              <div className="mx-auto mb-2 w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle className="w-7 h-7 text-destructive" />
-              </div>
-              <DialogTitle className="text-center text-xl font-extrabold">מחיקת חשבון</DialogTitle>
-              <DialogDescription className="text-center text-sm text-muted-foreground pt-2">
-                הפעולה הזו <strong className="text-foreground">בלתי הפיכה</strong>. כל המידע שלך — פרופיל, מטלות, מועמדויות, שיחות והיסטוריה — יימחק לצמיתות ולא ניתן יהיה לשחזר אותו.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-2">
-              <Label htmlFor="delete-confirm" className="text-sm font-semibold">הקלידו &laquo;מחק את החשבון&raquo; לאישור:</Label>
-              <Input
-                id="delete-confirm"
-                dir="rtl"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="מחק את החשבון"
-                className="mt-2 rounded-xl"
-              />
-            </div>
-            <DialogFooter className="flex flex-col sm:flex-col gap-2 mt-4">
-              <Button
-                variant="destructive"
-                disabled={deleteConfirmText !== "מחק את החשבון" || deleting}
-                onClick={() => void handleDeleteAccount()}
-                className="w-full rounded-xl font-bold"
-              >
-                {deleting ? "מוחק..." : "מחיקה לצמיתות"}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => { setShowDeleteDialog(false); setDeleteConfirmText(""); }}
-                className="w-full rounded-xl font-bold"
-              >
-                ביטול
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog></>}
+        {!roles.includes("admin") && <DeleteAccountCard />}
       </div>
     </div>
   );
