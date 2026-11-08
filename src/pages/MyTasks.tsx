@@ -180,8 +180,16 @@ const MyTasks = () => {
       const version = ++loadVersion;
       setLoading(true);
 
-      const { data: reviews, error: reviewsError } = await supabase.from("reviews")
-        .select("task_id, reviewee_id").eq("reviewer_id", user.id);
+      const [reviewsResult, publishedResult, ownApplicationsResult] = await Promise.all([
+        supabase.from("reviews").select("task_id, reviewee_id").eq("reviewer_id", user.id),
+        supabase.from("tasks")
+          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at, review_window_started_at")
+          .eq("creator_id", user.id).is("archived_at", null)
+          .order("created_at", { ascending: false }),
+        supabase.from("task_applications").select("id, status, task_id")
+          .eq("applicant_id", user.id).is("archived_at", null),
+      ]);
+      const { data: reviews, error: reviewsError } = reviewsResult;
       if (reviewsError) toast.error("לא הצלחנו לטעון את הדירוגים הקודמים");
       if (!cancelled && version === loadVersion && reviews) setSubmittedReviews(new Set(reviews.map((review) => `${review.task_id}:${review.reviewee_id}`)));
 
@@ -194,12 +202,7 @@ const MyTasks = () => {
       // the account, and RLS still lets the owner manage them — gating the fetch
       // on the role is what made those tasks unreachable.
       {
-        const { data: taskRows, error: taskError } = await supabase
-          .from("tasks")
-          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at, review_window_started_at")
-          .eq("creator_id", user.id)
-          .is("archived_at", null)
-          .order("created_at", { ascending: false });
+        const { data: taskRows, error: taskError } = publishedResult;
 
         if (taskError) {
           toast.error("לא הצלחנו לטעון את המטלות שפרסמתם");
@@ -253,11 +256,8 @@ const MyTasks = () => {
       // Same reasoning as above, in the other direction: someone who applied to
       // tasks and then switched to tasker still has work to show up for.
       {
-        const { data: ownApplications } = await supabase
-          .from("task_applications")
-          .select("id, status, task_id")
-          .eq("applicant_id", user.id)
-          .is("archived_at", null);
+        const { data: ownApplications, error: ownApplicationsError } = ownApplicationsResult;
+        if (ownApplicationsError) toast.error("לא הצלחנו לטעון את המטלות שבביצוע");
 
         const taskIds = [...new Set((ownApplications ?? []).map((application) => application.task_id))];
         const { data: tasks, error: tasksError } = taskIds.length
