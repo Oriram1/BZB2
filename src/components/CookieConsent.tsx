@@ -2,20 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Cookie, X } from "lucide-react";
-
-const CONSENT_KEY = "bzb_cookie_consent";
-
-type ConsentLevel = "all" | "essential" | null;
-
-function getStoredConsent(): ConsentLevel {
-  try {
-    const value = localStorage.getItem(CONSENT_KEY);
-    if (value === "all" || value === "essential") return value;
-  } catch {
-    // Private browsing can throw on localStorage; treat it as no consent yet.
-  }
-  return null;
-}
+import { CONSENT_CHANGED, CONSENT_KEY, getStoredConsent, type ConsentLevel } from "@/lib/performanceConsent";
 
 const CookieConsent = () => {
   const [consent, setConsent] = useState<ConsentLevel>(getStoredConsent);
@@ -43,6 +30,7 @@ const CookieConsent = () => {
     setConsent(level);
     try {
       localStorage.setItem(CONSENT_KEY, level!);
+      window.dispatchEvent(new Event(CONSENT_CHANGED));
     } catch {
       // Storage unavailable: the choice still applies for this page view.
     }

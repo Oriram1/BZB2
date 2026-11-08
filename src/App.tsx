@@ -40,6 +40,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import PushOnboarding from "./components/PushOnboarding";
 import { PermissionPromptProvider } from "./components/PermissionPromptContext";
 import CookieConsent from "./components/CookieConsent";
+import PerformanceInsights from "./components/PerformanceInsights";
 
 const queryClient = new QueryClient();
 
@@ -139,6 +140,7 @@ const App = () => (
             <InstallPrompt />
             <PushOnboarding />
             <CookieConsent />
+            <PerformanceInsights />
             <FloatingNavTrigger />
           </PermissionPromptProvider>
           </NavDrawerProvider>
