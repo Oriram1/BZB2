@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RETRY_OFFSETS_DAYS } from "@shared/billingPolicy.ts";
 import { supabase } from "@/integrations/supabase/client";
 
 export type PlanId = "quarterly" | "annual";
@@ -85,8 +86,8 @@ export function usePlans() {
 export const isPaidPlan = (value: string | null | undefined): value is PlanId =>
   value === "quarterly" || value === "annual";
 
-/** Days after a period ends that a failed renewal keeps being retried. Mirrors RETRY_OFFSETS_DAYS on the server. */
-const GRACE_DAYS = 14;
+/** Days after a period ends that a failed renewal keeps being retried. */
+const GRACE_DAYS = RETRY_OFFSETS_DAYS[RETRY_OFFSETS_DAYS.length - 1];
 
 const ERROR_MESSAGES: Record<string, string> = {
   consent_required: "צריך לאשר את תנאי החידוש האוטומטי כדי להמשיך",

@@ -1,3 +1,4 @@
+import { CATEGORY_VALUES, type CategoryValue } from "@shared/taskLimits.ts";
 import { Home, Wrench, BookOpen, Baby, PawPrint, Leaf, Package, Sparkles, type LucideIcon } from "lucide-react";
 
 /**
@@ -11,15 +12,17 @@ export type Category = {
   icon: LucideIcon;
 };
 
-export const categories: Category[] = [
-  { value: "housework", label: "עבודות בית", icon: Home },
-  { value: "handyman", label: "הנדימן", icon: Wrench },
-  { value: "tutoring", label: "לימודים", icon: BookOpen },
-  { value: "babysitting", label: "בייביסיטר", icon: Baby },
-  { value: "pets", label: "חיות מחמד", icon: PawPrint },
-  { value: "gardening", label: "גינון", icon: Leaf },
-  { value: "other", label: "אחר", icon: Package },
-];
+const CATEGORY_DETAILS: Record<CategoryValue, Pick<Category, "label" | "icon">> = {
+  housework: { label: "עבודות בית", icon: Home },
+  handyman: { label: "הנדימן", icon: Wrench },
+  tutoring: { label: "לימודים", icon: BookOpen },
+  babysitting: { label: "בייביסיטר", icon: Baby },
+  pets: { label: "חיות מחמד", icon: PawPrint },
+  gardening: { label: "גינון", icon: Leaf },
+  other: { label: "אחר", icon: Package },
+};
+
+export const categories: Category[] = CATEGORY_VALUES.map((value) => ({ value, ...CATEGORY_DETAILS[value] }));
 
 /** Category list with the "all" pseudo-option, for filter bars. */
 export const categoryFilters: Category[] = [

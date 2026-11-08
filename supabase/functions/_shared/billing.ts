@@ -43,8 +43,8 @@ export function isHardDecline(code: number | null | undefined, codes = hardDecli
   return code !== null && code !== undefined && codes.has(code);
 }
 
-/** Days after the period ended that each renewal attempt is made. */
-export const RETRY_OFFSETS_DAYS = [0, 3, 7, 14] as const;
+import { RETRY_OFFSETS_DAYS } from "./billingPolicy.ts";
+export { RETRY_OFFSETS_DAYS };
 
 export type BillingEvent =
   | "billing_renewal_reminder"

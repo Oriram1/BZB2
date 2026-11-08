@@ -28,6 +28,7 @@ import type { ConfirmedTaskLocation } from "@/components/tasks/AssistantLocation
 import TaskAssistant, { type MissingField } from "@/components/tasks/TaskAssistant";
 import type { AssistantFields } from "@/lib/taskReview";
 import TaskReview from "@/components/tasks/TaskReview";
+import type { CategoryValue } from "@shared/taskLimits.ts";
 import { SHORT_DESC_MAX, todayIso, type ReviewForm } from "@/lib/taskReview";
 import { logUserActivity } from "@/lib/activityLog";
 import { billingErrorText, fetchPublishQuote, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
@@ -362,7 +363,7 @@ const CreateTask = () => {
     if (!prepay) paymentTab?.close();
     const { data: created, error } = await supabase.from("tasks").insert({
       creator_id: user.id,
-      category: form.category as "housework" | "handyman" | "tutoring" | "babysitting" | "pets" | "gardening" | "other",
+      category: form.category as CategoryValue,
       name: form.taskName,
       short_desc: form.shortDesc,
       full_desc: form.fullDesc || null,

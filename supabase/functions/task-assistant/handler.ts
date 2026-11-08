@@ -1,3 +1,4 @@
+import { CATEGORY_VALUES, SHORT_DESC_MAX, type CategoryValue } from "../_shared/taskLimits.ts";
 import { authenticatedClients, errorResponse, json, readJsonObject, withCors } from "../_shared/auth.ts";
 
 /**
@@ -9,10 +10,8 @@ import { authenticatedClients, errorResponse, json, readJsonObject, withCors } f
  * never wave a task through with a gap, and never asks about what was said.
  */
 
-export const CATEGORIES = ["housework", "handyman", "tutoring", "babysitting", "pets", "gardening", "other"] as const;
 /** Kept in step with canProceed() in CreateTask and tasks_short_desc_length. */
 export const REQUIRED = ["category", "taskName", "shortDesc", "payment", "location", "date", "time"] as const;
-const SHORT_DESC_MAX = 120;
 const MAX_MESSAGES = 40;
 const MAX_MESSAGE_CHARS = 1_000;
 
@@ -36,7 +35,7 @@ interface ChatMessage { role: "user" | "assistant"; text: string; }
 const responseSchema = {
   type: "OBJECT",
   properties: {
-    category: { type: "STRING", enum: [...CATEGORIES], nullable: true },
+    category: { type: "STRING", enum: [...CATEGORY_VALUES], nullable: true },
     taskName: { type: "STRING", nullable: true },
     shortDesc: { type: "STRING", nullable: true },
     fullDesc: { type: "STRING", nullable: true },
@@ -92,7 +91,7 @@ export function sanitizeFields(raw: unknown, todayIso: string): TaskFields {
   const payment = typeof source.payment === "number" && Number.isFinite(source.payment)
     && source.payment > 0 && source.payment <= 100_000 ? Math.round(source.payment) : null;
   return {
-    category: CATEGORIES.includes(source.category as typeof CATEGORIES[number]) ? source.category as string : null,
+    category: CATEGORY_VALUES.includes(source.category as CategoryValue) ? source.category as string : null,
     taskName: text(source.taskName, 80),
     shortDesc: text(source.shortDesc, SHORT_DESC_MAX),
     fullDesc: text(source.fullDesc, 2_000),

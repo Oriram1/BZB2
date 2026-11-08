@@ -1,3 +1,4 @@
+import { SHORT_DESC_MAX } from "@shared/taskLimits.ts";
 /** What the task-assistant function returns; null means "not said". */
 export interface AssistantFields {
   category: string | null;
@@ -22,8 +23,7 @@ export interface ReviewForm {
 }
 export type ReviewField = keyof ReviewForm;
 
-/** Kept in step with the tasks_short_desc_length constraint on public.tasks. */
-export const SHORT_DESC_MAX = 120;
+export { SHORT_DESC_MAX };
 
 export const reviewLabels: Partial<Record<ReviewField, string>> = {
   category: "קטגוריה", taskName: "כותרת", shortDesc: "תיאור קצר", fullDesc: "תיאור מפורט",
