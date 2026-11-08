@@ -209,47 +209,58 @@ const MyTasks = () => {
         } else {
           nextPublishedTasks.push(...((taskRows ?? []) as unknown as PublishedTask[]));
 
-          const applicationGroups = await Promise.all(
-            (taskRows ?? []).map(async (task) => {
-              const { data: applicationRows } = await supabase
-                .from("task_applications")
-                .select("id, status, applicant_id, message")
-                .eq("task_id", task.id)
-                .is("archived_at", null);
+          const taskIds = (taskRows ?? []).map((task) => task.id);
+          const { data: applicationRows, error: applicationsError } = taskIds.length
+            ? await fetchAllPages((from, to) => supabase.from("task_applications")
+              .select("id, task_id, status, applicant_id, message")
+              .in("task_id", taskIds).is("archived_at", null).order("id").range(from, to))
+            : { data: [], error: null };
+          if (applicationsError) toast.error("לא הצלחנו לטעון את ההצעות למטלות");
 
-              return Promise.all(
-                (applicationRows ?? []).map(async (application) => {
-                  const [{ data: profile }, { data: completedTasks }] = await Promise.all([
-                    supabase
-                      .from("profiles")
-                      .select("first_name, last_name, age, avatar_url")
-                      .eq("user_id", application.applicant_id)
-                      .single(),
-                    supabase.rpc("get_worker_completed_task_count", { _user_id: application.applicant_id }),
-                  ]);
-
-                  return {
-                    id: application.id,
-                    taskId: task.id,
-                    taskName: task.name,
-                    workersNeeded: task.workers_needed,
-                    applicantId: application.applicant_id,
-                    status: application.status,
-                    firstName: profile?.first_name ?? "",
-                    lastName: profile?.last_name ?? "",
-                    age: profile?.age ?? null,
-                    avatarUrl: profile?.avatar_url ?? null,
-                    completedTasks: completedTasks ?? 0,
-                    taskStatus: task.status,
-                    reviewWindowStartedAt: task.review_window_started_at,
-                    message: application.message,
-                  } satisfies CandidateApplication;
-                }),
-              );
-            }),
-          );
-
-          nextApplications.push(...applicationGroups.flat());
+          const applicantIds = [...new Set(applicationRows.map((application) => application.applicant_id))];
+          const [profilesResult, completedResults] = await Promise.all([
+            applicantIds.length
+              ? fetchAllPages((from, to) => supabase.from("profiles")
+                .select("user_id, first_name, last_name, age, avatar_url")
+                .in("user_id", applicantIds).order("user_id").range(from, to))
+              : Promise.resolve({ data: [], error: null }),
+            Promise.all(applicantIds.map(async (applicantId) => ({
+              applicantId,
+              result: await supabase.rpc("get_worker_completed_task_count", { _user_id: applicantId }),
+            }))),
+          ]);
+          if (profilesResult.error || completedResults.some(({ result }) => result.error)) {
+            toast.error("לא הצלחנו לטעון את כל פרטי המועמדים");
+          }
+          const profilesById = new Map(profilesResult.data.map((profile) => [profile.user_id, profile]));
+          const completedById = new Map(completedResults.map(({ applicantId, result }) => [applicantId, result.data]));
+          const applicationsByTask = new Map<string, typeof applicationRows>();
+          for (const application of applicationRows) {
+            const group = applicationsByTask.get(application.task_id) ?? [];
+            group.push(application);
+            applicationsByTask.set(application.task_id, group);
+          }
+          for (const task of taskRows ?? []) {
+            for (const application of applicationsByTask.get(task.id) ?? []) {
+              const profile = profilesById.get(application.applicant_id);
+              nextApplications.push({
+                id: application.id,
+                taskId: task.id,
+                taskName: task.name,
+                workersNeeded: task.workers_needed,
+                applicantId: application.applicant_id,
+                status: application.status,
+                firstName: profile?.first_name ?? "",
+                lastName: profile?.last_name ?? "",
+                age: profile?.age ?? null,
+                avatarUrl: profile?.avatar_url ?? null,
+                completedTasks: completedById.get(application.applicant_id) ?? 0,
+                taskStatus: task.status,
+                reviewWindowStartedAt: task.review_window_started_at,
+                message: application.message,
+              });
+            }
+          }
         }
       }
 
