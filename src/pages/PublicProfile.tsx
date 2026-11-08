@@ -336,7 +336,7 @@ const PublicProfile = () => {
                           </span>
                           <span className="rounded-full bg-card px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{r.reviewee_role === "tasker" ? "כמפרסם" : "כמבצע"}</span>
                         </div>
-                        <time className="text-xs text-muted-foreground" dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString("he-IL")}</time>
+                        <time className="text-xs text-muted-foreground" dateTime={r.created_at}>{formatDate(r.created_at)}</time>
                       </div>
                       {r.body && <p className="mt-2.5 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">{r.body}</p>}
                       <ReviewTags tags={r.tags} />

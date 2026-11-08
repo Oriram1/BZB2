@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +74,7 @@ export default function TrialBlocksPanel() {
             <tbody>
               {daily.map((row) => (
                 <tr key={row.day} className="border-t">
-                  <td className="py-1">{new Date(row.day).toLocaleDateString("he-IL")}</td>
+                  <td className="py-1">{formatDate(row.day)}</td>
                   <td className="font-bold">{row.blocked}</td>
                   <td>{row.by_card}</td><td>{row.by_email}</td><td>{row.by_phone}</td><td>{row.distinct_users}</td>
                 </tr>

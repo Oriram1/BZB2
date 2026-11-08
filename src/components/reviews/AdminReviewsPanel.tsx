@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { Star, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,7 +119,7 @@ export default function AdminReviewsPanel() {
                 {r.screening === "manual_low_rating" ? "דירוג נמוך" : r.screening === "flagged" ? `סומן אוטומטית: ${r.screening_reason ?? "תוכן חשוד"}` : "בדיקה אוטומטית לא הושלמה"}
               </p>
               {r.body && <p className="text-sm text-foreground">{r.body}</p>}
-              <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("he-IL")}</p>
+              <p className="text-xs text-muted-foreground">{formatDate(r.created_at)}</p>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="text-green-600 border-green-300 hover:bg-green-50"
                   disabled={Boolean(busy)} onClick={() => void decide(r.id, "approved")}>

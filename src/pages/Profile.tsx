@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { LucideIcon } from "lucide-react";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@shared/gender.ts";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
@@ -985,7 +985,7 @@ const Profile = () => {
                   <li key={review.id} className="rounded-2xl bg-muted/50 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
-                      <time className="text-xs text-muted-foreground" dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString("he-IL")}</time>
+                      <time className="text-xs text-muted-foreground" dateTime={review.created_at}>{formatDate(review.created_at)}</time>
                     </div>
                     {review.body && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">{review.body}</p>}
                     <ReviewTags tags={review.tags} />
