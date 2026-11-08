@@ -426,9 +426,15 @@ const Profile = () => {
       .eq("reviewer_id", user.id)
       .order("created_at", { ascending: false });
     if (error) return;
-    const rows = await Promise.all((reviews ?? []).map(async (review) => {
-      const { data: task } = await supabase.from("tasks").select("name").eq("id", review.task_id).is("archived_at", null).maybeSingle();
-      return { ...review, task_name: task?.name ?? "מטלה שהושלמה" };
+    const taskIds = [...new Set((reviews ?? []).map((review) => review.task_id))];
+    const { data: tasks, error: tasksError } = taskIds.length
+      ? await fetchAllPages((from, to) => supabase.from("tasks").select("id, name")
+        .in("id", taskIds).is("archived_at", null).order("id").range(from, to))
+      : { data: [], error: null };
+    if (tasksError) { toast.error("לא הצלחנו לטעון את היסטוריית הדירוגים"); return; }
+    const names = new Map((tasks ?? []).map((task) => [task.id, task.name]));
+    const rows = (reviews ?? []).map((review) => ({
+      ...review, task_name: names.get(review.task_id) ?? "מטלה שהושלמה",
     }));
     setReviewHistory(rows);
   };

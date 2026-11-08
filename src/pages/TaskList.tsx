@@ -84,7 +84,7 @@ const TaskList = () => {
     const fetchTasks = async () => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("*")
+        .select("id, creator_id, name, short_desc, category, payment, payment_type, location, scheduled_date, scheduled_time, duration_hours, workers_needed, accepted_count, status, latitude, longitude, publish_state")
         .eq("status", "open")
         .eq("publish_state", "live")
         .is("archived_at", null)

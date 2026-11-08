@@ -8,15 +8,22 @@ type GoogleMapsContextValue = {
   isLoaded: boolean;
   error: string | null;
   retry: () => void;
+  requestLoad: () => void;
 };
 
 const GoogleMapsContext = createContext<GoogleMapsContextValue>({
   isLoaded: false,
   error: null,
   retry: () => {},
+  requestLoad: () => {},
 });
 
-export const useGoogleMaps = () => useContext(GoogleMapsContext);
+export const useGoogleMaps = () => {
+  const context = useContext(GoogleMapsContext);
+  const { requestLoad } = context;
+  useEffect(() => { requestLoad(); }, [requestLoad]);
+  return context;
+};
 
 let loaderPromise: Promise<void> | null = null;
 
@@ -47,6 +54,8 @@ export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [requested, setRequested] = useState(false);
+  const requestLoad = useCallback(() => setRequested(true), []);
 
   const retry = useCallback(() => {
     if (!GOOGLE_MAPS_API_KEY) return;
@@ -55,6 +64,7 @@ export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    if (!requested) return;
     if (!GOOGLE_MAPS_API_KEY) {
       setError("מפת Google Maps זמינה רק במסכים שמוגדר להם מפתח ציבורי.");
       return;
@@ -77,7 +87,7 @@ export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
         );
       });
     return () => { cancelled = true; };
-  }, [attempt]);
+  }, [attempt, requested]);
 
   useEffect(() => {
     if (!error) return;
@@ -98,7 +108,7 @@ export const GoogleMapsProvider = ({ children }: { children: ReactNode }) => {
   }, [attempt, error, retry]);
 
   return (
-    <GoogleMapsContext.Provider value={{ isLoaded, error, retry }}>
+    <GoogleMapsContext.Provider value={{ isLoaded, error, retry, requestLoad }}>
       {children}
     </GoogleMapsContext.Provider>
   );

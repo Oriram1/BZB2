@@ -259,33 +259,31 @@ const MyTasks = () => {
           .eq("applicant_id", user.id)
           .is("archived_at", null);
 
-        const taskGroups = await Promise.all(
-          (ownApplications ?? []).map(async (application) => {
-            const { data: task } = await supabase
-              .from("tasks")
-              .select("id, creator_id, name, short_desc, status, scheduled_date, scheduled_time, location, review_window_started_at")
-              .eq("id", application.task_id)
-              .is("archived_at", null)
-              .maybeSingle();
-
-            if (!task) return null;
-            return {
-              applicationId: application.id,
-              creatorId: task.creator_id,
-              applicationStatus: application.status,
-              id: task.id,
-              name: task.name,
-              shortDesc: task.short_desc,
-              status: task.status,
-              reviewWindowStartedAt: task.review_window_started_at,
-              scheduledDate: task.scheduled_date,
-              scheduledTime: task.scheduled_time,
-              location: task.location,
-            } satisfies PerformingTask;
-          }),
-        );
-
-        nextPerformingTasks.push(...taskGroups.filter((task): task is PerformingTask => task !== null));
+        const taskIds = [...new Set((ownApplications ?? []).map((application) => application.task_id))];
+        const { data: tasks, error: tasksError } = taskIds.length
+          ? await fetchAllPages((from, to) => supabase.from("tasks")
+            .select("id, creator_id, name, short_desc, status, scheduled_date, scheduled_time, location, review_window_started_at")
+            .in("id", taskIds).is("archived_at", null).order("id").range(from, to))
+          : { data: [], error: null };
+        if (tasksError) toast.error("לא הצלחנו לטעון את המטלות שבביצוע");
+        const tasksById = new Map((tasks ?? []).map((task) => [task.id, task]));
+        for (const application of ownApplications ?? []) {
+          const task = tasksById.get(application.task_id);
+          if (!task) continue;
+          nextPerformingTasks.push({
+            applicationId: application.id,
+            creatorId: task.creator_id,
+            applicationStatus: application.status,
+            id: task.id,
+            name: task.name,
+            shortDesc: task.short_desc,
+            status: task.status,
+            reviewWindowStartedAt: task.review_window_started_at,
+            scheduledDate: task.scheduled_date,
+            scheduledTime: task.scheduled_time,
+            location: task.location,
+          });
+        }
       }
 
       const applicantIds = [...new Set(nextApplications.map((application) => application.applicantId))];

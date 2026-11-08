@@ -1,7 +1,7 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 
 import { DirectionProvider } from "@radix-ui/react-direction";
@@ -9,30 +9,30 @@ import { DirectionProvider } from "@radix-ui/react-direction";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GoogleMapsProvider } from "@/components/tasks/GoogleMapsProvider";
 import RoleGuard from "@/components/RoleGuard";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import Login from "./pages/Login";
-import ResetPassword from "./pages/ResetPassword";
-import AuthCallback from "./pages/AuthCallback";
-import Register from "./pages/Register";
-import CreateTask from "./pages/CreateTask";
-import TaskList from "./pages/TaskList";
-import MyTasks from "./pages/MyTasks";
-import Pricing from "./pages/Pricing";
-import Subscription from "./pages/Subscription";
-import BillingReturn from "./pages/BillingReturn";
-import ParentalHub from "./pages/ParentalHub";
-import Chat from "./pages/Chat";
-import Profile from "./pages/Profile";
-import PublicProfile from "./pages/PublicProfile";
-import TaskDetail from "./pages/TaskDetail";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import Terms from "./pages/Terms";
-import NotFound from "./pages/NotFound";
-import Admin from "./pages/Admin";
-import Settings from "./pages/Settings";
-import ParentReport from "./pages/ParentReport";
-import ParentView from "./pages/ParentView";
+const Landing = lazy(() => import("./pages/Landing"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Login = lazy(() => import("./pages/Login"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const Register = lazy(() => import("./pages/Register"));
+const CreateTask = lazy(() => import("./pages/CreateTask"));
+const TaskList = lazy(() => import("./pages/TaskList"));
+const MyTasks = lazy(() => import("./pages/MyTasks"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Subscription = lazy(() => import("./pages/Subscription"));
+const BillingReturn = lazy(() => import("./pages/BillingReturn"));
+const ParentalHub = lazy(() => import("./pages/ParentalHub"));
+const Chat = lazy(() => import("./pages/Chat"));
+const Profile = lazy(() => import("./pages/Profile"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
+const TaskDetail = lazy(() => import("./pages/TaskDetail"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Settings = lazy(() => import("./pages/Settings"));
+const ParentReport = lazy(() => import("./pages/ParentReport"));
+const ParentView = lazy(() => import("./pages/ParentView"));
 import { MobileNav, FloatingNavTrigger } from "./components/MobileNav";
 import { NavDrawerProvider } from "./components/NavDrawerContext";
 import PresenceTracker from "./components/PresenceTracker";
@@ -106,6 +106,7 @@ const App = () => (
             <MobileNav />
             <PresenceTracker />
             <RouteViewport>
+              <Suspense fallback={<div role="status" aria-label="העמוד נטען" className="mx-auto max-w-5xl space-y-4 p-6"><div className="h-10 w-1/2 animate-pulse rounded bg-muted" /><div className="h-48 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded bg-muted" /></div>} >
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
@@ -133,6 +134,7 @@ const App = () => (
                 <Route path="/admin" element={<Admin />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </RouteViewport>
             <InstallPrompt />
             <PushOnboarding />

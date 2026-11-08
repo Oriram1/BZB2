@@ -25,6 +25,11 @@ describe("GoogleMapsProvider", () => {
     importLibrary.mockReset();
   });
 
+  it("does not load Maps until a consumer needs it", () => {
+    render(<GoogleMapsProvider><div>no map</div></GoogleMapsProvider>);
+    expect(importLibrary).not.toHaveBeenCalled();
+  });
+
   it("allows a failed Maps load to be retried", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     importLibrary
