@@ -6,16 +6,11 @@
  * checked first — is the only path in. The read side lives in parent-view,
  * which already loads this row.
  */
+import { PARENT_PREF_KEYS } from "../_shared/parentPrefs.ts";
 import { json, readJsonObject, serviceClient, servePost } from "../_shared/auth.ts";
 
 /** The only columns a parent may set. Anything else in the body is ignored. */
-const EDITABLE = [
-  "notify_signin",
-  "notify_accepted",
-  "notify_digest",
-  "notify_completed",
-  "notify_cancelled",
-] as const;
+const EDITABLE = PARENT_PREF_KEYS;
 
 servePost(async (req) => {
   const body = await readJsonObject(req);

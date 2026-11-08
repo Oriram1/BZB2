@@ -2,6 +2,7 @@
  * Public endpoint: returns a child's recent tasks and stats given a valid
  * parent_contacts.view_token. No auth required — the token IS the auth.
  */
+import { PARENT_PREF_KEYS } from "../_shared/parentPrefs.ts";
 import { withCors, json, errorResponse, readJsonObject, serviceClient } from "../_shared/auth.ts";
 
 Deno.serve(withCors(async (req) => {
@@ -54,13 +55,7 @@ Deno.serve(withCors(async (req) => {
       // address and learns nothing about who else is on the child's list.
       contact: {
         email: contact.email,
-        prefs: {
-          notify_signin: contact.notify_signin,
-          notify_accepted: contact.notify_accepted,
-          notify_digest: contact.notify_digest,
-          notify_completed: contact.notify_completed,
-          notify_cancelled: contact.notify_cancelled,
-        },
+        prefs: Object.fromEntries(PARENT_PREF_KEYS.map((key) => [key, contact[key]])),
       },
       child: {
         first_name: profile?.first_name ?? "",

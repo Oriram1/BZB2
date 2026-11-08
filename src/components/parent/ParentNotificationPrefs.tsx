@@ -5,15 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { ParentPrefs } from "@shared/parentPrefs.ts";
 import { formFor, say, SUBJECT, type Gender } from "@shared/gender.ts";
 
-export interface ParentPrefs {
-  notify_signin: boolean;
-  notify_accepted: boolean;
-  notify_digest: boolean;
-  notify_completed: boolean;
-  notify_cancelled: boolean;
-}
+export type { ParentPrefs };
 
 interface Props {
   token: string;
