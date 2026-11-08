@@ -32,6 +32,7 @@ import { PasswordCard } from "@/components/profile/PasswordCard";
 import { DeleteAccountCard } from "@/components/profile/DeleteAccountCard";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import QRCode from "qrcode";
+import { copyWithToast } from "@/lib/share";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { loadBeeStats, loadPublishedTaskCounts, type BeeStats } from "@/lib/profileStats";
 import { primaryRoleLabel } from "@/lib/roles";
@@ -302,12 +303,7 @@ const Profile = () => {
 
   const copyFamilyLink = async () => {
     if (!familyLinkUrl) return;
-    try {
-      await navigator.clipboard.writeText(familyLinkUrl);
-      toast.success("הקישור הועתק");
-    } catch {
-      toast.error("לא הצלחנו להעתיק את הקישור");
-    }
+    await copyWithToast(familyLinkUrl, { success: "הקישור הועתק", failure: "לא הצלחנו להעתיק את הקישור" });
   };
 
   const isTasker = roles.includes("tasker");

@@ -1,3 +1,4 @@
+import { shareOrCopy } from "@/lib/share";
 import { getPublicProfile } from "@/lib/publicProfile";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
@@ -304,17 +305,11 @@ const TaskDetail = () => {
     toast.success("המטלה עודכנה בהצלחה");
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: task?.name || "מטלה ב-BusyBee",
-        url: window.location.href,
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("הקישור הועתק ללוח! 📋");
-    }
-  };
+  const handleShare = () =>
+    void shareOrCopy(
+      { title: task?.name || "מטלה ב-BusyBee", url: window.location.href },
+      { success: "הקישור הועתק ללוח! 📋", failure: "לא הצלחנו להעתיק את הקישור" },
+    );
 
   const goBack = () => {
     if (window.history.length > 2) {

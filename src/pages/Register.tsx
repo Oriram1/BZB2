@@ -1,3 +1,4 @@
+import { switchMyRole } from "@/lib/roleSwitch";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -160,13 +161,9 @@ const Register = () => {
               disabled={switchingRole}
               onClick={async () => {
                 setSwitchingRole(true);
-                const { error } = await supabase.rpc("switch_my_role", { target_role: requestedRole });
+                const switched = await switchMyRole(requestedRole, user?.id);
                 setSwitchingRole(false);
-                if (error) {
-                  toast.error("לא ניתן להחליף תפקיד כרגע");
-                  return;
-                }
-                logUserActivity(user?.id, "role_switched", { details: { role: requestedRole } });
+                if (!switched) return;
                 await refreshUserState();
                 toast.success(`עברתם לתפקיד ${roleLabel(requestedRole)}`);
                 navigate(HOME_PATH, { replace: true });

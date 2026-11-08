@@ -1,3 +1,4 @@
+import { switchMyRole } from "@/lib/roleSwitch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { logUserActivity } from "@/lib/activityLog";
 import { HOME_PATH, roleLabel } from "@/lib/roles";
 
 interface GoogleAuthButtonProps {
@@ -90,14 +90,9 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
               onClick={async () => {
                 if (!switchPrompt) return;
                 setLoading(true);
-                const { error } = await supabase.rpc("switch_my_role", { target_role: switchPrompt.target });
+                const switched = await switchMyRole(switchPrompt.target);
                 setLoading(false);
-                if (error) {
-                  toast.error("לא ניתן להחליף תפקיד כרגע");
-                  return;
-                }
-                const { data: current } = await supabase.auth.getUser();
-                logUserActivity(current.user?.id, "role_switched", { details: { role: switchPrompt.target } });
+                if (!switched) return;
                 await refreshUserState();
                 const targetRole = switchPrompt.target;
                 setSwitchPrompt(null);

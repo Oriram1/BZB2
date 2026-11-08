@@ -1,7 +1,7 @@
+import { copyWithToast, shareOrCopy } from "@/lib/share";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Copy, Share2, QrCode } from "lucide-react";
-import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // ponytail: minimal QR via external API rendered as <img>. Replace with a
@@ -18,24 +18,9 @@ export function ParentShareLink({ viewToken }: Props) {
   const url = `${window.location.origin}/parent/view/${viewToken}`;
   const [showQr, setShowQr] = useState(false);
 
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("הקישור הועתק");
-    } catch {
-      toast.error("לא הצלחנו להעתיק");
-    }
-  };
-
-  const share = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "BusyBee — מעקב הורה", url });
-      } catch { /* user cancelled */ }
-    } else {
-      await copyLink();
-    }
-  };
+  const copyMessages = { success: "הקישור הועתק", failure: "לא הצלחנו להעתיק" };
+  const copyLink = () => copyWithToast(url, copyMessages);
+  const share = () => shareOrCopy({ title: "BusyBee — מעקב הורה", url }, copyMessages);
 
   return (
     <>
