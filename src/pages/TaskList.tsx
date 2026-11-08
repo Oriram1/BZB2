@@ -9,7 +9,7 @@ import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
 import { distanceKm } from "@/lib/format";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import TaskCard from "@/components/tasks/TaskCard";
+import TaskGrid from "@/components/tasks/TaskGrid";
 import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
 import { supabase } from "@/integrations/supabase/client";
@@ -376,11 +376,7 @@ const TaskList = () => {
 
         {!loading && filteredTasks.length > 0 && (
           viewMode === "list" ? (
-            <div className="grid md:grid-cols-2 gap-4">
-              {filteredTasks.map((task, i) => (
-                <TaskCard key={task.id} task={task} index={i} saved={task.dbId ? saved.has(task.dbId) : false} onToggleSave={toggleSaved} />
-              ))}
-            </div>
+            <TaskGrid tasks={filteredTasks} saved={saved} onToggleSave={toggleSaved} />
           ) : (
             <MapView tasks={filteredTasks} />
           )
