@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { loadGoogleIdentity } from "./loadGoogleIdentity";
 
 const GOOGLE_ROLE_KEY = "bzb-google-signup-role";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
@@ -46,25 +47,15 @@ const getGoogleIdentity = (): GoogleIdentityClient => {
   return identity;
 };
 
-const waitForGoogleIdentity = async (timeoutMs = 10000): Promise<GoogleIdentityClient> => {
-  if (!GOOGLE_CLIENT_ID) throw new Error("חסר Google Client ID");
-
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    const identity = window.google?.accounts?.id;
-    if (identity) return identity;
-    await new Promise((resolve) => window.setTimeout(resolve, 50));
-  }
-
-  return getGoogleIdentity();
-};
 
 export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: HTMLElement, onReady?: () => void): Promise<User> => {
   if (role) localStorage.setItem(GOOGLE_ROLE_KEY, role);
   else localStorage.removeItem(GOOGLE_ROLE_KEY);
 
   activeGoogleAuth = (async () => {
-    const identity = await waitForGoogleIdentity();
+    if (!GOOGLE_CLIENT_ID) throw new Error("חסר Google Client ID");
+    await loadGoogleIdentity();
+    const identity = getGoogleIdentity();
     if (!googleNonce) googleNonce = await createNonce();
     const nonce = googleNonce;
 
