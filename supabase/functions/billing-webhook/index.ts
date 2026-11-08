@@ -8,16 +8,9 @@
  * against our own record of the order. A forged request can trigger a lookup,
  * never a paid subscription.
  */
-import { readJsonObject, serviceClient } from "../_shared/auth.ts";
+import { readJsonObject, serviceClient, json } from "../_shared/auth.ts";
 import { settleLowProfileOrder, type OrderRow } from "../_shared/billing.ts";
 import { CHARGE_COLUMNS, settleChargePage, type ChargeRow } from "../_shared/taskBilling.ts";
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 /** Cardcom posts JSON; a form body is accepted too rather than losing a payment. */
 async function readBody(req: Request): Promise<Record<string, unknown>> {

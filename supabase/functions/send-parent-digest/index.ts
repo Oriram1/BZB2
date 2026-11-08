@@ -11,17 +11,10 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.
 import { sendEmail } from "../_shared/email.ts";
 import { emailContent } from "../_shared/notificationCopy.ts";
 import { formFor, say, SUBJECT } from "../_shared/gender.ts";
-import { rejectWithoutSecret, serviceClient } from "../_shared/auth.ts";
+import { rejectWithoutSecret, serviceClient, json } from "../_shared/auth.ts";
 
 const TIME_ZONE = "Asia/Jerusalem";
 const DEFAULT_DIGEST_HOUR = 20;
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 function israelParts() {
   const formatter = new Intl.DateTimeFormat("en-CA", {

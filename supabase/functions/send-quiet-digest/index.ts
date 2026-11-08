@@ -11,7 +11,7 @@
  */
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 import { siteUrl } from "../_shared/email.ts";
-import { readJsonObject, rejectWithoutSecret, serviceClient } from "../_shared/auth.ts";
+import { readJsonObject, rejectWithoutSecret, serviceClient, json } from "../_shared/auth.ts";
 import {
   buildDigestCards,
   inQuietWindow,
@@ -21,13 +21,6 @@ import {
   resolveQuietHours,
   type HeldNotification,
 } from "../_shared/quietHours.ts";
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 /**
  * Held-back chat notifications for one user: unread, inside the window that

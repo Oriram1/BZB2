@@ -37,6 +37,7 @@ import {
   mergePaymentHistory,
   updateSubscriptionCard,
   type HistoryRow,
+  type PlanId,
 } from "@/lib/billing";
 import { toast } from "sonner";
 
@@ -61,7 +62,7 @@ const Subscription = () => {
   const [canRefund, setCanRefund] = useState(false);
   const [refundChecking, setRefundChecking] = useState(false);
   const [refundCheckError, setRefundCheckError] = useState<string | null>(null);
-  const [switchTo, setSwitchTo] = useState<"quarterly" | "annual" | null>(null);
+  const [switchTo, setSwitchTo] = useState<PlanId | null>(null);
 
   const openCancellation = async () => {
     if (subscription?.is_trial || subscription?.status === "past_due") {

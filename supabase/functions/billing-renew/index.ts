@@ -13,7 +13,7 @@
  * them.
  */
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { rejectWithoutSecret, serviceClient } from "../_shared/auth.ts";
+import { rejectWithoutSecret, serviceClient, json } from "../_shared/auth.ts";
 import { billingEnabled, cardcomConfig, chargeToken, getTransactionByExternalId, type TransactionInfo } from "../_shared/cardcom.ts";
 import {
   applyVerdict,
@@ -43,13 +43,6 @@ const STALE_CHARGE_MS = 10 * 60_000;
 const ABANDON_AFTER_MS = 48 * 3_600_000;
 
 const ORDER_COLUMNS = "id, user_id, plan_id, kind, amount, status, low_profile_id, external_uniq_id, deal_number";
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 /** `MMYY` expiry → the last instant the card is valid, in UTC. */
 function cardExpired(expiry: string | null | undefined, now = new Date()) {

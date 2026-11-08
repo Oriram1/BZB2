@@ -1,6 +1,7 @@
 import { categoryLabel } from "@/lib/categories";
 import { roleLabel } from "@/lib/roles";
 import { formatDate, formatTime } from "@/lib/format";
+import type { UserActivityAction } from "@/lib/activityLog";
 import type { Json } from "@/integrations/supabase/types";
 
 export interface AuditRow {
@@ -114,12 +115,13 @@ export const actionLabel: Record<string, string> = {
 };
 
 /** Same idea as actionLabel, for the actions ordinary users take. */
-export const userActionLabel: Record<string, string> = {
+export const userActionLabel: Record<UserActivityAction, string> = {
   login: "התחברות",
   logout: "התנתקות",
   signup: "הרשמה",
   task_created: "פרסום מטלה",
   task_cancelled: "ביטול מטלה",
+  task_completed: "השלמת מטלה",
   task_deleted: "מחיקת מטלה",
   application_submitted: "הגשת מועמדות",
   application_accepted: "אישור מועמדות",

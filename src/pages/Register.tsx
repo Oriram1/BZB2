@@ -18,7 +18,7 @@ import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { HOME_PATH, roleLabel } from "@/lib/roles";
 import { logUserActivity } from "@/lib/activityLog";
-import { periodShort, usePlans } from "@/lib/billing";
+import { isPaidPlan, periodShort, usePlans } from "@/lib/billing";
 import { formFor, GENDER_LABEL, GENDER_OPTIONS, RECIPIENT, say, type Gender } from "@shared/gender.ts";
 
 
@@ -65,9 +65,9 @@ const Register = () => {
   const { role } = useParams<{ role: string }>();
   const [searchParams] = useSearchParams();
   const planId = searchParams.get("plan") || "";
-  const isPaidPlan = planId === "quarterly" || planId === "annual";
+  const paidPlan = isPaidPlan(planId);
   const { plans: livePlans } = usePlans();
-  const selectedPlan = isPaidPlan ? livePlans[planId] : undefined;
+  const selectedPlan = paidPlan ? livePlans[planId] : undefined;
   // The price comes from the plans table; until it loads the plan is named without one.
   const planLabel = selectedPlan
     ? `${selectedPlan.name} (${formatPrice(selectedPlan.price)} ₪ ${periodShort(selectedPlan.periodMonths)})`
@@ -85,7 +85,7 @@ const Register = () => {
     ? "הרשמה למבצעי מטלות 💪"
     : isParent
     ? "הרשמה להורים 🛡️"
-    : isPaidPlan
+    : paidPlan
     ? `הרשמה למנוי ${planLabel}`
     : "הרשמה למציעי מטלות 📋";
   const [agreed, setAgreed] = useState(false);
@@ -333,7 +333,7 @@ const Register = () => {
     // when confirmation is turned back on, this same code sends them to log in.
     // A paid plan picked before registering continues to the consent step and
     // the card page rather than dropping the customer on their home screen.
-    const afterSignup = isPaidPlan && appRole === "tasker"
+    const afterSignup = paidPlan && appRole === "tasker"
       ? `/pricing?plan=${planId}&checkout=1`
       : HOME_PATH;
 
@@ -545,7 +545,7 @@ const Register = () => {
           </div>
 
           <Button type="submit" disabled={loading} className="w-full h-14 text-xl font-black gradient-honey text-primary-foreground rounded-2xl border-none shadow-[0_5px_0_0_hsl(var(--honey-dark))] transition-all duration-150 hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_1px_0_0_hsl(var(--honey-dark))]">
-            {loading ? "נרשמים..." : isPaidPlan ? "אישור והמשך לתשלום 🐝" : "יאללה, נרשמים! 🐝"}
+            {loading ? "נרשמים..." : paidPlan ? "אישור והמשך לתשלום 🐝" : "יאללה, נרשמים! 🐝"}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">

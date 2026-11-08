@@ -28,7 +28,7 @@ import type { ConfirmedTaskLocation } from "@/components/tasks/AssistantLocation
 import TaskAssistant, { type MissingField } from "@/components/tasks/TaskAssistant";
 import type { AssistantFields } from "@/lib/taskReview";
 import TaskReview from "@/components/tasks/TaskReview";
-import type { ReviewForm } from "@/lib/taskReview";
+import { SHORT_DESC_MAX, todayIso, type ReviewForm } from "@/lib/taskReview";
 import { logUserActivity } from "@/lib/activityLog";
 import { billingErrorText, fetchPublishQuote, payTaskOnce, startTaskCardSetup, TASK_DRAFT_KEY, type PublishQuote } from "@/lib/taskBilling";
 import { feeText, useTaskFees } from "@/lib/taskFees";
@@ -42,9 +42,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-/** Kept in step with the tasks_short_desc_length constraint on public.tasks. */
-const SHORT_DESC_MAX = 120;
 
 /**
  * Three screens: what is needed (category, details, pay and workers), when and
@@ -100,7 +97,7 @@ const CreateTask = () => {
   const [assistantOpen, setAssistantOpen] = useState(() => searchParams.get("resume") !== "1");
   const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
   const today = new Date();
-  const minimumDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const minimumDate = todayIso();
 
   const dateShortcuts = [
     { label: "מחר", value: format(addDays(today, 1), "yyyy-MM-dd") },
@@ -526,9 +523,9 @@ const CreateTask = () => {
                   onChange={(e) => updateForm("shortDesc", e.target.value)}
                   placeholder="לדוגמה: ניקוי 4 חלונות גדולים בסלון"
                   className="rounded-2xl h-12 text-right text-base"
-                  maxLength={120}
+                  maxLength={SHORT_DESC_MAX}
                 />
-                <p className="text-xs text-muted-foreground mt-1 text-left" dir="ltr">{form.shortDesc.length}/120 · לדוגמה: ניקוי 4 חלונות גדולים בסלון</p>
+                <p className="text-xs text-muted-foreground mt-1 text-left" dir="ltr">{form.shortDesc.length}/{SHORT_DESC_MAX} · לדוגמה: ניקוי 4 חלונות גדולים בסלון</p>
               </div>
               <div>
                 <Label htmlFor="fullDesc" className="text-right block mb-1 font-bold">תיאור מפורט</Label>
