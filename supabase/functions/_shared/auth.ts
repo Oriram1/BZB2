@@ -123,6 +123,18 @@ export function errorResponse(error: unknown) {
   return json({ error: "internal_error" }, 500);
 }
 
+/** POST-only JSON endpoint: CORS preflight, method check, and any thrown error mapped by `errorResponse`. */
+export function servePost(handler: (req: Request) => Response | Promise<Response>) {
+  Deno.serve(withCors(async (req) => {
+    if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+    try {
+      return await handler(req);
+    } catch (error) {
+      return errorResponse(error);
+    }
+  }));
+}
+
 export type JsonObject = Record<string, unknown>;
 
 /** Parse bounded JSON object input. Never silently converts malformed JSON to {}. */
