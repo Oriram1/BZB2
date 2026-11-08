@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import { CheckCircle, Clock, ClipboardList, Coins, AlertTriangle } from "lucide-react";
-import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
+import { formFor, say, SUBJECT, type Gender } from "@shared/gender.ts";
 import { ParentNotificationPrefs, type ParentPrefs } from "@/components/parent/ParentNotificationPrefs";
 import { ParentSubscribeCard } from "@/components/parent/ParentSubscribeCard";
 

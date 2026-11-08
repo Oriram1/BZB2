@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { formatPrice } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice, invalidatePlans, periodShort } from "@/lib/billing";
+import { invalidatePlans, periodShort } from "@/lib/billing";
 
 type PlanRow = { id: string; name: string; amount: number | string; period_months: number; price_signature: string | null };
 type HistoryRow = {

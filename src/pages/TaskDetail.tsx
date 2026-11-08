@@ -36,7 +36,8 @@ import { formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
-import { formFor, RECIPIENT, say } from "@/lib/gender";
+import { taskStatusLabel } from "@/lib/taskStatus";
+import { formFor, RECIPIENT, say } from "@shared/gender.ts";
 import { reviewWindowOpen } from "@/lib/reviewWindow";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
 import {
@@ -49,14 +50,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const statusLabels: Record<string, string> = {
-  open: "פתוחה להצעות",
-  accepted: "התקבלה",
-  in_progress: "בביצוע",
-  completed: "הושלמה",
-  cancelled: "בוטלה",
-};
 
 interface TaskData {
   id: string;
@@ -349,7 +342,7 @@ const TaskDetail = () => {
 
   const isOwner = user?.id === task.creator_id;
   const isOwnPendingReview = isOwner && task.publish_state === "pending_review";
-  const statusLabel = isOwnPendingReview ? "ממתינה לאישור" : statusLabels[task.status] || task.status;
+  const statusLabel = isOwnPendingReview ? "ממתינה לאישור" : taskStatusLabel(task.status);
   const creatorAvatar = creator?.avatar_url || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${task.creator_id}`;
 
   return (

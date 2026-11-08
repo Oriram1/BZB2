@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1";
-import { corsOrigin, readJsonObject, requireSecret } from "./auth.ts";
+import { corsOrigin, readJsonObject, rejectWithoutSecret } from "./auth.ts";
 
 const post = (body?: string, headers?: HeadersInit) =>
   new Request("https://example.test", { method: "POST", body, headers });
@@ -37,22 +37,15 @@ Deno.test("readJsonObject rejects a request with no body at all", async () => {
   await assertRejects(() => readJsonObject(post()), Error, "invalid_json");
 });
 
-Deno.test("requireSecret accepts a matching header", () => {
-  Deno.env.set("TEST_SECRET", "s3cret");
-  requireSecret(post(undefined, { "x-notify-secret": "s3cret" }), "TEST_SECRET");
+Deno.test("rejectWithoutSecret lets a matching header through", () => {
+  Deno.env.set("NOTIFY_DISPATCH_SECRET", "s3cret");
+  assertEquals(rejectWithoutSecret(post(undefined, { "x-notify-secret": "s3cret" })), null);
 });
 
-Deno.test("requireSecret rejects a wrong, missing or unconfigured secret", () => {
-  Deno.env.set("TEST_SECRET", "s3cret");
-  assertThrows(() => requireSecret(post(undefined, { "x-notify-secret": "wrong" }), "TEST_SECRET"), Error, "unauthorized");
-  assertThrows(() => requireSecret(post(), "TEST_SECRET"), Error, "unauthorized");
-  Deno.env.delete("TEST_SECRET");
-  assertThrows(() => requireSecret(post(undefined, { "x-notify-secret": "s3cret" }), "TEST_SECRET"), Error, "unauthorized");
-});
-
-Deno.test("requireSecret reads the header name it is given", () => {
-  Deno.env.set("TEST_SECRET", "s3cret");
-  requireSecret(post(undefined, { "x-cron-key": "s3cret" }), "TEST_SECRET", "x-cron-key");
-  assertThrows(() => requireSecret(post(undefined, { "x-notify-secret": "s3cret" }), "TEST_SECRET", "x-cron-key"), Error, "unauthorized");
-  Deno.env.delete("TEST_SECRET");
+Deno.test("rejectWithoutSecret answers 401 to a wrong, missing or unconfigured secret", () => {
+  Deno.env.set("NOTIFY_DISPATCH_SECRET", "s3cret");
+  assertEquals(rejectWithoutSecret(post(undefined, { "x-notify-secret": "wrong" }))?.status, 401);
+  assertEquals(rejectWithoutSecret(post())?.status, 401);
+  Deno.env.delete("NOTIFY_DISPATCH_SECRET");
+  assertEquals(rejectWithoutSecret(post(undefined, { "x-notify-secret": "s3cret" }))?.status, 401);
 });

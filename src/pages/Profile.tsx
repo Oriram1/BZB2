@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { taskStatusLabel } from "@/lib/taskStatus";
 import { ReviewAppeal } from "@/components/reviews/ReviewAppeal";
 import { ReviewTags } from "@/components/reviews/ReviewTags";
 import ReviewReportsPanel from "@/components/reviews/ReviewReportsPanel";
@@ -25,7 +26,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
-import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@/lib/gender";
+import { GENDER_LABEL, GENDER_OPTIONS, type Gender } from "@shared/gender.ts";
 import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { PasswordCard } from "@/components/profile/PasswordCard";
@@ -33,6 +34,7 @@ import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import QRCode from "qrcode";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { loadBeeStats, loadPublishedTaskCounts, type BeeStats } from "@/lib/profileStats";
+import { primaryRoleLabel } from "@/lib/roles";
 
 interface ReviewHistoryRow {
   id: string;
@@ -508,8 +510,7 @@ const Profile = () => {
   const defaultAvatar = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${user.id}`;
   const displayAvatar = avatarUrl || defaultAvatar;
   const displayName = `${form.first_name} ${form.last_name}`.trim() || user.email || "משתמש";
-  const roleLabel = isTasker ? "מציע מטלות" : isBee ? "מבצע מטלות 🐝" : roles.includes("parent") ? "הורה" : "";
-  const statusLabel = (s: string) => s === "open" ? "הרחבה" : s === "accepted" ? "התקבלה" : s === "in_progress" ? "בביצוע" : s === "completed" ? "הושלמה" : "בוטלה";
+  const roleLabel = primaryRoleLabel(roles);
 
   return (
     <div className="min-h-screen bg-muted relative" dir="rtl">
@@ -874,7 +875,7 @@ const Profile = () => {
                           </Link>
                           <p className="text-sm text-muted-foreground">{task.short_desc}</p>
                         </div>
-                        <Badge variant="outline" className="font-bold text-xs shrink-0">{statusLabel(task.status)}</Badge>
+                        <Badge variant="outline" className="font-bold text-xs shrink-0">{taskStatusLabel(task.status)}</Badge>
                       </div>
                       <div className="flex gap-4 text-xs text-muted-foreground mb-2">
                         <span>👁️ {task.views_count} צפיות</span>

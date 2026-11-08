@@ -120,7 +120,7 @@ describe("billing invariants", () => {
 
   it("changes prices only through the admin function, and keeps the signing key out of the database", () => {
     const fn = read("supabase/functions/admin-set-plan-price/index.ts");
-    expect(fn).toContain('.eq("role", "admin")');
+    expect(fn).toContain("adminClients(req)");
     expect(fn).toContain("signPlan(");
     expect(fn).toContain('admin.rpc("admin_set_plan_price"');
     expect(read("supabase/config.toml")).toContain("[functions.admin-set-plan-price]\nverify_jwt = true");

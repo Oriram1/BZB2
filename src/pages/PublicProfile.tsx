@@ -14,7 +14,8 @@ import { ClipboardList, CheckCircle2, UserX, Pencil, Calendar, Star, Flag, Corne
 import { formatDate, formatCurrency } from "@/lib/format";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { categoryLabel } from "@/lib/categories";
-import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
+import { formFor, say, SUBJECT, type Gender } from "@shared/gender.ts";
+import { primaryRoleLabel } from "@/lib/roles";
 
 interface PublicProfileData {
   user_id: string;
@@ -124,7 +125,7 @@ const PublicProfile = () => {
   const isSelf = !!user && user.id === userId;
   const isTasker = roles.includes("tasker");
   const isBee = roles.includes("bee");
-  const roleLabel = isTasker ? "מציע מטלות" : isBee ? "מבצע מטלות" : roles.includes("parent") ? "הורה" : "";
+  const roleLabel = primaryRoleLabel(roles);
 
   const openTasks = tasks.filter((t) => t.status === "open");
   const completedCount = tasks.filter((t) => t.status === "completed").length;

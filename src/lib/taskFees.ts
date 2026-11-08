@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { formatPrice } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice } from "@/lib/billing";
 
 export type TaskFees = { task_fee: number; insurance_fee: number };
 

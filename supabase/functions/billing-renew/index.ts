@@ -13,7 +13,7 @@
  * them.
  */
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { requireSecret } from "../_shared/auth.ts";
+import { rejectWithoutSecret } from "../_shared/auth.ts";
 import { billingEnabled, cardcomConfig, chargeToken, getTransactionByExternalId, type TransactionInfo } from "../_shared/cardcom.ts";
 import {
   applyVerdict,
@@ -356,7 +356,8 @@ async function reconcileCharges(admin: SupabaseClient) {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
-  try { requireSecret(req, "NOTIFY_DISPATCH_SECRET"); } catch { return json({ error: "unauthorized" }, 401); }
+  const denied = rejectWithoutSecret(req);
+  if (denied) return denied;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

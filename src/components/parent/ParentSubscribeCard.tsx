@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, MailPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
+import { formFor, say, SUBJECT, type Gender } from "@shared/gender.ts";
 
 interface Props {
   token: string;

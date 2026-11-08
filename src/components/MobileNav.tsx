@@ -11,8 +11,9 @@ import BzbLogo from "@/components/BzbLogo";
 import { useNotifications } from "@/hooks/useNotifications";
 import { notificationLine } from "@/lib/notificationCopy";
 import { formatRelativeTime } from "@/lib/format";
-import { formFor } from "@/lib/gender";
+import { formFor } from "@shared/gender.ts";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { primaryRoleLabel } from "@/lib/roles";
 
 /**
  * A closed drawer must be unreachable by keyboard and screen reader, not just
@@ -83,13 +84,7 @@ export function MobileNav() {
     ? `${profile.first_name} ${profile.last_name}`.trim() || user?.email || "משתמש"
     : user?.email || "משתמש";
 
-  const roleLabel = roles.includes("tasker")
-    ? "מציע מטלות"
-    : roles.includes("bee")
-    ? "מבצע מטלות 🐝"
-    : roles.includes("parent")
-    ? "הורה"
-    : "";
+  const roleLabel = primaryRoleLabel(roles);
 
   const filteredItems = visibleNavItems(Boolean(user), roles);
 

@@ -36,7 +36,7 @@ const currencyFormatterWithAgorot = new Intl.NumberFormat("he-IL", {
 });
 
 /** Placeholder shown instead of an empty or unparsable value. */
-export const EMPTY = "לא צוין";
+const EMPTY = "לא צוין";
 
 /** "2026-04-16" -> "16/04/2026". Returns EMPTY for missing/invalid input. */
 export function formatDate(value?: string | Date | null): string {
@@ -218,3 +218,7 @@ export function formatPhone(input: string): string {
   if (/^0[2-489]\d{7}$/.test(phone)) return `${phone.slice(0, 2)}-${phone.slice(2, 5)}-${phone.slice(5)}`;
   return phone;
 }
+
+/** `29.9` -> "29.90", `30` -> "30": no trailing zeros unless there are agorot. */
+export const formatPrice = (price: number) =>
+  Number.isInteger(price) ? String(price) : price.toFixed(2);

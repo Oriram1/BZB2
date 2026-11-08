@@ -7,7 +7,7 @@ import type { Task } from "./TaskCard";
 import { useGoogleMaps } from "./GoogleMapsProvider";
 import GoogleMapsLoadState from "./GoogleMapsLoadState";
 import { useAuth } from "@/contexts/AuthContext";
-import { formFor, RECIPIENT, say } from "@/lib/gender";
+import { formFor, RECIPIENT, say } from "@shared/gender.ts";
 
 const MapView = ({ tasks }: { tasks: Task[] }) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);

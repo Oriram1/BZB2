@@ -137,7 +137,7 @@ describe("refund wiring", () => {
 
   it("answers to a shared secret or an admin, nobody else", () => {
     const fn = read("supabase/functions/task-refund/index.ts");
-    expect(fn).toContain('requireSecret(req, "NOTIFY_DISPATCH_SECRET")');
+    expect(fn).toContain('rejectWithoutSecret(req)');
     expect(fn).toContain('hasRole(clients.admin, clients.user.id, "admin")');
     expect(fn).toContain("billingEnabled()");
     expect(read("supabase/config.toml")).toContain("[functions.task-refund]\nverify_jwt = false");

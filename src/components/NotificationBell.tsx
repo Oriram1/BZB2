@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
-import { formFor } from "@/lib/gender";
+import { formFor } from "@shared/gender.ts";
 import { useNotifications } from "@/hooks/useNotifications";
 import { notificationLine } from "@/lib/notificationCopy";
 import { formatRelativeTime } from "@/lib/format";

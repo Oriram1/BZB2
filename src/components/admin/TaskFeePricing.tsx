@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { formatPrice } from "@/lib/format";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { formatPrice } from "@/lib/billing";
 import { invalidateTaskFees } from "@/lib/taskFees";
 
 type FeeKey = "task_fee" | "insurance_fee";

@@ -102,8 +102,3 @@ const CookieConsent = () => {
 
 export default CookieConsent;
 
-export function hasCookieConsent(level: "all" | "essential" = "all"): boolean {
-  const stored = getStoredConsent();
-  if (level === "essential") return stored !== null;
-  return stored === "all";
-}

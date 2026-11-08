@@ -7,7 +7,7 @@
  * Any failure leaves the item pending, so nothing is ever published by accident.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { json, readJsonObject, requireSecret } from "../_shared/auth.ts";
+import { json, readJsonObject, rejectWithoutSecret } from "../_shared/auth.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Contact details in a public review are always a person's call (privacy of minors).
@@ -53,7 +53,8 @@ export async function judge(text: string, fetcher: typeof fetch = fetch): Promis
 
 export async function handleReviewScreen(req: Request, fetcher: typeof fetch = fetch): Promise<Response> {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
-  try { requireSecret(req, "NOTIFY_DISPATCH_SECRET"); } catch { return json({ error: "unauthorized" }, 401); }
+  const denied = rejectWithoutSecret(req);
+  if (denied) return denied;
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) return json({ error: "server_not_configured" }, 500);

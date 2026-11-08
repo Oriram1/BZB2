@@ -129,7 +129,7 @@ describe("architecture invariants", () => {
     expect(auth).toContain('console.error("edge_function_failure", error);');
     expect(auth).toContain('"Cache-Control": "no-store"');
     const reset = readFileSync(resolve(root, "supabase/functions/admin-reset-password/index.ts"), "utf8");
-    expect(reset).toContain('return json({ error: "internal_error" }, 500);');
+    expect(reset).toContain("return errorResponse(e);");
     expect(reset).toContain('return json({ error: "password_reset_failed" }, 500);');
     expect(reset).not.toContain('return json({ error: updateErr.message }, 500);');
     const authHook = readFileSync(resolve(root, "supabase/functions/send-auth-email/index.ts"), "utf8");
@@ -161,16 +161,6 @@ describe("architecture invariants", () => {
         expect(query, `${file} reads archived rows`).toContain('.is("archived_at", null)');
       }
     }
-  });
-
-  // The client renders notification labels and the server renders email and
-  // push. Both inflect Hebrew by gender, and a Deno module cannot import a Vite
-  // one, so the vocabulary exists twice. Two copies that are allowed to drift
-  // are two sources of truth; this makes drift a failing test instead.
-  it("keeps the gender vocabulary identical on both sides", () => {
-    const client = readFileSync(resolve(root, "src/lib/gender.ts"), "utf8");
-    const server = readFileSync(resolve(root, "supabase/functions/_shared/gender.ts"), "utf8");
-    expect(server).toBe(client);
   });
 
   // A slash form is the app writing "הגיש/ה" because it does not know who it is

@@ -1,10 +1,8 @@
 /**
  * Hebrew grammatical gender for everything the app says to or about a person.
  *
- * MIRRORED VERBATIM in supabase/functions/_shared/gender.ts — the client renders
- * the notification settings screen and the server renders email and push, and
- * both must inflect identically. architecture-invariants.test.ts fails if the
- * two copies drift.
+ * Imported by both the Edge Functions and the client (`@shared/gender.ts`), so
+ * it must stay free of imports.
  *
  * Two distinct people appear in most messages and they are resolved separately:
  *

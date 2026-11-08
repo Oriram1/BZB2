@@ -1,4 +1,5 @@
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
+import { formatPrice } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { PublishQuote } from "@/lib/taskBilling";
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAccess, useSubscription } from "@/hooks/useSubscription";
-import { billingErrorMessage, formatPrice, isPaidPlan, periodShort, startCheckout, startTrial, usePlans, type PlanId } from "@/lib/billing";
+import { billingErrorMessage, isPaidPlan, periodShort, startCheckout, startTrial, usePlans, type PlanId } from "@/lib/billing";
 import { supabase } from "@/integrations/supabase/client";
 import { feeText, useTaskFees } from "@/lib/taskFees";
 import { toast } from "sonner";

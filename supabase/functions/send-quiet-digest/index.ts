@@ -11,7 +11,7 @@
  */
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 import { siteUrl } from "../_shared/email.ts";
-import { readJsonObject, requireSecret } from "../_shared/auth.ts";
+import { readJsonObject, rejectWithoutSecret } from "../_shared/auth.ts";
 import {
   buildDigestCards,
   inQuietWindow,
@@ -90,7 +90,8 @@ async function alreadySent(admin: SupabaseClient, userId: string, date: string) 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  try { requireSecret(req, "NOTIFY_DISPATCH_SECRET"); } catch { return json({ error: "unauthorized" }, 401); }
+  const denied = rejectWithoutSecret(req);
+  if (denied) return denied;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

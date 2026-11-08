@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { formFor, say, SUBJECT, type Gender } from "@/lib/gender";
+import { formFor, say, SUBJECT, type Gender } from "@shared/gender.ts";
 
 export interface ParentPrefs {
   notify_signin: boolean;

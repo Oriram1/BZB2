@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
-import { normalizePhone, isValidPhone, phoneIssue, ageIssue, MAX_AGE } from "@/lib/format";
+import { normalizePhone, isValidPhone, phoneIssue, ageIssue, MAX_AGE, formatPrice } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
@@ -16,10 +16,10 @@ import { geocodeAddress } from "@/lib/geocodeAddress";
 import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { useAuth } from "@/contexts/AuthContext";
-import { getRoleHomePath } from "@/lib/roleNavigation";
+import { HOME_PATH, roleLabel } from "@/lib/roles";
 import { logUserActivity } from "@/lib/activityLog";
-import { formatPrice, periodShort, usePlans } from "@/lib/billing";
-import { formFor, GENDER_LABEL, GENDER_OPTIONS, RECIPIENT, say, type Gender } from "@/lib/gender";
+import { periodShort, usePlans } from "@/lib/billing";
+import { formFor, GENDER_LABEL, GENDER_OPTIONS, RECIPIENT, say, type Gender } from "@shared/gender.ts";
 
 
 /** Supabase returns English auth errors; show the common ones in Hebrew. */
@@ -104,8 +104,6 @@ const Register = () => {
   const [phoneTaken, setPhoneTaken] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(false);
 
-  const roleLabel = (value: string) => ({ tasker: "מציע מטלות", bee: "מבצע מטלות", parent: "הורה" }[value] || value);
-
   useEffect(() => {
     if (!isGoogleSignup || !user) return;
     const metadata = user.user_metadata;
@@ -154,7 +152,7 @@ const Register = () => {
             החשבון הזה רשום כ־{roleLabel(existingRole)}. האם לעבור ל־{roleLabel(requestedRole)}?
           </p>
           <div className="mt-7 flex gap-3">
-            <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => navigate(getRoleHomePath(existingRole), { replace: true })}>
+            <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => navigate(HOME_PATH, { replace: true })}>
               להישאר
             </Button>
             <Button
@@ -171,7 +169,7 @@ const Register = () => {
                 logUserActivity(user?.id, "role_switched", { details: { role: requestedRole } });
                 await refreshUserState();
                 toast.success(`עברתם לתפקיד ${roleLabel(requestedRole)}`);
-                navigate(getRoleHomePath(requestedRole), { replace: true });
+                navigate(HOME_PATH, { replace: true });
               }}
             >
               {switchingRole ? "מחליפים..." : "כן, לעבור"}
@@ -338,7 +336,7 @@ const Register = () => {
     // the card page rather than dropping the customer on their home screen.
     const afterSignup = isPaidPlan && appRole === "tasker"
       ? `/pricing?plan=${planId}&checkout=1`
-      : getRoleHomePath(appRole);
+      : HOME_PATH;
 
     if (isGoogleSignup) {
       toast.success("ברוכים הבאים ל־BZB! 🐝");

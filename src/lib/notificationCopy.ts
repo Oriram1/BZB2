@@ -6,7 +6,7 @@
  * The split is deliberate — those are long-form messages, these are glanceable
  * lines — but the event list and channel defaults must stay in step.
  */
-import { formFor, RECIPIENT, say, SUBJECT, type Form } from "@/lib/gender";
+import { formFor, RECIPIENT, say, SUBJECT, type Form } from "@shared/gender.ts";
 
 export type NotificationEvent =
   | "application_received"
@@ -278,7 +278,7 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
  * only ever sent because someone explicitly asked for it, so a toggle would be
  * a switch that turns off a button the user just pressed.
  */
-export const SETTINGS_ROWS: {
+const SETTINGS_ROWS: {
   event: NotificationEvent;
   label: string;
   description: string;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatPrice } from "@/lib/format";
 import { Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatPrice, periodShort, usePlans, type PlanId } from "@/lib/billing";
+import { periodShort, usePlans, type PlanId } from "@/lib/billing";
 
 interface Props {
   open: boolean;

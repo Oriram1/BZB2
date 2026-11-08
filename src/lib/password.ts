@@ -1,4 +1,4 @@
-export const PASSWORD_MIN_LENGTH = 6;
+const PASSWORD_MIN_LENGTH = 6;
 
 export const isStrongPassword = (password: string): boolean =>
   password.length >= PASSWORD_MIN_LENGTH &&

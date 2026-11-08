@@ -6,7 +6,7 @@
  * enabled channels, and records the outcome in `notification_deliveries`.
  */
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
-import { readJsonObject, requireSecret } from "../_shared/auth.ts";
+import { readJsonObject, rejectWithoutSecret } from "../_shared/auth.ts";
 import { sendEmail } from "../_shared/email.ts";
 import {
   CHANNEL_DEFAULTS,
@@ -133,7 +133,8 @@ async function fanOutToParentContacts(
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  try { requireSecret(req, "NOTIFY_DISPATCH_SECRET"); } catch { return json({ error: "unauthorized" }, 401); }
+  const denied = rejectWithoutSecret(req);
+  if (denied) return denied;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

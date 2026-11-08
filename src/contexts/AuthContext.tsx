@@ -4,7 +4,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logUserActivity } from "@/lib/activityLog";
 import { notifyParentsOfSignIn } from "@/lib/parentNotify";
-import type { Gender } from "@/lib/gender";
+import type { Gender } from "@shared/gender.ts";
 
 interface Profile {
   id: string;

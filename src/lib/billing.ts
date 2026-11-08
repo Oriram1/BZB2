@@ -6,7 +6,7 @@ export type PlanId = "quarterly" | "annual";
 export type PlanInfo = { name: string; price: number; periodMonths: number; period: string };
 
 /** Everything the screens say about a cadence comes from the plan's period, so a price change is the only edit needed. */
-export const periodLabel = (months: number) => {
+const periodLabel = (months: number) => {
   if (months === 12) return "שנה";
   if (months === 1) return "חודש";
   return `${months} חודשים`;
@@ -18,10 +18,6 @@ export const periodShort = (months: number) => {
   if (months === 1) return "לחודש";
   return `ל-${months} חודשים`;
 };
-
-/** `29.9` -> "29.90", `30` -> "30": no trailing zeros unless there are agorot. */
-export const formatPrice = (price: number) =>
-  Number.isInteger(price) ? String(price) : price.toFixed(2);
 
 type PlanRow = { id: string; name: string; amount: number | string; period_months: number; active: boolean };
 
@@ -90,7 +86,7 @@ export const isPaidPlan = (value: string | null | undefined): value is PlanId =>
   value === "quarterly" || value === "annual";
 
 /** Days after a period ends that a failed renewal keeps being retried. Mirrors RETRY_OFFSETS_DAYS on the server. */
-export const GRACE_DAYS = 14;
+const GRACE_DAYS = 14;
 
 const ERROR_MESSAGES: Record<string, string> = {
   consent_required: "צריך לאשר את תנאי החידוש האוטומטי כדי להמשיך",
@@ -193,18 +189,6 @@ export const cancelSubscription = () =>
 
 export const resumeSubscription = () =>
   call<{ status: string; cancel_at_period_end: boolean }>("billing-cancel", { resume: true });
-
-export const formatDate = (value: string | null | undefined) => {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return new Intl.DateTimeFormat("he-IL", {
-    timeZone: "Asia/Jerusalem",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(parsed);
-};
 
 /** Last day a past-due subscription is still honoured. */
 export const graceEnd = (periodEnd: string) =>

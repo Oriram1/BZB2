@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
-export const APPLICATION_MESSAGE_MAX = 300;
+const APPLICATION_MESSAGE_MAX = 300;
 
 type ApplyDialogProps = {
   open: boolean;

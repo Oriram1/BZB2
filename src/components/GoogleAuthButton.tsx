@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { logUserActivity } from "@/lib/activityLog";
-import { getRoleHomePath } from "@/lib/roleNavigation";
+import { HOME_PATH, roleLabel } from "@/lib/roles";
 
 interface GoogleAuthButtonProps {
   role?: GoogleSignupRole;
@@ -19,8 +19,6 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
   const navigate = useNavigate();
   const { refreshUserState } = useAuth();
   const startedRef = useRef(false);
-
-  const roleLabel = (value: string) => ({ tasker: "מציע מטלות", bee: "מבצע מטלות", parent: "הורה" }[value] || value);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +39,7 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
           return;
         }
         consumeGoogleSignupRole();
-        navigate(getRoleHomePath(currentRole), { replace: true });
+        navigate(HOME_PATH, { replace: true });
         return;
       }
 
@@ -104,7 +102,7 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
                 const targetRole = switchPrompt.target;
                 setSwitchPrompt(null);
                 toast.success(`עברתם לתפקיד ${roleLabel(targetRole)}`);
-                navigate(getRoleHomePath(targetRole), { replace: true });
+                navigate(HOME_PATH, { replace: true });
               }}
             >
               כן, לעבור

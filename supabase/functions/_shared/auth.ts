@@ -36,9 +36,6 @@ export function corsHeadersFor(req?: Request) {
   };
 }
 
-/** Kept for callers that build their own header bag; prefer `corsHeadersFor`. */
-export const corsHeaders = corsHeadersFor();
-
 /**
  * Wraps a handler so the preflight answers with the caller's origin and every
  * `json` response inside it does the same.
@@ -98,6 +95,13 @@ export async function hasRole(admin: SupabaseClient, userId: string, role: strin
   return Boolean(data);
 }
 
+/** Caller must be a signed-in admin; returns the caller and a service-role client. */
+export async function adminClients(req: Request) {
+  const clients = await authenticatedClients(req);
+  if (!(await hasRole(clients.admin, clients.user.id, "admin"))) throw new Error("forbidden");
+  return clients;
+}
+
 export function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "unknown_error";
   if (message === "unauthorized") return json({ error: message }, 401);
@@ -141,8 +145,10 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export function requireSecret(req: Request, envName: string, headerName = "x-notify-secret"): void {
-  const expected = Deno.env.get(envName);
-  const supplied = req.headers.get(headerName);
-  if (!expected || !supplied || !timingSafeEqual(supplied, expected)) throw new Error("unauthorized");
+/** 401 response when the scheduler's shared secret is missing or wrong, otherwise `null`. */
+export function rejectWithoutSecret(req: Request): Response | null {
+  const expected = Deno.env.get("NOTIFY_DISPATCH_SECRET");
+  const supplied = req.headers.get("x-notify-secret");
+  if (expected && supplied && timingSafeEqual(supplied, expected)) return null;
+  return json({ error: "unauthorized" }, 401);
 }
