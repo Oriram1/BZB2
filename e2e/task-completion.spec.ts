@@ -67,7 +67,8 @@ test('completion closes chat, records earnings and supports mutual ratings', asy
     await expect(composer).toBeVisible();
     await composer.fill('העבודה הסתיימה');
     await workerPage.getByRole('button', { name: 'שליחת הודעה', exact: true }).click();
-    await expect(workerPage.getByText('העבודה הסתיימה', { exact: true }).first()).toBeVisible();
+    await expect(workerPage.locator('p').filter({ hasText: /^העבודה הסתיימה$/ })).toBeVisible();
+    await workerPage.screenshot({ path: testInfo.outputPath('chat.png'), animations: 'disabled' });
 
     await page.goto(`/task/${taskId}`);
     await page.getByRole('button', { name: 'ניהול וסיום המטלה' }).click();

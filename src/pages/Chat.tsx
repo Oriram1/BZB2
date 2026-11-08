@@ -109,7 +109,7 @@ const Chat = () => {
       const version = ++loadVersion;
       const { data, error } = await supabase
         .from("conversations")
-        .select("*")
+        .select("id, participant_1, participant_2, task_id")
         .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
         .order("updated_at", { ascending: false });
 
@@ -123,9 +123,7 @@ const Chat = () => {
         .select("task_id, reviewee_id").eq("reviewer_id", user.id);
       const reviewed = new Set((reviews ?? []).map((review) => `${review.task_id}:${review.reviewee_id}`));
 
-      const convs: Conversation[] = [];
-      const pendingRatings: ReviewTarget[] = [];
-      for (const c of data) {
+      const results = await Promise.all(data.map(async (c): Promise<{ conversation?: Conversation; rating?: ReviewTarget } | null> => {
         const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
         let taskName = "";
         let taskCreatorId: string | null = null;
@@ -135,12 +133,12 @@ const Chat = () => {
             .select("name, status, archived_at, creator_id, review_window_started_at").eq("id", c.task_id).maybeSingle();
           if (taskError) {
             toast.error("לא הצלחנו לבדוק את מצב המשימה של השיחה");
-            continue;
+            return null;
           }
-          if (!task || task.status === "cancelled" || task.archived_at) continue;
+          if (!task || task.status === "cancelled" || task.archived_at) return null;
           // A finished task closes its chat, but the other side still waits to be rated.
           if (task.status === "completed") {
-            if (reviewed.has(`${c.task_id}:${otherId}`) || !reviewWindowOpen(task.review_window_started_at)) continue;
+            if (reviewed.has(`${c.task_id}:${otherId}`) || !reviewWindowOpen(task.review_window_started_at)) return null;
             completed = true;
           }
           taskName = task.name;
@@ -155,25 +153,19 @@ const Chat = () => {
         const otherName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "משתמש";
 
         if (completed && c.task_id) {
-          pendingRatings.push({ taskId: c.task_id, taskName, revieweeId: otherId, revieweeName: otherName });
-          continue;
+          return { rating: { taskId: c.task_id, taskName, revieweeId: otherId, revieweeName: otherName } };
         }
 
-        const { data: lastMsg } = await supabase
-          .from("messages")
-          .select("content, created_at, attachment_type")
-          .eq("conversation_id", c.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
+        const [lastMessageResult, unreadResult] = await Promise.all([
+          supabase.from("messages").select("content, created_at, attachment_type")
+            .eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(1),
+          supabase.from("messages").select("id", { count: "exact", head: true })
+            .eq("conversation_id", c.id).eq("read", false).neq("sender_id", user.id),
+        ]);
+        const lastMsg = lastMessageResult.data;
+        const count = unreadResult.count;
 
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", c.id)
-          .eq("read", false)
-          .neq("sender_id", user.id);
-
-        convs.push({
+        return { conversation: {
           id: c.id,
           participant_1: c.participant_1,
           participant_2: c.participant_2,
@@ -188,8 +180,10 @@ const Chat = () => {
             ? new Date(lastMsg[0].created_at).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
             : "",
           unread: count || 0,
-        });
-      }
+        } };
+      }));
+      const convs = results.flatMap((result) => result?.conversation ? [result.conversation] : []);
+      const pendingRatings = results.flatMap((result) => result?.rating ? [result.rating] : []);
       if (cancelled || version !== loadVersion) return;
       setConversations(convs);
       setToRate(pendingRatings);
@@ -231,7 +225,7 @@ const Chat = () => {
     const fetchMessages = async () => {
       const { data } = await supabase
         .from("messages")
-        .select("*")
+        .select("id, sender_id, content, created_at, attachment_path, attachment_type, attachment_duration")
         .eq("conversation_id", activeChat)
         .order("created_at", { ascending: true });
       if (cancelled) return;
