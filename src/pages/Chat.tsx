@@ -28,6 +28,7 @@ import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { reviewWindowOpen } from "@/lib/reviewWindow";
 import { useNotifications } from "@/hooks/useNotifications";
+import { fetchAllPages } from "@/lib/fetchAllPages";
 
 const MEDIA_BUCKET = "chat-media";
 /** Signed URLs are re-minted on every visit, so an hour is plenty. */
@@ -119,9 +120,23 @@ const Chat = () => {
       }
       if (!data) return;
 
-      const { data: reviews } = await supabase.from("reviews")
-        .select("task_id, reviewee_id").eq("reviewer_id", user.id);
-      const reviewed = new Set((reviews ?? []).map((review) => `${review.task_id}:${review.reviewee_id}`));
+      // Keep URLs bounded while combining repeated task and profile lookups.
+      const taskIds = [...new Set(data.flatMap((conversation) => conversation.task_id ? [conversation.task_id] : []))];
+      const otherIds = [...new Set(data.map((conversation) =>
+        conversation.participant_1 === user.id ? conversation.participant_2 : conversation.participant_1))];
+      const batches = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / 100) }, (_, index) => ids.slice(index * 100, (index + 1) * 100));
+      const [reviewsResult, taskPages, profilePages] = await Promise.all([
+        supabase.from("reviews").select("task_id, reviewee_id").eq("reviewer_id", user.id),
+        Promise.all(batches(taskIds).map((ids) => fetchAllPages((from, to) => supabase.from("tasks")
+          .select("id, name, status, archived_at, creator_id, review_window_started_at")
+          .in("id", ids).order("id").range(from, to)))),
+        Promise.all(batches(otherIds).map((ids) => fetchAllPages((from, to) => supabase.from("profiles")
+          .select("user_id, first_name, last_name, phone").in("user_id", ids).order("user_id").range(from, to)))),
+      ]);
+      if (taskPages.some((page) => page.error)) toast.error("לא הצלחנו לבדוק את מצב המשימה של השיחה");
+      const taskById = new Map(taskPages.flatMap((page) => page.data).map((task) => [task.id, task]));
+      const profileById = new Map(profilePages.flatMap((page) => page.data).map((profile) => [profile.user_id, profile]));
+      const reviewed = new Set((reviewsResult.data ?? []).map((review) => `${review.task_id}:${review.reviewee_id}`));
 
       const results = await Promise.all(data.map(async (c): Promise<{ conversation?: Conversation; rating?: ReviewTarget } | null> => {
         const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
@@ -129,12 +144,7 @@ const Chat = () => {
         let taskCreatorId: string | null = null;
         let completed = false;
         if (c.task_id) {
-          const { data: task, error: taskError } = await supabase.from("tasks")
-            .select("name, status, archived_at, creator_id, review_window_started_at").eq("id", c.task_id).maybeSingle();
-          if (taskError) {
-            toast.error("לא הצלחנו לבדוק את מצב המשימה של השיחה");
-            return null;
-          }
+          const task = taskById.get(c.task_id);
           if (!task || task.status === "cancelled" || task.archived_at) return null;
           // A finished task closes its chat, but the other side still waits to be rated.
           if (task.status === "completed") {
@@ -145,11 +155,7 @@ const Chat = () => {
           taskCreatorId = task.creator_id;
         }
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("first_name, last_name, phone")
-          .eq("user_id", otherId)
-          .single();
+        const profile = profileById.get(otherId);
         const otherName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "משתמש";
 
         if (completed && c.task_id) {

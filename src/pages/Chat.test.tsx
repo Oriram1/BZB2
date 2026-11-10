@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   messageReads: [] as string[],
   reviewed: [] as { task_id: string; reviewee_id: string }[],
   creator: "other",
+  reads: { tasks: 0, profiles: 0 },
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: state.user }) }));
 vi.mock("@/hooks/useNotifications", () => ({ useNotifications: () => ({ markConversationNotificationsRead: state.markRead }) }));
@@ -31,6 +32,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
     return channel;
   },
   from: (table: string) => {
+    if (table === "tasks" || table === "profiles") state.reads[table]++;
     let id = "";
     const result = () => {
       if (table === "conversations") return { data: [
@@ -38,16 +40,16 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
         { id: "open-chat", task_id: "open-task", participant_1: "me", participant_2: "other" },
         { id: "closed-chat", task_id: "closed-task", participant_1: "me", participant_2: "other" },
       ], error: null };
-      if (table === "tasks") return { data: { name: id === "open-task" ? "משימה פעילה" : "משימה שהסתיימה", status: id === "closed-task" || state.completed ? "completed" : "open", archived_at: null, creator_id: state.creator }, error: null };
+      if (table === "tasks") return { data: ["open-task", "closed-task"].map((taskId) => ({ id: taskId, name: taskId === "open-task" ? "משימה פעילה" : "משימה שהסתיימה", status: taskId === "closed-task" || state.completed ? "completed" : "open", archived_at: null, creator_id: state.creator })), error: null };
       if (table === "reviews") return { data: state.reviewed, error: null };
-      if (table === "profiles") return { data: { first_name: "שותף", last_name: "למשימה", phone: null }, error: null };
+      if (table === "profiles") return { data: [{ user_id: "other", first_name: "שותף", last_name: "למשימה", phone: null }], error: null };
       if (table === "messages") { state.messageReads.push(id); return { data: [], count: 0, error: null }; }
       throw new Error(table);
     };
     const query = {
       select: () => query, or: () => query, order: () => query,
       eq: (_key: string, value: string) => { id = value; return query; },
-      neq: () => query, limit: () => query,
+      neq: () => query, limit: () => query, in: () => query, range: () => query,
       single: async () => result(), maybeSingle: async () => result(),
       then: (resolve: (value: unknown) => unknown) => Promise.resolve(result()).then(resolve),
     };
@@ -57,7 +59,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
 
 beforeEach(() => {
   state.completed = false; state.taskChanged = undefined; state.messageArrived = undefined; state.showNewChat = false; state.messageReads = [];
-  state.reviewed = []; state.creator = "other";
+  state.reviewed = []; state.creator = "other"; state.reads = { tasks: 0, profiles: 0 };
   Element.prototype.scrollIntoView = vi.fn();
 });
 afterEach(cleanup);
@@ -101,4 +103,11 @@ it("refreshes the conversation list when a message arrives", async () => {
   state.showNewChat = true;
   await act(async () => { state.messageArrived?.(); });
   await waitFor(() => expect(screen.getAllByText("משימה פעילה")).toHaveLength(2));
+});
+
+it("loads shared task and profile data in batches for multiple conversations", async () => {
+  state.showNewChat = true;
+  render(<MemoryRouter initialEntries={["/chat"]}><Chat /></MemoryRouter>);
+  await waitFor(() => expect(screen.getAllByText("משימה פעילה")).toHaveLength(2));
+  expect(state.reads).toEqual({ tasks: 1, profiles: 1 });
 });
