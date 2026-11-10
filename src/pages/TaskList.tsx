@@ -60,15 +60,12 @@ const TaskList = () => {
 
   /** Saved profile position: lets distance and "nearest" work when live location is blocked or unavailable. */
   const [profilePos, setProfilePos] = useState<{ lat: number; lng: number } | null>(null);
-  const [profileChecked, setProfileChecked] = useState(false);
   useEffect(() => {
-    if (!user) { setProfileChecked(true); return; }
+    if (!user) return;
     let cancelled = false;
     void supabase.from("profiles").select("latitude, longitude").eq("user_id", user.id).maybeSingle().then(({ data }) => {
-      if (cancelled) return;
-      if (data?.latitude != null && data?.longitude != null) setProfilePos({ lat: data.latitude, lng: data.longitude });
-      setProfileChecked(true);
-    }, () => { if (!cancelled) setProfileChecked(true); });
+      if (!cancelled && data?.latitude != null && data?.longitude != null) setProfilePos({ lat: data.latitude, lng: data.longitude });
+    });
     return () => { cancelled = true; };
   }, [user]);
 
@@ -193,18 +190,17 @@ const TaskList = () => {
       />
 
       <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
-        <Dialog open={!pushPending && !locationDismissed && profileChecked && !profilePos && locationState !== "ready" && locationState !== "checking"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
+        <Dialog open={!pushPending && !locationDismissed && locationState !== "ready" && locationState !== "checking"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
           <DialogContent dir="rtl" className="rounded-2xl sm:max-w-md">
             <DialogHeader>
               <span className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink" aria-hidden="true"><MapPin size={24} /></span>
               <DialogTitle className="text-xl font-extrabold">נמצא יחד מטלות קרובות? 🐝</DialogTitle>
               <DialogDescription className="pt-2 leading-relaxed">
-                {locationState === "denied" ? "המיקום חסום כרגע. כדי לראות מטלות לפי המרחק, אפשר לאפשר גישה למיקום בהגדרות המכשיר או הדפדפן, או להגדיר כתובת בפרופיל." : "עם המיקום שלכם נוכל להציג את המרחק למטלות ולעזור למצוא מה קרוב אליכם. בלחיצה תופיע בקשת אישור מהמכשיר."}
+                {locationState === "denied" ? "המיקום חסום כרגע. כדי לראות מטלות לפי המרחק, אפשר לאפשר גישה למיקום בהגדרות המכשיר או הדפדפן." : "עם המיקום שלכם נוכל להציג את המרחק למטלות ולעזור למצוא מה קרוב אליכם. בלחיצה תופיע בקשת אישור מהמכשיר."}
               </DialogDescription>
             </DialogHeader>
             <div className="flex gap-2 pt-2">
               {locationState !== "denied" && <Button className="flex-1 rounded-full" onClick={() => { setLocationDismissed(true); locate(); }}>שימוש במיקום שלי</Button>}
-              <Button asChild className="flex-1 rounded-full" variant="outline"><Link to="/profile">הגדרת מיקום בפרופיל</Link></Button>
               <Button className="flex-1 rounded-full" variant="outline" onClick={() => setLocationDismissed(true)}>{locationState === "denied" ? "הבנתי" : "לא עכשיו"}</Button>
             </div>
           </DialogContent>
