@@ -81,11 +81,13 @@ const TaskList = () => {
   useEffect(() => {
     let cancelled = false;
     if (!navigator.geolocation) { setLocationState("unavailable"); return; }
-    if (!navigator.permissions?.query) { setLocationState("prompt"); return; }
+    let asked = false;
+    if (!navigator.permissions?.query) { locate(); return; }
     const checkPermission = () => {
       void navigator.permissions.query({ name: "geolocation" }).then((permission) => {
         if (cancelled) return;
         if (permission.state === "granted") locate();
+        else if (permission.state === "prompt" && !asked) { asked = true; locate(); }
         else { setUserPos(null); setLocationState(permission.state); }
       }).catch(() => { if (!cancelled) setLocationState("prompt"); });
     };
@@ -190,7 +192,7 @@ const TaskList = () => {
       />
 
       <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
-        <Dialog open={!pushPending && !locationDismissed && locationState !== "ready" && locationState !== "checking"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
+        <Dialog open={!pushPending && !locationDismissed && locationState === "denied"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
           <DialogContent dir="rtl" className="rounded-2xl sm:max-w-md">
             <DialogHeader>
               <span className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink" aria-hidden="true"><MapPin size={24} /></span>
