@@ -75,14 +75,14 @@ async function startFunctions() {
   }
 }
 
-async function call(name: string, token: string | null, body: Record<string, unknown> = {}, headers: Record<string, string> = {}) {
+async function call<T extends Record<string, unknown> = Record<string, unknown>>(name: string, token: string | null, body: Record<string, unknown> = {}, headers: Record<string, string> = {}) {
   const response = await fetch(`http://127.0.0.1:${ports.get(name)}/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers },
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
-  return { status: response.status, data: data as Record<string, any> };
+  return { status: response.status, data: data as T };
 }
 
 // Deal numbers are unique across the table, so a re-run needs fresh ones.
@@ -201,7 +201,7 @@ Deno.test({
 
     await t.step("card setup on Cardcom's page saves the card without charging", async () => {
       const before = chargeRequests().length;
-      const r = await call("task-pay", owner.token, { action: "card_setup" });
+      const r = await call<{ url: string }>("task-pay", owner.token, { action: "card_setup" });
       assertEquals(r.status, 200);
       const settled = await payOnPage(r.data.url);
       assertEquals(settled.status, "paid");
@@ -256,7 +256,7 @@ Deno.test({
       assertEquals(retry.data.state, "pending_payment");
 
       // A new card, typed on Cardcom's page, pays and publishes it.
-      const page = await call("task-pay", owner.token, { action: "new_card", task_id: insuredTask });
+      const page = await call<{ url: string }>("task-pay", owner.token, { action: "new_card", task_id: insuredTask });
       assertEquals(page.status, 200);
       const settled = await payOnPage(page.data.url);
       assertEquals(settled.status, "paid");
@@ -290,7 +290,7 @@ Deno.test({
       assertEquals(noConsent.data.error, "consent_required");
 
       const before = chargeRequests().length;
-      const r = await call("billing-start-trial", trialUser.token, { plan_id: "quarterly", accept_renewal: true });
+      const r = await call<{ url: string }>("billing-start-trial", trialUser.token, { plan_id: "quarterly", accept_renewal: true });
       assertEquals(r.status, 200);
       const settled = await payOnPage(r.data.url);
       assertEquals(settled.status, "paid");
@@ -407,11 +407,11 @@ Deno.test({
       const accepted = await admin.from("task_applications").update({ status: "accepted" }).eq("id", applied.data.id);
       assert(!accepted.error, accepted.error?.message);
 
-      const preview = await call("billing-cancel-refund", canceller.token, { action: "preview" });
+      const preview = await call<{ tasks: { locked: boolean; is_first: boolean }[]; difference_if_keep_all: number }>("billing-cancel-refund", canceller.token, { action: "preview" });
       assertEquals(preview.status, 200);
       assertEquals(preview.data.tasks.length, 4, JSON.stringify(preview.data));
-      assertEquals(preview.data.tasks.filter((x: any) => x.locked).length, 1, JSON.stringify(preview.data));
-      assertEquals(preview.data.tasks.filter((x: any) => x.is_first).length, 1, JSON.stringify(preview.data));
+      assertEquals(preview.data.tasks.filter((x) => x.locked).length, 1, JSON.stringify(preview.data));
+      assertEquals(preview.data.tasks.filter((x) => x.is_first).length, 1, JSON.stringify(preview.data));
       assertEquals(Number(preview.data.difference_if_keep_all), 9);
 
       // Try to drop everything, including the first and the locked one.

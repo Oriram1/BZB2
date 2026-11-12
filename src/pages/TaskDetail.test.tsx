@@ -24,7 +24,8 @@ afterEach(() => { cleanup(); state.user = null; });
 const task = (entry: string | { pathname: string; state: unknown } = "/task/task") => render(<MemoryRouter initialEntries={[entry]}><Routes><Route path="/task/:id" element={<TaskDetail />} /></Routes></MemoryRouter>);
 it("shows the publisher's full explanation and notes before location details", async () => {
   task();
-  const description = await screen.findByText(/הסבר מפורט של מפרסם המשימה/);
+  // The redesign shows the explanation twice: in the summary card and in its own card.
+  const description = (await screen.findAllByText(/הסבר מפורט של מפרסם המשימה/)).at(-1)!;
   const notes = screen.getByText("הערה חשובה של המפרסם");
   const map = screen.getByTestId("map");
   expect(description.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

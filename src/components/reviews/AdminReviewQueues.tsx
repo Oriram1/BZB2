@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { REPORT_REASONS } from "./ReportReviewDialog";
+import { REPORT_REASONS } from "./reportReasons";
 import { toast } from "sonner";
 
 type Response = { screening_reason: string | null; id: string; review_id: string; body: string; created_at: string };

@@ -15,7 +15,7 @@ test('large task lists render on scroll and can also be shown in full', async ({
   await page.route('**/rest/v1/user_role_ratings?*', (route) => route.fulfill({ json: [] }));
   await page.goto('/tasks');
   const dismiss = page.getByRole('button', { name: 'לא עכשיו' });
-  const heading = page.getByRole('heading', { name: 'מטלות זמינות' });
+  const heading = page.getByRole('heading', { name: 'מוצאים משימה' });
   await expect(dismiss.or(heading).first()).toBeVisible();
   if (await dismiss.isVisible()) await dismiss.click();
   const cards = page.getByRole('button', { name: /^מטלה: מטלת בדיקה/ });

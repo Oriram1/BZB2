@@ -26,6 +26,7 @@ export const ROUTES = {
   publicProfile: "/profile/:userId",
   privacy: "/privacy",
   terms: "/terms",
+  help: "/help",
   admin: "/admin",
 } as const;
 

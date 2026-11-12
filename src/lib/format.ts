@@ -63,6 +63,28 @@ export function formatDateTime(
   return `${formattedDate} ${formattedTime}`;
 }
 
+const weekdayFormatter = new Intl.DateTimeFormat("he-IL", { weekday: "long" });
+
+/**
+ * Task date as drawn in the redesign: "יום ראשון · 18:00" for the coming week,
+ * "30.11 · 10:00" for anything further away (a bare weekday would be ambiguous).
+ */
+export function formatTaskWhen(
+  date?: string | Date | null,
+  time?: string | Date | null,
+): string {
+  const parsed = toDate(date);
+  const formattedTime = time ? formatTime(time) : EMPTY;
+  if (!parsed) return formattedTime;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const days = Math.round((new Date(parsed).setHours(0, 0, 0, 0) - startOfToday.getTime()) / 86_400_000);
+  const day = days >= 0 && days < 7
+    ? weekdayFormatter.format(parsed)
+    : `${String(parsed.getDate()).padStart(2, "0")}.${String(parsed.getMonth() + 1).padStart(2, "0")}`;
+  return formattedTime === EMPTY ? day : `${day} · ${formattedTime}`;
+}
+
 /** "2026-04-16" -> "יום חמישי, 16 באפריל 2026". For detail screens. */
 export function formatLongDate(value?: string | Date | null): string {
   const date = toDate(value);

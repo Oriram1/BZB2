@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { MapPin, Pencil, Star, Heart, ChevronLeft } from "lucide-react";
+import { MapPin, PencilSimple as Pencil, Star, Heart, ArrowLeft, ArrowUpLeft, CalendarBlank as Calendar, Timer } from "@phosphor-icons/react";
 import CategoryIcon from "./CategoryIcon";
-import { formatCurrency, formatDateTime, formatDuration, formatDistance } from "@/lib/format";
+import { formatCurrency, formatTaskWhen, formatDuration, formatDistance } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -38,6 +38,8 @@ type TaskCardProps = {
   /** Whether the signed-in person saved this task. Hidden when no toggle is given. */
   saved?: boolean;
   onToggleSave?: (taskId: string) => void;
+  /** "popup": the card as drawn over the map — icon at the trailing edge, price on one line. */
+  variant?: "list" | "popup";
 };
 
 /**
@@ -45,7 +47,8 @@ type TaskCardProps = {
  * first, then what the job is, then when. Applying happens on the detail
  * screen, where the whole task is visible, never from the list.
  */
-const TaskCard = ({ task, index, saved = false, onToggleSave }: TaskCardProps) => {
+const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }: TaskCardProps) => {
+  const isPopup = variant === "popup";
   const { user } = useAuth();
   const navigate = useNavigate();
   const isOwner = Boolean(user && task.creatorId === user.id);
@@ -56,18 +59,12 @@ const TaskCard = ({ task, index, saved = false, onToggleSave }: TaskCardProps) =
     }
   };
 
-  const meta = [
-    formatDateTime(task.date, task.time),
-    formatDuration(task.duration),
-    task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`,
-  ].filter(Boolean).join(" · ");
-
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label={`מטלה: ${task.name}`}
-      className="bg-card rounded-3xl p-5 border border-border card-hover cursor-pointer group relative overflow-hidden animate-fade-in opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className={cn("min-w-0 bg-card rounded-lg p-3.5 border-[1.2px] shadow-card cursor-pointer flex flex-col", isPopup ? "gap-5 border-primary-soft-border" : "gap-4 border-border", "animate-fade-in opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
       style={{ animationDelay: `${Math.min(index, 8) * 0.05}s`, animationFillMode: "forwards" }}
       onClick={handleCardClick}
       onKeyDown={(e) => {
@@ -78,78 +75,108 @@ const TaskCard = ({ task, index, saved = false, onToggleSave }: TaskCardProps) =
         }
       }}
     >
-      <div className="absolute inset-0 gradient-honey opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500" />
-
-      {/* Pay and distance: the two numbers a worker scans for. */}
-      <div className="relative flex items-start justify-between gap-3">
-        <p className="text-2xl font-extrabold text-foreground tabular leading-none">
-          {formatCurrency(task.payment)}
-          <span className="text-sm font-bold text-muted-foreground"> / {task.paymentType === "hour" ? "שעה" : "משימה"}</span>
-        </p>
-        <div className="flex items-center gap-1 shrink-0">
-          {task.distance !== undefined && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-foreground tabular">
-              <MapPin size={13} aria-hidden="true" />
-              <span className="sr-only">מרחק: </span>
-              {formatDistance(task.distance)}
-            </span>
-          )}
-          {onToggleSave && task.dbId && !isOwner && (
-            <button
-              type="button"
-              aria-pressed={saved}
-              aria-label={saved ? "הסרה מהמטלות השמורות" : "שמירת המטלה"}
-              onClick={(e) => { e.stopPropagation(); onToggleSave(task.dbId!); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Heart size={20} className={cn(saved && "fill-destructive text-destructive")} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="relative mt-3 flex items-start gap-3">
-        <CategoryIcon category={task.category} className="shrink-0 group-hover:scale-110 transition-transform duration-300" />
+      {/* What the job is, with its category on the trailing edge. */}
+      <div className={cn("flex items-start gap-2.5", isPopup && "flex-row-reverse")}>
+        <CategoryIcon variant="figma" category={task.category} className="shrink-0" />
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-lg text-foreground leading-snug">{task.name}</h3>
-          <p className="text-muted-foreground text-sm mt-0.5 truncate">{task.shortDesc}</p>
+          <h3 className="font-semibold text-lg text-foreground leading-6">{task.name}</h3>
+          <p className="text-muted-foreground text-[13px] leading-[18px] truncate">{task.shortDesc}</p>
         </div>
+        {!isPopup && (
+          <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-xs leading-4 text-muted-foreground">
+            {task.categoryLabel}
+          </span>
+        )}
       </div>
 
-      <p className="relative mt-3 text-sm text-muted-foreground tabular">{meta}</p>
+      {/* When, how long, where. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs leading-[18px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <Calendar size={14} aria-hidden="true" />
+          {formatTaskWhen(task.date, task.time)}
+        </span>
+        {task.duration > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <Timer size={14} aria-hidden="true" />
+            {formatDuration(task.duration)}
+          </span>
+        )}
+        {task.location && (
+          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+            <MapPin size={14} className="shrink-0" aria-hidden="true" />
+            <span className="truncate">{task.location}</span>
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {task.distance !== undefined && (
+          <span className="rounded-[4px] bg-honey-light/85 px-2.5 py-[3px] text-xs leading-6 text-foreground tabular">
+            <span className="sr-only">מרחק: </span>
+            {formatDistance(task.distance)}
+          </span>
+        )}
+        <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
+          {task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`}
+        </span>
+        {task.creatorRating !== undefined && (
+          <span
+            className="inline-flex items-center gap-1 rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground"
+            aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}
+          >
+            {task.creatorRating ? (
+              <>
+                <Star size={12} weight="fill" className="text-primary" aria-hidden="true" />
+                <bdi className="tabular-nums">{task.creatorRating.average.toFixed(1)}</bdi>
+                <span className="text-muted-foreground">({task.creatorRating.count})</span>
+              </>
+            ) : "מפרסם חדש"}
+          </span>
+        )}
+      </div>
 
       {isOwner && task.publishState === "pending_review" && (
-        <p className="relative mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+        <p className="rounded-lg border border-primary-soft-border bg-primary-soft px-3 py-2 text-sm text-foreground">
           המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
         </p>
       )}
 
-      <div className="relative mt-3 pt-3 border-t border-border flex items-center justify-between gap-3 min-h-11">
-        {task.creatorRating !== undefined ? (
-          <div className="flex items-center gap-1.5 text-xs leading-5" aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}>
-            {task.creatorRating ? (
-              <>
-                <Star size={13} className="fill-primary-ink text-primary-ink" aria-hidden="true" />
-                <bdi className="font-bold tabular-nums text-foreground">{task.creatorRating.average.toFixed(1)}</bdi>
-                <span className="text-muted-foreground">({task.creatorRating.count === 1 ? "דירוג אחד" : `${task.creatorRating.count} דירוגים`})</span>
-              </>
-            ) : <span className="text-muted-foreground">למפרסם אין עדיין דירוגים</span>}
-          </div>
-        ) : <span />}
+      <div className={cn("border-t border-border pt-4", isPopup && "flex items-center justify-between gap-3")}>
+        <p className="text-[22px] font-medium leading-7 text-foreground tabular text-right">{formatCurrency(task.payment)}</p>
+        <p className="text-xs leading-[18px] text-muted-foreground">
+          {task.paymentType === "hour" ? "לשעת עבודה" : isPopup ? "עבור המשימה" : "למשימה זו"}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2.5">
         {isOwner ? (
           <Button
-            size="sm"
             variant="outline"
             onClick={(e) => { e.stopPropagation(); navigate(`/task/${task.dbId}`, { state: { openEdit: true } }); }}
-            className="rounded-full min-h-11 font-bold shrink-0 gap-1"
+            className="h-12 flex-1 gap-2 rounded-full font-medium"
           >
-            <Pencil size={14} />
+            <Pencil size={16} />
             עריכה
           </Button>
         ) : (
-          <span className="inline-flex items-center gap-0.5 text-sm font-bold text-primary-ink" aria-hidden="true">
-            לפרטים <ChevronLeft size={16} />
-          </span>
+          <Button
+            onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
+            className="h-12 flex-1 gap-2.5 rounded-full font-medium"
+          >
+            לפרטי המשימה
+            {isPopup ? <ArrowUpLeft size={16} aria-hidden="true" /> : <ArrowLeft size={16} aria-hidden="true" />}
+          </Button>
+        )}
+        {onToggleSave && task.dbId && !isOwner && (
+          <button
+            type="button"
+            aria-pressed={saved}
+            aria-label={saved ? "הסרה מהמטלות השמורות" : "שמירת המטלה"}
+            onClick={(e) => { e.stopPropagation(); onToggleSave(task.dbId!); }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#DBD6F0] bg-card text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Heart size={20} weight={saved ? "fill" : "regular"} className={cn(saved && "text-primary")} aria-hidden="true" />
+          </button>
         )}
       </div>
     </div>

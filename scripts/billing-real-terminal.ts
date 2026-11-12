@@ -25,7 +25,7 @@ const load = () => {
 };
 const save = (s: unknown) => Deno.writeTextFileSync(STATE, JSON.stringify(s, null, 2));
 
-async function rest(service: string, path: string, init: RequestInit = {}) {
+async function rest<T = unknown>(service: string, path: string, init: RequestInit = {}) {
   const r = await fetch(`${URL_}${path}`, {
     ...init,
     headers: { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=representation", ...(init.headers ?? {}) },
@@ -33,13 +33,13 @@ async function rest(service: string, path: string, init: RequestInit = {}) {
   const text = await r.text();
   let body: unknown = text;
   try { body = JSON.parse(text); } catch { /* keep text */ }
-  return { status: r.status, body: body as any };
+  return { status: r.status, body: body as T };
 }
 
 async function makeUser(service: string, anon: string, label: string, roles: string[]) {
   const email = `${label}-${Date.now()}@bzb-e2e.test`;
   const password = `E2e-${crypto.randomUUID()}-Aa1!`;
-  const created = await rest(service, "/auth/v1/admin/users", {
+  const created = await rest<{ id: string }>(service, "/auth/v1/admin/users", {
     method: "POST",
     body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { first_name: "בדיקה", last_name: label } }),
   });
@@ -68,7 +68,7 @@ async function fn(name: string, token: string, body: Record<string, unknown>, an
     headers: { Authorization: `Bearer ${token}`, apikey: anon, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return { status: r.status, data: await r.json().catch(() => ({})) as Record<string, any> };
+  return { status: r.status, data: await r.json().catch(() => ({})) as Record<string, unknown> };
 }
 
 const step = Deno.args[0];
@@ -109,7 +109,7 @@ if (step === "users") {
       creator_id: owner.id, category: "housework", name, short_desc: "real terminal e2e", payment: 50, insurance,
     }, owner.token);
   const stateOf = async (id: string) =>
-    (await rest(service, `/rest/v1/tasks?id=eq.${id}&select=publish_state,payment_due,charged_at`)).body[0];
+    (await rest<{ payment_due: number }[]>(service, `/rest/v1/tasks?id=eq.${id}&select=publish_state,payment_due,charged_at`)).body[0];
 
   const results: Record<string, unknown> = {};
   for (const [label, insurance] of [["free", false], ["paid", false], ["insured", true]] as const) {

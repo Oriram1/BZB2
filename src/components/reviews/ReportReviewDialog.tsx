@@ -5,8 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isUniqueViolation, runAction } from "@/lib/errors";
+import { REPORT_REASONS } from "./reportReasons";
 
-export const REPORT_REASONS: Record<string, string> = { abuse: "תוכן פוגעני", privacy: "פרטים אישיים", spam: "ספאם או פרסום", coercion: "איום או לחץ", irrelevant: "לא קשור למטלה", other: "סיבה אחרת" };
 export function ReportReviewDialog({ reviewId, onClose }: { reviewId: string; onClose: () => void }) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");

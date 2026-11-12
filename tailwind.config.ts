@@ -18,6 +18,8 @@ export default {
       fontFamily: {
         sans: ["Heebo", "sans-serif"],
         heebo: ["Heebo", "sans-serif"],
+        /* Only inside the .figma scope — see src/index.css. */
+        rubik: ["Rubik", "sans-serif"],
         serif: ["Heebo", "sans-serif"],
         mono: ["Heebo", "sans-serif"],
       },
@@ -32,6 +34,8 @@ export default {
           foreground: "hsl(var(--primary-foreground))",
           /* text-primary-ink: the only orange safe to use as text on light backgrounds */
           ink: "hsl(var(--primary-ink))",
+          soft: "hsl(var(--primary-soft))",
+          "soft-border": "hsl(var(--primary-soft-border))",
         },
         trust: {
           DEFAULT: "hsl(var(--trust))",

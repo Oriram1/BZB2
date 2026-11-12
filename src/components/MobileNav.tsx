@@ -1,19 +1,24 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, UserCircle, LogOut, Bell, ArrowRight, CheckCheck } from "lucide-react";
+import { Menu } from "lucide-react";
+import {
+  X, User as UserCircle, Heart, CaretLeft, CheckCircle, Question, SignOut as LogOut, Bell, ArrowRight, Checks as CheckCheck,
+  House, SignIn, ListMagnifyingGlass, PlusCircle, FileText, ChatCircle, UserCircle as ProfileIcon,
+  Shield, Gear, CreditCard, ShieldCheck, type Icon as PhosphorIcon,
+} from "@phosphor-icons/react";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { visibleNavItems } from "@/components/navItems";
 import { useNavDrawer } from "@/components/NavDrawerContext";
 import NotificationBell from "@/components/NotificationBell";
-import BzbLogo from "@/components/BzbLogo";
+import { useRoles } from "@/hooks/useRoles";
 import { useNotifications } from "@/hooks/useNotifications";
 import { notificationLine } from "@/lib/notificationCopy";
 import { formatRelativeTime } from "@/lib/format";
 import { formFor } from "@shared/gender.ts";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { primaryRoleLabel } from "@/lib/roles";
 
 /**
  * A closed drawer must be unreachable by keyboard and screen reader, not just
@@ -28,6 +33,27 @@ import { primaryRoleLabel } from "@/lib/roles";
  * the frame `aria-hidden` landed, which the browser reports as hiding a focused
  * element from screen readers.
  */
+const SAVED_TASKS_PATH = `${ROUTES.tasks}?saved=1`;
+const DONE_TASKS_PATH = `${ROUTES.myTasks}?tab=performing`;
+
+/** The drawer follows the Figma redesign, which uses the Phosphor icon set. */
+const DRAWER_ICONS: Record<string, PhosphorIcon> = {
+  [ROUTES.home]: House,
+  [ROUTES.auth]: SignIn,
+  [ROUTES.tasks]: ListMagnifyingGlass,
+  [ROUTES.createTask]: PlusCircle,
+  [ROUTES.myTasks]: FileText,
+  [ROUTES.chat]: ChatCircle,
+  [ROUTES.profile]: ProfileIcon,
+  [ROUTES.parent]: Shield,
+  [ROUTES.settings]: Gear,
+  [ROUTES.pricing]: CreditCard,
+  [ROUTES.admin]: ShieldCheck,
+  [SAVED_TASKS_PATH]: Heart,
+  [DONE_TASKS_PATH]: CheckCircle,
+  [ROUTES.help]: Question,
+};
+
 const inertWhenClosed = (open: boolean) => (open ? {} : { inert: "" }) as { inert?: string };
 
 /**
@@ -37,7 +63,7 @@ const inertWhenClosed = (open: boolean) => (open ? {} : { inert: "" }) as { iner
  * The trigger normally lives inside PageHeader; this floating one is the
  * fallback for the screens that have no header (landing, auth, create-task).
  */
-export function NavDrawerTrigger({ floating = false }: { floating?: boolean }) {
+export function NavDrawerTrigger({ floating = false, className }: { floating?: boolean; className?: string }) {
   const { open, setOpen } = useNavDrawer();
 
   return (
@@ -49,6 +75,7 @@ export function NavDrawerTrigger({ floating = false }: { floating?: boolean }) {
         floating
           ? "fixed top-4 start-4 z-40 bg-primary text-primary-foreground shadow-lg hover:brightness-105"
           : "text-primary-foreground hover:bg-foreground/10",
+        className,
       )}
       aria-label="פתיחת תפריט"
       aria-expanded={open}
@@ -72,6 +99,7 @@ export function MobileNav() {
   const navigate = useNavigate();
   const { user, profile, roles, signOut } = useAuth();
   const { items, loading, markRead, markAllRead } = useNotifications();
+  const { isBee } = useRoles();
 
   const handleLogout = async () => {
     await signOut();
@@ -84,9 +112,19 @@ export function MobileNav() {
     ? `${profile.first_name} ${profile.last_name}`.trim() || user?.email || "משתמש"
     : user?.email || "משתמש";
 
-  const roleLabel = primaryRoleLabel(roles);
 
   const filteredItems = visibleNavItems(Boolean(user), roles);
+  /* Entries drawn in the redesign that are views of existing screens rather than
+     routes of their own: saved tasks under the list, completed work under
+     "המטלות שלי", and help at the end. Only people who perform tasks get the
+     first two. */
+  const drawerItems = filteredItems.flatMap((item) => {
+    if (item.to === ROUTES.tasks && user && isBee) return [item, { ...item, label: "מועדפים", to: SAVED_TASKS_PATH }];
+    if (item.to === ROUTES.myTasks && isBee) return [item, { ...item, label: "מטלות שביצעתי", to: DONE_TASKS_PATH }];
+    return [item];
+  }).concat([{ label: "עזרה ותמיכה", to: ROUTES.help, icon: Question as unknown as (typeof filteredItems)[number]["icon"] }]);
+  /** The design separates settings and help from the task entries with a rule. */
+  const dividerBefore = drawerItems.some((item) => item.to === ROUTES.settings) ? ROUTES.settings : ROUTES.help;
 
   const activeConversationId = location.pathname === "/chat"
     ? new URLSearchParams(location.search).get("conversation")
@@ -129,7 +167,7 @@ export function MobileNav() {
         aria-label="תפריט ניווט"
         {...inertWhenClosed(open)}
         className={cn(
-          "fixed top-0 start-0 z-50 h-full w-72 bg-background border-e border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
+          "figma fixed top-0 start-0 z-50 h-full w-72 bg-card border-e border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
           open ? "translate-x-0" : "rtl:translate-x-full ltr:-translate-x-full"
         )}
       >
@@ -147,7 +185,7 @@ export function MobileNav() {
                 <span className="text-lg font-bold text-primary-ink">התראות</span>
               </>
             ) : (
-              <BzbLogo className="w-9 h-9" />
+              <span className="text-2xl font-bold leading-none tracking-tight text-foreground" aria-label="BZB">B<span className="text-[#F2B63C]">Z</span>B</span>
             )}
             <div className="flex-1" />
             {!showNotifications && user && (
@@ -175,7 +213,7 @@ export function MobileNav() {
             )}
             <button
               onClick={handleCloseDrawer}
-              className="flex items-center justify-center h-11 w-11 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="sr-only focus-visible:not-sr-only focus-visible:flex items-center justify-center h-11 w-11 rounded-lg hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="סגירה"
             >
               <X className="w-5 h-5" aria-hidden="true" />
@@ -183,23 +221,24 @@ export function MobileNav() {
           </div>
 
           {user ? (
-            <Link to="/profile" onClick={() => setOpen(false)} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 active:bg-muted transition-colors">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+            <Link to="/profile" onClick={() => setOpen(false)} className="flex items-center gap-3 p-3 rounded-lg bg-muted active:bg-secondary transition-colors">
+              <div className="w-11 h-11 rounded-full bg-primary-soft flex items-center justify-center overflow-hidden">
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <UserCircle className="w-6 h-6 text-primary-ink" />
+                  <UserCircle className="w-5 h-5 text-primary" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{displayName}</p>
-                {roleLabel && <p className="text-xs text-muted-foreground">{roleLabel}</p>}
+                <p className="text-sm font-bold truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground">הפרופיל שלי</p>
               </div>
+              <CaretLeft size={16} className="shrink-0 text-foreground" aria-hidden="true" />
             </Link>
           ) : (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
-                <UserCircle className="w-6 h-6 text-primary-ink" />
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+              <div className="w-11 h-11 rounded-full bg-primary-soft flex items-center justify-center overflow-hidden">
+                <UserCircle className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">אורח</p>
@@ -217,25 +256,29 @@ export function MobileNav() {
             style={{ transform: showNotifications ? "translateX(100%)" : "translateX(0)" }}
           >
             <div className="w-full shrink-0 overflow-y-auto py-2">
-              {filteredItems.map((item) => {
-                const isActive = location.pathname === item.to;
+              {drawerItems.map((item) => {
+                const [itemPath, itemQuery = ""] = item.to.split("?");
+                const isActive = location.pathname === itemPath && location.search.replace(/^\?/, "") === itemQuery;
+                const ItemIcon = DRAWER_ICONS[item.to] ?? item.icon;
                 return (
+                  <Fragment key={item.to}>
+                  {item.to === dividerBefore && <hr className="mx-4 my-2 border-border" />}
                   <Link
-                    key={item.to}
                     to={item.to}
                     onClick={handleCloseDrawer}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-3 px-5 py-3.5 min-h-11 text-sm font-medium transition-colors",
+                      "flex items-center gap-3 px-5 py-3.5 min-h-11 text-sm transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                       isActive
-                        ? "bg-primary/10 text-primary-ink border-s-4 border-primary"
+                        ? "bg-primary-soft text-primary-ink font-semibold border-s-[3px] border-primary"
                         : "text-foreground hover:bg-muted"
                     )}
                   >
-                    <item.icon className="w-5 h-5 shrink-0" aria-hidden="true" />
-                    <span className={cn("font-medium", item.bold && "font-bold")}>{item.label}</span>
+                    <ItemIcon className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    <span className={cn(isActive ? "font-medium" : "font-normal")}>{item.label}</span>
                   </Link>
+                  </Fragment>
                 );
               })}
             </div>
@@ -298,10 +341,10 @@ export function MobileNav() {
             {user && (
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-3 w-full px-5 py-3.5 min-h-11 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-destructive"
+                className="flex items-center justify-center gap-2 w-full px-5 py-3.5 min-h-12 text-sm font-normal text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-destructive"
               >
                 <LogOut className="w-5 h-5 shrink-0" aria-hidden="true" />
-                <span>התנתק</span>
+                <span>התנתקות</span>
               </button>
             )}
             <div className="p-4 text-center text-xs text-muted-foreground">

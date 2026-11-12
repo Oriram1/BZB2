@@ -29,7 +29,8 @@ export default tseslint.config(
       // onClick, an <a> wrapping a <button>, and an unlabelled control.
       "jsx-a11y/no-static-element-interactions": "error",
       "jsx-a11y/click-events-have-key-events": "error",
-      "jsx-a11y/no-noninteractive-element-interactions": "error",
+      // Image load failures are not user interactions.
+      "jsx-a11y/no-noninteractive-element-interactions": ["error", { img: ["onError"] }],
 
       // Radix renders the real element via asChild, so the linter cannot see
       // that <Button asChild> is a button. Tell it about the wrappers.

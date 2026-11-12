@@ -12,28 +12,30 @@ import CategoryIcon from "@/components/tasks/CategoryIcon";
 import PageHeader from "@/components/PageHeader";
 import TaskLocationMap from "@/components/tasks/TaskLocationMap";
 import {
-  DollarSign,
-  Users,
   MapPin,
-  Calendar,
-  Hourglass,
+  CalendarBlank as Calendar,
+  Timer as Hourglass,
   FileText,
-  StickyNote,
+  Note as StickyNote,
   User,
-  Trash2,
-  Share2,
-  Eye,
-  Pencil,
+  Trash as Trash2,
+  ShareNetwork as Share2,
+  PencilSimple as Pencil,
   Star,
-  MoreVertical,
-} from "lucide-react";
+  DotsThreeVertical as MoreVertical,
+  ArrowRight,
+  ArrowSquareOut,
+  Wallet,
+  Check,
+  Heart,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import ApplyDialog from "@/components/tasks/ApplyDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { defaultAvatarUrl, displayName, formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
+import { formatTaskWhen, defaultAvatarUrl, displayName, formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
@@ -42,6 +44,7 @@ import { archiveTask } from "@/lib/tasks";
 import { fetchRatings } from "@/lib/people";
 import { isUniqueViolation } from "@/lib/errors";
 import { useRoles } from "@/hooks/useRoles";
+import { useSavedTasks } from "@/hooks/useSavedTasks";
 import { formFor, RECIPIENT, say } from "@shared/gender.ts";
 import { reviewWindowOpen } from "@/lib/reviewWindow";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
@@ -90,6 +93,7 @@ interface CreatorProfile {
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { saved, toggle: toggleSaved } = useSavedTasks();
   const location = useLocation();
   const { user, profile } = useAuth();
   const { isBee } = useRoles();
@@ -289,9 +293,9 @@ const TaskDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4 pt-20 max-w-xl mx-auto" dir="rtl">
-        <Skeleton className="h-8 w-32 mb-6 rounded-xl" />
-        <Skeleton className="h-48 w-full rounded-3xl mb-4" />
+      <div className="figma min-h-screen bg-background p-4 pt-20 max-w-xl mx-auto" dir="rtl">
+        <Skeleton className="h-8 w-32 mb-6 rounded-lg" />
+        <Skeleton className="h-48 w-full rounded-lg mb-4" />
         <Skeleton className="h-6 w-3/4 mb-2 rounded-lg" />
         <Skeleton className="h-4 w-1/2 rounded-lg" />
       </div>
@@ -306,143 +310,177 @@ const TaskDetail = () => {
   const creatorAvatar = creator?.avatar_url || defaultAvatarUrl(task.creator_id);
 
   return (
-    <div className="min-h-screen bg-background pb-36" dir="rtl">
-      <PageHeader
-        title={task.name}
-        titleIsPageHeading
-        showBack={true}
-        action={
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleShare}
-              className="rounded-full text-primary-foreground hover:bg-foreground/10 shrink-0 h-11 w-11"
-              aria-label="שיתוף מטלה"
-            >
-              <Share2 size={18} />
-            </Button>
-          </div>
-        }
-      />
+    <div className="figma min-h-screen bg-background pb-36" dir="rtl">
+      <PageHeader variant="figma" showBack={false} />
 
-      <div className="max-w-xl mx-auto px-4 pt-4 space-y-5">
+      {/* Sub-header as drawn: back at the inline start, share at the inline end. */}
+      <div className="bg-card">
+        <div className="max-w-xl mx-auto flex items-center justify-between px-4 py-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => (window.history.length > 2 ? navigate(-1) : navigate("/"))}
+            aria-label="חזרה למסך הקודם"
+            className="h-11 w-11 shrink-0 rounded-full border border-border bg-muted text-foreground hover:bg-secondary"
+          >
+            <ArrowRight size={18} />
+          </Button>
+          <p className="text-base font-medium text-foreground">פרטי משימה</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleShare}
+            className="h-11 w-11 shrink-0 rounded-full border border-border bg-muted text-foreground hover:bg-secondary"
+            aria-label="שיתוף מטלה"
+          >
+            <Share2 size={18} />
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-[linear-gradient(180deg,hsl(var(--primary-soft))_0,hsl(var(--background))_420px)]">
+      <div className="max-w-xl mx-auto px-4 pt-3.5 space-y-3.5">
         {task.image_url && (
-          <div className="relative rounded-3xl overflow-hidden shadow-sm border border-border/60">
+          <div className="relative rounded-lg overflow-hidden shadow-card border-[1.2px] border-border">
             <img
               src={task.image_url}
               alt={task.name}
               className="w-full h-52 sm:h-64 object-cover"
               onError={(e) => { (e.currentTarget.closest(".relative") as HTMLElement | null)?.remove(); }}
             />
-            <div className="absolute top-3 right-3">
-              <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs shadow-md">
-                {statusLabel}
-              </Badge>
-            </div>
           </div>
         )}
 
-        <div className="bg-card rounded-3xl p-5 border border-border/60 shadow-sm space-y-3">
+        <div className="bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-6">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <CategoryIcon category={task.category} className="shrink-0" />
-              <Badge variant="secondary" className="rounded-full px-3 py-1 font-bold text-xs">
-                {categoryLabel(task.category)}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-1">
-              {!task.image_url && (
-                <Badge className="gradient-honey text-primary-foreground border-none rounded-full px-3 py-1 font-bold text-xs">
-                  {statusLabel}
-                </Badge>
+            <span className="rounded-full border border-primary bg-primary-soft px-2.5 py-1 text-xs leading-4 text-primary">
+              {statusLabel}
+            </span>
+            <div className="flex items-center gap-3 text-xs leading-[18px] text-muted-foreground">
+              {(task.scheduled_date || task.scheduled_time) && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar size={14} aria-hidden="true" />
+                  {formatTaskWhen(task.scheduled_date, task.scheduled_time)}
+                </span>
               )}
-              <Button variant="ghost" size="icon" onClick={handleShare} className="md:hidden rounded-full h-11 w-11 text-muted-foreground" aria-label="שיתוף מטלה">
-                <Share2 size={18} />
-              </Button>
-            {isOwner && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground shrink-0 h-11 w-11" aria-label="עוד פעולות">
-                    <MoreVertical size={18} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem destructive onSelect={() => setDeleteOpen(true)}>
-                    <Trash2 size={16} aria-hidden="true" /> מחיקת המטלה
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+              {task.duration_hours && (
+                <span className="inline-flex items-center gap-1.5 border-s border-border ps-3">
+                  <Hourglass size={14} aria-hidden="true" />
+                  {formatDuration(Number(task.duration_hours))}
+                </span>
+              )}
+              {isOwner && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground shrink-0 h-11 w-11" aria-label="עוד פעולות">
+                      <MoreVertical size={18} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem destructive onSelect={() => setDeleteOpen(true)}>
+                      <Trash2 size={16} aria-hidden="true" /> מחיקת המטלה
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
 
-          <div>
-            <h2 className="font-black text-2xl sm:text-3xl text-foreground tracking-tight">{task.name}</h2>
-            <p className="text-muted-foreground text-sm mt-1 leading-relaxed">{task.short_desc}</p>
+          <div className="flex items-start justify-between gap-3 border-t border-border pt-6">
+            <div className="min-w-0">
+              <h1 className="text-[22px] font-semibold leading-7 text-foreground">{task.name}</h1>
+              <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">{task.short_desc}</p>
+            </div>
+            <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-xs leading-4 text-muted-foreground">
+              {categoryLabel(task.category)}
+            </span>
           </div>
+
+          {(task.scheduled_date || task.scheduled_time || task.duration_hours) && (
+            <div className="flex items-center justify-between gap-3 text-xs leading-[18px] text-muted-foreground">
+              {(task.scheduled_date || task.scheduled_time) && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar size={14} aria-hidden="true" />
+                  {formatTaskWhen(task.scheduled_date, task.scheduled_time)}
+                </span>
+              )}
+              {task.duration_hours && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Hourglass size={14} aria-hidden="true" />
+                  {formatDuration(Number(task.duration_hours))}
+                </span>
+              )}
+            </div>
+          )}
 
           {isOwnPendingReview && (
-            <p className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+            <p className="rounded-lg border border-primary-soft-border bg-primary-soft px-3 py-2 text-sm text-foreground">
               המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
             </p>
           )}
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/40 font-medium">
-            <span className="flex items-center gap-1">
-              <Eye size={14} />
-              {task.views_count} צפיות
+          {(task.full_desc || task.short_desc) && (
+            <div className="flex items-center justify-between gap-3 min-h-[72px] rounded-[8px] bg-[#FFF2EE] p-3.5">
+              <p className="text-sm leading-6 text-foreground whitespace-pre-wrap dir-auto">{task.full_desc || task.short_desc}</p>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/25 text-primary">
+                <FileText size={18} aria-hidden="true" />
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2 border-y border-border py-6">
+            <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
+              {task.workers_needed === 1 ? "עובד אחד" : `${task.workers_needed} עובדים`}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 min-h-[72px] rounded-[8px] bg-[#FFF2EE] p-3.5">
+            <div>
+              <p className="text-[22px] font-medium leading-7 text-foreground tabular">{formatCurrency(task.payment)}</p>
+              <p className="text-xs leading-[18px] text-muted-foreground">{task.payment_type === "hour" ? "לשעת עבודה" : "למשימה זו"}</p>
+            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/25 text-primary">
+              <Wallet size={18} aria-hidden="true" />
             </span>
           </div>
         </div>
 
-
-        <div className="gradient-honey rounded-3xl p-5 text-primary-foreground shadow-lg shadow-amber-500/10 flex items-center justify-between">
-          <div>
-            <span className="text-xs opacity-90 block font-medium">תשלום מוצע</span>
-            <span className="text-3xl font-black tracking-tight">{formatCurrency(task.payment)}</span>
-            <span className="text-xs opacity-90 mr-1">/ {task.payment_type === "hour" ? "שעה" : "משימה"}</span>
-          </div>
-          <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3">
-            <DollarSign size={28} className="text-primary-foreground" />
-          </div>
-        </div>
-
         {creator && (
-          <div className="bg-card rounded-3xl p-4 border border-border/60 shadow-sm flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <img
-                src={creatorAvatar}
-                alt="פרופיל"
-                className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shrink-0"
-              />
-              <div className="min-w-0">
-                <span className="text-xs text-muted-foreground block font-medium">פורסם על ידי</span>
-                <span className="font-bold text-foreground text-sm truncate block">
-                  {displayName(creator, "משתמש Busy Bee")}
-                </span>
-                {creatorRating !== undefined && (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-foreground">
-                    <Star size={12} className="fill-primary text-primary-ink" aria-hidden="true" />
-                    {creatorRating ? <><bdi>{creatorRating.average.toFixed(1)}</bdi> · {creatorRating.count} דירוגים</> : "עדיין אין דירוגים"}
-                  </span>
-                )}
-              </div>
+          <div className="bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium text-foreground">אודות המפרסם</h2>
+              <User size={20} className="text-primary" aria-hidden="true" />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full text-xs font-bold shrink-0 border-border hover:bg-primary/10 hover:text-primary-ink"
-              onClick={() => navigate(`/profile/${creator.user_id}`)}
-            >
-              <User size={14} className="ms-1" />
-              פרופיל
-            </Button>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <img src={creatorAvatar} alt="פרופיל" className="w-11 h-11 rounded-full object-cover shrink-0" />
+                <div className="min-w-0">
+                  <span className="font-semibold text-foreground text-base leading-6 truncate block">
+                    {displayName(creator, "משתמש Busy Bee")}
+                  </span>
+                  {creatorRating !== undefined && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Star size={13} weight={creatorRating ? "fill" : "regular"} className={creatorRating ? "text-primary" : ""} aria-hidden="true" />
+                      {creatorRating ? <><bdi>{creatorRating.average.toFixed(1)}</bdi> · {creatorRating.count} דירוגים</> : "עדיין אין דירוגים"}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 gap-1.5 rounded-full border-[#DBD6F0] bg-card px-3.5 text-xs font-normal text-foreground hover:bg-muted"
+                onClick={() => navigate(`/profile/${creator.user_id}`)}
+              >
+                <User size={14} aria-hidden="true" />
+                פרופיל
+              </Button>
+            </div>
           </div>
         )}
         {!isOwner && task.status === "completed" && acceptedAsWorker && (
           <Button
-            className="w-full rounded-2xl font-bold gap-2 gradient-honey text-primary-foreground"
+            className="w-full rounded-full font-semibold gap-2 bg-primary text-primary-foreground"
             disabled={workerReviewSubmitted || !reviewWindowOpen(task.review_window_started_at)}
             onClick={() => setWorkerReviewOpen(true)}
           >
@@ -451,19 +489,19 @@ const TaskDetail = () => {
         )}
 
         {(task.full_desc || task.short_desc) && (
-          <div className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-6 border-2 border-primary/30 shadow-md space-y-3">
-            <div className="flex items-center gap-2 text-foreground font-black text-lg">
-              <FileText size={20} className="text-primary-ink" />
-              <h3>תיאור המשימה</h3>
+          <div className="bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium text-foreground">תיאור המשימה</h2>
+              <FileText size={20} className="text-primary" aria-hidden="true" />
             </div>
-            <p className="text-foreground text-base leading-relaxed whitespace-pre-wrap dir-auto">{task.full_desc || task.short_desc}</p>
+            <p className="text-sm leading-6 text-foreground whitespace-pre-wrap dir-auto">{task.full_desc || task.short_desc}</p>
           </div>
         )}
 
         {task.notes && (
-          <div className="bg-amber-500/5 dark:bg-amber-500/10 rounded-3xl p-5 border border-amber-500/20 shadow-sm space-y-2">
-            <div className="flex items-center gap-2 text-foreground font-extrabold text-base mb-1">
-              <StickyNote size={18} className="text-amber-600 dark:text-amber-400" />
+          <div className="bg-card rounded-lg p-4 border-[1.2px] border-border shadow-card space-y-2">
+            <div className="flex items-center gap-2 text-foreground font-bold text-base mb-1">
+              <StickyNote size={20} className="text-primary" />
               <h3>הערות מפרסם המשימה</h3>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.notes}</p>
@@ -472,20 +510,25 @@ const TaskDetail = () => {
 
         <div className="grid grid-cols-2 gap-3">
           {task.location && (
-            <div className="col-span-2 bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
-                <MapPin size={20} />
+            <div className="col-span-2 bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-medium text-foreground">מיקום</h2>
+                <MapPin size={20} className="text-primary" aria-hidden="true" />
               </div>
-              <div className="overflow-hidden min-w-0 flex-1">
-                <span className="text-xs text-muted-foreground block font-medium">מיקום</span>
-                <span className="font-bold text-foreground text-sm truncate block">{task.location}</span>
+              <div className="flex items-center justify-between gap-3">
+                <p className="min-w-0 text-[13px] leading-4 text-[#565658]">{task.location}</p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.latitude != null && task.longitude != null ? `${task.latitude},${task.longitude}` : task.location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#DBD6F0] bg-card px-3.5 text-xs text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ArrowSquareOut size={14} aria-hidden="true" />
+                  פתח במפה
+                </a>
               </div>
-            </div>
-          )}
-
-          {task.location && (
-            <div className="col-span-2 overflow-hidden rounded-2xl border border-border/60 bg-card p-2 shadow-sm">
               <TaskLocationMap
+                compactLinks
                 location={task.location}
                 latitude={task.latitude}
                 longitude={task.longitude}
@@ -494,71 +537,50 @@ const TaskDetail = () => {
             </div>
           )}
 
-          {(task.scheduled_date || task.scheduled_time) && (
-            <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
-                <Calendar size={18} />
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground block font-medium">מועד</span>
-                <span className="font-bold text-foreground text-sm tabular">{formatDateTime(task.scheduled_date, task.scheduled_time)}</span>
-              </div>
-            </div>
-          )}
-
-          {task.duration_hours && (
-            <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
-                <Hourglass size={18} />
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground block font-medium">משך מוערך</span>
-                <span className="font-bold text-foreground text-sm">{formatDuration(Number(task.duration_hours))}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary-ink shrink-0">
-              <Users size={18} />
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block font-medium">עובדים דרושים</span>
-              <span className="font-bold text-foreground text-sm">
-                {task.workers_needed === 1 ? "עובד אחד" : `${task.workers_needed} עובדים`}
-              </span>
-            </div>
-          </div>
         </div>
 
       </div>
+      </div>
 
-      {!isOwner && task.status === "open" && isBee && (
-        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl rounded-3xl p-3">
+      {!isOwner && task.status === "open" && isBee && (() => {
+        const isSaved = saved.has(task.id);
+        return (
+        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 flex items-center gap-2 rounded-lg bg-card p-3.5 shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
           <Button
-            className="w-full h-12 gradient-honey text-primary-foreground rounded-2xl font-extrabold text-base shadow-md hover:scale-[1.01] active:scale-95 transition-transform"
+            className="h-12 flex-1 gap-2.5 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground"
             onClick={handleApply}
             disabled={applying || alreadyApplied}
           >
-            {alreadyApplied ? "כבר הגשת מועמדות ✓" : `אני ${say(formFor(profile?.gender), RECIPIENT.interested)} לבצע 🐝`}
+            {alreadyApplied ? "כבר הגשת מועמדות" : "אישור משימה"}
+            <Check size={16} aria-hidden="true" />
           </Button>
+          <button
+            type="button"
+            aria-pressed={isSaved}
+            aria-label={isSaved ? "הסרה מהמטלות השמורות" : "שמירת המטלה"}
+            onClick={() => toggleSaved(task.id)}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#DBD6F0] bg-card text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Heart size={20} weight={isSaved ? "fill" : "regular"} className={isSaved ? "text-primary" : ""} aria-hidden="true" />
+          </button>
         </div>
-      )}
+      );
+      })()}
 
       {isOwner && (
-        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 bg-background/95 backdrop-blur-2xl border border-border/80 shadow-2xl rounded-3xl p-3 flex items-center gap-3">
+        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 flex items-center gap-2 rounded-lg bg-card p-3.5 shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
           <Button
-            className="flex-1 h-12 rounded-2xl font-extrabold text-base gradient-honey text-primary-foreground shadow-md"
+            className="h-12 flex-1 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground"
             onClick={() => navigate("/my-tasks?tab=published")}
           >
             {task.status === "completed" ? "המטלות והדירוגים שלי" : "ניהול וסיום המטלה"}
           </Button>
           <Button
             variant="outline"
-            className="h-12 px-5 rounded-2xl font-bold text-base border-border bg-card hover:bg-accent text-foreground"
+            className="h-12 gap-2 rounded-full border-[#DBD6F0] bg-card px-5 text-sm font-medium text-foreground hover:bg-muted"
             onClick={() => openEdit(task)}
           >
-            <Pencil size={16} className="ms-1" />
+            <Pencil size={16} />
             עריכה
           </Button>
         </div>

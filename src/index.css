@@ -296,3 +296,59 @@
     animation-delay: 4s;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Figma "BZB Re-Design" scope.
+
+   The designer has only drawn the task screens so far (list, map, task card,
+   task details, navigation drawer). Those screens opt in with the `figma`
+   class; every other page keeps the existing design untouched. Extend the
+   scope screen by screen as more of the file is designed — do not restyle
+   pages that have no frame in Figma.
+   --------------------------------------------------------------------------- */
+@layer base {
+  .figma {
+    --background: 240 5% 96%; /* #F4F4F5 */
+    --foreground: 0 0% 8%; /* #151515 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+    --primary: 16 78% 58%; /* #E86E40 */
+    --primary-foreground: 0 0% 100%;
+    --primary-ink: 16 78% 58%;
+    --primary-soft: 16 81% 94%; /* #FCE9E2 */
+    --primary-soft-border: 16 72% 86%; /* #F5D0C2 */
+    --secondary: 250 23% 95%; /* #F0EFF5 */
+    --secondary-foreground: 0 0% 8%;
+    --muted: 30 8% 95%; /* #F3F2F1 */
+    --muted-foreground: 233 4% 40%; /* #62636B */
+    --accent: 16 81% 94%;
+    --accent-foreground: 0 0% 8%;
+    --border: 240 5% 92%; /* #E9E9EB */
+    --input: 240 5% 92%;
+    --ring: 16 78% 58%;
+    --radius: 0.625rem; /* 10px */
+    --honey-light: 45 100% 84%; /* #FFEBAD */
+
+    color: hsl(var(--foreground));
+  }
+
+  .figma,
+  .figma input,
+  .figma textarea,
+  .figma select,
+  .figma button {
+    font-family: "Rubik", sans-serif;
+  }
+
+  /* Thin line icons, as in the design's icon set. */
+  .figma .lucide {
+    stroke-width: 1.5;
+  }
+}
+
+@layer utilities {
+  /* Card shadow from the design: 0 1 8 black 6%. */
+  .shadow-card {
+    box-shadow: 0 1px 8px 0 rgb(0 0 0 / 0.06);
+  }
+}

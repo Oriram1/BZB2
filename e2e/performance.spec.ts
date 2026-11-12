@@ -15,7 +15,7 @@ test('task discovery remains usable on a slow mobile connection', async ({ page,
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
   await page.goto('/tasks', { waitUntil: 'domcontentloaded' });
   const dismissLocation = page.getByRole('button', { name: 'לא עכשיו' });
-  const heading = page.getByRole('heading', { name: 'מטלות זמינות' });
+  const heading = page.getByRole('heading', { name: 'מוצאים משימה' });
   await expect(dismissLocation.or(heading).first()).toBeVisible({ timeout: 60_000 });
   if (await dismissLocation.isVisible()) await dismissLocation.click();
   await expect(heading).toBeVisible({ timeout: 60_000 });

@@ -1,21 +1,23 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { DollarSign, Calendar, Clock, MapPin } from "lucide-react";
-import CategoryIcon from "./CategoryIcon";
-import type { Task } from "./TaskCard";
+import TaskCard, { type Task } from "./TaskCard";
 import { useGoogleMaps } from "./GoogleMapsProvider";
 import GoogleMapsLoadState from "./GoogleMapsLoadState";
-import { useAuth } from "@/contexts/AuthContext";
-import { formFor, RECIPIENT, say } from "@shared/gender.ts";
 
-const MapView = ({ tasks }: { tasks: Task[] }) => {
+/** Marker as drawn in the redesign: a terracotta dot with a soft halo. */
+const MARKER_ICON = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="14" fill="#E86E40" fill-opacity="0.35"/><circle cx="14" cy="14" r="7" fill="#E86E40"/></svg>',
+)}`;
+
+type MapViewProps = {
+  tasks: Task[];
+  saved?: Set<string>;
+  onToggleSave?: (taskId: string) => void;
+};
+
+const MapView = ({ tasks, saved, onToggleSave }: MapViewProps) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
   const { isLoaded, error, retry } = useGoogleMaps();
-  const { user, profile } = useAuth();
-  const navigate = useNavigate();
-  const isOwnTask = !!selected && !!user && selected.creatorId === user.id;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -61,6 +63,11 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
       const marker = new google.maps.Marker({
         position: { lat: task.lat, lng: task.lng },
         map,
+        icon: {
+          url: MARKER_ICON,
+          scaledSize: new google.maps.Size(28, 28),
+          anchor: new google.maps.Point(14, 14),
+        },
       });
       marker.addListener("click", () => {
         setSelectedTask((prev) => (prev === task.id ? null : task.id));
@@ -76,47 +83,23 @@ const MapView = ({ tasks }: { tasks: Task[] }) => {
   }, [isLoaded, located]);
 
   if (!isLoaded) {
-    return <GoogleMapsLoadState error={error} retry={retry} className="rounded-3xl overflow-hidden border border-border shadow-lg h-[500px] flex items-center justify-center bg-muted px-4" />;
+    return <GoogleMapsLoadState error={error} retry={retry} className="rounded-lg overflow-hidden border border-border shadow-card h-[500px] flex items-center justify-center bg-muted px-4" />;
   }
 
   return (
-    <div className="rounded-3xl overflow-hidden border border-border shadow-lg animate-fade-in relative">
+    <div className="rounded-lg overflow-hidden border border-border shadow-card animate-fade-in relative">
       <div ref={containerRef} style={{ height: "500px", width: "100%" }} />
 
+      {/* "Task Popup — Overlay" in the design is the list card itself. */}
       {selected && (
-        <div className="absolute bottom-4 left-4 right-4 bg-card rounded-2xl p-4 border border-border shadow-xl animate-slide-up z-[1000]">
-          <div className="flex items-start gap-3">
-            <CategoryIcon category={selected.category} />
-            <div className="flex-1">
-              <h3 className="font-extrabold text-foreground">{selected.name}</h3>
-              <p className="text-sm text-muted-foreground">{selected.shortDesc}</p>
-              <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><DollarSign size={12} />₪{selected.payment}/{selected.paymentType === "hour" ? "שעה" : "משימה"}</span>
-                {selected.distance !== undefined && (
-                  <span className="flex items-center gap-1"><MapPin size={12} />{selected.distance.toFixed(2)} ק״מ</span>
-                )}
-                <span className="flex items-center gap-1"><Calendar size={12} />{selected.date}</span>
-                <span className="flex items-center gap-1"><Clock size={12} />{selected.time}</span>
-              </div>
-            </div>
-            {isOwnTask ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded-full font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300"
-                onClick={() => selected.dbId && navigate(`/task/${selected.dbId}`)}
-              >
-                לפרטי המודעה
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                className="gradient-honey text-primary-foreground rounded-full border-none font-bold shrink-0 hover:scale-105 active:scale-95 transition-transform duration-300"
-              >
-                אני {say(formFor(profile?.gender), RECIPIENT.interested)} 🐝
-              </Button>
-            )}
-          </div>
+        <div className="absolute bottom-4 left-4 right-4 animate-slide-up z-[1000]">
+          <TaskCard
+            task={selected}
+            index={0}
+            variant="popup"
+            saved={selected.dbId !== undefined && Boolean(saved?.has(selected.dbId))}
+            onToggleSave={onToggleSave}
+          />
         </div>
       )}
     </div>

@@ -1,0 +1,1 @@
+export const REPORT_REASONS: Record<string, string> = { abuse: "תוכן פוגעני", privacy: "פרטים אישיים", spam: "ספאם או פרסום", coercion: "איום או לחץ", irrelevant: "לא קשור למטלה", other: "סיבה אחרת" };

@@ -29,6 +29,7 @@ const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Help = lazy(() => import("./pages/Help"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -135,6 +136,7 @@ const App = () => (
               <Route path={ROUTES.publicProfile} element={<PublicProfile />} />
               <Route path={ROUTES.privacy} element={<PrivacyPolicy />} />
               <Route path={ROUTES.terms} element={<Terms />} />
+              <Route path={ROUTES.help} element={<Help />} />
               <Route path={ROUTES.admin} element={<Admin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

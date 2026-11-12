@@ -146,10 +146,10 @@ test.describe('UX upgrade reels', () => {
     await record(browser, project, state, 'מציאת-מטלה', [
       { say: 'מחפשים מטלה? בכל כרטיס רואים קודם את מה שמעניין: כמה משלמים, וכמה רחוק.', act: async () => { await expect(page.getByRole('button', { name: /מטלה: ניקיון דירה/ })).toBeVisible({ timeout: 20000 }); } },
       { say: 'אפשר לחפש לפי שם או כתובת.', act: async () => { await page.getByLabel('חיפוש מטלות').pressSequentially('כלב', { delay: 90 }); await pause(page, 900); await page.getByRole('button', { name: 'ניקוי החיפוש' }).click(); } },
-      { say: 'ולמיין לפי התשלום הגבוה ביותר, או לפי מי שהכי קרוב אליכם.', act: async () => { await page.getByLabel('מיון').selectOption('price'); await pause(page, 1200); await page.getByLabel('מיון').selectOption('near'); } },
+      { say: 'ולמיין לפי התשלום הגבוה ביותר, או לפי מי שהכי קרוב אליכם.', act: async () => { await page.getByRole('button', { name: 'מיון' }).click(); await page.getByRole('radio', { name: 'התשלום הכי גבוה' }).click(); await pause(page, 1200); await page.getByRole('radio', { name: 'הכי קרובות אליי' }).click(); await page.getByRole('button', { name: 'אישור' }).click(); } },
       { say: 'את הטווח בוחרים בלחיצה אחת: שלושה קילומטרים, חמישה, עשרה.', act: async () => { await page.getByRole('button', { name: /מרחק:/ }).click(); await page.getByRole('button', { name: '3 ק״מ' }).click(); await pause(page, 900); await page.getByRole('button', { name: 'הכול' }).click(); } },
-      { say: 'מצאתם משהו שמעניין? שומרים אותו בלב, וחוזרים אליו אחר כך.', act: async () => { await page.getByRole('button', { name: 'שמירת המטלה' }).first().click(); await pause(page, 700); await page.getByRole('button', { name: 'מטלות שמורות בלבד' }).click(); } },
-      { say: 'לוחצים על הכרטיס כדי לראות את כל הפרטים.', act: async () => { await page.getByRole('button', { name: 'מטלות שמורות בלבד' }).click(); await page.getByRole('button', { name: /מטלה: / }).first().click(); await expect(page.getByText('פורסם על ידי')).toBeVisible(); } },
+      { say: 'מצאתם משהו שמעניין? שומרים אותו בלב, וחוזרים אליו אחר כך.', act: async () => { await page.getByRole('button', { name: 'שמירת המטלה' }).first().click(); await pause(page, 700); await page.goto('/tasks?saved=1'); } },
+      { say: 'לוחצים על הכרטיס כדי לראות את כל הפרטים.', act: async () => { await page.goto('/tasks'); await page.getByRole('button', { name: /מטלה: / }).first().click(); await expect(page.getByText('אודות המפרסם')).toBeVisible(); } },
     ], async (p) => { page = p; await p.goto('/tasks'); });
   });
 
@@ -161,7 +161,7 @@ test.describe('UX upgrade reels', () => {
     const state = await loginState(browser, bee.email, project);
     let page!: Page;
     await record(browser, project, state, 'הגשת-מועמדות', [
-      { say: 'במסך המטלה, למעלה, רואים את התשלום ומי פרסם, כולל הדירוג שלו.', act: async () => { await expect(page.getByText('פורסם על ידי')).toBeVisible({ timeout: 20000 }); await pause(page, 1500); } },
+      { say: 'במסך המטלה, למעלה, רואים את התשלום ומי פרסם, כולל הדירוג שלו.', act: async () => { await expect(page.getByText('אודות המפרסם')).toBeVisible({ timeout: 20000 }); await pause(page, 1500); } },
       { say: 'ממשיכים לגלול לתיאור, למפה ולמועד.', act: async () => { await page.getByRole('heading', { name: 'תיאור המשימה' }).scrollIntoViewIfNeeded(); await pause(page, 1500); } },
       { say: 'מתאים לכם? לוחצים על הכפתור הצף בתחתית.', act: async () => { await page.getByRole('button', { name: /לבצע/ }).click(); } },
       { say: 'עכשיו אפשר לכתוב כמה מילים למפרסם, למה אתם מתאימים. זה לא חובה, אבל זה עוזר להתבלט.', act: async () => { await page.getByLabel(/למה אתם מתאימים/).pressSequentially('גר קרוב, יש לי ניסיון בניקיון, זמין מחר', { delay: 45 }); } },

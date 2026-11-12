@@ -9,6 +9,8 @@ interface TaskLocationMapProps {
   latitude: number | null;
   longitude: number | null;
   taskName: string;
+  /** Small outlined links, as drawn under the map on the redesigned task screen. */
+  compactLinks?: boolean;
 }
 
 const GoogleMapsLogo = () => (
@@ -32,7 +34,7 @@ const WazeLogo = () => (
   </svg>
 );
 
-const TaskLocationMap = ({ location, latitude, longitude, taskName }: TaskLocationMapProps) => {
+const TaskLocationMap = ({ location, latitude, longitude, taskName, compactLinks = false }: TaskLocationMapProps) => {
   const { isLoaded, error, retry } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -69,13 +71,17 @@ const TaskLocationMap = ({ location, latitude, longitude, taskName }: TaskLocati
     : `q=${encodeURIComponent(location)}`;
   const wazeUrl = `https://waze.com/ul?${wazeDestination}&navigate=yes&utm_source=bzb`;
 
+  const linkClass = compactLinks
+    ? "inline-flex h-8 items-center justify-center gap-2 rounded-[8px] border border-[#DBD6F0] bg-card px-2.5 text-xs text-[#242129] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    : "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   const navigationLinks = (
     <div className="grid grid-cols-2 gap-2 pt-2" dir="rtl">
       <a
         href={googleMapsUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={linkClass}
         aria-label={`ניווט אל ${location} באמצעות Google Maps`}
       >
         <GoogleMapsLogo />
@@ -85,7 +91,7 @@ const TaskLocationMap = ({ location, latitude, longitude, taskName }: TaskLocati
         href={wazeUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={linkClass}
         aria-label={`ניווט אל ${location} באמצעות Waze`}
       >
         <WazeLogo />

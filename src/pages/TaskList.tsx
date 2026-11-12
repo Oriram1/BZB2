@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePermissionPrompt } from "@/components/PermissionPromptContext";
-import { Map as MapIcon, List, MapPin, ChevronDown, SearchX, Plus, Search, Heart, X } from "lucide-react";
+import { MapPin as LucideMapPin } from "lucide-react";
+import { MapTrifold as MapIcon, ListBullets as List, MapPin, CaretDown as ChevronDown, MagnifyingGlassMinus as SearchX, Plus, MagnifyingGlass as Search, Heart, X, SlidersHorizontal, Check } from "@phosphor-icons/react";
+import { figmaCategoryIcon } from "@/components/tasks/figmaCategoryIcons";
 import PageHeader from "@/components/PageHeader";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
@@ -29,11 +31,16 @@ const NO_DISTANCE_LIMIT = MAX_DISTANCE_KM + 1;
 const QUICK_DISTANCES = [1, 3, 5, 10, NO_DISTANCE_LIMIT];
 
 type SortKey = "new" | "near" | "price" | "soon";
+/** Category chips in the order drawn in the redesign. */
+const FIGMA_CATEGORY_ORDER = ["all", "housework", "handyman", "babysitting", "pets", "gardening", "tutoring", "other"];
+const figmaOrdered = <T extends { value: string }>(items: T[]): T[] =>
+  [...items].sort((a, b) => FIGMA_CATEGORY_ORDER.indexOf(a.value) - FIGMA_CATEGORY_ORDER.indexOf(b.value));
+
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "new", label: "החדשות ביותר" },
-  { value: "near", label: "הכי קרוב" },
-  { value: "price", label: "התשלום הגבוה ביותר" },
-  { value: "soon", label: "המועד הקרוב ביותר" },
+  { value: "new", label: "הכי חדשות" },
+  { value: "near", label: "הכי קרובות אליי" },
+  { value: "price", label: "התשלום הכי גבוה" },
+  { value: "soon", label: "המועד הכי קרוב" },
 ];
 
 const TaskList = () => {
@@ -44,7 +51,18 @@ const TaskList = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("new");
-  const [onlySaved, setOnlySaved] = useState(false);
+  /** Sort sheet: the choice applies only on "אישור", so it is held here until then. */
+  const [sortOpen, setSortOpen] = useState(false);
+  const [pendingSort, setPendingSort] = useState<SortKey>("new");
+  useEffect(() => {
+    if (!sortOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSortOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sortOpen]);
+  /* The saved filter is the drawer's "מועדפים" entry, as drawn; it lives in the URL. */
+  const [searchParams] = useSearchParams();
+  const onlySaved = searchParams.get("saved") === "1";
   const { saved, toggle: toggleSaved } = useSavedTasks();
   const [maxDistance, setMaxDistance] = usePersistedState(MAX_DISTANCE_KEY, DEFAULT_MAX_DISTANCE_KM, (raw) => {
     const km = Number(raw);
@@ -174,16 +192,16 @@ const TaskList = () => {
   const hiddenByDistance = inCategory.filter(matchesQuery).filter((t) => t.distance !== undefined && maxDistance < NO_DISTANCE_LIMIT && t.distance > maxDistance).length;
 
   return (
-    <div className="min-h-screen bg-muted relative" dir="rtl">
-      <div className="absolute top-40 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-blob" />
-      <div className="absolute bottom-20 right-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl animate-blob animation-delay-2000" />
+    <div className="figma min-h-screen bg-background relative" dir="rtl">
 
       <PageHeader
+        variant="figma"
+        showBack={false}
         action={
           isTasker && (
             <Link to="/create-task">
-              <button className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-white/90 text-slate-950 font-black text-xs sm:text-sm rounded-full shadow-md hover:shadow-lg transition-all duration-200 border border-amber-200/60">
-                <Plus size={16} className="text-amber-600 stroke-[3]" />
+              <button className="inline-flex items-center gap-1.5 h-10 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm rounded-full transition-colors">
+                <Plus size={16} />
                 <span>פרסום מטלה</span>
               </button>
             </Link>
@@ -195,7 +213,7 @@ const TaskList = () => {
         <Dialog open={!pushPending && !locationDismissed && locationState === "denied"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
           <DialogContent dir="rtl" className="rounded-2xl sm:max-w-md">
             <DialogHeader>
-              <span className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink" aria-hidden="true"><MapPin size={24} /></span>
+              <span className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink" aria-hidden="true"><LucideMapPin size={24} /></span>
               <DialogTitle className="text-xl font-extrabold">נמצא יחד מטלות קרובות? 🐝</DialogTitle>
               <DialogDescription className="pt-2 leading-relaxed">
                 {locationState === "denied" ? "המיקום חסום כרגע. כדי לראות מטלות לפי המרחק, אפשר לאפשר גישה למיקום בהגדרות המכשיר או הדפדפן." : "עם המיקום שלכם נוכל להציג את המרחק למטלות ולעזור למצוא מה קרוב אליכם. בלחיצה תופיע בקשת אישור מהמכשיר."}
@@ -209,105 +227,63 @@ const TaskList = () => {
         </Dialog>
         {/* Icon-only toggle: two states with familiar icons need no labels, and the
             narrow control keeps the title on one line down to 320px. */}
-        <div className="flex items-center justify-between gap-3 mb-4 animate-fade-in">
-          <h1 className="text-2xl font-bold text-foreground">מטלות זמינות</h1>
+        <div className="-mx-4 -mt-5 mb-4 flex items-center justify-between gap-3 bg-card px-4 py-4 animate-fade-in">
+          <h1 className="text-[22px] font-semibold leading-7 text-foreground">מוצאים משימה</h1>
           <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1 bg-card rounded-2xl p-1 border border-border shadow-sm" role="group" aria-label="תצוגה">
+            <div className="flex items-center rounded-[22px] border border-[#E3E3E3] bg-muted p-1 shadow-[0_1px_2px_rgba(31,33,43,0.06)]" role="group" aria-label="תצוגה">
             <button
               onClick={() => setViewMode("list")}
               aria-pressed={viewMode === "list"}
               aria-label="תצוגת רשימה"
               title="רשימה"
-              className={`flex items-center justify-center h-11 w-11 rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`flex h-10 items-center justify-center gap-2 rounded-[20px] px-3.5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "list"
-                  ? "gradient-honey text-primary-foreground shadow-honey"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-card font-medium text-[#242129]"
+                  : "font-normal text-[#85838C] hover:text-foreground"
               }`}
             >
-              <List size={18} />
+              <List size={18} aria-hidden="true" />
+              רשימה
             </button>
             <button
               onClick={() => setViewMode("map")}
               aria-pressed={viewMode === "map"}
               aria-label="תצוגת מפה"
               title="מפה"
-              className={`flex items-center justify-center h-11 w-11 rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`flex h-10 items-center justify-center gap-2 rounded-[20px] px-3.5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "map"
-                  ? "gradient-honey text-primary-foreground shadow-honey"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-card font-medium text-[#242129]"
+                  : "font-normal text-[#85838C] hover:text-foreground"
               }`}
             >
-              <MapIcon size={18} />
+              <MapIcon size={18} aria-hidden="true" />
+              מפה
             </button>
             </div>
           </div>
         </div>
 
-        {/* Search and sort sit above the filters: finding a job by name or ordering by pay is the first thing people try. */}
-        <div className="flex items-center gap-2 mb-3 animate-fade-in">
-          <div className="relative flex-1">
-            <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="חיפוש מטלה, תיאור או כתובת"
-              aria-label="חיפוש מטלות"
-              className="w-full h-11 rounded-2xl border border-border bg-card ps-9 pe-9 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            {query && (
-              <button type="button" onClick={() => setQuery("")} aria-label="ניקוי החיפוש" className="absolute end-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
-                <X size={16} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-          <label className="sr-only" htmlFor="task-sort">מיון</label>
-          <select
-            id="task-sort"
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="h-11 shrink-0 rounded-2xl border border-border bg-card px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value} disabled={o.value === "near" && !originPos}>{o.label}</option>
-            ))}
-          </select>
-          {user && isBee && (
-            <button
-              type="button"
-              aria-pressed={onlySaved}
-              aria-label="מטלות שמורות בלבד"
-              title="שמורות"
-              onClick={() => setOnlySaved((v) => !v)}
-              className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                onlySaved ? "border-transparent gradient-honey text-primary-foreground" : "border-border bg-card text-muted-foreground")}
-            >
-              <Heart size={18} className={cn(onlySaved && "fill-current")} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-
-        <div className="glass rounded-3xl border border-border mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+        <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <div
-            className="flex gap-2 overflow-x-auto px-4 pt-4 pb-4 [mask-image:linear-gradient(to_left,#000_calc(100%-1.5rem),transparent)]"
+            className="flex gap-2 overflow-x-auto pb-1 [mask-image:linear-gradient(to_left,#000_calc(100%-1.5rem),transparent)]"
             role="group"
             aria-label="קטגוריה"
           >
-            {categoryFilters.map((c) => {
-              const Icon = c.icon;
+            {figmaOrdered(categoryFilters).map((c) => {
+              const Icon = figmaCategoryIcon(c.value);
               const isSelected = selectedCategory === c.value;
               return (
                 <button
                   key={c.value}
                   onClick={() => setSelectedCategory(c.value)}
                   aria-pressed={isSelected}
-                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap min-h-11 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-300 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap min-h-11 px-4 py-2 rounded-full text-sm font-medium transition-colors border-[1.2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     isSelected
-                      ? "gradient-honey text-primary-foreground border-transparent shadow-honey"
+                      ? "bg-primary-soft text-foreground border-primary"
                       : "bg-card text-foreground border-border hover:border-primary"
                   }`}
                 >
-                  <Icon size={14} />
+                  <Icon size={16} />
                   {c.label}
                 </button>
               );
@@ -315,13 +291,13 @@ const TaskList = () => {
           </div>
 
           {originPos && (
-            <div className="border-t border-border">
+            <div className="mt-3 rounded-lg border border-border bg-card">
               <button
                 type="button"
                 onClick={() => setDistanceOpen((open) => !open)}
                 aria-expanded={distanceOpen}
                 aria-controls="distance-filter-panel"
-                className="w-full flex items-center justify-between gap-2 min-h-11 px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-b-3xl"
+                className="w-full flex items-center justify-between gap-2 min-h-11 px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
               >
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} className="shrink-0" aria-hidden="true" />
@@ -342,8 +318,8 @@ const TaskList = () => {
                         type="button"
                         aria-pressed={maxDistance === km}
                         onClick={() => setMaxDistance(km)}
-                        className={cn("min-h-11 rounded-2xl border px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          maxDistance === km ? "border-transparent gradient-honey text-primary-foreground" : "border-border bg-card text-foreground")}
+                        className={cn("min-h-11 rounded-lg border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          maxDistance === km ? "border-primary bg-primary-soft text-foreground" : "border-border bg-card text-foreground")}
                       >
                         {km >= NO_DISTANCE_LIMIT ? "הכול" : `${km} ק״מ`}
                       </button>
@@ -370,6 +346,38 @@ const TaskList = () => {
           )}
         </div>
 
+        {/* Search and sort sit above the filters: finding a job by name or ordering by pay is the first thing people try. */}
+        {viewMode === "list" && (
+        <div className="flex items-center gap-2 mb-4 animate-fade-in">
+          <div className="relative flex-1">
+            <Search size={18} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="חיפוש מטלה"
+              aria-label="חיפוש מטלות"
+              className="w-full h-[52px] rounded-lg border-[1.2px] border-border bg-card ps-10 pe-9 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery("")} aria-label="ניקוי החיפוש" className="absolute end-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
+                <X size={16} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label="מיון"
+            aria-haspopup="dialog"
+            aria-expanded={sortOpen}
+            onClick={() => { setPendingSort(sortKey); setSortOpen(true); }}
+            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border-[1.2px] border-border bg-card text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <SlidersHorizontal size={18} aria-hidden="true" />
+          </button>
+        </div>
+        )}
+
         {/*
           WCAG 4.1.3: changing a category or the distance silently swaps the
           cards below. Sighted users see the list redraw; everyone else needs to
@@ -389,14 +397,14 @@ const TaskList = () => {
           viewMode === "list" ? (
             <TaskGrid tasks={filteredTasks} saved={saved} onToggleSave={toggleSaved} />
           ) : (
-            <MapView tasks={filteredTasks} />
+            <MapView tasks={filteredTasks} saved={saved} onToggleSave={toggleSaved} />
           )
         )}
 
         {loading && (
           <div className="grid md:grid-cols-2 gap-4" aria-live="polite" aria-busy="true">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="bg-card rounded-3xl p-6 border border-border h-44 animate-pulse" />
+              <div key={i} className="bg-card rounded-lg p-6 border border-border h-44 animate-pulse" />
             ))}
             <span className="sr-only">טוען מטלות</span>
           </div>
@@ -437,14 +445,49 @@ const TaskList = () => {
         )}
       </div>
 
-      {isTasker && (
-        <Link
-          to="/create-task"
-          aria-label="הוספת מטלה חדשה"
-          className="fixed bottom-[calc(2.5rem+env(safe-area-inset-bottom))] left-5 z-30 flex h-[60px] w-[60px] items-center justify-center rounded-[20px] gradient-honey text-primary-foreground shadow-[0_12px_32px_rgba(245,158,11,0.38),inset_0_1px_0_rgba(255,255,255,0.35)] transition-transform duration-200 hover:scale-105 hover:rotate-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40 md:hidden"
-        >
-          <Plus size={28} strokeWidth={2.5} aria-hidden="true" />
-        </Link>
+      {sortOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <div aria-hidden="true" className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setSortOpen(false)} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sort-sheet-title"
+            className="relative m-4 w-full max-w-md rounded-lg bg-card p-4 shadow-card animate-slide-up"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 id="sort-sheet-title" className="text-lg font-semibold text-foreground">מיון תוצאות</h2>
+              <button type="button" aria-label="סגירה" onClick={() => setSortOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+            <div role="radiogroup" aria-labelledby="sort-sheet-title" className="space-y-2.5">
+              {SORT_OPTIONS.map((o) => {
+                const disabled = o.value === "near" && !originPos;
+                const checked = pendingSort === o.value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={checked}
+                    disabled={disabled}
+                    onClick={() => setPendingSort(o.value)}
+                    className="flex h-[58px] w-full items-center justify-between rounded-lg bg-secondary px-3.5 text-sm text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {o.label}
+                    <span className={cn("flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] bg-card", checked ? "border-primary" : "border-foreground")}>
+                      {checked && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <Button className="mt-5 h-14 w-full gap-2 rounded-full bg-primary text-sm font-medium text-primary-foreground" onClick={() => { setSortKey(pendingSort); setSortOpen(false); }}>
+              אישור
+              <Check size={18} aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
