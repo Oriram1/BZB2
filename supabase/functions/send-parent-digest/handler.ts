@@ -120,7 +120,8 @@ export async function sendParentDigests({ admin }: CronContext) {
           total_earned: childCards.reduce((sum, card) => sum + card.earned, 0),
           cards: childCards.map(({ title, lines }) => ({ title, lines })),
         },
-        link: `/parent/report/${date}`,
+        // No parent dashboard exists any more, so there is no report page to open.
+        link: null,
       });
       sent += 1;
     } catch (error) {

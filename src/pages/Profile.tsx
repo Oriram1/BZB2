@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import {
   Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
-  Eye, Users, CheckCircle, Clock, BarChart3, Copy, KeyRound, RefreshCw, Mail, Star
+  Eye, Users, CheckCircle, Clock, BarChart3, Mail, Star
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { displayName, formatCurrency, formatDate } from "@/lib/format";
@@ -30,8 +30,6 @@ import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import { PasswordCard } from "@/components/profile/PasswordCard";
 import { DeleteAccountCard } from "@/components/profile/DeleteAccountCard";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
-import QRCode from "qrcode";
-import { copyWithToast } from "@/lib/share";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { loadBeeStats, loadPublishedTaskCounts, type BeeStats } from "@/lib/profileStats";
 import { primaryRoleLabel } from "@/lib/roles";
@@ -129,11 +127,6 @@ const Profile = () => {
   const [receivedSort, setReceivedSort] = useState("newest");
   const [receivedFilter, setReceivedFilter] = useState("all");
   const [receivedReviewsError, setReceivedReviewsError] = useState(false);
-  const [familyCode, setFamilyCode] = useState<string | null>(null);
-  const [familyCodeExpiresAt, setFamilyCodeExpiresAt] = useState<string | null>(null);
-  const [familyQr, setFamilyQr] = useState<string | null>(null);
-  const [creatingFamilyCode, setCreatingFamilyCode] = useState(false);
-  const [parentEmail, setParentEmail] = useState("");
   const [parentContacts, setParentContacts] = useState<ParentContact[]>([]);
   const [parentRequests, setParentRequests] = useState<ParentRequest[]>([]);
   const [decidingRequest, setDecidingRequest] = useState<string | null>(null);
@@ -245,64 +238,6 @@ const Profile = () => {
     }
     setParentContacts((current) => current.filter((contact) => contact.id !== id));
     toast.success("הכתובת הוסרה");
-  };
-
-  /** `parentEmail` mails the code as well, for a parent who isn't in the room. */
-  const createFamilyCode = async (parentEmail?: string) => {
-    setCreatingFamilyCode(true);
-    try {
-      const { data, error } = await supabase.functions.invoke<{
-        code?: string;
-        expiresAt?: string;
-        emailed?: boolean;
-        error?: string;
-      }>("create-family-link-code", parentEmail ? { body: { parentEmail } } : undefined);
-
-      if (error || !data?.code || !data.expiresAt) {
-        toast.error("לא הצלחנו ליצור קוד. כדאי לנסות שוב.");
-        return;
-      }
-
-      setFamilyCode(data.code);
-      setFamilyCodeExpiresAt(data.expiresAt);
-
-      if (parentEmail) {
-        setParentEmail("");
-        toast[data.emailed ? "success" : "warning"](
-          data.emailed
-            ? "הקישור נשלח למייל של ההורה 📧"
-            : "נוצר קישור, אבל שליחת המייל נכשלה. אפשר לסרוק את קוד ה־QR",
-        );
-      } else {
-        toast.success("נוצר קוד QR חדש להורה");
-      }
-    } finally {
-      setCreatingFamilyCode(false);
-    }
-  };
-
-  /** The parent scans or opens this — no digits to read aloud or mistype. */
-  const familyLinkUrl = familyCode
-    ? `${window.location.origin}/parent?code=${familyCode}`
-    : null;
-
-  useEffect(() => {
-    if (!familyLinkUrl) {
-      setFamilyQr(null);
-      return;
-    }
-    let cancelled = false;
-    void QRCode.toDataURL(familyLinkUrl, { width: 320, margin: 1 }).then((url) => {
-      if (!cancelled) setFamilyQr(url);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [familyLinkUrl]);
-
-  const copyFamilyLink = async () => {
-    if (!familyLinkUrl) return;
-    await copyWithToast(familyLinkUrl, { success: "הקישור הועתק", failure: "לא הצלחנו להעתיק את הקישור" });
   };
 
   useEffect(() => {
@@ -689,101 +624,6 @@ const Profile = () => {
                   הגעתם למקסימום של 3 כתובות. כדי להוסיף אחרת, צריך להסיר אחת קודם.
                 </p>
               )}
-            </CardContent>
-          </Card>
-        )}
-
-        {isBee && (
-          <Card className="overflow-hidden border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <KeyRound className="h-5 w-5 text-primary-ink" />
-                קישור להורה עם חשבון
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                לא חובה. זה מיועד להורה שרוצה חשבון ומרכז הורים מלא — לעדכונים בלבד מספיק
-                להוסיף מייל למעלה. ההורה סורק את הקוד מהמסך, או מקבל קישור למייל. אין מה
-                להקליד. הקישור תקף ל־10 דקות ולשימוש אחד.
-              </p>
-            </CardHeader>
-            <CardContent>
-              {familyCode ? (
-                <div className="rounded-2xl border bg-primary/5 p-5 text-center">
-                  <p className="mb-3 text-sm font-semibold text-muted-foreground">
-                    ההורה סורק את הקוד עם המצלמה
-                  </p>
-                  {familyQr && (
-                    <img
-                      src={familyQr}
-                      alt="קוד QR לקישור ההורה"
-                      className="mx-auto h-44 w-44 rounded-xl bg-white p-2"
-                    />
-                  )}
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    בתוקף עד{" "}
-                    {familyCodeExpiresAt
-                      ? new Intl.DateTimeFormat("he-IL", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(familyCodeExpiresAt))
-                      : ""}
-                  </p>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <Button type="button" onClick={() => void copyFamilyLink()} className="min-h-11 rounded-xl font-bold">
-                      <Copy className="h-4 w-4" />
-                      העתקת הקישור
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void createFamilyCode()}
-                      disabled={creatingFamilyCode}
-                      className="min-h-11 rounded-xl font-bold"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${creatingFamilyCode ? "animate-spin" : ""}`} />
-                      יצירת קוד מחדש
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={() => void createFamilyCode()}
-                  disabled={creatingFamilyCode}
-                  className="min-h-11 w-full rounded-xl font-bold"
-                >
-                  <KeyRound className="h-4 w-4" />
-                  {creatingFamilyCode ? "יוצר..." : "יצירת קוד QR להורה"}
-                </Button>
-              )}
-
-              {/* For when the parent isn't standing next to the phone. */}
-              <div className="mt-4 border-t border-border pt-4">
-                <Label htmlFor="parent-email" className="text-sm font-semibold">
-                  או שלחו קישור למייל של ההורה
-                </Label>
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    id="parent-email"
-                    type="email"
-                    dir="ltr"
-                    value={parentEmail}
-                    onChange={(e) => setParentEmail(e.target.value)}
-                    placeholder="parent@example.com"
-                    className="h-11 rounded-xl"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={creatingFamilyCode || !parentEmail.trim()}
-                    onClick={() => void createFamilyCode(parentEmail.trim())}
-                    className="min-h-11 rounded-xl font-bold shrink-0"
-                  >
-                    <Mail className="h-4 w-4" />
-                    שליחה במייל
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         )}
