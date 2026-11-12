@@ -24,7 +24,7 @@ const createNonce = async () => {
   return { raw, hashed };
 };
 
-export type GoogleSignupRole = "tasker" | "bee" | "parent";
+export type GoogleSignupRole = "tasker" | "bee";
 
 interface GoogleIdentityResponse {
   credential?: string;
@@ -107,5 +107,5 @@ export const startGoogleAuth = (role: GoogleSignupRole | undefined, container: H
 export const consumeGoogleSignupRole = (): GoogleSignupRole | null => {
   const role = readStorage(GOOGLE_ROLE_KEY);
   removeStorage(GOOGLE_ROLE_KEY);
-  return role === "tasker" || role === "bee" || role === "parent" ? role : null;
+  return role === "tasker" || role === "bee" ? role : null;
 };

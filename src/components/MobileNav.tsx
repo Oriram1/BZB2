@@ -4,7 +4,7 @@ import { Menu } from "lucide-react";
 import {
   X, User as UserCircle, Heart, CaretLeft, CheckCircle, Question, SignOut as LogOut, Bell, ArrowRight, Checks as CheckCheck,
   House, SignIn, ListMagnifyingGlass, PlusCircle, FileText, ChatCircle, UserCircle as ProfileIcon,
-  Shield, Gear, CreditCard, ShieldCheck, type Icon as PhosphorIcon,
+  Gear, CreditCard, ShieldCheck, type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,6 @@ const DRAWER_ICONS: Record<string, PhosphorIcon> = {
   [ROUTES.myTasks]: FileText,
   [ROUTES.chat]: ChatCircle,
   [ROUTES.profile]: ProfileIcon,
-  [ROUTES.parent]: Shield,
   [ROUTES.settings]: Gear,
   [ROUTES.pricing]: CreditCard,
   [ROUTES.admin]: ShieldCheck,

@@ -144,7 +144,6 @@ describe("architecture invariants", () => {
       "src/pages/TaskList.tsx",
       "src/pages/TaskDetail.tsx",
       "src/pages/PublicProfile.tsx",
-      "src/pages/ParentalHub.tsx",
       "src/pages/Admin.tsx",
     ];
 
@@ -189,7 +188,7 @@ describe("architecture invariants", () => {
   it("reads unrelated profiles through get_public_profile, not the table", () => {
     const reader = readFileSync(resolve(root, "src/lib/publicProfile.ts"), "utf8");
     expect(reader).toContain("get_public_profile");
-    for (const file of ["src/pages/TaskDetail.tsx", "src/pages/PublicProfile.tsx", "src/pages/ParentalHub.tsx"]) {
+    for (const file of ["src/pages/TaskDetail.tsx", "src/pages/PublicProfile.tsx"]) {
       const source = readFileSync(resolve(root, file), "utf8");
       expect(source, `${file} should use the public-profile reader`).toContain("@/lib/publicProfile");
     }

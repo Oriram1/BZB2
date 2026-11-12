@@ -17,8 +17,6 @@ export const ROUTES = {
   pricing: "/pricing",
   subscription: "/subscription",
   billingReturn: "/billing/return",
-  parent: "/parent",
-  parentReport: "/parent/report/:date",
   parentView: "/parent/view/:token",
   settings: "/settings",
   chat: "/chat",
@@ -40,7 +38,6 @@ export const registerPath = (role: string) => `/register/${role}`;
 
 const TASKER: AppRole[] = ["tasker"];
 const TASKER_OR_BEE: AppRole[] = ["tasker", "bee"];
-const PARENT: AppRole[] = ["parent"];
 
 /** Routes only some roles may open: App.tsx guards them with these, and the nav menus list them to the same roles. */
 export const ROUTE_ROLES: Record<string, AppRole[]> = {
@@ -48,8 +45,6 @@ export const ROUTE_ROLES: Record<string, AppRole[]> = {
   [ROUTES.myTasks]: TASKER_OR_BEE,
   [ROUTES.subscription]: TASKER,
   [ROUTES.billingReturn]: TASKER,
-  [ROUTES.parent]: PARENT,
-  [ROUTES.parentReport]: PARENT,
   [ROUTES.chat]: TASKER_OR_BEE,
   [ROUTES.profile]: TASKER_OR_BEE,
 };

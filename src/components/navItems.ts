@@ -1,4 +1,4 @@
-import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, Shield, ShieldCheck, MessageCircle, UserCircle, Bell } from "lucide-react";
+import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, ShieldCheck, MessageCircle, UserCircle, Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ROUTE_ROLES, ROUTES, type AppRole } from "@/lib/routes";
 
@@ -24,13 +24,10 @@ export const navItems: NavItem[] = [
   { label: "המטלות שלי", shortLabel: "שלי", to: ROUTES.myTasks, icon: ClipboardList, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.myTasks] },
   { label: "צ'אט", to: ROUTES.chat, icon: MessageCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.chat] },
   { label: "הפרופיל שלי", shortLabel: "פרופיל", to: ROUTES.profile, icon: UserCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.profile] },
-  { label: "לוח הורים", shortLabel: "הורים", to: ROUTES.parent, icon: Shield, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.parent] },
   { label: "הגדרות התראות", shortLabel: "התראות", to: ROUTES.settings, icon: Bell, authOnly: true },
   /* Pricing is about the commission a publisher pays, so it is noise in a bee's
      menu — but it is also the marketing page, so guests still get it. */
   { label: "מנויים", to: ROUTES.pricing, icon: CreditCard, bold: true, requiredRoles: ["tasker"] },
-  /* Admin and parent are mutually exclusive roles, so the two shields never
-     appear in the same menu. */
   { label: "ניהול המערכת", shortLabel: "ניהול", to: ROUTES.admin, icon: ShieldCheck, authOnly: true, requiredRoles: ["admin"] },
 ];
 

@@ -79,13 +79,10 @@ const Register = () => {
     user?.app_metadata.provider === "google" ||
     user?.identities?.some((identity) => identity.provider === "google") === true;
   const isWorker = role === "worker" || role === "bee";
-  const isParent = role === "parent";
-  const requestedRole = isWorker ? "bee" : isParent ? "parent" : "tasker";
+  const requestedRole = isWorker ? "bee" : "tasker";
   const existingRole = roles[0];
   const title = isWorker
     ? "הרשמה למבצעי מטלות 💪"
-    : isParent
-    ? "הרשמה להורים 🛡️"
     : paidPlan
     ? `הרשמה למנוי ${planLabel}`
     : "הרשמה למציעי מטלות 📋";
@@ -251,7 +248,7 @@ const Register = () => {
 
   const finishRegistration = async (resolvedPosition = addressPosition) => {
     setLoading(true);
-    const appRole = isWorker ? "bee" : isParent ? "parent" : "tasker";
+    const appRole = isWorker ? "bee" : "tasker";
     let data: { user: typeof user; session: unknown };
     let error: { message: string } | null = null;
     if (isGoogleSignup && user) {
@@ -294,7 +291,7 @@ const Register = () => {
 
       const { error: roleError } = await supabase.from("user_roles").insert({
         user_id: data.user.id,
-        role: appRole as "bee" | "tasker" | "parent",
+        role: appRole as "bee" | "tasker",
       });
 
       if (profileError) {
@@ -374,7 +371,7 @@ const Register = () => {
           <h1 className="text-3xl font-black text-foreground leading-tight">{title}</h1>
         </div>
 
-        {!isGoogleSignup && <div className="mb-5"><GoogleAuthButton role={isWorker ? "bee" : isParent ? "parent" : "tasker"} /></div>}
+        {!isGoogleSignup && <div className="mb-5"><GoogleAuthButton role={isWorker ? "bee" : "tasker"} /></div>}
 
         <div className="flex items-center gap-3 mb-5">
           <div className="flex-1 h-0.5 rounded-full bg-border" />

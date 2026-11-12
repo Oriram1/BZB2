@@ -11,6 +11,6 @@ it("asks before moving an account that signed in from another role's screen", ()
 });
 
 it("finishes registration for a Google account that has no role yet", () => {
-  expect(postAuthStep([], "parent")).toEqual({ to: "/register/parent?google=1" });
+  expect(postAuthStep([], "bee")).toEqual({ to: "/register/bee?google=1" });
   expect(postAuthStep([], null)).toEqual({ to: "/auth?google=1" });
 });

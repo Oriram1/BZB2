@@ -22,7 +22,6 @@ const MyTasks = lazy(() => import("./pages/MyTasks"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Subscription = lazy(() => import("./pages/Subscription"));
 const BillingReturn = lazy(() => import("./pages/BillingReturn"));
-const ParentalHub = lazy(() => import("./pages/ParentalHub"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Profile = lazy(() => import("./pages/Profile"));
 const PublicProfile = lazy(() => import("./pages/PublicProfile"));
@@ -33,7 +32,6 @@ const Help = lazy(() => import("./pages/Help"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Settings = lazy(() => import("./pages/Settings"));
-const ParentReport = lazy(() => import("./pages/ParentReport"));
 const ParentView = lazy(() => import("./pages/ParentView"));
 import { MobileNav, FloatingNavTrigger } from "./components/MobileNav";
 import { NavDrawerProvider } from "./components/NavDrawerContext";
@@ -126,8 +124,6 @@ const App = () => (
               <Route path={ROUTES.pricing} element={<Pricing />} />
               {guarded(ROUTES.subscription, <Subscription />)}
               {guarded(ROUTES.billingReturn, <BillingReturn />)}
-              {guarded(ROUTES.parent, <ParentalHub />)}
-              {guarded(ROUTES.parentReport, <ParentReport />)}
               <Route path={ROUTES.parentView} element={<ParentView />} />
               <Route path={ROUTES.settings} element={<Settings />} />
               {guarded(ROUTES.chat, <Chat />)}
