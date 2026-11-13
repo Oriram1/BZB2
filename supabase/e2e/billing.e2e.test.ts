@@ -147,6 +147,7 @@ Deno.test({
       await admin.from("billing_plans").update({ price_signature: await signPlan(plan) }).eq("id", plan.id);
     }
     await admin.from("billing_settings").update({ value: "on" }).eq("key", "task_billing");
+    await admin.from("billing_settings").update({ value: "on" }).eq("key", "insurance_enabled");
 
     const adminUser = await makeUser("admin", ["admin"]);
     const owner = await makeUser("owner");
@@ -468,8 +469,9 @@ Deno.test({
       await admin.from("billing_settings").update({ value: "on" }).eq("key", "task_billing");
     });
 
-    // Leave the switch the way it ships, so the next run starts from the default.
+    // Leave the switches the way they ship, so the next run starts from the default.
     await admin.from("billing_settings").update({ value: "off" }).eq("key", "task_billing");
+    await admin.from("billing_settings").update({ value: "off" }).eq("key", "insurance_enabled");
 
     for (const child of children) {
       try { child.kill(); } catch { /* already gone */ }

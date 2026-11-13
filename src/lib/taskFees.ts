@@ -3,15 +3,19 @@ import { formatPrice } from "@/lib/format";
 import { queryClient } from "@/lib/queryClient";
 import { supabase } from "@/integrations/supabase/client";
 
-type TaskFees = { task_fee: number; insurance_fee: number };
+type TaskFees = { task_fee: number; insurance_fee: number; insurance_enabled: boolean };
 
 const taskFeesQueryKey = ["task-fees"] as const;
 
 async function fetchTaskFees(): Promise<TaskFees> {
   const { data, error } = await supabase.rpc("get_task_fees");
   if (error || !data) throw error ?? new Error("get_task_fees returned nothing");
-  const raw = data as unknown as { task_fee: number | string; insurance_fee: number | string };
-  return { task_fee: Number(raw.task_fee), insurance_fee: Number(raw.insurance_fee) };
+  const raw = data as unknown as { task_fee: number | string; insurance_fee: number | string; insurance_enabled?: boolean };
+  return {
+    task_fee: Number(raw.task_fee),
+    insurance_fee: Number(raw.insurance_fee),
+    insurance_enabled: raw.insurance_enabled === true,
+  };
 }
 
 /** Forget what was loaded, e.g. after an admin changes a fee. */

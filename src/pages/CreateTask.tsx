@@ -94,6 +94,10 @@ const CreateTask = () => {
   const [insurance, setInsurance] = useState(false);
   const [quote, setQuote] = useState<PublishQuote | null>(null);
   const fees = useTaskFees();
+  // Insurance is offered only while the admin switch is on; until the fees
+  // load it is treated as off, so nothing is quoted or sent for it.
+  const insuranceOffered = fees?.insurance_enabled === true;
+  const withInsurance = insurance && insuranceOffered;
   const [paymentMode, setPaymentMode] = useState<TaskPaymentChoice>("saved_card");
   const [confirmQuote, setConfirmQuote] = useState<PublishQuote | null>(null);
   const [searchParams] = useSearchParams();
@@ -117,13 +121,13 @@ const CreateTask = () => {
     if (!user) return;
     let active = true;
     void (async () => {
-      const fresh = await fetchPublishQuote(insurance);
+      const fresh = await fetchPublishQuote(withInsurance);
       if (active && fresh) setQuote(fresh);
     })();
     return () => {
       active = false;
     };
-  }, [user, insurance, onSummary]);
+  }, [user, withInsurance, onSummary]);
 
   // Coming back from Cardcom after saving a card: put the form back and let the
   // person press publish.
@@ -276,7 +280,7 @@ const CreateTask = () => {
       navigate("/login");
       return;
     }
-    const latest = (await fetchPublishQuote(insurance)) ?? quote;
+    const latest = (await fetchPublishQuote(withInsurance)) ?? quote;
     if (latest) setQuote(latest);
     if (latest && !latest.billing_off && latest.due > 0) {
       setPaymentMode(latest.has_card ? "saved_card" : "new_card");
@@ -321,7 +325,7 @@ const CreateTask = () => {
     // used elsewhere, since the page loaded). Ask again before deciding whether
     // a card is needed; the insert trigger enforces the same answer.
     let currentQuote = quote;
-    const fresh = await fetchPublishQuote(insurance);
+    const fresh = await fetchPublishQuote(withInsurance);
     if (fresh) {
       currentQuote = fresh;
       setQuote(currentQuote);
@@ -373,7 +377,7 @@ const CreateTask = () => {
       expiry_hours: (parseInt(form.expiry) || 3) * 24,
       notes: form.notes || null,
       image_url: imageUrl,
-      insurance,
+      insurance: withInsurance,
       payment_mode: prepay ? "one_time" : "saved_card",
     }).select("id").maybeSingle();
     if (error || !prepay) setLoading(false);
@@ -760,6 +764,7 @@ const CreateTask = () => {
                 />
               </div>
 
+              {insuranceOffered && (
               <div className="bg-muted/50 rounded-2xl p-4 sm:p-5 border border-border">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-xl">🛡️</span>
@@ -781,11 +786,12 @@ const CreateTask = () => {
                   </label>
                 </div>
               </div>
+              )}
             </div>
           )}
 
           {step === SUMMARY_STEP && (
-            <TaskReview form={form} imagePreview={imagePreview} insurance={insurance}
+            <TaskReview form={form} imagePreview={imagePreview} insurance={withInsurance} insuranceOffered={insuranceOffered}
               onChange={applyReviewChanges} onOpenExtras={() => setStep(2)} />
           )}
 

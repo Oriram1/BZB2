@@ -251,9 +251,11 @@ const Pricing = () => {
           ))}
         </div>
 
-        <p className="text-center text-muted-foreground text-sm max-w-lg mx-auto">
-          🛡️ אפשר להוסיף ביטוח מטלות ב־{feeText(fees?.insurance_fee)} למשימה, בעת פרסום המטלה. זמין בכל מסלול.
-        </p>
+        {fees?.insurance_enabled && (
+          <p className="text-center text-muted-foreground text-sm max-w-lg mx-auto">
+            🛡️ אפשר להוסיף ביטוח מטלות ב־{feeText(fees.insurance_fee)} למשימה, בעת פרסום המטלה. זמין בכל מסלול.
+          </p>
+        )}
       </div>
 
       <CheckoutConsentDialog

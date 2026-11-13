@@ -124,12 +124,14 @@ interface TaskReviewProps {
   form: ReviewForm;
   imagePreview: string | null;
   insurance: boolean;
+  /** False while the admin has insurance switched off: no insurance shortcut. */
+  insuranceOffered?: boolean;
   onChange: (changes: Partial<ReviewForm>) => void;
   /** Opens the extras step, where the image, notes and insurance live. */
   onOpenExtras: () => void;
 }
 
-export default function TaskReview({ form, imagePreview, insurance, onChange, onOpenExtras }: TaskReviewProps) {
+export default function TaskReview({ form, imagePreview, insurance, insuranceOffered = true, onChange, onOpenExtras }: TaskReviewProps) {
   const [highlight, setHighlight] = useState<ReviewField[]>([]);
   const [request, setRequest] = useState("");
   const [asking, setAsking] = useState(false);
@@ -179,7 +181,7 @@ export default function TaskReview({ form, imagePreview, insurance, onChange, on
     !form.duration && { key: "duration", label: "משך משוער", icon: Timer },
     !imagePreview && { key: "image", label: "תמונה", icon: ImageIcon },
     !form.notes && { key: "notes", label: "הערות", icon: StickyNote },
-    !insurance && { key: "insurance", label: "ביטוח", icon: ShieldCheck },
+    insuranceOffered && !insurance && { key: "insurance", label: "ביטוח", icon: ShieldCheck },
   ].filter(Boolean) as { key: string; label: string; icon: LucideIcon }[];
   const [openOptional, setOpenOptional] = useState<ReviewField[]>([]);
 

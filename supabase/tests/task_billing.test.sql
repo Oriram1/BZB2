@@ -8,6 +8,8 @@ UPDATE public.billing_settings SET value = 'off' WHERE key = 'task_billing';
 -- The scenarios below assume the shipped fees, whatever an admin set since.
 UPDATE public.billing_settings SET value = '3.00' WHERE key = 'task_fee';
 UPDATE public.billing_settings SET value = '5.00' WHERE key = 'insurance_fee';
+-- Insurance is offered in these scenarios; the switch-off case is tested below.
+UPDATE public.billing_settings SET value = 'on' WHERE key = 'insurance_enabled';
 
 CREATE FUNCTION pg_temp.expect(_what TEXT, _ok BOOLEAN) RETURNS VOID LANGUAGE plpgsql AS $$
 BEGIN
@@ -71,6 +73,15 @@ BEGIN
   t3 := pg_temp.mk_task(a, true);
   SELECT * INTO row_ FROM public.tasks WHERE id = t3;
   PERFORM pg_temp.expect('insurance adds 5 (3 + 5 = 8)', row_.payment_due = 8 AND row_.insurance);
+
+  -- 3b. Admin switch off: an insurance request is dropped, nothing charged for it.
+  UPDATE public.billing_settings SET value = 'off' WHERE key = 'insurance_enabled';
+  t4 := pg_temp.mk_task(a, true);
+  SELECT * INTO row_ FROM public.tasks WHERE id = t4;
+  PERFORM pg_temp.expect('insurance switched off: stored without insurance, only the fee (3)',
+    row_.payment_due = 3 AND NOT row_.insurance);
+  DELETE FROM public.tasks WHERE id = t4;
+  UPDATE public.billing_settings SET value = 'on' WHERE key = 'insurance_enabled';
 
   -- 4. Approving the free task: live at once, benefits recorded at user level.
   r := public.task_review_decide(t1, a, true, null);

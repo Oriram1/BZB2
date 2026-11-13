@@ -4,11 +4,12 @@ import { toast } from "sonner";
 import { mapDbError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateTaskFees } from "@/lib/taskFees";
 
 type FeeKey = "task_fee" | "insurance_fee";
-type Fees = { task_fee: number; insurance_fee: number; defaults: Record<FeeKey, number> };
+type Fees = { task_fee: number; insurance_fee: number; insurance_enabled: boolean; defaults: Record<FeeKey, number> };
 
 const FEES: { key: FeeKey; title: string; hint: string }[] = [
   { key: "task_fee", title: "עמלת פרסום למטלה", hint: "נגבית על כל מטלה מחשבון בלי מנוי, אחרי המטלה החינמית הראשונה." },
@@ -26,7 +27,7 @@ const parseAmount = (raw: string) => {
 const TaskFeePricing = () => {
   const [fees, setFees] = useState<Fees | null>(null);
   const [drafts, setDrafts] = useState<Record<FeeKey, string>>({ task_fee: "", insurance_fee: "" });
-  const [busy, setBusy] = useState<FeeKey | null>(null);
+  const [busy, setBusy] = useState<FeeKey | "insurance_enabled" | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc("admin_get_task_fees");
@@ -56,6 +57,19 @@ const TaskFeePricing = () => {
     await load();
   };
 
+  const setInsuranceEnabled = async (enabled: boolean) => {
+    setBusy("insurance_enabled");
+    const { error } = await supabase.rpc("admin_set_insurance_enabled", { _enabled: enabled });
+    setBusy(null);
+    if (error) {
+      toast.error(mapDbError(error, {}, "השמירה נכשלה. נסו שוב"));
+      return;
+    }
+    toast.success(enabled ? "ביטוח מטלות מוצע עכשיו ללקוחות" : "ביטוח מטלות כבר לא מוצע ללקוחות");
+    invalidateTaskFees();
+    await load();
+  };
+
   if (!fees) return <p className="text-sm text-muted-foreground">טוען…</p>;
 
   return (
@@ -65,6 +79,22 @@ const TaskFeePricing = () => {
         <p className="text-sm text-muted-foreground">
           השינוי חל מיד על כל מטלה חדשה. מטלות שכבר נשלחו לאישור נשארות במחיר שנקבע להן.
         </p>
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-5 flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <label htmlFor="insurance-enabled" className="text-lg font-extrabold cursor-pointer">
+            אפשר ללקוחות לקנות ביטוח מטלות
+          </label>
+          <p className="text-xs text-muted-foreground">
+            כשכבוי, אפשרות הביטוח לא מוצגת בפרסום מטלה ולא נגבה עליה תשלום. מטלות שכבר נשלחו נשארות כפי שהיו.
+          </p>
+        </div>
+        <Switch
+          id="insurance-enabled"
+          checked={fees.insurance_enabled}
+          disabled={busy !== null}
+          onCheckedChange={(value) => void setInsuranceEnabled(value)}
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {FEES.map(({ key, title, hint }) => {

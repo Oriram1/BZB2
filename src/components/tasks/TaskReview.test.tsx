@@ -74,3 +74,9 @@ it("lists optional details that were never filled", () => {
   fireEvent.click(screen.getByRole("button", { name: /תמונה/ }));
   expect(onOpenExtras).toHaveBeenCalled();
 });
+
+it("does not offer insurance while the admin switch is off", () => {
+  render(<TaskReview form={form} imagePreview={null} insurance={false} insuranceOffered={false} onChange={vi.fn()} onOpenExtras={vi.fn()} />);
+  const optional = screen.getByRole("region", { name: "פרטים אופציונליים" });
+  expect(optional).not.toHaveTextContent("ביטוח");
+});

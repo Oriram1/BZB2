@@ -1333,6 +1333,7 @@ export type Database = {
       get_task_fees: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_get_task_fees: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_set_task_fee: { Args: { _amount: number; _key: string }; Returns: Json }
+      admin_set_insurance_enabled: { Args: { _enabled: boolean }; Returns: Json }
       admin_set_plan_price: {
         Args: {
           _actor: string
