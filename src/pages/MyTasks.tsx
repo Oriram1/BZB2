@@ -507,7 +507,7 @@ const MyTasks = () => {
           Frame 13 linear gradient + two 6-point polygons, colour-burn #EE8F6B. */}
       <div
         className="fixed inset-x-0 bottom-0 top-[146px] pointer-events-none"
-        style={{ background: "linear-gradient(180deg, #FCE9E2 0%, #F4F4F5 22%, #F4F4F5 72%, #FCE9E2 100%)" }}
+        style={{ background: "linear-gradient(180deg, #FCE9E2 0%, #F4F4F5 37%, #F4F4F5 79%, #FCE9E2 100%)" }}
         aria-hidden="true"
       />
       <div className="fixed bottom-0 left-[calc(50%-195px)] h-[844px] w-[390px] overflow-hidden pointer-events-none mix-blend-color-burn" aria-hidden="true">
