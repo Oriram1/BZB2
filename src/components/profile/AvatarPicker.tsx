@@ -6,6 +6,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import BeePicker from "@/components/bee-library/BeePicker";
+import { uploadAvatar, type AvatarUploadError } from "@/lib/avatarUpload";
+
+const UPLOAD_ERRORS: Record<AvatarUploadError, string> = {
+  not_image: "ניתן להעלות רק קובץ תמונה",
+  too_large: "התמונה גדולה מדי (מקסימום 10MB)",
+  upload_failed: "שגיאה בהעלאת התמונה, נסו שוב",
+  profile_failed: "התמונה הועלתה אבל לא נשמרה בפרופיל, נסו שוב",
+};
 
 interface AvatarPickerProps {
   userId: string;
@@ -38,40 +46,29 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
   const handleSelectBee = (_id: string, src: string) => persist(src);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+    // Clear the value so picking the same file again still fires onChange.
+    input.value = "";
     if (!file) return;
 
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("ניתן להעלות רק תמונות (JPEG, PNG, GIF, WebP)");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("הקובץ גדול מדי (מקסימום 10MB)");
-      return;
-    }
-
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${userId}/avatar.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true });
-
-    if (uploadError) {
-      toast.error("שגיאה בהעלאת הקובץ");
+    try {
+      const result = await uploadAvatar(userId, file);
+      if (result.error) {
+        toast.error(UPLOAD_ERRORS[result.error]);
+        return;
+      }
+      onAvatarChange(result.url);
+      await refreshProfile();
+      toast.success("התמונה עודכנה!");
+      setOpen(false);
+    } catch (error) {
+      console.error("avatar upload crashed", error);
+      toast.error(UPLOAD_ERRORS.upload_failed);
+    } finally {
       setUploading(false);
-      return;
     }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(path);
-
-    await persist(publicUrlData.publicUrl);
-    setUploading(false);
   };
 
   const displayAvatar = currentAvatarUrl || "";
@@ -124,7 +121,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
               </span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 className="hidden"
                 onChange={handleFileUpload}
                 disabled={uploading}
