@@ -4,9 +4,18 @@
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--strictPort"
+      ],
       "port": 8080,
-      "autoPort": true
+      "autoPort": false,
+      "env": {
+        "DEV_HTTPS": "1"
+      },
+      "url": "https://localhost:8080"
     }
   ]
 }

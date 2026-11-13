@@ -3,7 +3,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePermissionPrompt } from "@/components/PermissionPromptContext";
-import { MapPin as LucideMapPin } from "lucide-react";
 import { MapTrifold as MapIcon, ListBullets as List, MapPin, CaretDown as ChevronDown, MagnifyingGlassMinus as SearchX, Plus, MagnifyingGlass as Search, Heart, X, SlidersHorizontal, Check } from "@phosphor-icons/react";
 import { figmaCategoryIcon } from "@/components/tasks/figmaCategoryIcons";
 import PageHeader from "@/components/PageHeader";
@@ -21,8 +20,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSavedTasks } from "@/hooks/useSavedTasks";
 import { cn } from "@/lib/utils";
+import { CONSENT_CHANGED, getStoredConsent } from "@/lib/performanceConsent";
 
 const MAX_DISTANCE_KEY = "bzb_max_distance";
+const LOCATION_SNOOZE_KEY = "bzb_location_prompt_snooze";
+const LOCATION_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_DISTANCE_KM = 10;
 /** Top of the distance slider. One step past it means "do not filter by distance". */
 const MAX_DISTANCE_KM = 50;
@@ -47,7 +49,22 @@ const TaskList = () => {
   const { user } = useAuth();
   const { isTasker, isBee } = useRoles();
   const { pushPending } = usePermissionPrompt();
-  const [locationDismissed, setLocationDismissed] = useState(false);
+  /* One ask at a time: the location explainer waits until the cookie banner is answered. */
+  const [cookiesAnswered, setCookiesAnswered] = useState(() => getStoredConsent() !== null);
+  useEffect(() => {
+    if (cookiesAnswered) return;
+    const onConsent = () => setCookiesAnswered(true);
+    window.addEventListener(CONSENT_CHANGED, onConsent);
+    return () => window.removeEventListener(CONSENT_CHANGED, onConsent);
+  }, [cookiesAnswered]);
+  /* Soft-ask snooze: "לא עכשיו" hides the explainer for a few days so it never nags on every visit. */
+  const [locationDismissed, setLocationDismissedState] = useState(() => {
+    try { return Date.now() < Number(localStorage.getItem(LOCATION_SNOOZE_KEY) || 0); } catch { return false; }
+  });
+  const setLocationDismissed = (snooze: boolean) => {
+    setLocationDismissedState(true);
+    if (snooze) try { localStorage.setItem(LOCATION_SNOOZE_KEY, String(Date.now() + LOCATION_SNOOZE_MS)); } catch { /* storage blocked */ }
+  };
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("new");
@@ -99,13 +116,13 @@ const TaskList = () => {
   useEffect(() => {
     let cancelled = false;
     if (!navigator.geolocation) { setLocationState("unavailable"); return; }
-    let asked = false;
-    if (!navigator.permissions?.query) { locate(); return; }
+    // No Permissions API (older Safari): we can't tell if the OS will prompt, so show the explainer first.
+    if (!navigator.permissions?.query) { setLocationState("prompt"); return; }
     const checkPermission = () => {
       void navigator.permissions.query({ name: "geolocation" }).then((permission) => {
         if (cancelled) return;
         if (permission.state === "granted") locate();
-        else if (permission.state === "prompt" && !asked) { asked = true; locate(); }
+        // "prompt": never fire the native dialog cold; the explainer modal asks first.
         else { setUserPos(null); setLocationState(permission.state); }
       }).catch(() => { if (!cancelled) setLocationState("prompt"); });
     };
@@ -210,18 +227,19 @@ const TaskList = () => {
       />
 
       <div className="max-w-5xl mx-auto py-5 px-4 pb-28 md:pb-5 relative z-10">
-        <Dialog open={!pushPending && !locationDismissed && locationState === "denied"} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
-          <DialogContent dir="rtl" className="rounded-2xl sm:max-w-md">
-            <DialogHeader>
-              <span className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink" aria-hidden="true"><LucideMapPin size={24} /></span>
-              <DialogTitle className="text-xl font-extrabold">נמצא יחד מטלות קרובות? 🐝</DialogTitle>
-              <DialogDescription className="pt-2 leading-relaxed">
-                {locationState === "denied" ? "המיקום חסום כרגע. כדי לראות מטלות לפי המרחק, אפשר לאפשר גישה למיקום בהגדרות המכשיר או הדפדפן." : "עם המיקום שלכם נוכל להציג את המרחק למטלות ולעזור למצוא מה קרוב אליכם. בלחיצה תופיע בקשת אישור מהמכשיר."}
+        <Dialog open={!pushPending && cookiesAnswered && !locationDismissed && (locationState === "denied" || locationState === "prompt")} onOpenChange={(open) => { if (!open) setLocationDismissed(true); }}>
+          {/* Portal renders outside the page, so the dialog opts into the Figma tokens itself. */}
+          <DialogContent dir="rtl" className="figma w-[calc(100%-2rem)] gap-0 rounded-[20px] border-0 bg-card p-6 shadow-card sm:max-w-sm">
+            <DialogHeader className="items-center text-center">
+              <span className="mb-4 flex size-14 items-center justify-center rounded-full bg-primary-soft text-primary" aria-hidden="true"><MapPin size={28} weight="fill" /></span>
+              <DialogTitle className="text-xl font-bold">{locationState === "denied" ? "המיקום חסום" : "מטלות קרובות אליכם"}</DialogTitle>
+              <DialogDescription className="pt-1 text-sm leading-relaxed text-muted-foreground">
+                {locationState === "denied" ? "כדי לראות מרחק למטלות, אפשרו גישה למיקום בהגדרות הדפדפן או המכשיר." : "נשתמש במיקום כדי להציג כמה רחוקה כל מטלה. אפשר לשנות את זה בכל רגע."}
               </DialogDescription>
             </DialogHeader>
-            <div className="flex gap-2 pt-2">
-              {locationState !== "denied" && <Button className="flex-1 rounded-full" onClick={() => { setLocationDismissed(true); locate(); }}>שימוש במיקום שלי</Button>}
-              <Button className="flex-1 rounded-full" variant="outline" onClick={() => setLocationDismissed(true)}>{locationState === "denied" ? "הבנתי" : "לא עכשיו"}</Button>
+            <div className="flex flex-col gap-2 pt-6">
+              {locationState !== "denied" && <Button className="h-12 w-full rounded-full text-base font-medium" onClick={() => { setLocationDismissed(false); locate(); }}>אישור מיקום</Button>}
+              <Button className="h-12 w-full rounded-full bg-secondary text-base font-medium text-foreground hover:bg-secondary/80" variant="ghost" onClick={() => setLocationDismissed(true)}>{locationState === "denied" ? "הבנתי" : "לא עכשיו"}</Button>
             </div>
           </DialogContent>
         </Dialog>

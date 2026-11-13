@@ -43,43 +43,41 @@ const CookieConsent = () => {
       aria-labelledby="cookie-consent-title"
       className="fixed bottom-0 inset-x-0 z-[9999] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
     >
-      <div className="max-w-lg mx-auto bg-card border border-border rounded-2xl shadow-xl p-5 animate-pop-in">
+      {/* Same look as the redesigned screens: white card, Rubik, orange primary, pill buttons. */}
+      <div className="figma mx-auto max-w-md rounded-[20px] bg-card p-5 shadow-[0_8px_32px_rgb(0_0_0/0.12)] animate-pop-in">
         <div className="flex items-start gap-3">
-          <Cookie aria-hidden="true" className="w-6 h-6 text-primary-ink shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p id="cookie-consent-title" className="text-sm font-bold text-foreground mb-1">האתר משתמש בעוגיות</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              אנחנו משתמשים בעוגיות הכרחיות לתפקוד האתר, ובעוגיות אופציונליות לניתוח סטטיסטי ושיפור חוויית המשתמש.{" "}
-              <Link to={ROUTES.privacy} className="text-primary-ink underline font-semibold rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <Cookie className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p id="cookie-consent-title" className="mb-1 text-base font-bold text-foreground">האתר משתמש בעוגיות</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              עוגיות הכרחיות לתפקוד האתר, ואופציונליות לשיפור החוויה.{" "}
+              <Link to={ROUTES.privacy} className="rounded font-medium text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                 מדיניות פרטיות
               </Link>
             </p>
-            <div className="flex gap-2 mt-3">
-              <Button
-                size="sm"
-                onClick={() => accept("all")}
-                className="rounded-xl font-bold gradient-honey text-primary-foreground"
-              >
-                אישור הכל
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => accept("essential")}
-                className="rounded-xl font-bold"
-              >
-                הכרחיות בלבד
-              </Button>
-            </div>
           </div>
           {/* -m-2 keeps the visual size while the hit area grows to 44x44 (WCAG 2.5.8). */}
           <button
             onClick={() => accept("essential")}
-            className="flex h-11 w-11 -m-2 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-m-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="סגירה"
           >
-            <X aria-hidden="true" className="w-4 h-4" />
+            <X aria-hidden="true" className="size-4" />
           </button>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Button onClick={() => accept("all")} className="h-11 flex-1 rounded-full text-sm font-medium">
+            אישור הכל
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => accept("essential")}
+            className="h-11 flex-1 rounded-full bg-secondary text-sm font-medium text-foreground hover:bg-secondary/80"
+          >
+            הכרחיות בלבד
+          </Button>
         </div>
       </div>
     </div>
