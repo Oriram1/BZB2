@@ -548,9 +548,9 @@ const MyTasks = () => {
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
           <div className="-mx-4 -mt-5 mb-4 bg-card px-4 pt-5 pb-[13px] flex justify-center">
           <TabsList className={`inline-grid w-auto h-auto rounded-full bg-[#F3F3F3] border border-border p-[3px] ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
-            {managesTasks && <TabsTrigger value="published" className="min-h-[35px] px-[14px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">מטלות שפרסמתי<ListChecks size={16} aria-hidden="true" /></TabsTrigger>}
+            {managesTasks && <TabsTrigger value="published" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">מטלות שפרסמתי<ListChecks size={16} aria-hidden="true" /></TabsTrigger>}
             {managesTasks && (
-              <TabsTrigger value="applications" className="relative min-h-[35px] px-[14px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">
+              <TabsTrigger value="applications" className="relative min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">
                 מועמדויות
                 <Users size={16} aria-hidden="true" />
                 {pendingCount > 0 && (
@@ -560,7 +560,7 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {performsTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[14px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
+            {performsTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
           </div>
 
@@ -726,23 +726,23 @@ const MyTasks = () => {
                 return (
                   <article
                     key={task.id}
-                    className="rounded-[14px] bg-card p-4 shadow-card touch-pan-y"
+                    className="rounded-[14px] bg-card px-[14px] pt-[14px] pb-4 shadow-card touch-pan-y"
                     onTouchStart={(e) => handleTouchStart(e, task.id)}
                     onTouchEnd={(e) => handleTouchEnd(e, task)}
                   >
                     {/* A closed task has to read as closed at a glance, or the
                         list looks identical before and after completing one. */}
                     <div className="flex justify-end">
-                      <span className={`rounded-full border px-3 py-0.5 text-xs font-medium ${closed ? "border-border text-muted-foreground" : "border-primary text-primary"}`}>
+                      <span className={`inline-flex h-6 items-center rounded-full border px-3 text-[13px] ${closed ? "border-border bg-muted text-muted-foreground" : "border-primary bg-[#FDEEE8] text-primary"}`}>
                         {task.publish_state === "live" ? taskStatusLabel(task.status) : publishStateLabel[task.publish_state]}
                       </span>
                     </div>
-                    <Link to={`/task/${task.id}`} className="mt-1 block min-w-0">
+                    <Link to={`/task/${task.id}`} className="mt-4 block min-w-0">
                       <h2 className="text-[22px] font-semibold leading-7 truncate">{task.name}</h2>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{task.short_desc}</p>
+                      <p className="text-[15px] leading-5 text-[#8B8C93] line-clamp-2">{task.short_desc}</p>
                     </Link>
                     {task.publish_state === "pending_review" && (
-                      <div className="mt-3 flex items-center gap-3 rounded-[10px] border border-primary-soft-border bg-primary-soft p-3 text-sm text-foreground">
+                      <div className="mt-6 flex min-h-[71px] items-center gap-3 rounded-[10px] border border-primary-soft-border bg-[#FDEFEB] px-[14px] py-3 text-[15px] leading-5 text-foreground">
                         <p className="flex-1">
                         המטלה ממתינה לאישור. {Number(task.payment_due) > 0
                           ? task.payment_mode === "one_time"
@@ -752,7 +752,7 @@ const MyTasks = () => {
                             : `הכרטיס יחויב ב־${formatNis(Number(task.payment_due))} רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
                           : "היא תעלה לאפליקציה מיד אחרי האישור."}
                         </p>
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary" aria-hidden="true"><Clock size={20} /></span>
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F6D9CC] text-primary" aria-hidden="true"><Clock size={20} /></span>
                       </div>
                     )}
                     {task.publish_state === "pending_review" && task.payment_mode === "one_time" && !task.charged_at && Number(task.payment_due) > 0 && (
@@ -794,23 +794,25 @@ const MyTasks = () => {
                         המטלה מוסתרת כי המנוי הסתיים. חידוש המנוי יחזיר אותה מיד.
                       </p>
                     )}
-                    <dl className="mt-4 grid grid-cols-3 divide-x divide-x-reverse divide-border text-right">
-                      <div className="px-2 first:ps-0">
-                        <dt className="flex items-center gap-1 text-xs text-muted-foreground">תשלום<Banknote size={14} aria-hidden="true" /></dt>
-                        <dd className="text-lg font-semibold tabular-nums"><span dir="ltr">₪{Number(task.payment).toLocaleString("he-IL")}</span></dd>
-                      </div>
-                      <div className="px-2">
-                        <dt className="flex items-center gap-1 text-xs text-muted-foreground">נדרש<Users size={14} aria-hidden="true" /></dt>
-                        <dd className="text-lg font-semibold">{task.workers_needed === 1 ? "1 עובד" : `${task.workers_needed} עובדים`}</dd>
-                      </div>
-                      <div className="px-2">
-                        <dt className="flex items-center gap-1 text-xs text-muted-foreground">מועד מבוקש<CalendarDays size={14} aria-hidden="true" /></dt>
-                        <dd className="text-lg font-semibold truncate">{task.scheduled_date ? formatTaskWhen(task.scheduled_date) : "גמיש"}</dd>
-                      </div>
+                    <dl className="mt-[22px] grid grid-cols-3 items-center">
+                      {[
+                        { icon: <Banknote size={20} aria-hidden="true" />, value: <span dir="ltr">₪{Number(task.payment).toLocaleString("he-IL")}</span>, label: "תשלום" },
+                        { icon: <Users size={20} aria-hidden="true" />, value: task.workers_needed === 1 ? "1 עובד" : `${task.workers_needed} עובדים`, label: "נדרש" },
+                        { icon: <CalendarDays size={20} aria-hidden="true" />, value: task.scheduled_date ? formatTaskWhen(task.scheduled_date) : "גמיש", label: "מועד מבוקש" },
+                      ].map((stat, index) => (
+                        <div key={stat.label} className="relative flex justify-center">
+                          {index > 0 && <span className="absolute start-0 top-[30px] h-5 w-px bg-border" aria-hidden="true" />}
+                          <div className="flex flex-col items-start">
+                            <span className="text-[#A9A9C4]">{stat.icon}</span>
+                            <dt className="order-last text-sm leading-[18px] text-muted-foreground">{stat.label}</dt>
+                            <dd className="mt-0.5 text-[22px] font-semibold leading-6 tabular-nums truncate">{stat.value}</dd>
+                          </div>
+                        </div>
+                      ))}
                     </dl>
-                    <div className="mt-3 flex items-center justify-center gap-4 border-y border-border py-3 text-sm text-muted-foreground">
+                    <div className="mt-[18px] flex h-[67px] items-center justify-center gap-6 border-y border-border text-sm text-muted-foreground">
                       <span className="inline-flex items-center gap-1">{task.views_count} צפיות <Eye size={15} aria-hidden="true" /></span>
-                      <span className="h-4 w-px bg-border" aria-hidden="true" />
+                      <span className="h-5 w-px bg-border" aria-hidden="true" />
                       <span className="inline-flex items-center gap-1 tabular-nums">
                         {applications.filter((a) => a.taskId === task.id).length} מועמדויות <Users size={15} aria-hidden="true" />
                       </span>
@@ -823,12 +825,12 @@ const MyTasks = () => {
                         <Check size={16} /> סמן כהושלמה
                       </Button>
                     )}
-                    <div className="mt-4 flex items-center gap-2">
-                      <Button className={`flex-1 min-h-11 rounded-full font-medium gap-1.5 ${canComplete ? "border border-primary bg-card text-primary hover:bg-primary-soft" : "bg-primary text-primary-foreground hover:bg-primary/90"}`} asChild>
+                    <div className="mt-6 flex items-center gap-2">
+                      <Button className={`flex-[1.38] h-12 rounded-full font-medium gap-1.5 ${canComplete ? "border border-primary bg-card text-primary hover:bg-primary-soft" : "bg-primary text-primary-foreground hover:bg-primary/90"}`} asChild>
                         <Link to={`/task/${task.id}`}>פרטי המטלה<Info size={16} aria-hidden="true" /></Link>
                       </Button>
                       {!closed && (
-                        <Button variant="outline" className="flex-1 min-h-11 rounded-full border-primary text-primary hover:bg-primary-soft hover:text-primary font-medium gap-1.5" asChild>
+                        <Button variant="outline" className="flex-1 h-12 rounded-full border-primary text-primary hover:bg-primary-soft hover:text-primary font-medium gap-1.5" asChild>
                           <Link to={`/task/${task.id}`} state={{ openEdit: true }}>עריכה<Pencil size={16} aria-hidden="true" /></Link>
                         </Button>
                       )}
@@ -836,10 +838,10 @@ const MyTasks = () => {
                     <button
                       type="button"
                       onClick={() => setConfirmTask(task)}
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-destructive hover:underline"
+                      className="mt-6 inline-flex items-center gap-2 text-[15px] text-destructive hover:underline"
                     >
+                      <Trash2 size={18} aria-hidden="true" />
                       {closed ? "מחיקה" : "ביטול / מחיקה"}
-                      <Trash2 size={16} aria-hidden="true" />
                     </button>
                   </article>
                 );
