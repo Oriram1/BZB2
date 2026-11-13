@@ -50,3 +50,6 @@ playwright-report/
 # through npx rather than as a declared dependency. Committing it would pin a
 # toolchain the repo does not otherwise install.
 deno.lock
+
+# Local UI screenshots (contain real user data)
+/screenshots-by-page/
