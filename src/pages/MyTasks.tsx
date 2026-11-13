@@ -10,10 +10,11 @@ import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, CreditCard, Eye, MessageCircle, MoreVertical, Pencil, Plus, Smartphone, Star, UserRound, Users, X } from "lucide-react";
+import { Banknote, CalendarDays, Check, Clock, CreditCard, Eye, Info, ListChecks, MessageCircle, MoreVertical, Pencil, Plus, Smartphone, Star, Trash2, UserRound, Users, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import PageHeader from "@/components/PageHeader";
+import EmptyApplicantsIllustration from "@/components/tasks/EmptyApplicantsIllustration";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ensureAcceptedTaskConversation } from "@/lib/taskConversations";
 import { logUserActivity } from "@/lib/activityLog";
 import { toast } from "sonner";
-import { displayName, formatDateTime, formatNis } from "@/lib/format";
+import { displayName, formatDateTime, formatNis, formatTaskWhen } from "@/lib/format";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { reviewWindowOpen } from "@/lib/reviewWindow";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
@@ -59,6 +60,9 @@ interface PublishedTask {
   payment_due: number;
   payment_mode: string;
   charged_at: string | null;
+  payment: number;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
 }
 
 interface CandidateApplication {
@@ -176,7 +180,7 @@ const MyTasks = () => {
       const [reviewsResult, publishedResult, ownApplicationsResult] = await Promise.all([
         supabase.from("reviews").select("task_id, reviewee_id").eq("reviewer_id", user.id),
         supabase.from("tasks")
-          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at, review_window_started_at")
+          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at, review_window_started_at, payment, scheduled_date, scheduled_time")
           .eq("creator_id", user.id).is("archived_at", null)
           .order("created_at", { ascending: false }),
         supabase.from("task_applications").select("id, status, task_id")
@@ -498,13 +502,42 @@ const MyTasks = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-muted relative" dir="rtl">
-      <div className="absolute top-40 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+    <div className="figma min-h-screen bg-background relative isolate" dir="rtl">
+      {/* Background exactly as in the "My Applications" frame (390×844):
+          Frame 13 linear gradient + two 6-point polygons, colour-burn #EE8F6B. */}
+      <div
+        className="fixed inset-x-0 bottom-0 top-[146px] pointer-events-none"
+        style={{ background: "linear-gradient(180deg, #FCE9E2 0%, #F4F4F5 22%, #F4F4F5 72%, #FCE9E2 100%)" }}
+        aria-hidden="true"
+      />
+      <div className="fixed bottom-0 left-[calc(50%-195px)] h-[844px] w-[390px] overflow-hidden pointer-events-none mix-blend-color-burn" aria-hidden="true">
+        {[
+          { top: 763.15, left: 241.77, rotate: -35.42 },
+          { top: 654.18, left: -89.55, rotate: 55.01 },
+        ].map((polygon) => {
+          // Figma reports Top/Left of the rotated bounding box; rotate about the centre inside it.
+          const rad = (Math.abs(polygon.rotate) * Math.PI) / 180;
+          const box = 106.88 * (Math.cos(rad) + Math.sin(rad));
+          return (
+            <div key={polygon.left} className="absolute grid place-items-center" style={{ top: polygon.top, left: polygon.left, width: box, height: box }}>
+              <div
+                className="h-[106.88px] w-[106.88px] bg-[#EE8F6B]"
+                style={{
+                  transform: `rotate(${polygon.rotate}deg)`,
+                  clipPath: "polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)",
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
       <PageHeader
+        variant="figma"
+        centerTitle
         title="המטלות שלי"
         titleIsPageHeading
         action={isTasker ? (
-          <Button size="sm" className="rounded-full bg-white text-slate-950 hover:bg-white/90 font-black shadow-md gap-1.5" asChild>
+          <Button size="sm" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5" asChild>
 <Link to="/create-task"><Plus size={16} aria-hidden="true" />
               פרסום מטלה</Link>
 </Button>
@@ -513,11 +546,13 @@ const MyTasks = () => {
 
       <div className="max-w-3xl mx-auto py-5 px-4 relative z-10">
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
-          <TabsList className={`grid w-full h-auto rounded-2xl bg-card border border-border p-1 ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
-            {managesTasks && <TabsTrigger value="published" className="min-h-11 rounded-xl font-bold">מטלות שפרסמתי</TabsTrigger>}
+          <div className="-mx-4 -mt-5 mb-4 bg-card border-b border-border px-4 py-3 flex justify-center">
+          <TabsList className={`grid w-full max-w-sm h-auto rounded-full bg-muted border border-border p-1 ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
+            {managesTasks && <TabsTrigger value="published" className="min-h-10 rounded-full font-medium gap-1.5 data-[state=active]:shadow-card">מטלות שפרסמתי<ListChecks size={16} aria-hidden="true" /></TabsTrigger>}
             {managesTasks && (
-              <TabsTrigger value="applications" className="relative min-h-11 rounded-xl font-bold gap-1.5">
+              <TabsTrigger value="applications" className="relative min-h-10 rounded-full font-medium gap-1.5 data-[state=active]:shadow-card">
                 מועמדויות
+                <Users size={16} aria-hidden="true" />
                 {pendingCount > 0 && (
                   <Badge className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground border-0">
                     {pendingCount}
@@ -525,21 +560,26 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {performsTasks && <TabsTrigger value="performing" className="min-h-11 rounded-xl font-bold">מטלות שאני מבצע</TabsTrigger>}
+            {performsTasks && <TabsTrigger value="performing" className="min-h-10 rounded-full font-medium data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
+          </div>
 
           {managesTasks && (
             <TabsContent value="applications" className="mt-4 space-y-3">
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מועמדויות…</p>
               ) : applications.length === 0 ? (
-                <div className="rounded-3xl border border-border bg-card p-8 text-center">
-                  <UserRound className="mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
-                  <p className="font-bold">אין מועמדויות עדיין</p>
-                  <p className="text-sm text-muted-foreground mt-1">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
-                  <Button className="mt-4 rounded-full gradient-honey text-primary-foreground" asChild>
+                <div className="rounded-[14px] bg-card shadow-card p-4 text-center">
+                  <EmptyApplicantsIllustration className="mx-auto mt-2 mb-3 h-[71px] w-[71px]" />
+                  <p className="text-xl font-semibold">אין מועמדויות עדיין</p>
+                  <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
+                  <Button className="mt-5 w-full min-h-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium" asChild>
                     <Link to="/create-task">פרסום מטלה</Link>
                   </Button>
+                  <div className="mt-4 rounded-[10px] border border-[#DCDAF0] bg-secondary p-3 text-right">
+                    <p className="flex items-center gap-1.5 font-semibold text-sm">טיפ קטן<Eye size={15} className="text-[#7C6FD8]" aria-hidden="true" /></p>
+                    <p className="mt-1 text-sm text-foreground">הוסיפו תיאור ברור, מיקום ותשלום הוגן כדי לקבל יותר מועמדים.</p>
+                  </div>
                 </div>
               ) : applications.map((application) => {
                 const fullName = application.name || "משתמש";
@@ -608,7 +648,7 @@ const MyTasks = () => {
                             onClick={() => updateApplicationStatus(application, "accepted")}
                             disabled={actionId === application.id || full}
                             title={full ? "כל המקומות במטלה תפוסים" : undefined}
-                            className="flex-1 min-h-11 rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                            className="flex-1 min-h-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold gap-1"
                           >
                             <Check size={16} /> אישור וקבלה
                           </Button>
@@ -623,7 +663,7 @@ const MyTasks = () => {
                         </>
                       )}
                       {application.status === "accepted" && application.taskStatus === "completed" && (
-                        <Button className="flex-1 min-h-11 rounded-full font-bold gradient-honey text-primary-foreground"
+                        <Button className="flex-1 min-h-11 rounded-full font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={submittedReviews.has(`${application.taskId}:${application.applicantId}`) || !reviewWindowOpen(application.reviewWindowStartedAt)}
                           onClick={() => setReviewTarget({ taskId: application.taskId, taskName: application.taskName,
                             revieweeId: application.applicantId, revieweeName: application.name })}>
@@ -636,7 +676,7 @@ const MyTasks = () => {
                           <Button
                             onClick={() => openAcceptedConversation(application)}
                             disabled={actionId === application.id}
-                            className="flex-1 min-h-11 rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                            className="flex-1 min-h-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold gap-1"
                           >
                             <MessageCircle size={16} /> מעבר לצ׳אט
                           </Button>
@@ -673,9 +713,9 @@ const MyTasks = () => {
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מטלות…</p>
               ) : publishedTasks.length === 0 ? (
-                <div className="rounded-3xl border border-border bg-card p-8 text-center">
+                <div className="rounded-[14px] bg-card shadow-card p-8 text-center">
                   <p className="font-bold">עדיין לא פרסמתם מטלות</p>
-                  <Button className="mt-4 rounded-full gradient-honey text-primary-foreground" asChild>
+                  <Button className="mt-4 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" asChild>
 <Link to="/create-task">פרסום מטלה</Link>
 </Button>
                 </div>
@@ -686,26 +726,24 @@ const MyTasks = () => {
                 return (
                   <article
                     key={task.id}
-                    className="rounded-3xl border border-border bg-card p-5 shadow-sm touch-pan-y"
+                    className="rounded-[14px] bg-card p-4 shadow-card touch-pan-y"
                     onTouchStart={(e) => handleTouchStart(e, task.id)}
                     onTouchEnd={(e) => handleTouchEnd(e, task)}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <Link to={`/task/${task.id}`} className="min-w-0 flex-1">
-                        <h2 className="font-extrabold text-lg truncate">{task.name}</h2>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{task.short_desc}</p>
-                      </Link>
-                      {/* A closed task has to read as closed at a glance, or the
-                          list looks identical before and after completing one. */}
-                      <Badge
-                        variant={closed || task.publish_state !== "live" ? "secondary" : undefined}
-                        className={`rounded-full ${closed || task.publish_state !== "live" ? "" : "gradient-honey text-primary-foreground border-0"}`}
-                      >
+                    {/* A closed task has to read as closed at a glance, or the
+                        list looks identical before and after completing one. */}
+                    <div className="flex justify-end">
+                      <span className={`rounded-full border px-3 py-0.5 text-xs font-medium ${closed ? "border-border text-muted-foreground" : "border-primary text-primary"}`}>
                         {task.publish_state === "live" ? taskStatusLabel(task.status) : publishStateLabel[task.publish_state]}
-                      </Badge>
+                      </span>
                     </div>
+                    <Link to={`/task/${task.id}`} className="mt-1 block min-w-0">
+                      <h2 className="text-[22px] font-semibold leading-7 truncate">{task.name}</h2>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{task.short_desc}</p>
+                    </Link>
                     {task.publish_state === "pending_review" && (
-                      <p className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm text-foreground">
+                      <div className="mt-3 flex items-center gap-3 rounded-[10px] border border-primary-soft-border bg-primary-soft p-3 text-sm text-foreground">
+                        <p className="flex-1">
                         המטלה ממתינה לאישור. {Number(task.payment_due) > 0
                           ? task.payment_mode === "one_time"
                             ? task.charged_at
@@ -713,7 +751,9 @@ const MyTasks = () => {
                               : "אפשר לשלם כבר עכשיו, או לבחור אמצעי תשלום אחרי האישור. הכרטיס השמור לא יחויב אוטומטית."
                             : `הכרטיס יחויב ב־${formatNis(Number(task.payment_due))} רק אחרי האישור, והמטלה תעלה אחרי שהחיוב עבר.`
                           : "היא תעלה לאפליקציה מיד אחרי האישור."}
-                      </p>
+                        </p>
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary" aria-hidden="true"><Clock size={20} /></span>
+                      </div>
                     )}
                     {task.publish_state === "pending_review" && task.payment_mode === "one_time" && !task.charged_at && Number(task.payment_due) > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -731,7 +771,7 @@ const MyTasks = () => {
                           {task.payment_mode === "one_time" ? "בחרו אמצעי תשלום כדי להשלים את הפרסום. הכרטיס השמור לא חויב." : "כדאי לנסות כרטיס אחר או לפנות לחברת האשראי."} אם לא ישולם תוך 7 ימים המטלה תחזור לטיוטה, בלי חיוב.
                         </p>
                         <div className="mt-3">
-                          <Button disabled={payingTask === task.id} onClick={() => setPayChoice(task)} className="w-full min-h-11 rounded-full gradient-honey text-primary-foreground font-extrabold">
+                          <Button disabled={payingTask === task.id} onClick={() => setPayChoice(task)} className="w-full min-h-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-extrabold">
                             שלם עכשיו
                           </Button>
                         </div>
@@ -754,41 +794,53 @@ const MyTasks = () => {
                         המטלה מוסתרת כי המנוי הסתיים. חידוש המנוי יחזיר אותה מיד.
                       </p>
                     )}
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                        <span className="inline-flex items-center gap-1"><Eye size={15} /> {task.views_count} צפיות</span>
-                        <span className="inline-flex items-center gap-1 tabular-nums">
-                          <Users size={15} /> {acceptedByTask.get(task.id) ?? 0}/{task.workers_needed} נבחרו
-                        </span>
+                    <dl className="mt-4 grid grid-cols-3 divide-x divide-x-reverse divide-border text-right">
+                      <div className="px-2 first:ps-0">
+                        <dt className="flex items-center gap-1 text-xs text-muted-foreground">תשלום<Banknote size={14} aria-hidden="true" /></dt>
+                        <dd className="text-lg font-semibold tabular-nums"><span dir="ltr">₪{Number(task.payment).toLocaleString("he-IL")}</span></dd>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {canComplete && (
-                          <Button
-                            size="sm"
-                            onClick={() => setConfirmComplete(task)}
-                            className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
-                          >
-                            <Check size={15} /> סמן כהושלמה
-                          </Button>
-                        )}
-                        <Button variant="outline" size="sm" className="rounded-full font-bold" asChild>
-<Link to={`/task/${task.id}`}>לפרטי המטלה</Link>
-</Button>
-                        {!closed && (
-                          <Button variant="outline" size="sm" className="rounded-full font-bold gap-1" asChild>
-<Link to={`/task/${task.id}`} state={{ openEdit: true }}><Pencil size={14} />עריכה</Link>
-</Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setConfirmTask(task)}
-                          className="rounded-full text-destructive font-bold"
-                        >
-                          {closed ? "מחיקה" : "ביטול / מחיקה"}
-                        </Button>
+                      <div className="px-2">
+                        <dt className="flex items-center gap-1 text-xs text-muted-foreground">נדרש<Users size={14} aria-hidden="true" /></dt>
+                        <dd className="text-lg font-semibold">{task.workers_needed === 1 ? "1 עובד" : `${task.workers_needed} עובדים`}</dd>
                       </div>
+                      <div className="px-2">
+                        <dt className="flex items-center gap-1 text-xs text-muted-foreground">מועד מבוקש<CalendarDays size={14} aria-hidden="true" /></dt>
+                        <dd className="text-lg font-semibold truncate">{task.scheduled_date ? formatTaskWhen(task.scheduled_date) : "גמיש"}</dd>
+                      </div>
+                    </dl>
+                    <div className="mt-3 flex items-center justify-center gap-4 border-y border-border py-3 text-sm text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">{task.views_count} צפיות <Eye size={15} aria-hidden="true" /></span>
+                      <span className="h-4 w-px bg-border" aria-hidden="true" />
+                      <span className="inline-flex items-center gap-1 tabular-nums">
+                        {applications.filter((a) => a.taskId === task.id).length} מועמדויות <Users size={15} aria-hidden="true" />
+                      </span>
                     </div>
+                    {canComplete && (
+                      <Button
+                        onClick={() => setConfirmComplete(task)}
+                        className="mt-4 w-full min-h-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1"
+                      >
+                        <Check size={16} /> סמן כהושלמה
+                      </Button>
+                    )}
+                    <div className="mt-4 flex items-center gap-2">
+                      <Button className={`flex-1 min-h-11 rounded-full font-medium gap-1.5 ${canComplete ? "border border-primary bg-card text-primary hover:bg-primary-soft" : "bg-primary text-primary-foreground hover:bg-primary/90"}`} asChild>
+                        <Link to={`/task/${task.id}`}>פרטי המטלה<Info size={16} aria-hidden="true" /></Link>
+                      </Button>
+                      {!closed && (
+                        <Button variant="outline" className="flex-1 min-h-11 rounded-full border-primary text-primary hover:bg-primary-soft hover:text-primary font-medium gap-1.5" asChild>
+                          <Link to={`/task/${task.id}`} state={{ openEdit: true }}>עריכה<Pencil size={16} aria-hidden="true" /></Link>
+                        </Button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmTask(task)}
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-destructive hover:underline"
+                    >
+                      {closed ? "מחיקה" : "ביטול / מחיקה"}
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
                   </article>
                 );
               })}
@@ -800,9 +852,9 @@ const MyTasks = () => {
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מטלות…</p>
               ) : performingTasks.length === 0 ? (
-                <div className="rounded-3xl border border-border bg-card p-8 text-center">
+                <div className="rounded-[14px] bg-card shadow-card p-8 text-center">
                   <p className="font-bold">עדיין לא הגשתם מועמדות</p>
-                  <Button className="mt-4 rounded-full gradient-honey text-primary-foreground" asChild>
+                  <Button className="mt-4 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" asChild>
 <Link to="/tasks">למטלות הזמינות</Link>
 </Button>
                 </div>
@@ -817,7 +869,7 @@ const MyTasks = () => {
                           <Button
                             key={task.applicationId}
                             size="sm"
-                            className="rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold gap-1"
                             onClick={() => setReviewTarget({ taskId: task.id, taskName: task.name, revieweeId: task.creatorId, revieweeName: "מפרסם המטלה" })}
                           >
                             <Star size={14} /> דירוג {task.name}
@@ -827,7 +879,7 @@ const MyTasks = () => {
                     </div>
                   )}
                   {performingTasks.map((task) => (
-                <article key={task.applicationId} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+                <article key={task.applicationId} className="rounded-[14px] bg-card shadow-card p-5 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <Link to={`/task/${task.id}`} className="min-w-0 flex-1">
                       <h2 className="font-extrabold text-lg truncate">{task.name}</h2>
@@ -858,7 +910,7 @@ const MyTasks = () => {
                           toast.error("לא הצלחנו לפתוח את השיחה");
                         }
                       }}
-                      className="mt-4 rounded-full gradient-honey text-primary-foreground font-bold gap-1"
+                      className="mt-4 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold gap-1"
                     >
                       <MessageCircle size={16} /> מעבר לצ׳אט
                     </Button>
@@ -918,7 +970,7 @@ const MyTasks = () => {
               <AlertDialogCancel className="rounded-full">חזרה</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => { if (confirmComplete) completeTask(confirmComplete); setConfirmComplete(null); }}
-                className="rounded-full gradient-honey text-primary-foreground"
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 סימון כהושלמה
               </AlertDialogAction>
