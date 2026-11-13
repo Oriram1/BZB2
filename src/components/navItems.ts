@@ -1,4 +1,4 @@
-import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, ShieldCheck, MessageCircle, UserCircle, Bell } from "lucide-react";
+import { Home, LogIn, ListTodo, PlusCircle, ClipboardList, CreditCard, ShieldCheck, MessageCircle, Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ROUTE_ROLES, ROUTES, type AppRole } from "@/lib/routes";
 
@@ -23,7 +23,6 @@ export const navItems: NavItem[] = [
   { label: "צור מטלה", shortLabel: "מטלה חדשה", to: ROUTES.createTask, icon: PlusCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.createTask] },
   { label: "המטלות שלי", shortLabel: "שלי", to: ROUTES.myTasks, icon: ClipboardList, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.myTasks] },
   { label: "צ'אט", to: ROUTES.chat, icon: MessageCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.chat] },
-  { label: "הפרופיל שלי", shortLabel: "פרופיל", to: ROUTES.profile, icon: UserCircle, authOnly: true, requiredRoles: ROUTE_ROLES[ROUTES.profile] },
   { label: "הגדרות התראות", shortLabel: "התראות", to: ROUTES.settings, icon: Bell, authOnly: true },
   /* Pricing is about the commission a publisher pays, so it is noise in a bee's
      menu — but it is also the marketing page, so guests still get it. */

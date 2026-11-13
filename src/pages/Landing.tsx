@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { categories } from "@/lib/categories";
 import LandingReviews from "@/components/LandingReviews";
+import beeMark from "@/assets/bee-mark.svg";
 
 /** The global CSS reset kills animations; scrollIntoView is JS and has to ask itself. */
 const prefersReducedMotion = () =>
@@ -29,10 +30,7 @@ const Landing = () => {
 
         <div className="relative z-10 flex flex-col items-center gap-5 max-w-2xl">
           {/* Decorative: the site name is spelled out in the <h1> right below. */}
-          <img
-            alt=""
-            aria-hidden="true"
-            className="w-36 h-36 animate-float drop-shadow-2xl" src="/lovable-uploads/2dbef5fd-0953-4d8c-acee-47c58e45b35a.jpg" />
+          <img src={beeMark} alt="" aria-hidden="true" className="w-36 h-36 object-contain animate-float drop-shadow-2xl" />
 
           <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground/95 animate-slide-up" style={{ animationDelay: "0.1s" }}>
             Busy Bee
