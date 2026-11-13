@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type AssistantFields } from "@/lib/taskForm";
 import { addDays, format } from "date-fns";
-import { ArrowUp, ListChecks } from "lucide-react";
+import { ArrowUp, ListChecks, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,19 @@ const GREETING = "ספרו לי בהרחבה מה צריך לעשות, איפה 
 const MAX_CHARS = 1_000;
 
 const askAbout = (missing: MissingField[]) => questionFor[missing[0]];
+
+/** Safari records MP4 and cannot play WebM; Chromium and Firefox prefer WebM. Check at runtime. */
+const pickAudioMimeType = () => {
+  const candidates = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  return candidates.find((type) => MediaRecorder.isTypeSupported?.(type)) ?? "";
+};
+
+const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+  reader.onerror = () => reject(reader.error);
+  reader.readAsDataURL(blob);
+});
 
 function quickReplies(field: MissingField | undefined): string[] {
   const today = new Date();
@@ -79,10 +92,22 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
   const [result, setResult] = useState<{ fields: AssistantFields; missing: MissingField[] } | null>(null);
   const [confirmedLocation, setConfirmedLocation] = useState<ConfirmedTaskLocation | null>(null);
   const locationConfirmed = !!confirmedLocation && confirmedLocation.query === result?.fields.location;
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  /** A recording's onstop outlives the render that started it, so it calls the latest send through this ref. */
+  const sendRef = useRef<(raw: string) => Promise<void>>(async () => {});
   const endRef = useRef<HTMLDivElement>(null);
   const userTurns = messages.filter((message) => message.role === "user").length;
 
   useEffect(() => { endRef.current?.scrollIntoView?.({ block: "nearest" }); }, [messages, loading]);
+
+  // Leaving the page must release the microphone light.
+  useEffect(() => () => {
+    recorderRef.current?.stream.getTracks().forEach((track) => track.stop());
+    recorderRef.current = null;
+  }, []);
 
   const send = async (raw: string) => {
     const text = raw.trim().slice(0, MAX_CHARS);
@@ -112,6 +137,66 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
     setMessages([...next, { role: "assistant", text: askAbout(found.missing) }]);
   };
 
+  sendRef.current = send;
+
+  /** Voice note → text on the server → sent as the user's turn, so the transcript shows in the chat. */
+  const transcribe = async (blob: Blob) => {
+    setTranscribing(true);
+    let transcript = "";
+    try {
+      const data = await blobToBase64(blob);
+      const { data: reply, error } = await supabase.functions.invoke("task-assistant", {
+        body: { audio: { mimeType: blob.type, data } },
+      });
+      const status = (error as { context?: Response } | null)?.context?.status;
+      if (error || typeof reply?.transcript !== "string") {
+        toast.error(status === 429 ? "הגעתם למגבלת השימוש בעוזר. אפשר להמשיך בטופס" : "לא הצלחתי לתמלל את ההקלטה. אפשר לכתוב במקום");
+      } else {
+        transcript = reply.transcript.trim();
+        if (!transcript) toast.error("לא זיהיתי דיבור בהקלטה. נסו שוב או כתבו");
+      }
+    } catch {
+      toast.error("לא הצלחתי לתמלל את ההקלטה. אפשר לכתוב במקום");
+    } finally {
+      setTranscribing(false);
+    }
+    if (transcript) await sendRef.current(transcript.slice(0, MAX_CHARS));
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("הדפדפן הזה לא תומך בהקלטה קולית. אפשר לכתוב");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickAudioMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      chunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        if (chunksRef.current.length === 0) return;
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType || "audio/webm" });
+        void transcribe(blob);
+      };
+      recorder.start();
+      recorderRef.current = recorder;
+      setRecording(true);
+    } catch {
+      toast.error("אין גישה למיקרופון. אפשר לאשר אותה בהגדרות הדפדפן");
+    }
+  };
+
+  const stopRecording = () => {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+  };
+
+  const busy = loading || transcribing;
   const replies = !loading && result ? quickReplies(result.missing[0]) : [];
 
   return (
@@ -199,7 +284,15 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
           rows={userTurns === 0 ? 2 : 1}
           disabled={loading}
         />
-        <Button type="submit" size="icon" aria-label="שליחה" disabled={loading || !input.trim()}
+        <Button type="button" size="icon" variant="ghost"
+          aria-label={recording ? "עצירת ההקלטה ושליחה" : "הקלטה קולית"}
+          aria-pressed={recording}
+          disabled={busy && !recording}
+          onClick={() => (recording ? stopRecording() : void startRecording())}
+          className={`h-12 w-12 shrink-0 rounded-full ${recording ? "bg-destructive/15 text-destructive hover:bg-destructive/20" : "text-muted-foreground"}`}>
+          {recording ? <Square size={18} fill="currentColor" /> : <Mic size={20} />}
+        </Button>
+        <Button type="submit" size="icon" aria-label="שליחה" disabled={busy || !input.trim()}
           className="h-12 w-12 shrink-0 rounded-full gradient-honey text-primary-foreground">
           <ArrowUp size={20} />
         </Button>

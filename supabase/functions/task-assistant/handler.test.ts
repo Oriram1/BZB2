@@ -99,3 +99,22 @@ Deno.test("task assistant passes the provider's HTTP status through as a 502", (
     assertEquals(response.status, 502);
     assertEquals(await response.json(), { error: "assistant_provider_unavailable", provider_status: 403 });
   }));
+
+Deno.test("task assistant transcribes a voice note and skips field extraction", () =>
+  run({ model: modelReplies("ניקוי חלונות מחר\n") }, async (model) => {
+    const response = await handleTaskAssistant(postRequest(JSON.stringify({
+      audio: { mimeType: "audio/webm;codecs=opus", data: "AAAA" },
+    })));
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { transcript: "ניקוי חלונות מחר" });
+    assertEquals(model.calls, 1);
+  }));
+
+Deno.test("task assistant rejects voice notes that are not audio, not base64 or too large", () =>
+  run({ model: modelReplies("x") }, async (model) => {
+    const send = (audio: unknown) => handleTaskAssistant(postRequest(JSON.stringify({ audio })));
+    assertEquals((await send({ mimeType: "text/plain", data: "AAAA" })).status, 400);
+    assertEquals((await send({ mimeType: "audio/webm", data: "not base64!" })).status, 400);
+    assertEquals((await send({ mimeType: "audio/webm", data: "A".repeat(2_700_001) })).status, 400);
+    assertEquals(model.calls, 0);
+  }));

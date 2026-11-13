@@ -1,7 +1,7 @@
 import { ISRAEL_TZ, israelParts } from "../_shared/time.ts";
 import { CATEGORY_VALUES, SHORT_DESC_MAX, type CategoryValue } from "../_shared/taskLimits.ts";
 import { authenticatedClients, consumeQuota, json, postHandler, readJsonObject } from "../_shared/auth.ts";
-import { GeminiError, generateJson } from "../_shared/gemini.ts";
+import { GeminiError, generateJson, transcribeAudio } from "../_shared/gemini.ts";
 
 /**
  * Turns a free-text task request ("window cleaning tomorrow evening, 50 shekels")
@@ -129,10 +129,57 @@ const extract = (messages: ChatMessage[], today: { date: string; weekday: string
     temperature: 0.1,
   });
 
+/** Voice notes the browser records: base type only, parameters such as `;codecs=opus` are ignored. */
+const AUDIO_TYPES = ["audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/wav", "audio/aac"];
+/** About 2 MB of audio, roughly 8 minutes of Opus speech. Base64 adds a third. */
+const MAX_AUDIO_BASE64 = 2_700_000;
+/** Text turns are capped per message; the body limit only has to fit one voice note. */
+const MAX_BODY_BYTES = 3_000_000;
+
+export function readAudio(value: unknown): { mimeType: string; base64: string } {
+  if (!value || typeof value !== "object") throw new Error("invalid_audio");
+  const audio = value as Record<string, unknown>;
+  const mimeType = typeof audio.mimeType === "string" ? audio.mimeType.split(";")[0].trim().toLowerCase() : "";
+  const base64 = audio.data;
+  if (!AUDIO_TYPES.includes(mimeType) || typeof base64 !== "string" || !base64
+    || base64.length > MAX_AUDIO_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new Error("invalid_audio");
+  return { mimeType, base64 };
+}
+
+/** Provider HTTP failures are passed on with their status; anything else is a 500 via postHandler. */
+function providerFailure(error: unknown): Response | null {
+  if (error instanceof GeminiError && error.status !== null) {
+    return json({ error: "assistant_provider_unavailable", provider_status: error.status }, 502);
+  }
+  return null;
+}
+
 export const handleTaskAssistant = postHandler(async (request) => {
   // Authenticate and validate before spending quota or calling the paid provider.
   const { user, admin } = await authenticatedClients(request);
-  const body = await readJsonObject(request, 16_384);
+  const body = await readJsonObject(request, MAX_BODY_BYTES);
+
+  // A voice note is transcribed to text only. The client then sends that text
+  // through the normal conversation path, so extraction stays in one place.
+  if (body.audio !== undefined) {
+    let audio: { mimeType: string; base64: string };
+    try {
+      audio = readAudio(body.audio);
+    } catch {
+      return json({ error: "invalid_audio" }, 400);
+    }
+    const limited = await consumeQuota(admin, "consume_task_assistant_quota", user.id);
+    if (limited) return limited;
+    try {
+      const transcript = (await transcribeAudio(audio)).slice(0, MAX_MESSAGE_CHARS);
+      return json({ transcript });
+    } catch (error) {
+      const failure = providerFailure(error);
+      if (failure) return failure;
+      throw error;
+    }
+  }
+
   let messages: ChatMessage[];
   try {
     messages = readMessages(body.messages);
@@ -148,9 +195,8 @@ export const handleTaskAssistant = postHandler(async (request) => {
     const fields = sanitizeFields(await extract(messages, today), today.date);
     return json({ fields, missing: missingFields(fields) });
   } catch (error) {
-    if (error instanceof GeminiError && error.status !== null) {
-      return json({ error: "assistant_provider_unavailable", provider_status: error.status }, 502);
-    }
+    const failure = providerFailure(error);
+    if (failure) return failure;
     throw error;
   }
 });
