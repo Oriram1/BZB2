@@ -546,8 +546,8 @@ const MyTasks = () => {
 
       <div className="max-w-3xl mx-auto py-5 px-4 relative z-10">
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
-          <div className="-mx-4 -mt-5 mb-4 bg-card px-4 pt-[18px] pb-[15px] flex justify-center">
-          <TabsList className={`inline-grid w-auto h-auto rounded-full bg-[#F3F3F3] border border-border p-[3px] ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className={`-mx-4 -mt-5 mb-4 bg-card px-4 pt-[18px] pb-[15px] justify-center ${activeTab === "performing" && managesTasks ? "hidden" : "flex"}`}>
+          <TabsList className={`inline-grid w-auto h-auto rounded-full bg-[#F3F3F3] border border-border p-[3px] ${managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
             {managesTasks && <TabsTrigger value="published" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">מטלות שפרסמתי<ListChecks size={16} aria-hidden="true" /></TabsTrigger>}
             {managesTasks && (
               <TabsTrigger value="applications" className="relative min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">
@@ -560,7 +560,8 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {performsTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
+            {/* Figma draws two tabs; with both roles, "performing" is reached from the nav drawer link. */}
+            {performsTasks && !managesTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
           </div>
 
