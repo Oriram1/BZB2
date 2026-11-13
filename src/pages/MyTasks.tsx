@@ -546,7 +546,7 @@ const MyTasks = () => {
 
       <div className="max-w-3xl mx-auto py-5 px-4 relative z-10">
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
-          <div className="-mx-4 -mt-5 mb-4 bg-card px-4 pt-5 pb-[13px] flex justify-center">
+          <div className="-mx-4 -mt-5 mb-4 bg-card px-4 pt-[18px] pb-[15px] flex justify-center">
           <TabsList className={`inline-grid w-auto h-auto rounded-full bg-[#F3F3F3] border border-border p-[3px] ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
             {managesTasks && <TabsTrigger value="published" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">מטלות שפרסמתי<ListChecks size={16} aria-hidden="true" /></TabsTrigger>}
             {managesTasks && (
@@ -737,9 +737,9 @@ const MyTasks = () => {
                         {task.publish_state === "live" ? taskStatusLabel(task.status) : publishStateLabel[task.publish_state]}
                       </span>
                     </div>
-                    <Link to={`/task/${task.id}`} className="mt-4 block min-w-0">
+                    <Link to={`/task/${task.id}`} className="mt-3 block min-w-0">
                       <h2 className="text-[22px] font-semibold leading-7 truncate">{task.name}</h2>
-                      <p className="text-[15px] leading-5 text-[#8B8C93] line-clamp-2">{task.short_desc}</p>
+                      <p className="mt-1 text-[15px] leading-5 text-[#8B8C93] line-clamp-2">{task.short_desc}</p>
                     </Link>
                     {task.publish_state === "pending_review" && (
                       <div className="mt-6 flex min-h-[71px] items-center gap-3 rounded-[10px] border border-primary-soft-border bg-[#FDEFEB] px-[14px] py-3 text-[15px] leading-5 text-foreground">
@@ -804,13 +804,13 @@ const MyTasks = () => {
                           {index > 0 && <span className="absolute start-0 top-[30px] h-5 w-px bg-border" aria-hidden="true" />}
                           <div className="flex flex-col items-start">
                             <span className="text-[#A9A9C4]">{stat.icon}</span>
-                            <dt className="order-last text-sm leading-[18px] text-muted-foreground">{stat.label}</dt>
-                            <dd className="mt-0.5 text-[22px] font-semibold leading-6 tabular-nums truncate">{stat.value}</dd>
+                            <dt className="order-last -mt-1 text-sm leading-[18px] text-muted-foreground">{stat.label}</dt>
+                            <dd className="mt-0.5 text-[22px] font-semibold leading-[23px] tabular-nums truncate">{stat.value}</dd>
                           </div>
                         </div>
                       ))}
                     </dl>
-                    <div className="mt-[18px] flex h-[67px] items-center justify-center gap-6 border-y border-border text-sm text-muted-foreground">
+                    <div className="mt-[23px] flex h-[67px] items-center justify-center gap-6 border-y border-border text-sm text-muted-foreground">
                       <span className="inline-flex items-center gap-1">{task.views_count} צפיות <Eye size={15} aria-hidden="true" /></span>
                       <span className="h-5 w-px bg-border" aria-hidden="true" />
                       <span className="inline-flex items-center gap-1 tabular-nums">
@@ -838,7 +838,7 @@ const MyTasks = () => {
                     <button
                       type="button"
                       onClick={() => setConfirmTask(task)}
-                      className="mt-6 inline-flex items-center gap-2 text-[15px] text-destructive hover:underline"
+                      className="mt-[22px] inline-flex items-center gap-2 text-[15px] text-destructive hover:underline"
                     >
                       <Trash2 size={18} aria-hidden="true" />
                       {closed ? "מחיקה" : "ביטול / מחיקה"}
