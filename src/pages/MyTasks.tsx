@@ -546,11 +546,11 @@ const MyTasks = () => {
 
       <div className="max-w-3xl mx-auto py-5 px-4 relative z-10">
         <Tabs value={activeTab} onValueChange={changeTab} dir="rtl">
-          <div className="-mx-4 -mt-5 mb-4 bg-card border-b border-border px-4 py-3 flex justify-center">
-          <TabsList className={`grid w-full max-w-sm h-auto rounded-full bg-muted border border-border p-1 ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
-            {managesTasks && <TabsTrigger value="published" className="min-h-10 rounded-full font-medium gap-1.5 data-[state=active]:shadow-card">מטלות שפרסמתי<ListChecks size={16} aria-hidden="true" /></TabsTrigger>}
+          <div className="-mx-4 -mt-5 mb-4 bg-card px-4 pt-5 pb-[13px] flex justify-center">
+          <TabsList className={`inline-grid w-auto h-auto rounded-full bg-[#F3F3F3] border border-border p-[3px] ${managesTasks && performsTasks ? "grid-cols-3" : managesTasks ? "grid-cols-2" : "grid-cols-1"}`}>
+            {managesTasks && <TabsTrigger value="published" className="min-h-[35px] px-[14px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">מטלות שפרסמתי<ListChecks size={16} aria-hidden="true" /></TabsTrigger>}
             {managesTasks && (
-              <TabsTrigger value="applications" className="relative min-h-10 rounded-full font-medium gap-1.5 data-[state=active]:shadow-card">
+              <TabsTrigger value="applications" className="relative min-h-[35px] px-[14px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card gap-2">
                 מועמדויות
                 <Users size={16} aria-hidden="true" />
                 {pendingCount > 0 && (
@@ -560,7 +560,7 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {performsTasks && <TabsTrigger value="performing" className="min-h-10 rounded-full font-medium data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
+            {performsTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[14px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
           </div>
 
@@ -569,16 +569,16 @@ const MyTasks = () => {
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מועמדויות…</p>
               ) : applications.length === 0 ? (
-                <div className="rounded-[14px] bg-card shadow-card p-4 text-center">
-                  <EmptyApplicantsIllustration className="mx-auto mt-2 mb-3 h-[71px] w-[71px]" />
+                <div className="rounded-[14px] bg-card shadow-card px-[14px] pt-7 pb-6 text-center">
+                  <EmptyApplicantsIllustration className="mx-auto mb-[16px] h-[62.5px] w-[59px]" />
                   <p className="text-xl font-semibold">אין מועמדויות עדיין</p>
-                  <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
-                  <Button className="mt-5 w-full min-h-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium" asChild>
+                  <p className="mx-auto mt-2 max-w-[270px] text-[13px] leading-[18px] text-[#8B8C93]">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
+                  <Button className="mt-6 w-full h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium" asChild>
                     <Link to="/create-task">פרסום מטלה</Link>
                   </Button>
-                  <div className="mt-4 rounded-[10px] border border-[#DCDAF0] bg-secondary p-3 text-right">
+                  <div className="mt-6 rounded-[10px] border border-[#DCDAF0] bg-secondary px-[13px] pt-3 pb-3 text-right">
                     <p className="flex items-center gap-1.5 font-semibold text-sm">טיפ קטן<Eye size={15} className="text-[#7C6FD8]" aria-hidden="true" /></p>
-                    <p className="mt-1 text-sm text-foreground">הוסיפו תיאור ברור, מיקום ותשלום הוגן כדי לקבל יותר מועמדים.</p>
+                    <p className="mt-1 me-auto max-w-[272px] text-sm leading-5 text-foreground">הוסיפו תיאור ברור, מיקום ותשלום הוגן כדי לקבל יותר מועמדים.</p>
                   </div>
                 </div>
               ) : applications.map((application) => {

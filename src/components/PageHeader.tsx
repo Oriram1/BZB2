@@ -58,7 +58,7 @@ export function PageHeader({
 
   if (variant === "figma" && centerTitle) {
     return (
-      <header className={cn("relative bg-card border-b border-border py-3 px-4 sticky top-0 z-30", className)}>
+      <header className={cn("relative bg-card border-b border-border py-3 pe-[15px] ps-[26px] sticky top-0 z-30", className)}>
         <div className="max-w-5xl mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-2">
           {showBack ? (
             <Button
@@ -66,12 +66,12 @@ export function PageHeader({
               size="icon"
               onClick={goBack}
               aria-label="חזרה למסך הקודם"
-              className="rounded-full bg-muted border border-border text-foreground hover:bg-secondary shrink-0 h-11 w-11"
+              className="rounded-full bg-muted border border-border text-foreground hover:bg-secondary shrink-0 h-9 w-9"
             >
-              <ArrowRight size={20} />
+              <ArrowRight size={18} />
             </Button>
-          ) : <span className="w-11" />}
-          <TitleTag className="text-center font-semibold text-foreground text-base truncate">{title}</TitleTag>
+          ) : <span className="w-9" />}
+          <TitleTag className="text-center ps-4 font-semibold text-foreground text-base truncate">{title}</TitleTag>
           <div className="flex items-center gap-2">
             {action && <div className="hidden md:block shrink-0">{action}</div>}
             <NavDrawerTrigger className="text-foreground hover:bg-muted" />
