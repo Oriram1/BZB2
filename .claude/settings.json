@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && f=.agents/skills/bzb-publish/SKILL.md && if [ -r \"$f\" ]; then echo 'BZB project skill (mandatory, loaded automatically). Run the first-step sync check before your first answer:'; cat \"$f\"; else echo 'BZB skill missing or unreadable at .agents/skills/bzb-publish/SKILL.md - stop and report to the user.'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
