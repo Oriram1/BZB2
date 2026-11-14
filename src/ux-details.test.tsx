@@ -77,3 +77,16 @@ describe("idempotent task creation", () => {
     expect(sql).toMatch(/CREATE UNIQUE INDEX[^;]*\(creator_id, client_request_id\)/);
   });
 });
+
+describe("thumbhash previews", () => {
+  it("turns a hash into a data URL and ignores a missing or broken hash", async () => {
+    const { rgbaToThumbHash } = await import("thumbhash");
+    const { thumbHashToUrl } = await import("@/lib/thumbhash");
+    const rgba = new Uint8Array(4 * 4 * 4).fill(180);
+    const hash = btoa(String.fromCharCode(...rgbaToThumbHash(4, 4, rgba)));
+    expect(hash.length).toBeLessThanOrEqual(128);
+    expect(thumbHashToUrl(hash)).toMatch(/^data:image\/png;base64,/);
+    expect(thumbHashToUrl(null)).toBeUndefined();
+    expect(thumbHashToUrl("%%%not-base64")).toBeUndefined();
+  });
+});

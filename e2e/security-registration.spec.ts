@@ -30,7 +30,9 @@ test('registration failures never query email existence and remain usable', asyn
   await page.locator('#email').fill('security@example.com');
   await page.locator('#phone').fill('0501234567');
   await page.locator('#password').fill('UniqueTest-2026!');
-  await page.locator('#terms').check();
+  // #terms is a ui-sdk web component: Playwright's check() cannot read its state, so click and assert aria-checked.
+  await page.locator('#terms').click();
+  await expect(page.locator('#terms')).toHaveAttribute('aria-checked', 'true');
   await page.locator('button[type=submit]').click();
   await expect(page.getByText('לא ניתן להשלים הרשמה עם הפרטים האלה. אם כבר נרשמת, אפשר להתחבר או לאפס סיסמה')).toBeVisible();
   expect(signupCalls).toBe(1);

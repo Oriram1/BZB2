@@ -28,6 +28,10 @@ for (const route of PUBLIC_ROUTES) {
     // The cookie banner renders on first visit and is part of the page under
     // test, so it is scanned too rather than dismissed away.
     await page.waitForLoadState('networkidle');
+    // Entrance animations (cards fade in, the cookie banner pops in) leave text
+    // half transparent for a moment, and axe reads that as low contrast. Scan the
+    // settled page.
+    await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))));
 
     const results = await scan(page);
 

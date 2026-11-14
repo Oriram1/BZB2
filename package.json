@@ -50,7 +50,8 @@
     "react-router-dom": "7.18.4",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "thumbhash": "^0.1.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

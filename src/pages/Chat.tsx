@@ -21,6 +21,7 @@ import PageHeader from "@/components/PageHeader";
 import ChatComposer, { type OutgoingMessage } from "@/components/chat/ChatComposer";
 import VoiceNoteBubble from "@/components/chat/VoiceNoteBubble";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
+import { imageFileToThumbHash, thumbHashToUrl } from "@/lib/thumbhash";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useViewportHeight } from "@/hooks/useViewportHeight";
@@ -57,6 +58,7 @@ interface Message {
   attachment_path: string | null;
   attachment_type: "image" | "audio" | null;
   attachment_duration: number | null;
+  attachment_thumbhash?: string | null;
 }
 
 /** A finished task whose other side this user has not rated yet. */
@@ -231,7 +233,7 @@ const Chat = () => {
     const fetchMessages = async () => {
       const { data } = await supabase
         .from("messages")
-        .select("id, sender_id, content, created_at, attachment_path, attachment_type, attachment_duration")
+        .select("id, sender_id, content, created_at, attachment_path, attachment_type, attachment_duration, attachment_thumbhash")
         .eq("conversation_id", activeChat)
         .order("created_at", { ascending: true });
       if (cancelled) return;
@@ -328,6 +330,7 @@ const Chat = () => {
     }
 
     let attachmentPath: string | null = null;
+    const thumbhash = file && kind === "image" ? await imageFileToThumbHash(file) : null;
     if (file && kind) {
       const ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/gif", "image/webp"];
       const ALLOWED_AUDIO = ["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg"];
@@ -355,6 +358,7 @@ const Chat = () => {
         attachment_path: attachmentPath,
         attachment_type: attachmentPath ? kind ?? null : null,
         attachment_duration: kind === "audio" ? duration ?? null : null,
+        attachment_thumbhash: attachmentPath ? thumbhash : null,
       })
       .select()
       .single();
@@ -567,6 +571,10 @@ const Chat = () => {
                             aria-label="הגדלת התמונה"
                           >
                             {mediaUrl ? (
+                              <div
+                                className="rounded-xl bg-muted bg-cover"
+                                style={{ backgroundImage: thumbHashToUrl(msg.attachment_thumbhash) ? `url(${thumbHashToUrl(msg.attachment_thumbhash)})` : undefined }}
+                              >
                               <img
                                 src={mediaUrl}
                                 alt={msg.content || "תמונה בצ׳אט"}
@@ -574,10 +582,14 @@ const Chat = () => {
                                 decoding="async"
                                 width={256}
                                 height={256}
-                                className="aspect-square max-h-64 w-full rounded-xl bg-muted object-cover"
+                                className="aspect-square max-h-64 w-full rounded-xl object-cover"
                               />
+                              </div>
                             ) : (
-                              <div className="flex h-32 w-48 max-w-full items-center justify-center rounded-xl bg-foreground/10">
+                              <div
+                                className="flex h-32 w-48 max-w-full items-center justify-center rounded-xl bg-foreground/10 bg-cover"
+                                style={{ backgroundImage: thumbHashToUrl(msg.attachment_thumbhash) ? `url(${thumbHashToUrl(msg.attachment_thumbhash)})` : undefined }}
+                              >
                                 <Camera size={22} className="opacity-60" aria-hidden="true" />
                               </div>
                             )}

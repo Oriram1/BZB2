@@ -363,6 +363,7 @@ export type Database = {
       messages: {
         Row: {
           attachment_duration: number | null
+          attachment_thumbhash: string | null
           attachment_path: string | null
           attachment_type: string | null
           content: string
@@ -374,6 +375,7 @@ export type Database = {
         }
         Insert: {
           attachment_duration?: number | null
+          attachment_thumbhash?: string | null
           attachment_path?: string | null
           attachment_type?: string | null
           content?: string
@@ -385,6 +387,7 @@ export type Database = {
         }
         Update: {
           attachment_duration?: number | null
+          attachment_thumbhash?: string | null
           attachment_path?: string | null
           attachment_type?: string | null
           content?: string
