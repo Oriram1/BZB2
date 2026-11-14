@@ -57,3 +57,15 @@ test.describe('UX details', () => {
     expect(forwards).toBe(false);
   });
 });
+
+test('a checkbox toggles from a tap 18px off its centre on a touch screen', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'coarse pointer only');
+  await page.addInitScript(() => localStorage.setItem('bzb_cookie_consent', 'essential'));
+  await page.goto('/register/tasker');
+  const checkbox = page.locator('#terms');
+  await checkbox.scrollIntoViewIfNeeded();
+  const box = (await checkbox.boundingBox())!;
+  // The control is about 17px wide; the invisible 44px hit area reaches 22px from its centre.
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 18);
+  await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+});

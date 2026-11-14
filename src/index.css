@@ -156,11 +156,12 @@
     [role="tab"]::after {
       content: "";
       position: absolute;
-      inset-block-start: 50%;
-      inset-inline-start: 50%;
+      /* Centred without a transform: a transformed pseudo-element on these
+         custom elements is not hit-tested in Chromium. */
+      inset-block-start: calc(50% - max(50%, 22px));
+      inset-inline-start: calc(50% - max(50%, 22px));
       width: max(100%, 44px);
       height: max(100%, 44px);
-      transform: translate(-50%, -50%);
     }
   }
 
