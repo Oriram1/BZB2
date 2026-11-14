@@ -13,6 +13,7 @@ import { fetchRatings } from "@/lib/people";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useRoles } from "@/hooks/useRoles";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import TaskGrid from "@/components/tasks/TaskGrid";
 import MapView from "@/components/tasks/MapView";
 import type { Task } from "@/components/tasks/TaskCard";
@@ -88,8 +89,6 @@ const TaskList = () => {
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   /** The distance slider starts collapsed: the current value is enough until the user wants to change it. */
   const [distanceOpen, setDistanceOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
   /** null until the browser hands us a position; distance stays hidden until then. */
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -132,8 +131,13 @@ const TaskList = () => {
     return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisible); };
   }, []);
 
-  useEffect(() => {
-    const fetchTasks = async () => {
+  /* Revalidate on every visit (staleTime 0) but paint the last list at once, so
+     a return to the board is instant and the list is at most a moment stale. */
+  const { data: loadedTasks, isPending: loading, isError } = useQuery({
+    queryKey: ["open-tasks"],
+    staleTime: 0,
+    retry: 1,
+    queryFn: async (): Promise<Task[]> => {
       const { data, error } = await supabase
         .from("tasks")
         .select("id, creator_id, name, short_desc, category, payment, payment_type, location, scheduled_date, scheduled_time, duration_hours, workers_needed, accepted_count, status, latitude, longitude, publish_state")
@@ -142,8 +146,8 @@ const TaskList = () => {
         .is("archived_at", null)
         .order("created_at", { ascending: false });
 
-      if (error) toast.error("לא הצלחנו לטעון את המטלות");
-      else if (data) {
+      if (error) throw error;
+      {
         const ratings = await fetchRatings("tasker", data.map((task) => task.creator_id));
         // accepted_count lives on the task itself: RLS hides other people's
         // applications, so counting them here returned 0 and full tasks stayed up.
@@ -170,12 +174,15 @@ const TaskList = () => {
             creatorRating: ratings ? ratings.get(t.creator_id) ?? null : undefined,
             publishState: t.publish_state,
           }));
-        setTasks(mapped);
+        return mapped;
       }
-      setLoading(false);
-    };
-    fetchTasks();
-  }, []);
+      return [];
+    },
+  });
+  useEffect(() => {
+    if (isError) toast.error("לא הצלחנו לטעון את המטלות");
+  }, [isError]);
+  const tasks = loadedTasks ?? [];
 
   /** Distance is only real once we know where the user is AND where the task is. */
   const originPos = userPos ?? profilePos;
@@ -257,7 +264,7 @@ const TaskList = () => {
               className={`flex h-10 items-center justify-center gap-2 rounded-[20px] px-3.5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "list"
                   ? "bg-card font-medium text-[#242129]"
-                  : "font-normal text-[#85838C] hover:text-foreground"
+                  : "font-normal text-muted-foreground hover:text-foreground"
               }`}
             >
               <List size={18} aria-hidden="true" />
@@ -271,7 +278,7 @@ const TaskList = () => {
               className={`flex h-10 items-center justify-center gap-2 rounded-[20px] px-3.5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 viewMode === "map"
                   ? "bg-card font-medium text-[#242129]"
-                  : "font-normal text-[#85838C] hover:text-foreground"
+                  : "font-normal text-muted-foreground hover:text-foreground"
               }`}
             >
               <MapIcon size={18} aria-hidden="true" />

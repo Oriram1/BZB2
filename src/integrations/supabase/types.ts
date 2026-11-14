@@ -1140,6 +1140,7 @@ export type Database = {
           archived_at: string | null
           category: Database["public"]["Enums"]["task_category"]
           charged_at: string | null
+          client_request_id: string | null
           created_at: string
           creator_id: string
           duration_hours: number | null
@@ -1179,6 +1180,7 @@ export type Database = {
           archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
           charged_at?: string | null
+          client_request_id?: string | null
           created_at?: string
           creator_id: string
           duration_hours?: number | null
@@ -1218,6 +1220,7 @@ export type Database = {
           archived_at?: string | null
           category?: Database["public"]["Enums"]["task_category"]
           charged_at?: string | null
+          client_request_id?: string | null
           created_at?: string
           creator_id?: string
           duration_hours?: number | null

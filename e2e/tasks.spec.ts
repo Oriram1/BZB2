@@ -5,7 +5,7 @@ test.describe('Task Creation & Listing Flows', () => {
     await page.goto('/tasks');
     
     // Page title or header
-    await expect(page.locator('h1, h2')).toContainText(/מטלות|חפש/i);
+    await expect(page.locator('h1, h2')).toContainText(/מטלות|חפש|משימה/i);
     
     // Check toggle between list and map views
     await expect(page.getByRole('button', { name: 'תצוגת רשימה' })).toBeVisible();

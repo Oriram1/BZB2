@@ -41,6 +41,8 @@ import PushOnboarding from "./components/PushOnboarding";
 import { PermissionPromptProvider } from "./components/PermissionPromptContext";
 import CookieConsent from "./components/CookieConsent";
 import PerformanceInsights from "./components/PerformanceInsights";
+import { DelayedFallback } from "./components/DelayedFallback";
+import { startRoutePrefetch } from "./lib/routePrefetch";
 
 /** A page only the roles in `ROUTE_ROLES` may open. */
 const guarded = (path: string, page: ReactNode) => (
@@ -89,6 +91,11 @@ const ScrollToTop = () => {
   return null;
 };
 
+const RoutePrefetch = () => {
+  useEffect(() => startRoutePrefetch(), []);
+  return null;
+};
+
 /**
  * Every Radix primitive (Tabs, Select, DropdownMenu, Slider, ScrollArea…)
  * defaults to `dir="ltr"` and stamps it on its own root element, which flips
@@ -105,11 +112,12 @@ const App = () => (
         <NavDrawerProvider>
         <PermissionPromptProvider>
           <ScrollToTop />
+          <RoutePrefetch />
           <SkipToContent />
           <MobileNav />
           <PresenceTracker />
           <RouteViewport>
-            <Suspense fallback={<div role="status" aria-label="העמוד נטען" className="mx-auto max-w-5xl space-y-4 p-6"><div className="h-10 w-1/2 animate-pulse rounded bg-muted" /><div className="h-48 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded bg-muted" /></div>} >
+            <Suspense fallback={<DelayedFallback><div role="status" aria-label="העמוד נטען" className="mx-auto max-w-5xl space-y-4 p-6 motion-reduce:[&>*]:animate-none"><div className="h-10 w-1/2 animate-pulse rounded bg-muted" /><div className="h-48 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded bg-muted" /></div></DelayedFallback>} >
             <Routes>
               <Route path={ROUTES.home} element={<Landing />} />
               <Route path={ROUTES.auth} element={<Auth />} />

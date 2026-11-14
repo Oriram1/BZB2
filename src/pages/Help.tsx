@@ -64,7 +64,7 @@ const Help = () => {
       <PageHeader variant="figma" centerTitle titleIsPageHeading title="עזרה ותמיכה" />
       <div className="max-w-3xl mx-auto px-4 py-5">
       <div className="rounded-[14px] bg-card shadow-card px-[14px] py-6 md:p-10">
-        <p className="text-[15px] text-[#8B8C93] mb-6">תשובות לשאלות נפוצות, ודרך לפנות אלינו.</p>
+        <p className="text-[15px] text-muted-foreground mb-6">תשובות לשאלות נפוצות, ודרך לפנות אלינו.</p>
 
         <h2 className="text-lg font-semibold text-foreground mb-4">שאלות נפוצות</h2>
         <div className="space-y-3">

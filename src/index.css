@@ -140,6 +140,30 @@
     }
   }
 
+  /* Checkbox, switch, radio and tab are small by design. Give them a 44px
+     invisible hit area centred on the control instead of enlarging it. */
+  @media (pointer: coarse) {
+    [role="checkbox"],
+    [role="switch"],
+    [role="radio"],
+    [role="tab"] {
+      position: relative;
+    }
+
+    [role="checkbox"]::after,
+    [role="switch"]::after,
+    [role="radio"]::after,
+    [role="tab"]::after {
+      content: "";
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     button:not(:disabled):active,
     [role="button"]:not([aria-disabled="true"]):active {
@@ -226,6 +250,43 @@
   .tabular {
     direction: ltr;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Headings wrap in balanced lines (no lone last word); paragraphs avoid
+     orphans. Unsupported browsers ignore both and wrap as before. */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Smoother "squircle" corners where the browser supports them; everywhere
+     else the plain border-radius stays. */
+  @supports (corner-shape: squircle) {
+    .rounded-xl,
+    .rounded-2xl,
+    .rounded-3xl {
+      corner-shape: squircle;
+    }
+  }
+
+  /* Page-to-page fade for links that opt in with `viewTransition`. Short, and
+     off entirely for people who asked for less motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 150ms;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none !important;
+    }
   }
 
   /* Respect the OS "reduce motion" setting. The landing page alone runs three
@@ -345,8 +406,11 @@
     --card: 0 0% 100%;
     --card-foreground: 0 0% 8%;
     --primary: 16 78% 58%; /* #E86E40 */
-    --primary-foreground: 0 0% 100%;
-    --primary-ink: 16 78% 58%;
+    /* White on #E86E40 is only 3.15:1. Dark ink on it is ~6:1, the same choice
+       the base theme makes (docs/design-review.md §1.1). */
+    --primary-foreground: 0 0% 8%;
+    /* Orange for text on white must reach 4.5:1; the fill orange does not. */
+    --primary-ink: 16 78% 40%;
     --primary-soft: 16 81% 94%; /* #FCE9E2 */
     --primary-soft-border: 16 72% 86%; /* #F5D0C2 */
     --secondary: 250 23% 95%; /* #F0EFF5 */

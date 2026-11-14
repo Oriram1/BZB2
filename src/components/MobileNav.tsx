@@ -165,7 +165,7 @@ export function MobileNav() {
         aria-label="תפריט ניווט"
         {...inertWhenClosed(open)}
         className={cn(
-          "figma fixed top-0 start-0 z-50 h-full w-72 bg-card border-e border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
+          "figma fixed top-0 start-0 z-50 h-full w-72 pt-[env(safe-area-inset-top)] bg-card border-e border-border shadow-2xl transition-transform duration-300 ease-in-out flex flex-col",
           open ? "translate-x-0" : "rtl:translate-x-full ltr:-translate-x-full"
         )}
       >
@@ -263,6 +263,7 @@ export function MobileNav() {
                   {item.to === dividerBefore && <hr className="mx-4 my-2 border-border" />}
                   <Link
                     to={item.to}
+                    viewTransition
                     onClick={handleCloseDrawer}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(

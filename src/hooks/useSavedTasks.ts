@@ -25,6 +25,20 @@ export function useSavedTasks() {
     };
   }, [user]);
 
+  /** Undo of an unsave: put the task back without reading stale state. */
+  const restore = useCallback(async (taskId: string) => {
+    setSaved((prev) => new Set(prev).add(taskId));
+    const { error } = await supabase.from("saved_tasks").insert({ task_id: taskId });
+    if (error) {
+      setSaved((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+      toast.error("לא הצלחנו להחזיר את השמירה. כדאי לנסות שוב");
+    }
+  }, []);
+
   const toggle = useCallback(async (taskId: string) => {
     if (!user) {
       toast.error("יש להתחבר כדי לשמור מטלות");
@@ -37,6 +51,7 @@ export function useSavedTasks() {
       return next;
     });
     apply(!wasSaved);
+    if (wasSaved) toast("המטלה הוסרה מהשמורות", { duration: 6000, action: { label: "ביטול", onClick: () => { void restore(taskId); } } });
     const { error } = wasSaved
       ? await supabase.from("saved_tasks").delete().eq("user_id", user.id).eq("task_id", taskId)
       : await supabase.from("saved_tasks").insert({ task_id: taskId });
@@ -44,7 +59,7 @@ export function useSavedTasks() {
       apply(wasSaved);
       toast.error("לא הצלחנו לעדכן את השמירה. כדאי לנסות שוב");
     }
-  }, [user, saved]);
+  }, [user, saved, restore]);
 
   return { saved, toggle };
 }

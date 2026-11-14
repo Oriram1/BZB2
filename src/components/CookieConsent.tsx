@@ -53,7 +53,7 @@ const CookieConsent = () => {
             <p id="cookie-consent-title" className="mb-1 text-base font-bold text-foreground">האתר משתמש בעוגיות</p>
             <p className="text-sm leading-relaxed text-muted-foreground">
               עוגיות הכרחיות לתפקוד האתר, ואופציונליות לשיפור החוויה.{" "}
-              <Link to={ROUTES.privacy} className="rounded font-medium text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Link to={ROUTES.privacy} className="rounded font-medium text-primary-ink underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                 מדיניות פרטיות
               </Link>
             </p>

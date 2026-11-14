@@ -571,7 +571,10 @@ const Chat = () => {
                                 src={mediaUrl}
                                 alt={msg.content || "תמונה בצ׳אט"}
                                 loading="lazy"
-                                className="max-h-64 w-full rounded-xl object-cover"
+                                decoding="async"
+                                width={256}
+                                height={256}
+                                className="aspect-square max-h-64 w-full rounded-xl bg-muted object-cover"
                               />
                             ) : (
                               <div className="flex h-32 w-48 max-w-full items-center justify-center rounded-xl bg-foreground/10">

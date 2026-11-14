@@ -14,7 +14,7 @@ const Terms = () => {
       <PageHeader variant="figma" centerTitle titleIsPageHeading title="תקנון ותנאי שימוש" />
       <div className="max-w-3xl mx-auto px-4 py-5">
       <div className="rounded-[14px] bg-card shadow-card px-[14px] py-6 md:p-10">
-        <p className="text-[15px] text-[#8B8C93] mb-6">עדכון אחרון: מרץ 2026</p>
+        <p className="text-[15px] text-muted-foreground mb-6">עדכון אחרון: מרץ 2026</p>
 
         <div className="prose prose-sm max-w-none text-foreground space-y-6 leading-relaxed">
           <h2 className="text-lg font-semibold text-foreground mt-8">1. מבוא והגדרות</h2>

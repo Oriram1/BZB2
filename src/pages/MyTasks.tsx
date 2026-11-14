@@ -573,7 +573,7 @@ const MyTasks = () => {
                 <div className="rounded-[14px] bg-card shadow-card px-[14px] pt-7 pb-6 text-center">
                   <EmptyApplicantsIllustration className="mx-auto mb-[16px] h-[62.5px] w-[59px]" />
                   <p className="text-xl font-semibold">אין מועמדויות עדיין</p>
-                  <p className="mx-auto mt-2 max-w-[270px] text-[13px] leading-[18px] text-[#8B8C93]">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
+                  <p className="mx-auto mt-2 max-w-[270px] text-[13px] leading-[18px] text-muted-foreground">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
                   <Button className="mt-6 w-full h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium" asChild>
                     <Link to="/create-task">פרסום מטלה</Link>
                   </Button>
@@ -740,7 +740,7 @@ const MyTasks = () => {
                     </div>
                     <Link to={`/task/${task.id}`} className="mt-3 block min-w-0">
                       <h2 className="text-[22px] font-semibold leading-7 truncate">{task.name}</h2>
-                      <p className="mt-1 text-[15px] leading-5 text-[#8B8C93] line-clamp-2">{task.short_desc}</p>
+                      <p className="mt-1 text-[15px] leading-5 text-muted-foreground line-clamp-2">{task.short_desc}</p>
                     </Link>
                     {task.publish_state === "pending_review" && (
                       <div className="mt-6 flex min-h-[71px] items-center gap-3 rounded-[10px] border border-primary-soft-border bg-[#FDEFEB] px-[14px] py-3 text-[15px] leading-5 text-foreground">

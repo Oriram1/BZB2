@@ -55,31 +55,34 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
 
   const handleCardClick = () => {
     if (task.dbId) {
-      navigate(`/task/${task.dbId}`);
+      navigate(`/task/${task.dbId}`, { viewTransition: true });
     }
   };
 
   return (
     <div
-      role="button"
-      tabIndex={0}
+      role="group"
       aria-label={`מטלה: ${task.name}`}
-      className={cn("min-w-0 bg-card rounded-lg p-3.5 border-[1.2px] shadow-card cursor-pointer flex flex-col", isPopup ? "gap-5 border-primary-soft-border" : "gap-4 border-border", "animate-fade-in opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
+      className={cn("relative min-w-0 bg-card rounded-lg p-3.5 border-[1.2px] shadow-card cursor-pointer flex flex-col", isPopup ? "gap-5 border-primary-soft-border" : "gap-4 border-border", "animate-fade-in opacity-0")}
       style={{ animationDelay: `${Math.min(index, 8) * 0.05}s`, animationFillMode: "forwards" }}
-      onClick={handleCardClick}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleCardClick();
-        }
-      }}
     >
       {/* What the job is, with its category on the trailing edge. */}
       <div className={cn("flex items-start gap-2.5", isPopup && "flex-row-reverse")}>
         <CategoryIcon variant="figma" category={task.category} className="shrink-0" />
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg text-foreground leading-6">{task.name}</h3>
+          {/* The one control that opens the task. Its ::after stretches over the whole
+              card, so a tap anywhere opens it, while the buttons below sit above it
+              (z-10) and stay separate controls: no button nested inside a button. */}
+          <h3 className="font-semibold text-lg text-foreground leading-6">
+            <button
+              type="button"
+              aria-label={`מטלה: ${task.name}`}
+              onClick={handleCardClick}
+              className="text-start after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-2"
+            >
+              {task.name}
+            </button>
+          </h3>
           <p className="text-muted-foreground text-[13px] leading-[18px] truncate">{task.shortDesc}</p>
         </div>
         {!isPopup && (
@@ -148,7 +151,7 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
         </p>
       </div>
 
-      <div className="flex items-center gap-2.5">
+      <div className="relative z-10 flex items-center gap-2.5">
         {isOwner ? (
           <Button
             variant="outline"

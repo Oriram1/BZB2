@@ -45,7 +45,7 @@ export default function LandingReviews() {
           <ul className="grid gap-4 md:grid-cols-3">
             {reviews.map((review) => (
               <li key={review.id} className="flex min-w-0 flex-col rounded-2xl border border-border bg-background p-6">
-                <div className="flex items-center gap-1" aria-label={`${review.rating} מתוך 5 כוכבים`}>
+                <div className="flex items-center gap-1" role="img" aria-label={`${review.rating} מתוך 5 כוכבים`}>
                   {Array.from({ length: 5 }, (_, index) => <Star key={index} size={16} className={index < review.rating ? "fill-primary text-primary-ink" : "text-muted-foreground/40"} aria-hidden="true" />)}
                 </div>
                 <p className="mt-5 flex-1 whitespace-pre-wrap break-words text-base leading-7 text-foreground">

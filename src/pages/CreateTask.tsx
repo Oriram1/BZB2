@@ -2,7 +2,7 @@ import { ROUTES } from "@/lib/routes";
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { paymentErrorText } from "@/lib/paymentErrors";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED, type PaymentTab } from "@/lib/paymentTab";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { addDays, addMonths, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,8 @@ const stepOfField: Record<MissingField, number> = {
 const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  // One id per publish attempt, reused on retries so the server can dedupe.
+  const requestIdRef = useRef<string>(crypto.randomUUID());
   const [step, setStep] = useState(1);
   const onSummary = step === SUMMARY_STEP;
   const [cardSetupOpen, setCardSetupOpen] = useState(false);
@@ -359,8 +361,9 @@ const CreateTask = () => {
 
     const prepay = paysNow && !!currentQuote && !currentQuote.billing_off && currentQuote.due > 0;
     if (!prepay) paymentTab?.close();
-    const { data: created, error } = await supabase.from("tasks").insert({
+    const { data: inserted, error: insertError } = await supabase.from("tasks").insert({
       creator_id: user.id,
+      client_request_id: requestIdRef.current,
       category: form.category as CategoryValue,
       name: form.taskName,
       short_desc: form.shortDesc,
@@ -380,6 +383,19 @@ const CreateTask = () => {
       insurance: withInsurance,
       payment_mode: prepay ? "one_time" : "saved_card",
     }).select("id").maybeSingle();
+    // A retry of an attempt that already went through hits the unique index
+    // (23505). That task is the one we wanted, so fetch it instead of failing.
+    let created = inserted;
+    let error = insertError;
+    if (insertError?.code === "23505") {
+      const { data: existing } = await supabase.from("tasks").select("id")
+        .eq("creator_id", user.id).eq("client_request_id", requestIdRef.current).maybeSingle();
+      if (existing) {
+        created = existing;
+        error = null;
+      }
+    }
+    if (!error) requestIdRef.current = crypto.randomUUID();
     if (error || !prepay) setLoading(false);
     if (error) {
       paymentTab?.close();

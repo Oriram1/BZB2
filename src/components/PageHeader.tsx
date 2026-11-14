@@ -54,11 +54,11 @@ export function PageHeader({
 
   // Landing directly on a deep link leaves no history to go back to, which would
   // bounce the user out of the app. Fall back to the home screen instead.
-  const goBack = () => (window.history.length > 2 ? navigate(-1) : navigate("/"));
+  const goBack = () => (window.history.length > 2 ? navigate(-1) : navigate("/", { viewTransition: true }));
 
   if (variant === "figma" && centerTitle) {
     return (
-      <header className={cn("relative bg-card border-b border-border py-3 pe-[15px] ps-[26px] sticky top-0 z-30", className)}>
+      <header className={cn("relative bg-card border-b border-border py-3 pe-[15px] ps-[26px] sticky top-0 z-30 pt-[calc(0.75rem+env(safe-area-inset-top))]", className)}>
         <div className="max-w-5xl mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-2">
           {showBack ? (
             <Button
@@ -85,7 +85,7 @@ export function PageHeader({
     return (
       <header
         className={cn(
-          "relative bg-card border-b border-border py-3 px-4 sticky top-0 z-30",
+          "relative bg-card border-b border-border py-3 px-4 sticky top-0 z-30 pt-[calc(0.75rem+env(safe-area-inset-top))]",
           className,
         )}
       >

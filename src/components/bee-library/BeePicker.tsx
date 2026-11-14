@@ -39,6 +39,9 @@ export default function BeePicker({ value, onChange }: Props) {
                 src={bee.src}
                 alt=""
                 loading="lazy"
+                decoding="async"
+                width={96}
+                height={96}
                 className="h-full w-full rounded-lg bg-gradient-to-b from-amber-50 to-amber-100 object-contain"
               />
             </button>
