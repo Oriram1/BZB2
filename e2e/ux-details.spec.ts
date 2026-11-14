@@ -69,3 +69,16 @@ test('a checkbox toggles from a tap 18px off its centre on a touch screen', asyn
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 18);
   await expect(checkbox).toHaveAttribute('aria-checked', 'true');
 });
+
+test('a radio is selectable from a tap off its centre on a touch screen', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'coarse pointer only');
+  await page.addInitScript(() => localStorage.setItem('bzb_cookie_consent', 'essential'));
+  await page.goto('/register/tasker');
+  const radio = page.getByRole('radio').first();
+  await radio.scrollIntoViewIfNeeded();
+  const box = (await radio.boundingBox())!;
+  // Large radios are their own hit area; small ones rely on the invisible 44px area.
+  const reach = Math.min(18, box.height / 2 - 1);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - reach);
+  await expect(radio).toHaveAttribute('aria-checked', 'true');
+});
