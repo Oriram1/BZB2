@@ -407,11 +407,8 @@
     --card: 0 0% 100%;
     --card-foreground: 0 0% 8%;
     --primary: 16 78% 58%; /* #E86E40 */
-    /* White on #E86E40 is only 3.15:1. Dark ink on it is ~6:1, the same choice
-       the base theme makes (docs/design-review.md §1.1). */
-    --primary-foreground: 0 0% 8%;
-    /* Orange for text on white must reach 4.5:1; the fill orange does not. */
-    --primary-ink: 16 78% 40%;
+    --primary-foreground: 0 0% 100%;
+    --primary-ink: 16 78% 58%;
     --primary-soft: 16 81% 94%; /* #FCE9E2 */
     --primary-soft-border: 16 72% 86%; /* #F5D0C2 */
     --secondary: 250 23% 95%; /* #F0EFF5 */

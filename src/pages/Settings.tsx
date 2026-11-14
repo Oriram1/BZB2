@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, BellOff, Mail, MoonStar, Share, Smartphone } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -32,6 +31,32 @@ import {
 } from "@/lib/push";
 
 type Channels = { email: boolean; push: boolean };
+
+/** The screen frame used across the redesigned pages: tinted backdrop, Figma header, centred column. */
+const SettingsShell = ({ children, busy = false }: { children: ReactNode; busy?: boolean }) => (
+  <div className="figma min-h-screen bg-background relative isolate" dir="rtl">
+    <div
+      className="fixed inset-x-0 bottom-0 top-[64px] pointer-events-none -z-10"
+      style={{ background: "linear-gradient(180deg, #FCE9E2 0%, #F4F4F5 37%, #F4F4F5 79%, #FCE9E2 100%)" }}
+      aria-hidden="true"
+    />
+    <PageHeader variant="figma" centerTitle titleIsPageHeading title="הגדרות התראות" />
+    <div className="max-w-3xl mx-auto px-4 py-5 space-y-4" aria-busy={busy || undefined}>
+      {children}
+    </div>
+  </div>
+);
+
+/** One white card of the screen, with its heading. */
+const SettingsSection = ({ title, icon, children }: { title: string; icon?: ReactNode; children: ReactNode }) => (
+  <section className="rounded-[14px] bg-card shadow-card px-[14px] py-5 md:p-6 space-y-4">
+    <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+      {icon}
+      {title}
+    </h2>
+    {children}
+  </section>
+);
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 const hourLabel = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
@@ -164,31 +189,19 @@ const Settings = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-muted" dir="rtl">
-        <PageHeader title="הגדרות התראות" titleIsPageHeading icon={<Bell size={18} />} />
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-5" aria-busy="true">
-          <Skeleton className="h-40 w-full rounded-2xl" />
-          <Skeleton className="h-64 w-full rounded-2xl" />
-        </div>
-      </div>
+      <SettingsShell busy>
+        <Skeleton className="h-40 w-full rounded-[14px]" />
+        <Skeleton className="h-64 w-full rounded-[14px]" />
+      </SettingsShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-muted" dir="rtl">
-      <PageHeader title="הגדרות התראות" titleIsPageHeading icon={<Bell size={18} />} />
-
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Smartphone size={18} className="text-primary-ink" />
-              התראות במכשיר
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+    <SettingsShell>
+        <SettingsSection title="התראות במכשיר" icon={<Smartphone size={18} className="text-primary" aria-hidden="true" />}>
+          <div className="space-y-3">
             {showInstallHint ? (
-              <div className="rounded-2xl bg-accent/20 border border-border p-4 text-sm leading-relaxed">
+              <div className="rounded-[10px] bg-primary-soft border border-primary-soft-border p-4 text-sm leading-relaxed">
                 <p className="font-bold mb-1 flex items-center gap-1.5">
                   <Share size={15} />
                   צריך קודם להתקין את האפליקציה
@@ -209,7 +222,7 @@ const Settings = () => {
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-foreground">
+                  <p className="font-medium text-foreground">
                     {pushActive ? "התראות פעילות במכשיר הזה" : "ההתראות כבויות במכשיר הזה"}
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -220,21 +233,18 @@ const Settings = () => {
                   onClick={handlePushToggle}
                   disabled={pushBusy}
                   variant={pushActive ? "outline" : "default"}
-                  className={pushActive ? "rounded-full font-bold" : "gradient-honey text-primary-foreground rounded-full border-none font-bold"}
+                  className="rounded-full font-medium min-h-11"
                 >
                   {pushActive ? <BellOff size={16} /> : <Bell size={16} />}
                   {pushActive ? "כיבוי" : "הפעלה"}
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </SettingsSection>
 
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">מה לשלוח לי</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <SettingsSection title="מה לשלוח לי">
+          <div>
             {loading ? (
               <div className="space-y-3">
                 {[0, 1, 2].map((index) => <Skeleton key={index} className="h-16 w-full rounded-2xl" />)}
@@ -245,7 +255,7 @@ const Settings = () => {
               <div className="divide-y divide-border">
                 {rows.map(({ event, label, description }) => (
                   <div key={event} className="py-4 first:pt-0 last:pb-0">
-                    <p className="font-bold text-foreground">{label}</p>
+                    <p className="font-medium text-foreground">{label}</p>
                     <p className="text-sm text-muted-foreground mb-3">{description}</p>
                     <div className="flex items-center gap-6">
                       <div className="flex items-center gap-2">
@@ -255,7 +265,7 @@ const Settings = () => {
                           onCheckedChange={(value) => toggleChannel(event, "email", value)}
                         />
                         <Label htmlFor={`${event}-email`} className="flex items-center gap-1.5 cursor-pointer">
-                          <Mail size={15} className="text-primary-ink" />
+                          <Mail size={15} className="text-primary" />
                           מייל
                         </Label>
                       </div>
@@ -266,7 +276,7 @@ const Settings = () => {
                           onCheckedChange={(value) => toggleChannel(event, "push", value)}
                         />
                         <Label htmlFor={`${event}-push`} className="flex items-center gap-1.5 cursor-pointer">
-                          <Bell size={15} className="text-primary-ink" />
+                          <Bell size={15} className="text-primary" />
                           התראה
                         </Label>
                       </div>
@@ -275,16 +285,13 @@ const Settings = () => {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </SettingsSection>
 
         {/* Digest hour — parents only */}
         {isParent && (
-          <Card className="border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">שעת הדוח היומי</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+          <SettingsSection title="שעת הדוח היומי">
+            <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
                 מתי לשלוח את סיכום הפעילות של הילדים. אם לא הייתה פעילות, לא נשלח דוח.
               </p>
@@ -296,7 +303,7 @@ const Settings = () => {
                   saveSettings({ digest_hour: hour });
                 }}
               >
-                <SelectTrigger className="w-40 rounded-2xl h-11">
+                <SelectTrigger className="w-40 rounded-[10px] h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -305,18 +312,12 @@ const Settings = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </CardContent>
-          </Card>
+            </div>
+          </SettingsSection>
         )}
 
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MoonStar size={18} className="text-primary-ink" />
-              שעות שקטות
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <SettingsSection title="שעות שקטות" icon={<MoonStar size={18} className="text-primary" aria-hidden="true" />}>
+          <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-bold text-foreground">להשתיק התראות בלילה</p>
@@ -345,7 +346,7 @@ const Settings = () => {
                       saveSettings({ quiet_hours_start: hour });
                     }}
                   >
-                    <SelectTrigger aria-labelledby="quiet-start-label" className="w-28 rounded-2xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-labelledby="quiet-start-label" className="w-28 rounded-[10px] h-11"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {HOURS.map((hour) => (
                         <SelectItem key={hour} value={String(hour)}>{hourLabel(hour)}</SelectItem>
@@ -363,7 +364,7 @@ const Settings = () => {
                       saveSettings({ quiet_hours_end: hour });
                     }}
                   >
-                    <SelectTrigger aria-labelledby="quiet-end-label" className="w-28 rounded-2xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-labelledby="quiet-end-label" className="w-28 rounded-[10px] h-11"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {HOURS.map((hour) => (
                         <SelectItem key={hour} value={String(hour)}>{hourLabel(hour)}</SelectItem>
@@ -373,10 +374,9 @@ const Settings = () => {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </div>
+        </SettingsSection>
+    </SettingsShell>
   );
 };
 
