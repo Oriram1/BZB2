@@ -60,9 +60,13 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
   };
 
   return (
+    // The click handler is a mouse and touch convenience. Keyboard and assistive
+    // technology use the title button inside, so the group needs no key handler.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <div
       role="group"
       aria-label={`מטלה: ${task.name}`}
+      onClick={handleCardClick}
       className={cn("relative min-w-0 bg-card rounded-lg p-3.5 border-[1.2px] shadow-card cursor-pointer flex flex-col", isPopup ? "gap-5 border-primary-soft-border" : "gap-4 border-border", "animate-fade-in opacity-0")}
       style={{ animationDelay: `${Math.min(index, 8) * 0.05}s`, animationFillMode: "forwards" }}
     >
@@ -72,12 +76,14 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
         <div className="flex-1 min-w-0">
           {/* The one control that opens the task. Its ::after stretches over the whole
               card, so a tap anywhere opens it, while the buttons below sit above it
-              (z-10) and stay separate controls: no button nested inside a button. */}
+              (z-10) and stay separate controls: no button nested inside a button.
+              Keyboard and screen-reader users reach the card through this button; the
+              card's own onClick covers a tap that lands on the card itself. */}
           <h3 className="font-semibold text-lg text-foreground leading-6">
             <button
               type="button"
               aria-label={`מטלה: ${task.name}`}
-              onClick={handleCardClick}
+              onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
               className="text-start after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-2"
             >
               {task.name}
