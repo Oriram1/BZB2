@@ -115,6 +115,38 @@
     }
   }
 
+  /* Touch feel: no 300ms tap delay or double-tap zoom on controls, and no grey
+     flash; the button reacts the moment a finger lands (:active), not on lift. */
+  button,
+  [role="button"],
+  a,
+  summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.97);
+    transition: transform 60ms ease-out;
+  }
+
+  /* Touch targets of at least 44px on touch screens (Apple HIG). */
+  @media (pointer: coarse) {
+    button:not([data-no-min-target]):not([role="checkbox"]):not([role="switch"]):not([role="radio"]):not([role="combobox"]):not([role="tab"]),
+    [role="button"]:not([data-no-min-target]) {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled):active,
+    [role="button"]:not([aria-disabled="true"]):active {
+      transform: none;
+    }
+  }
+
   /* Numbers, e-mail, URLs and codes stay LTR inside Hebrew text. */
   [dir="ltr"] {
     text-align: start;

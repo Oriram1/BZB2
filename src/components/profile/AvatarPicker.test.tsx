@@ -45,12 +45,11 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const openUploadTab = () => {
+const openUploadTab = async () => {
   const onAvatarChange = vi.fn();
   render(<AvatarPicker userId="user-1" currentAvatarUrl={null} onAvatarChange={onAvatarChange} />);
   fireEvent.click(screen.getByRole("button", { name: "שינוי תמונת הפרופיל" }));
-  const tab = screen.getByRole("tab", { name: "העלאה" });
-  fireEvent.mouseDown(tab);
+  const tab = await screen.findByRole("tab", { name: "העלאה" });
   fireEvent.click(tab);
   const input = document.querySelector<HTMLInputElement>('input[type="file"]');
   if (!input) throw new Error("file input missing");
@@ -59,7 +58,7 @@ const openUploadTab = () => {
 
 it("uploads a photo from the device and saves it as the avatar", async () => {
   calls.existing = [{ name: "avatar.jpg" }];
-  const { input, onAvatarChange } = openUploadTab();
+  const { input, onAvatarChange } = await openUploadTab();
   const photo = new File(["jpeg-bytes"], "IMG_0001.jpg", { type: "image/jpeg" });
   fireEvent.change(input, { target: { files: [photo] } });
 
@@ -77,7 +76,7 @@ it("uploads a photo from the device and saves it as the avatar", async () => {
 });
 
 it("accepts phone photos with no MIME type (HEIC from some pickers)", async () => {
-  const { input, onAvatarChange } = openUploadTab();
+  const { input, onAvatarChange } = await openUploadTab();
   const heic = new File(["heic-bytes"], "IMG_0002.HEIC", { type: "" });
   fireEvent.change(input, { target: { files: [heic] } });
 
@@ -87,7 +86,7 @@ it("accepts phone photos with no MIME type (HEIC from some pickers)", async () =
 });
 
 it("rejects non-images without uploading", async () => {
-  const { input } = openUploadTab();
+  const { input } = await openUploadTab();
   fireEvent.change(input, { target: { files: [new File(["x"], "notes.pdf", { type: "application/pdf" })] } });
   await waitFor(() => expect(toast.error).toHaveBeenCalled());
   expect(calls.uploads).toHaveLength(0);
@@ -96,7 +95,7 @@ it("rejects non-images without uploading", async () => {
 
 it("reports a failed upload and leaves the profile alone, then lets the user retry", async () => {
   calls.uploadError = { message: "boom" };
-  const { input } = openUploadTab();
+  const { input } = await openUploadTab();
   fireEvent.change(input, { target: { files: [new File(["x"], "a.png", { type: "image/png" })] } });
   await waitFor(() => expect(toast.error).toHaveBeenCalled());
   expect(calls.updates).toHaveLength(0);

@@ -104,7 +104,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
         </DialogHeader>
 
         <Tabs defaultValue="bees" dir="rtl" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList aria-label="בחירת תמונת פרופיל" className="grid w-full grid-cols-2">
             <TabsTrigger value="bees">🐝 דבורה</TabsTrigger>
             <TabsTrigger value="upload">העלאה</TabsTrigger>
           </TabsList>
