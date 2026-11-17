@@ -24,7 +24,6 @@ afterEach(() => { cleanup(); state.user = null; });
 const task = (entry: string | { pathname: string; state: unknown } = "/task/task") => render(<MemoryRouter initialEntries={[entry]}><Routes><Route path="/task/:id" element={<TaskDetail />} /></Routes></MemoryRouter>);
 it("shows the publisher's full explanation and notes before location details", async () => {
   task();
-  // The redesign shows the explanation twice: in the summary card and in its own card.
   const description = (await screen.findAllByText(/הסבר מפורט של מפרסם המשימה/)).at(-1)!;
   const notes = screen.getByText("הערה חשובה של המפרסם");
   const map = screen.getByTestId("map");
@@ -35,8 +34,8 @@ it("shows the publisher's full explanation and notes before location details", a
 it("shows the original short explanation when no detailed description exists", async () => {
   state.fullDescription = "";
   task();
-  const heading = await screen.findByRole("heading", {name: "תיאור המשימה"});
-  expect(heading.parentElement?.parentElement).toHaveTextContent("התיאור הקצר המקורי");
+  const text = (await screen.findAllByText("התיאור הקצר המקורי")).at(-1)!;
+  expect(text).toHaveClass("whitespace-pre-wrap");
 });
 
 it("shows the publisher's approved rating before applying", async () => {

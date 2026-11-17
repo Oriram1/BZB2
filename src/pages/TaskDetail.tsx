@@ -353,10 +353,61 @@ const TaskDetail = () => {
 
         <div className="bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-6">
           <div className="flex items-center justify-between gap-2">
-            <span className="rounded-full border border-primary bg-primary-soft px-2.5 py-1 text-xs leading-4 text-primary">
-              {statusLabel}
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-primary bg-primary-soft px-2.5 py-1 text-xs leading-4 text-primary">
+                {statusLabel}
+              </span>
+              <span className="rounded-full border border-border px-2.5 py-1 text-xs leading-4 text-muted-foreground">
+                {categoryLabel(task.category)}
+              </span>
+            </div>
+            {isOwner && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground shrink-0 h-11 w-11" aria-label="עוד פעולות">
+                    <MoreVertical size={18} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem destructive onSelect={() => setDeleteOpen(true)}>
+                    <Trash2 size={16} aria-hidden="true" /> מחיקת המטלה
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          <div>
+            <h1 className="text-[22px] font-semibold leading-7 text-foreground">{task.name}</h1>
+            <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">{task.short_desc}</p>
+          </div>
+
+          {isOwnPendingReview && (
+            <p className="rounded-lg border border-primary-soft-border bg-primary-soft px-3 py-2 text-sm text-foreground">
+              המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
+            </p>
+          )}
+
+          {(task.full_desc || task.short_desc) && (
+            <div className="flex items-center justify-between gap-3 min-h-[72px] rounded-[8px] border border-primary-soft-border bg-[#FFF2EE] p-3.5">
+              <p className="text-sm leading-6 text-foreground whitespace-pre-wrap dir-auto">{task.full_desc || task.short_desc}</p>
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center bg-primary/25 text-primary [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)]"
+                aria-hidden="true"
+              >
+                <FileText size={18} />
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
+              {task.workers_needed === 1 ? "עובד אחד" : `${task.workers_needed} עובדים`}
             </span>
-            <div className="flex items-center gap-3 text-xs leading-[18px] text-muted-foreground">
+          </div>
+
+          {(task.scheduled_date || task.scheduled_time || task.duration_hours) && (
+            <div className="flex items-center justify-between gap-3 border-y border-border py-6 text-xs leading-[18px] text-muted-foreground">
               {(task.scheduled_date || task.scheduled_time) && (
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar size={14} aria-hidden="true" />
@@ -369,80 +420,54 @@ const TaskDetail = () => {
                   {formatDuration(Number(task.duration_hours))}
                 </span>
               )}
-              {isOwner && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground shrink-0 h-11 w-11" aria-label="עוד פעולות">
-                      <MoreVertical size={18} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem destructive onSelect={() => setDeleteOpen(true)}>
-                      <Trash2 size={16} aria-hidden="true" /> מחיקת המטלה
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-start justify-between gap-3 border-t border-border pt-6">
-            <div className="min-w-0">
-              <h1 className="text-[22px] font-semibold leading-7 text-foreground">{task.name}</h1>
-              <p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">{task.short_desc}</p>
-            </div>
-            <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-xs leading-4 text-muted-foreground">
-              {categoryLabel(task.category)}
-            </span>
-          </div>
-
-          {(task.scheduled_date || task.scheduled_time || task.duration_hours) && (
-            <div className="flex items-center justify-between gap-3 text-xs leading-[18px] text-muted-foreground">
-              {(task.scheduled_date || task.scheduled_time) && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar size={14} aria-hidden="true" />
-                  {formatTaskWhen(task.scheduled_date, task.scheduled_time)}
-                </span>
-              )}
-              {task.duration_hours && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Hourglass size={14} aria-hidden="true" />
-                  {formatDuration(Number(task.duration_hours))}
-                </span>
-              )}
             </div>
           )}
 
-          {isOwnPendingReview && (
-            <p className="rounded-lg border border-primary-soft-border bg-primary-soft px-3 py-2 text-sm text-foreground">
-              המטלה שלך ממתינה לאישור. בינתיים היא לא מוצגת לאחרים.
-            </p>
-          )}
+          <div className="flex min-h-[56px] items-center justify-between gap-3 rounded-[8px] bg-[#FFF2EE] px-4 py-3">
+            <p className="text-[22px] font-semibold leading-7 text-foreground tabular">{formatCurrency(task.payment)}</p>
+            <p className="text-xs leading-[18px] text-muted-foreground">{task.payment_type === "hour" ? "לשעת עבודה" : "למשימה זו"}</p>
+          </div>
+        </div>
 
-          {(task.full_desc || task.short_desc) && (
-            <div className="flex items-center justify-between gap-3 min-h-[72px] rounded-[8px] bg-[#FFF2EE] p-3.5">
-              <p className="text-sm leading-6 text-foreground whitespace-pre-wrap dir-auto">{task.full_desc || task.short_desc}</p>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/25 text-primary">
-                <FileText size={18} aria-hidden="true" />
-              </span>
+        {task.notes && (
+          <div className="bg-card rounded-lg p-4 border-[1.2px] border-border shadow-card space-y-2">
+            <div className="flex items-center gap-2 text-foreground font-bold text-base mb-1">
+              <StickyNote size={20} className="text-primary" />
+              <h3>הערות מפרסם המשימה</h3>
+            </div>
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.notes}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          {task.location && (
+            <div className="col-span-2 bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-medium text-foreground">מיקום</h2>
+                <MapPin size={20} className="text-primary" aria-hidden="true" />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <p className="min-w-0 text-[13px] leading-4 text-[#565658]">{task.location}</p>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.latitude != null && task.longitude != null ? `${task.latitude},${task.longitude}` : task.location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#DBD6F0] bg-card px-3.5 text-xs text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ArrowSquareOut size={14} aria-hidden="true" />
+                  פתח במפה
+                </a>
+              </div>
+              <TaskLocationMap
+                compactLinks
+                location={task.location}
+                latitude={task.latitude}
+                longitude={task.longitude}
+                taskName={task.name}
+              />
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 border-y border-border py-6">
-            <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
-              {task.workers_needed === 1 ? "עובד אחד" : `${task.workers_needed} עובדים`}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 min-h-[72px] rounded-[8px] bg-[#FFF2EE] p-3.5">
-            <div>
-              <p className="text-[22px] font-medium leading-7 text-foreground tabular">{formatCurrency(task.payment)}</p>
-              <p className="text-xs leading-[18px] text-muted-foreground">{task.payment_type === "hour" ? "לשעת עבודה" : "למשימה זו"}</p>
-            </div>
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/25 text-primary">
-              <Wallet size={18} aria-hidden="true" />
-            </span>
-          </div>
         </div>
 
         {creator && (
@@ -488,56 +513,7 @@ const TaskDetail = () => {
           </Button>
         )}
 
-        {(task.full_desc || task.short_desc) && (
-          <div className="bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-medium text-foreground">תיאור המשימה</h2>
-              <FileText size={20} className="text-primary" aria-hidden="true" />
-            </div>
-            <p className="text-sm leading-6 text-foreground whitespace-pre-wrap dir-auto">{task.full_desc || task.short_desc}</p>
-          </div>
-        )}
 
-        {task.notes && (
-          <div className="bg-card rounded-lg p-4 border-[1.2px] border-border shadow-card space-y-2">
-            <div className="flex items-center gap-2 text-foreground font-bold text-base mb-1">
-              <StickyNote size={20} className="text-primary" />
-              <h3>הערות מפרסם המשימה</h3>
-            </div>
-            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap dir-auto">{task.notes}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          {task.location && (
-            <div className="col-span-2 bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-medium text-foreground">מיקום</h2>
-                <MapPin size={20} className="text-primary" aria-hidden="true" />
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <p className="min-w-0 text-[13px] leading-4 text-[#565658]">{task.location}</p>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.latitude != null && task.longitude != null ? `${task.latitude},${task.longitude}` : task.location)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#DBD6F0] bg-card px-3.5 text-xs text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <ArrowSquareOut size={14} aria-hidden="true" />
-                  פתח במפה
-                </a>
-              </div>
-              <TaskLocationMap
-                compactLinks
-                location={task.location}
-                latitude={task.latitude}
-                longitude={task.longitude}
-                taskName={task.name}
-              />
-            </div>
-          )}
-
-        </div>
 
       </div>
       </div>
@@ -551,7 +527,7 @@ const TaskDetail = () => {
             onClick={handleApply}
             disabled={applying || alreadyApplied}
           >
-            {alreadyApplied ? "כבר הגשת מועמדות" : "אישור משימה"}
+            {alreadyApplied ? "כבר הגשת מועמדות" : "אני רוצה את המשימה"}
             <Check size={16} aria-hidden="true" />
           </Button>
           <button
