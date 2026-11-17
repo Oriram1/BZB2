@@ -140,7 +140,7 @@ const TaskList = () => {
     queryFn: async (): Promise<Task[]> => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, creator_id, name, short_desc, category, payment, payment_type, location, scheduled_date, scheduled_time, duration_hours, workers_needed, accepted_count, status, latitude, longitude, publish_state")
+        .select("id, creator_id, name, short_desc, category, payment, payment_type, location, scheduled_date, scheduled_time, duration_hours, workers_needed, tags, accepted_count, status, latitude, longitude, publish_state")
         .eq("status", "open")
         .eq("publish_state", "live")
         .is("archived_at", null)
@@ -167,6 +167,7 @@ const TaskList = () => {
             time: t.scheduled_time || "",
             duration: Number(t.duration_hours) || 0,
             workers: t.workers_needed,
+            tags: t.tags,
             status: t.status,
             lat: t.latitude,
             lng: t.longitude,

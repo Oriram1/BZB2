@@ -36,6 +36,7 @@ import ApplyDialog from "@/components/tasks/ApplyDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { formatTaskWhen, defaultAvatarUrl, displayName, formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
+import { taskTagLabels } from "@/lib/taskTags";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
@@ -118,7 +119,7 @@ const TaskDetail = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, name, short_desc, full_desc, category, payment, payment_type, location, latitude, longitude, scheduled_date, scheduled_time, duration_hours, review_window_started_at, workers_needed, status, publish_state, notes, image_url, creator_id, views_count")
+        .select("id, name, short_desc, full_desc, category, payment, payment_type, location, latitude, longitude, scheduled_date, scheduled_time, duration_hours, review_window_started_at, workers_needed, tags, status, publish_state, notes, image_url, creator_id, views_count")
         .eq("id", id)
         .is("archived_at", null)
         .single();
@@ -401,6 +402,14 @@ const TaskDetail = () => {
           )}
 
           <div className="flex flex-wrap gap-2">
+            {taskTagLabels(task.tags).map((tag) => (
+              <span
+                key={tag.value}
+                className={`rounded-[4px] px-2.5 py-[3px] text-xs leading-6 text-foreground ${tag.value === "physical" ? "bg-honey-light/85" : "bg-secondary"}`}
+              >
+                {tag.label}
+              </span>
+            ))}
             <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
               {task.workers_needed === 1 ? "עובד אחד" : `${task.workers_needed} עובדים`}
             </span>

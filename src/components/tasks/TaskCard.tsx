@@ -1,3 +1,4 @@
+import { taskTagLabels } from "@/lib/taskTags";
 import { Button } from "@/components/ui/button";
 import { MapPin, PencilSimple as Pencil, Star, Heart, ArrowLeft, ArrowUpLeft, CalendarBlank as Calendar, Timer } from "@phosphor-icons/react";
 import CategoryIcon from "./CategoryIcon";
@@ -21,6 +22,7 @@ interface Task {
   time: string;
   duration: number;
   workers: number;
+  tags?: string[];
   status: string;
   /** Null when the task was published without a location — never a stand-in value. */
   lat: number | null;
@@ -125,6 +127,14 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
             {formatDistance(task.distance)}
           </span>
         )}
+        {taskTagLabels(task.tags).map((tag) => (
+          <span
+            key={tag.value}
+            className={`rounded-[4px] px-2.5 py-[3px] text-xs leading-6 text-foreground ${tag.value === "physical" ? "bg-honey-light/85" : "bg-secondary"}`}
+          >
+            {tag.label}
+          </span>
+        ))}
         <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
           {task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`}
         </span>

@@ -1176,6 +1176,7 @@ export type Database = {
           updated_at: string
           uses_free_slot: boolean
           views_count: number
+          tags: string[]
           workers_needed: number
         }
         Insert: {
@@ -1216,6 +1217,7 @@ export type Database = {
           updated_at?: string
           uses_free_slot?: boolean
           views_count?: number
+          tags?: string[]
           workers_needed?: number
         }
         Update: {
@@ -1256,6 +1258,7 @@ export type Database = {
           updated_at?: string
           uses_free_slot?: boolean
           views_count?: number
+          tags?: string[]
           workers_needed?: number
         }
         Relationships: []

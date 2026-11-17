@@ -1,3 +1,4 @@
+import { TASK_TAGS } from "@/lib/taskTags";
 import { ROUTES } from "@/lib/routes";
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { paymentErrorText } from "@/lib/paymentErrors";
@@ -78,6 +79,8 @@ const CreateTask = () => {
   const navigate = useNavigate();
   // One id per publish attempt, reused on retries so the server can dedupe.
   const requestIdRef = useRef<string>(crypto.randomUUID());
+  const [tags, setTags] = useState<string[]>([]);
+  const toggleTag = (value: string) => setTags((current) => (current.includes(value) ? current.filter((t) => t !== value) : [...current, value]));
   const [step, setStep] = useState(1);
   const onSummary = step === SUMMARY_STEP;
   const [cardSetupOpen, setCardSetupOpen] = useState(false);
@@ -371,6 +374,7 @@ const CreateTask = () => {
       payment: parseFloat(form.payment) || 0,
       payment_type: form.paymentType as "task" | "hour",
       workers_needed: parseInt(form.workers) || 1,
+      tags,
       location: form.location,
       latitude: selectedLat,
       longitude: selectedLng,
@@ -602,6 +606,25 @@ const CreateTask = () => {
                   className="rounded-2xl h-12 text-right text-base"
                   min={1}
                 />
+              </div>
+              <div>
+                <Label id="task-tags-label" className="text-right block mb-1 font-bold">תגיות (לא חובה)</Label>
+                <div role="group" aria-labelledby="task-tags-label" className="flex flex-wrap gap-2">
+                  {TASK_TAGS.map((tag) => {
+                    const on = tags.includes(tag.value);
+                    return (
+                      <button
+                        key={tag.value}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleTag(tag.value)}
+                        className={`h-11 rounded-full border px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? "border-primary bg-primary-soft text-primary" : "border-border bg-card text-foreground"}`}
+                      >
+                        {tag.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
