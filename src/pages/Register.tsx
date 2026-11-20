@@ -3,11 +3,11 @@ import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import BzbLogo from "@/components/BzbLogo";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/ui/password-input";
-import { normalizePhone, isValidPhone, phoneIssue, ageIssue, MAX_AGE, formatPrice } from "@/lib/format";
+import { normalizePhone, isValidPhone, phoneIssue, MAX_AGE, formatPrice } from "@/lib/format";
+import { ageOnDate } from "@/lib/birthDate";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle } from "lucide-react";
 import { isStrongPassword, passwordRequirementsMessage } from "@/lib/password";
@@ -80,7 +80,7 @@ const Register = () => {
     user?.identities?.some((identity) => identity.provider === "google") === true;
   const isWorker = role === "worker" || role === "bee";
   const requestedRole = isWorker ? "bee" : "tasker";
-  const existingRole = roles[0];
+  const existingRole = roles.find((value) => value === "bee" || value === "tasker" || value === "parent");
   const title = isWorker
     ? "הרשמה למבצעי מטלות 💪"
     : paidPlan
@@ -90,6 +90,8 @@ const Register = () => {
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ageTouched, setAgeTouched] = useState(false);
+  const [alsoPublisher, setAlsoPublisher] = useState(false);
+  const [additionalBirthDate, setAdditionalBirthDate] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [form, setForm] = useState({
     firstName: "", lastName: "", age: "", address: "", gender: "" as Gender | "",
@@ -140,7 +142,7 @@ const Register = () => {
     };
   }, [form.phone]);
 
-  if (user && existingRole && existingRole !== requestedRole) {
+  if (user && existingRole && !roles.includes(requestedRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" dir="rtl">
         <section className="w-full max-w-md rounded-3xl border border-border bg-background p-8 text-center shadow-xl">
@@ -149,6 +151,11 @@ const Register = () => {
           <p className="mt-4 text-muted-foreground">
             {roleSwitchQuestion(existingRole, requestedRole)}
           </p>
+          {requestedRole === "tasker" && <div className="mt-4 text-right">
+            <Label htmlFor="additional-birth-date">תאריך לידה</Label>
+            <Input id="additional-birth-date" type="date" dir="ltr" value={additionalBirthDate} onChange={(event) => setAdditionalBirthDate(event.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">אפשר להציע מטלות מגיל 18. לתיקון תאריך שנשמר יש לפנות לתמיכה.</p>
+          </div>}
           <div className="mt-7 flex gap-3">
             <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => navigate(HOME_PATH, { replace: true })}>
               להישאר
@@ -156,9 +163,17 @@ const Register = () => {
             <Button
               className="flex-1 rounded-2xl gradient-honey text-primary-foreground"
               disabled={switchingRole}
-              onClick={() => void switchRole(requestedRole)}
+              onClick={() => void (async () => {
+                if (requestedRole === "tasker") {
+                  const age = ageOnDate(additionalBirthDate, new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" }));
+                  if (age === null || age < 18 || age > MAX_AGE) { toast.error("כדי להציע מטלות יש להזין תאריך לידה תקין וגיל 18 ומעלה"); return; }
+                  const { error } = await supabase.rpc("set_my_birth_date", { _birth_date: additionalBirthDate });
+                  if (error) { toast.error(error.message.includes("birth_date_already_set") ? "תאריך הלידה שונה מזה שנשמר. לתיקון יש לפנות לתמיכה." : "לא הצלחנו לשמור את תאריך הלידה"); return; }
+                }
+                await switchRole(requestedRole);
+              })()}
             >
-              {switchingRole ? "מחליפים..." : "כן, לעבור"}
+              {switchingRole ? "מעדכנים..." : "הוספת תפקיד"}
             </Button>
           </div>
         </section>
@@ -205,14 +220,9 @@ const Register = () => {
     phoneProblem === "invalid" || (phoneProblem === "incomplete" && phoneTouched)
       ? "מספר הטלפון לא תקין. לדוגמה: 050-000-0000"
       : undefined;
-  const ageProblem = ageIssue(form.age, minAge);
-  const ageBelowMinimum = ageProblem === "below";
-  const ageAboveMaximum = ageProblem === "above";
-  const ageBlockMessage = ageAboveMaximum
-    ? `אפשר להזין גיל עד ${MAX_AGE}`
-    : ageBelowMinimum && (ageTouched || form.age.length >= 2)
-      ? `הגיל המינימלי להרשמה הוא ${minAge}`
-      : undefined;
+  const age = ageOnDate(form.age, new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" }));
+  const ageBlockMessage = ageTouched && form.age && (age === null || age < minAge || age > MAX_AGE)
+    ? `יש להזין תאריך לידה תקין. הגיל המינימלי להרשמה הוא ${minAge}` : undefined;
 
   /** Every rule in one place. Returns a message per invalid field. */
   const validate = () => {
@@ -220,9 +230,8 @@ const Register = () => {
     if (!form.firstName.trim()) next.firstName = "חסר שם פרטי";
     if (!form.lastName.trim()) next.lastName = "חסר שם משפחה";
 
-    const age = parseInt(form.age, 10);
-    if (!form.age.trim()) next.age = "חסר גיל";
-    else if (Number.isNaN(age) || age < minAge) next.age = `הגיל המינימלי להרשמה הוא ${minAge}`;
+    if (!form.age.trim()) next.age = "חסר תאריך לידה";
+    else if (age === null || age < minAge) next.age = `הגיל המינימלי להרשמה הוא ${minAge}`;
     else if (age > MAX_AGE) next.age = `אפשר להזין גיל עד ${MAX_AGE}`;
 
     if (!form.gender) next.gender = "צריך לבחור אחת מהאפשרויות";
@@ -259,7 +268,14 @@ const Register = () => {
         password: form.password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: { first_name: form.firstName, last_name: form.lastName, app_role: appRole },
+          data: {
+            first_name: form.firstName, last_name: form.lastName, app_role: appRole, birth_date: form.age,
+            signup_details: {
+              address: form.address, phone: normalizePhone(form.phone), gender: form.gender,
+              latitude: resolvedPosition?.lat ?? null, longitude: resolvedPosition?.lng ?? null,
+              marketing_consent: marketingConsent, also_publisher: isWorker && alsoPublisher,
+            },
+          },
         },
       });
       data = signup.data;
@@ -273,14 +289,25 @@ const Register = () => {
       return;
     }
 
+    if (data.user && !data.session && !isGoogleSignup) {
+      setLoading(false);
+      toast.success("ההרשמה נוצרה! בדקו את האימייל ואשרו את החשבון כדי להתחבר 📧");
+      navigate(ROUTES.login);
+      return;
+    }
+
     if (data.user) {
+      if (data.session || isGoogleSignup) {
+        const { error: birthError } = await supabase.rpc("set_my_birth_date", { _birth_date: form.age });
+        if (birthError) { toast.error("החשבון נוצר, אבל תאריך הלידה לא נשמר. יש לפנות לתמיכה."); setLoading(false); return; }
+      }
       if (isGoogleSignup) {
         await supabase.auth.updateUser({
           data: { first_name: form.firstName, last_name: form.lastName, app_role: appRole },
         });
       }
       const { error: profileError } = await supabase.from("profiles").update({
-        age: parseInt(form.age) || null,
+        age,
         address: form.address || null,
         latitude: resolvedPosition?.lat ?? null,
         longitude: resolvedPosition?.lng ?? null,
@@ -307,10 +334,16 @@ const Register = () => {
         setLoading(false);
         return;
       }
+      if (isWorker && alsoPublisher && (data.session || isGoogleSignup)) {
+        const { error: secondRoleError } = await supabase.rpc("switch_my_role", { target_role: "tasker" });
+        if (secondRoleError) { toast.error("החשבון נוצר, אך הוספת תפקיד מציע לא הושלמה"); setLoading(false); return; }
+        const { error: restoreError } = await supabase.rpc("switch_my_role", { target_role: "bee" });
+        if (restoreError) { toast.error("התפקיד נוסף, אבל לא הצלחנו לבחור את מצב המבצע"); setLoading(false); return; }
+      }
     }
 
     // The auth listener may have read roles before the insert above landed.
-    if (data.session || isGoogleSignup) await refreshUserState();
+    if (data.session || isGoogleSignup) await refreshUserState(data.user ?? undefined);
 
     setLoading(false);
 
@@ -411,11 +444,12 @@ const Register = () => {
               </div>
             </div>
             <div>
-              <Label htmlFor="age" className="font-bold">גיל</Label>
-              <Input id="age" type="text" inputMode="numeric" maxLength={3} dir="ltr" value={form.age} onBlur={() => setAgeTouched(true)} onChange={(e) => updateField("age", e.target.value.replace(/\D/g, ""))} className={`${fieldClass} max-w-[8rem]`} aria-invalid={!!(errors.age || ageBlockMessage)} aria-describedby={errors.age || ageBlockMessage ? "age-error" : "age-hint"} />
+              <Label htmlFor="age" className="font-bold">תאריך לידה</Label>
+              <Input id="age" type="date" dir="ltr" value={form.age} onBlur={() => setAgeTouched(true)} onChange={(e) => { updateField("age", e.target.value); setAlsoPublisher(false); }} className={fieldClass} aria-invalid={!!(errors.age || ageBlockMessage)} aria-describedby={errors.age || ageBlockMessage ? "age-error" : "age-hint"} />
               {errors.age || ageBlockMessage
                 ? <FieldError id="age" message={errors.age || ageBlockMessage} />
-                : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}</p>}
+                : <p id="age-hint" className="text-xs text-muted-foreground mt-1">הגיל המינימלי להרשמה: {minAge}. לתיקון תאריך הלידה לאחר ההרשמה יש לפנות לתמיכה.</p>}
+              {isWorker && age !== null && age >= 18 && <div className="mt-3 flex items-center gap-2"><input id="also-publisher" type="checkbox" className="h-5 w-5 accent-primary" checked={alsoPublisher} onChange={(event) => setAlsoPublisher(event.target.checked)} /><Label htmlFor="also-publisher">ארצה גם להציע מטלות</Label></div>}
             </div>
             <div>
               <Label htmlFor="gender" className="font-bold">מין</Label>
@@ -511,7 +545,7 @@ const Register = () => {
           <div className="flex flex-col gap-3 rounded-3xl bg-muted/60 p-4">
             <div>
               <div className="flex items-center gap-2">
-                <Checkbox id="terms" checked={agreed} onCheckedChange={(v) => { setAgreed(v === true); setErrors((e) => ({ ...e, terms: "" })); }} className="h-5 w-5 rounded-md" aria-invalid={!!errors.terms} aria-describedby={errors.terms ? "terms-error" : undefined} />
+                <input type="checkbox" id="terms" checked={agreed} onChange={(event) => { setAgreed(event.target.checked); setErrors((e) => ({ ...e, terms: "" })); }} className="h-5 w-5 accent-primary" aria-invalid={!!errors.terms} aria-describedby={errors.terms ? "terms-error" : undefined} />
                 <Label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
                   אנו מאשרים את{" "}
                   <Link to="/terms" className="text-primary-ink font-bold underline" target="_blank">תנאי השימוש</Link>
@@ -523,7 +557,7 @@ const Register = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <Checkbox id="marketing" checked={marketingConsent} onCheckedChange={(v) => setMarketingConsent(v === true)} className="h-5 w-5 rounded-md" />
+              <input type="checkbox" id="marketing" checked={marketingConsent} onChange={(event) => setMarketingConsent(event.target.checked)} className="h-5 w-5 accent-primary" />
               <Label htmlFor="marketing" className="text-sm text-muted-foreground cursor-pointer">
                 אני {say(formFor(form.gender), RECIPIENT.agree)} לקבל עדכונים, הצעות ודברי פרסומת מ-BZB בדוא"ל, SMS והודעות פוש (רשות)
               </Label>

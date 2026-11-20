@@ -367,7 +367,6 @@ const Profile = () => {
       .update({
         first_name: form.first_name,
         last_name: form.last_name,
-        age: form.age ? parseInt(form.age) : null,
         address: form.address || null,
         phone: form.phone || null,
         gender: form.gender,
@@ -462,10 +461,7 @@ const Profile = () => {
                   <Label htmlFor="profile-last-name" className="text-xs text-muted-foreground">שם משפחה</Label>
                   <Input id="profile-last-name" autoComplete="family-name" value={form.last_name} onChange={e => setForm(p => ({ ...p, last_name: e.target.value }))} />
                 </div>
-                <div>
-                  <Label htmlFor="profile-age" className="text-xs text-muted-foreground">גיל</Label>
-                  <Input id="profile-age" type="text" inputMode="numeric" dir="ltr" value={form.age} onChange={e => setForm(p => ({ ...p, age: e.target.value }))} />
-                </div>
+                <p className="col-span-2 text-xs text-muted-foreground">לתיקון תאריך הלידה אפשר לפנות לתמיכה.</p>
                 <div className="col-span-2">
                   <Label id="profile-gender-label" className="text-xs text-muted-foreground">מין</Label>
                   {/* Drives how every email and notification addresses this

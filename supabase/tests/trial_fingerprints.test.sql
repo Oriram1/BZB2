@@ -1,4 +1,5 @@
 -- One free month per person: survives deletion, dots, "+tag" and a reused card.
+BEGIN;
 DO $$
 DECLARE
   a UUID := gen_random_uuid(); b UUID := gen_random_uuid(); c UUID := gen_random_uuid();
@@ -60,3 +61,4 @@ BEGIN
   IF jsonb_array_length(r->'recent') < 1 OR jsonb_array_length(r->'daily') < 1 THEN RAISE EXCEPTION 'admin sees the blocks: %', r; END IF;
   RAISE NOTICE 'admin trial blocks read passed';
 END $$;
+ROLLBACK;

@@ -28,7 +28,8 @@ BEGIN
   FOR f IN SELECT oid::regprocedure AS sig, proname, prorettype FROM pg_proc
     WHERE pronamespace='public'::regnamespace AND prosecdef LOOP
     IF has_function_privilege('anon',f.sig,'execute') AND
-       f.proname NOT IN ('get_public_profile','get_task_fees','get_worker_completed_task_count') THEN
+       -- The insurance switch is intentionally public and returns only a boolean.
+       f.proname NOT IN ('get_public_profile','get_task_fees','get_worker_completed_task_count','task_insurance_enabled') THEN
       RAISE EXCEPTION 'unexpected anon RPC: %', f.sig;
     END IF;
     IF f.prorettype='trigger'::regtype AND has_function_privilege('authenticated',f.sig,'execute') THEN
@@ -145,6 +146,11 @@ RESET ROLE;
 
 SELECT set_config('request.jwt.claims',json_build_object('role','authenticated','sub',current_setting('test.owner'))::text,true);
 SET LOCAL ROLE authenticated;
+-- This accepted pair already exists from the acceptance trigger. The insert
+-- must pass RLS before ON CONFLICT notices that duplicate.
+INSERT INTO public.conversations(task_id, participant_1, participant_2)
+VALUES(current_setting('test.task')::uuid, current_setting('test.owner')::uuid, current_setting('test.worker')::uuid)
+ON CONFLICT DO NOTHING;
 DO $$ BEGIN
   UPDATE public.tasks SET short_desc='authorized' WHERE id=current_setting('test.task')::uuid;
   IF NOT FOUND THEN RAISE EXCEPTION 'owner update denied'; END IF;

@@ -1568,6 +1568,14 @@ export type Database = {
         Args: { target_role: Database["public"]["Enums"]["app_role"] }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_my_active_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["app_role"] | null
+      }
+      set_my_birth_date: {
+        Args: { _birth_date: string }
+        Returns: undefined
+      }
       task_billing_enabled: { Args: never; Returns: boolean }
       task_billing_maintenance: { Args: never; Returns: Json }
       task_is_live: { Args: { _task_id: string }; Returns: boolean }

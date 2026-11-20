@@ -19,6 +19,9 @@ import { notificationLine } from "@/lib/notificationCopy";
 import { formatRelativeTime } from "@/lib/format";
 import { formFor } from "@shared/gender.ts";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useRoleSwitch } from "@/hooks/useRoleSwitch";
+import { roleLabel } from "@/lib/roles";
+import { registerPath } from "@/lib/routes";
 
 /**
  * A closed drawer must be unreachable by keyboard and screen reader, not just
@@ -95,9 +98,11 @@ export function MobileNav() {
   const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, roles, signOut } = useAuth();
+  const { user, profile, roles, activeRole, activeRoleError, signOut } = useAuth();
+  const { switchTo, switching } = useRoleSwitch();
   const { items, loading, markRead, markAllRead } = useNotifications();
   const { isBee } = useRoles();
+  const showBeeMenu = isBee && activeRole === "bee";
 
   const handleLogout = async () => {
     await signOut();
@@ -111,14 +116,15 @@ export function MobileNav() {
     : user?.email || "משתמש";
 
 
-  const filteredItems = visibleNavItems(Boolean(user), roles);
+  const menuRoles = activeRole ? [...roles.filter((role) => role === "admin"), activeRole] : roles;
+  const filteredItems = visibleNavItems(Boolean(user), menuRoles);
   /* Entries drawn in the redesign that are views of existing screens rather than
      routes of their own: saved tasks under the list, completed work under
      "המטלות שלי", and help at the end. Only people who perform tasks get the
      first two. */
   const drawerItems = filteredItems.flatMap((item) => {
-    if (item.to === ROUTES.tasks && user && isBee) return [item, { ...item, label: "מועדפים", to: SAVED_TASKS_PATH }];
-    if (item.to === ROUTES.myTasks && isBee) return [item, { ...item, label: "מטלות שביצעתי", to: DONE_TASKS_PATH }];
+    if (item.to === ROUTES.tasks && user && showBeeMenu) return [item, { ...item, label: "מועדפים", to: SAVED_TASKS_PATH }];
+    if (item.to === ROUTES.myTasks && showBeeMenu) return [item, { ...item, label: "מטלות שביצעתי", to: DONE_TASKS_PATH }];
     return [item];
   }).concat([{ label: "עזרה ותמיכה", to: ROUTES.help, icon: Question as unknown as (typeof filteredItems)[number]["icon"] }]);
   /** The design separates settings and help from the task entries with a rule. */
@@ -246,6 +252,17 @@ export function MobileNav() {
               </div>
             </div>
           )}
+          {user && activeRole && <div className="mt-3 rounded-lg bg-muted px-3 py-2">
+            <p className="text-xs text-muted-foreground">מצב נוכחי: {roleLabel(activeRole)}</p>
+            <button type="button" disabled={switching} className="mt-1 min-h-11 text-sm font-bold text-primary-ink underline" onClick={() => {
+              const target = activeRole === "bee" ? "tasker" : "bee";
+              if (roles.includes(target)) void switchTo(target).then((success) => { if (success) setOpen(false); });
+              else { setOpen(false); navigate(registerPath(target)); }
+            }}>
+              {roles.includes(activeRole === "bee" ? "tasker" : "bee") ? "מעבר למצב" : "הפעלת אפשרות"} {roleLabel(activeRole === "bee" ? "tasker" : "bee")}
+            </button>
+          </div>}
+          {user && activeRoleError && <p role="alert" className="mt-3 text-sm text-destructive">לא הצלחנו לטעון את המצב הנוכחי. אפשר לרענן ולנסות שוב.</p>}
         </div>
 
         <div className="flex-1 overflow-hidden relative">

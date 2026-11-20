@@ -5,7 +5,8 @@ import { consumeGoogleSignupRole, startGoogleAuth, type GoogleSignupRole } from 
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { fetchUserRoles } from "@/contexts/AuthContext";
-import { useRoleSwitch, roleSwitchQuestion } from "@/hooks/useRoleSwitch";
+import { roleSwitchQuestion } from "@/hooks/useRoleSwitch";
+import { registerPath } from "@/lib/routes";
 import { postAuthStep } from "@/lib/postAuth";
 
 interface GoogleAuthButtonProps {
@@ -18,7 +19,6 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
   const [loading, setLoading] = useState(false);
   const [switchPrompt, setSwitchPrompt] = useState<{ current: string; target: GoogleSignupRole } | null>(null);
   const navigate = useNavigate();
-  const { switching, switchTo } = useRoleSwitch();
   const startedRef = useRef(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,7 +57,7 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
   return (
     <>
       <div className="relative h-16 w-full">
-        <Button type="button" variant="outline" disabled={loading || switching} className="absolute inset-0 w-full rounded-2xl border-2 border-border bg-background/80 py-6 text-lg font-bold">
+        <Button type="button" variant="outline" disabled={loading} className="absolute inset-0 w-full rounded-2xl border-2 border-border bg-background/80 py-6 text-lg font-bold">
           <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-extrabold text-[#4285F4] shadow-sm">G</span>
           {loading ? "מתחברים..." : "המשך עם Google"}
         </Button>
@@ -76,10 +76,10 @@ const GoogleAuthButton = ({ role }: GoogleAuthButtonProps) => {
             <AlertDialogCancel>להישאר בתפקיד הנוכחי</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                if (switchPrompt && await switchTo(switchPrompt.target)) setSwitchPrompt(null);
+                if (switchPrompt) navigate(`${registerPath(switchPrompt.target)}?google=1`);
               }}
             >
-              כן, לעבור
+              המשך
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

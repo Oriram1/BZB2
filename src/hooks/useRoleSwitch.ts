@@ -8,7 +8,7 @@ import { HOME_PATH, type AppRole } from "@/lib/routes";
 
 /** The question both places that offer a role change put to the person. */
 export const roleSwitchQuestion = (current: string, target: string) =>
-  `החשבון הזה רשום כ־${roleLabel(current)}. האם לעבור ל־${roleLabel(target)}?`;
+  `החשבון רשום כ${roleLabel(current)}. להוסיף גם אפשרות של ${roleLabel(target)}? התפקיד הקיים יישמר.`;
 
 /** Moves the signed-in account to `target`, then takes it home. Returns whether the role changed. */
 export function useRoleSwitch() {

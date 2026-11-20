@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
       <PageHeader variant="figma" centerTitle titleIsPageHeading title="מדיניות פרטיות" />
       <div className="max-w-3xl mx-auto px-4 py-5">
       <div className="rounded-[14px] bg-card shadow-card px-[14px] py-6 md:p-10">
-        <p className="text-[15px] text-muted-foreground mb-6">עדכון אחרון: אוגוסט 2026</p>
+        <p className="text-[15px] text-muted-foreground mb-6">עדכון אחרון: נובמבר 2026</p>
 
         <div className="prose prose-sm max-w-none text-foreground space-y-6 leading-relaxed">
           <p>
@@ -23,7 +23,7 @@ const PrivacyPolicy = () => {
           <p>אנו אוספים סוגי מידע שונים בעת השימוש בפלטפורמה. להלן פירוט המידע הנאסף, המטרה שלשמה הוא נאסף, והבסיס החוקי לאיסופו:</p>
           <ul className="list-disc pr-6 space-y-2">
             <li><strong className="font-semibold">שם מלא:</strong> לצורך זיהוי המשתמש בפלטפורמה והצגתו למשתמשים אחרים. <em>בסיס חוקי: ביצוע חוזה (תנאי השימוש).</em></li>
-            <li><strong className="font-semibold">גיל:</strong> לצורך אימות עמידה בגיל המינימלי להרשמה (13 למבצעי מטלות, 18 למציעי מטלות) והצגתו בפרופיל הציבורי. <em>בסיס חוקי: חובה חוקית (הגנת קטינים) וביצוע חוזה.</em></li>
+            <li><strong className="font-semibold">תאריך לידה וגיל:</strong> לצורך בדיקת הגיל שנמסר בהרשמה ולהפעלת תפקידים בפלטפורמה. הגיל המינימלי הוא 13 לביצוע מטלות ו-18 להצעת מטלות. תאריך הלידה שנמסר נשמר בנפרד ואינו מוצג בפרופיל הציבורי. לאחר שמירתו לא ניתן לשנותו באופן עצמאי; לתיקון יש לפנות אלינו. הבדיקה מבוססת על ההצהרה ואינה אימות זהות או גיל.</li>
             <li><strong className="font-semibold">מין:</strong> לצורך התאמת הממשק ללשון הפנייה בעברית (זכר/נקבה/ריבוי). <em>בסיס חוקי: אינטרס לגיטימי (חוויית משתמש).</em></li>
             <li><strong className="font-semibold">כתובת דוא"ל:</strong> לצורך הרשמה, אימות חשבון, ושליחת עדכונים הכרחיים לפעילות החשבון. <em>בסיס חוקי: ביצוע חוזה.</em></li>
             <li><strong className="font-semibold">מספר טלפון:</strong> לצורך תיאום מטלות בין מציעים למבצעים, ושליחת התראות דחופות. <em>בסיס חוקי: ביצוע חוזה.</em></li>
@@ -36,6 +36,7 @@ const PrivacyPolicy = () => {
 
           <h2 className="text-lg font-semibold text-foreground mt-8">2. שימוש במידע ושיתוף עם צדדים שלישיים</h2>
           <p>החברה אינה סוחרת במידע האישי שלך. עם זאת, לשם אספקת השירות, אנו עשויים לשתף מידע עם צדדים שלישיים:</p>
+          <p>אפשר להפעיל באותו חשבון גם תפקיד של מציע מטלות וגם תפקיד של מבצע מטלות. פרטי התפקידים והמצב שנבחר נשמרים לצורך מתן השירות. לא ניתן להגיש מועמדות למטלה שפרסמתם בעצמכם.</p>
           <ul className="list-disc pr-6 space-y-2">
             <li><strong className="font-semibold">שותפים עסקיים וספקי שירות:</strong> ספקי ענן, מערכות סליקה, ומערכות דיוור.</li>
             <li><strong className="font-semibold">רשתות חברתיות ומערכות פרסום:</strong> אנו עשויים לשתף מזהים אנונימיים טכנולוגיים (כגון Advertising ID או פיקסלים) עם פלטפורמות דוגמת גוגל (Google), פייסבוק ואינסטגרם (Meta Platforms) לצורך ניתוח סטטיסטי, שיפור חווית המשתמש והתאמת קמפיינים שיווקיים מטורגטים.</li>

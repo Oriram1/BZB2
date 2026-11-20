@@ -59,19 +59,19 @@ describe("authorization invariants", () => {
     expect(allSql).toContain("REVOKE UPDATE, DELETE ON public.user_roles FROM anon, authenticated");
   });
 
-  it("keeps one functional role per account", () => {
+  it("keeps parent separate and checks publisher age when a user adds the role", () => {
     const guard = effectiveFunction("prevent_role_escalation");
     expect(guard).toContain("one_role_per_user");
-    // Admin sits alongside a functional role, so it must not count as the one.
-    expect(guard).toMatch(/role <> 'admin'/);
+    expect(guard).toContain("role = 'parent'");
+    expect(guard).toContain("publisher_age_restricted");
   });
 
   it("does not let the sanctioned role switch reach admin", () => {
     const fn = effectiveFunction("switch_my_role");
-    expect(fn).toContain("target_role = 'admin'::public.app_role");
+    expect(fn).toContain("target_role NOT IN ('tasker'::public.app_role, 'bee'::public.app_role)");
     expect(fn).toContain("role_switch_not_allowed");
-    // ...and does not strip an existing admin grant on the way past.
-    expect(fn).toMatch(/DELETE FROM public\.user_roles[\s\S]*role <> 'admin'/);
+    // No existing functional role or admin grant is deleted.
+    expect(fn).not.toMatch(/DELETE FROM public\.user_roles/);
   });
 
   it("enables row level security on every table it creates", () => {

@@ -47,7 +47,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 const TaskList = () => {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const { isTasker, isBee } = useRoles();
   const { pushPending } = usePermissionPrompt();
   /* One ask at a time: the location explainer waits until the cookie banner is answered. */
@@ -223,7 +223,7 @@ const TaskList = () => {
         variant="figma"
         showBack={false}
         action={
-          isTasker && (
+          isTasker && activeRole === "tasker" && (
             <Link to="/create-task">
               <button className="inline-flex items-center gap-1.5 h-10 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm rounded-full transition-colors">
                 <Plus size={16} />

@@ -76,6 +76,7 @@ interface TaskData {
   duration_hours: number | null;
   review_window_started_at: string | null;
   workers_needed: number;
+  tags: string[];
   status: string;
   publish_state: TaskPublishState;
   notes: string | null;

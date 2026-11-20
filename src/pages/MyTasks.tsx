@@ -105,7 +105,7 @@ const applicationStatusLabel: Record<ApplicationStatus, string> = {
 };
 
 const MyTasks = () => {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const { isTasker, isBee } = useRoles();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -147,10 +147,8 @@ const MyTasks = () => {
   /**
    * What the account actually has, not what role it currently holds.
    *
-   * switch_my_role exchanges tasker for bee, but published tasks and submitted
-   * applications stay with the account and RLS still permits both. Hiding a tab
-   * behind the current role is what left a switched publisher with no way to
-   * accept anyone.
+   * Published tasks and submitted applications stay with the account when
+   * the active view changes, so both remain available in their own tabs.
    */
   const managesTasks = isTasker || publishedTasks.length > 0;
   const performsTasks = isBee || performingTasks.length > 0;
@@ -164,7 +162,9 @@ const MyTasks = () => {
         ? "published"
         // A publisher lands on their tasks, a worker on what they are doing.
         // Candidates are one tap away, with a badge when any are waiting.
-        : managesTasks
+        : activeRole === "bee" && performsTasks
+          ? "performing"
+          : managesTasks
           ? "published"
           : "performing";
 
@@ -536,7 +536,7 @@ const MyTasks = () => {
         centerTitle
         title="המטלות שלי"
         titleIsPageHeading
-        action={isTasker ? (
+        action={isTasker && activeRole === "tasker" ? (
           <Button size="sm" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5" asChild>
 <Link to="/create-task"><Plus size={16} aria-hidden="true" />
               פרסום מטלה</Link>
@@ -560,8 +560,7 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {/* Figma draws two tabs; with both roles, "performing" is reached from the nav drawer link. */}
-            {performsTasks && !managesTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
+            {performsTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
           </div>
 

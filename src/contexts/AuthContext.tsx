@@ -7,6 +7,7 @@ import { notifyParentsOfSignIn } from "@/lib/parentNotify";
 import { Constants } from "@/integrations/supabase/types";
 import type { AppRole } from "@/lib/routes";
 import type { Gender } from "@shared/gender.ts";
+import { resolveActiveRole, type FunctionalRole } from "@/lib/activeRole";
 
 interface Profile {
   id: string;
@@ -25,10 +26,12 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   roles: string[];
+  activeRole: FunctionalRole | null;
+  activeRoleError: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  refreshUserState: () => Promise<void>;
+  refreshUserState: (userOverride?: User) => Promise<void>;
 }
 
 /** How long to wait before the one retry of the first read after a sign-in; see loadUserState. */
@@ -60,6 +63,8 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   profile: null,
   roles: [],
+  activeRole: null,
+  activeRoleError: false,
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -73,6 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
+  const [activeRole, setActiveRole] = useState<FunctionalRole | null>(null);
+  const [activeRoleError, setActiveRoleError] = useState(false);
   const [loading, setLoading] = useState(true);
   /** Who we have already resolved profile and roles for. */
   const settledUserIdRef = useRef<string | null>(null);
@@ -118,6 +125,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!nextUser) {
       setProfile(null);
       setRoles([]);
+      setActiveRole(null);
+      setActiveRoleError(false);
       return;
     }
 
@@ -139,9 +148,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const resolvedRoles = await ensureUserRole(nextUser, nextRoles.roles, nextRoles.failed);
+    const { data: savedRole, error: activeError } = await supabase.rpc("get_my_active_role");
 
     setProfile(nextProfile);
     setRoles(resolvedRoles);
+    setActiveRoleError(Boolean(activeError));
+    setActiveRole(activeError ? null : resolveActiveRole(resolvedRoles, savedRole));
   };
 
   useEffect(() => {
@@ -219,6 +231,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setProfile(null);
     setRoles([]);
+    setActiveRole(null);
+    setActiveRoleError(false);
   };
 
   const refreshProfile = async () => {
@@ -228,12 +242,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const refreshUserState = async () => {
-    await loadUserState(user);
+  const refreshUserState = async (userOverride?: User) => {
+    await loadUserState(userOverride ?? user);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, roles, loading, signOut, refreshProfile, refreshUserState }}>
+    <AuthContext.Provider value={{ user, session, profile, roles, activeRole, activeRoleError, loading, signOut, refreshProfile, refreshUserState }}>
       {children}
     </AuthContext.Provider>
   );

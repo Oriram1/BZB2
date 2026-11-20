@@ -14,8 +14,8 @@ type PostAuthStep =
  */
 export function postAuthStep(roles: string[], requested: GoogleSignupRole | null): PostAuthStep {
   if (roles.length > 0) {
-    return requested && roles[0] !== requested
-      ? { switchFrom: roles[0], switchTo: requested }
+    return requested && !roles.includes(requested)
+      ? { switchFrom: roles.find((role) => role !== "admin") ?? roles[0], switchTo: requested }
       : { to: HOME_PATH };
   }
   return { to: requested ? `${registerPath(requested)}?google=1` : `${ROUTES.auth}?google=1` };
