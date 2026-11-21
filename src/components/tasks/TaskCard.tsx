@@ -1,4 +1,4 @@
-import { taskTagLabels } from "@/lib/taskTags";
+import { taskTagClass, taskTagLabels } from "@/lib/taskTags";
 import { Button } from "@/components/ui/button";
 import { MapPin, PencilSimple as Pencil, Star, Heart, ArrowLeft, ArrowUpLeft, CalendarBlank as Calendar, Timer } from "@phosphor-icons/react";
 import CategoryIcon from "./CategoryIcon";
@@ -130,7 +130,7 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
         {taskTagLabels(task.tags).map((tag) => (
           <span
             key={tag.value}
-            className={`rounded-[4px] px-2.5 py-[3px] text-xs leading-6 text-foreground ${tag.value === "physical" ? "bg-honey-light/85" : "bg-secondary"}`}
+            className={`rounded-[4px] px-2.5 py-[3px] text-xs leading-6 text-foreground ${taskTagClass(tag.value)}`}
           >
             {tag.label}
           </span>

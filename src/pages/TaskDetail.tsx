@@ -36,7 +36,7 @@ import ApplyDialog from "@/components/tasks/ApplyDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { formatTaskWhen, defaultAvatarUrl, displayName, formatCurrency, formatDateTime, formatDuration } from "@/lib/format";
-import { taskTagLabels } from "@/lib/taskTags";
+import { taskTagClass, taskTagLabels } from "@/lib/taskTags";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
@@ -406,7 +406,7 @@ const TaskDetail = () => {
             {taskTagLabels(task.tags).map((tag) => (
               <span
                 key={tag.value}
-                className={`rounded-[4px] px-2.5 py-[3px] text-xs leading-6 text-foreground ${tag.value === "physical" ? "bg-honey-light/85" : "bg-secondary"}`}
+                className={`rounded-[4px] px-2.5 py-[3px] text-xs leading-6 text-foreground ${taskTagClass(tag.value)}`}
               >
                 {tag.label}
               </span>
