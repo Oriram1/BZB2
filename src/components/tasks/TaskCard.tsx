@@ -180,7 +180,7 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
         ) : (
           <Button
             onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
-            className="h-12 flex-1 gap-2.5 rounded-full font-medium"
+            className={cn("h-12 flex-1 gap-2.5 rounded-full font-medium", task.category === "other" && "bg-[#F3B826] hover:bg-[#F3B826]/90")}
           >
             לפרטי המשימה
             {isPopup ? <ArrowUpLeft size={16} aria-hidden="true" /> : <ArrowLeft size={16} aria-hidden="true" />}
