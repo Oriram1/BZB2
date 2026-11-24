@@ -74,6 +74,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.request-parent-contact]
 verify_jwt = false
+[functions.parent-remove]
+verify_jwt = false
 
 # Subscription purchase, confirmation, cancellation and (admin) refund.
 [functions.billing-create-checkout]

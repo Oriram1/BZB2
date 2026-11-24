@@ -19,6 +19,9 @@ export type NotificationEvent =
   | "family_link_code"
   | "quiet_hours_digest"
   | "task_cancelled"
+  // Sent to everyone who applied when the owner edits or deletes the task.
+  | "task_edited"
+  | "task_deleted"
   // Raised by a parent from the public view page and delivered to the child,
   // who is the only one who may approve it.
   | "parent_contact_requested"
@@ -75,6 +78,8 @@ export const CHANNEL_DEFAULTS: Record<NotificationEvent, { email: boolean; push:
   family_link_code: { email: true, push: false },
   quiet_hours_digest: { email: true, push: true },
   task_cancelled: { email: true, push: true },
+  task_edited: { email: true, push: true },
+  task_deleted: { email: true, push: true },
   // Sent to an address, not to an account, so the per-user settings screen
   // never reaches these. The child removes the contact to stop them.
   parent_contact_added: { email: true, push: false },

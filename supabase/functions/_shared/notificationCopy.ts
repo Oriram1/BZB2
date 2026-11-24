@@ -26,6 +26,18 @@ function price(value: unknown) {
   return `₪${amount.toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;
 }
 
+/** The diff raised by update_task_details: one "label: from ← to" line per change. */
+function changeLines(data: Record<string, unknown>) {
+  const changes = Array.isArray(data.changes) ? data.changes : [];
+  const show = (value: unknown) => {
+    const text = str(value).replace(/\s+/g, " ");
+    return text ? (text.length > 80 ? `${text.slice(0, 80)}…` : text) : "ריק";
+  };
+  return changes
+    .filter((c): c is Record<string, unknown> => Boolean(c) && typeof c === "object")
+    .map((c) => `${str(c.label, "שדה")}: ${show(c.from)} ← ${show(c.to)}`);
+}
+
 function when(data: Record<string, unknown>) {
   const date = str(data.scheduled_date);
   const time = str(data.scheduled_time).slice(0, 5);
@@ -566,6 +578,34 @@ export function emailContent(row: NotificationRow, to: Form = "plural"): EmailCo
       };
     }
 
+    case "task_edited": {
+      const task = str(data.task_name, "המטלה");
+      return {
+        subject: `המטלה "${task}" עודכנה`,
+        preheader: "מה השתנה, ואם להישאר רשומים",
+        heading: "המטלה עודכנה",
+        paragraphs: [
+          `${str(data.editor_name, "מפרסם המטלה")} ערך את המטלה "${task}", שנרשמתם אליה.`,
+          ...changeLines(data),
+          "נשארים רשומים? אפשר לאשר או לבטל את ההרשמה מהמסך של המטלה.",
+        ],
+        action: { label: "לבדיקת השינויים", url },
+        manageUrl,
+      };
+    }
+
+    case "task_deleted": {
+      const task = str(data.task_name, "המטלה");
+      return {
+        subject: `המטלה "${task}" נמחקה`,
+        preheader: "המפרסם מחק את המטלה",
+        heading: "המטלה נמחקה",
+        paragraphs: [`המטלה "${task}", שנרשמתם אליה, נמחקה על ידי המפרסם.`, "אפשר לחפש מטלות חדשות בכל עת."],
+        action: { label: "למטלות פתוחות", url: `${base}/tasks` },
+        manageUrl,
+      };
+    }
+
     case "task_cancelled": {
       const task = str(data.task_name, "המטלה");
       const canceller = str(data.canceller_name, "מפרסם המטלה");
@@ -801,6 +841,22 @@ export function pushPayload(row: NotificationRow, to: Form = "plural"): PushPayl
       return data.kind === "card_updated"
         ? { title: "הכרטיס הוחלף", body: "הכרטיס החדש נשמר לחיובים עתידיים", url, tag: "billing-card-updated" }
         : { title: "המסלול עודכן", body: "פרטים בדף המנוי", url, tag: "billing-plan-changed" };
+
+    case "task_edited":
+      return {
+        title: "המטלה עודכנה ✏️",
+        body: `"${str(data.task_name, "המטלה")}" שונתה. כדאי לבדוק אם להישאר רשומים`,
+        url,
+        tag: `edited-${str(data.task_id)}`,
+      };
+
+    case "task_deleted":
+      return {
+        title: "המטלה נמחקה 🗑️",
+        body: `"${str(data.task_name, "המטלה")}" נמחקה על ידי המפרסם`,
+        url,
+        tag: `deleted-${str(data.task_id)}`,
+      };
 
     case "task_cancelled":
       return {

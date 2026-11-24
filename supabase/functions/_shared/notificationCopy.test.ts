@@ -39,3 +39,19 @@ Deno.test("the review reminder is push-only by default and the rest use both cha
   assertEquals(CHANNEL_DEFAULTS.review_reminder, { email: false, push: true });
   assertEquals(CHANNEL_DEFAULTS.review_approved, { email: true, push: true });
 });
+
+Deno.test("task_edited lists what changed; task_deleted names the task", () => {
+  const edited = {
+    id: "n2",
+    event_type: "task_edited",
+    data: { task_name: "ניקיון", changes: [{ label: "תשלום", from: "50", to: "80" }] },
+    link: "/task/t1?review_edit=1",
+  } as NotificationRow;
+  const email = emailContent(edited);
+  assert(email.paragraphs?.some((line) => line.includes("תשלום: 50 ← 80")));
+  assertStringIncludes(pushPayload(edited).url, "review_edit=1");
+
+  const deleted = { id: "n3", event_type: "task_deleted", data: { task_name: "ניקיון" }, link: "/tasks" } as NotificationRow;
+  assertStringIncludes(emailContent(deleted).subject, "ניקיון");
+  assertEquals(CHANNEL_DEFAULTS.task_deleted, { email: true, push: true });
+});

@@ -230,16 +230,6 @@ const Profile = () => {
     }
   };
 
-  const removeParentContact = async (id: string) => {
-    const { error } = await supabase.from("parent_contacts").delete().eq("id", id);
-    if (error) {
-      toast.error("לא הצלחנו להסיר את הכתובת");
-      return;
-    }
-    setParentContacts((current) => current.filter((contact) => contact.id !== id));
-    toast.success("הכתובת הוסרה");
-  };
-
   useEffect(() => {
     if (profile) {
       setForm({
@@ -577,16 +567,6 @@ const Profile = () => {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span dir="ltr" className="truncate text-sm font-semibold">{contact.email}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void removeParentContact(contact.id)}
-                          className="shrink-0 rounded-full font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                          הסרה
-                        </Button>
                       </div>
                       <ParentShareLink viewToken={contact.view_token} />
                     </li>

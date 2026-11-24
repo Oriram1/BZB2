@@ -9,6 +9,12 @@ import { formatCurrency } from "@/lib/format";
 import { CheckCircle, Clock, ClipboardList, Coins, AlertTriangle } from "lucide-react";
 import { formFor, say, SUBJECT, type Gender } from "@shared/gender.ts";
 import { ParentNotificationPrefs, type ParentPrefs } from "@/components/parent/ParentNotificationPrefs";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { ParentSubscribeCard } from "@/components/parent/ParentSubscribeCard";
 
 interface ChildData {
@@ -41,6 +47,17 @@ const ParentView = () => {
   const [data, setData] = useState<ChildData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const removeSelf = async () => {
+    const { data: result, error: err } = await supabase.functions.invoke("parent-remove", { body: { token } });
+    if (err || result?.error) {
+      toast.error("לא הצלחנו להסיר אותך. כדאי לנסות שוב.");
+      return;
+    }
+    setRemoved(true);
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -65,6 +82,20 @@ const ParentView = () => {
           <Skeleton className="h-24 w-full rounded-3xl" />
           <Skeleton className="h-48 w-full rounded-3xl" />
         </div>
+      </div>
+    );
+  }
+
+  if (removed) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4" dir="rtl">
+        <Card className="max-w-sm w-full border-border">
+          <CardContent className="py-12 text-center">
+            <CheckCircle className="mx-auto mb-3 h-10 w-10 text-green-600" />
+            <p className="font-bold text-foreground mb-1">הוסרת בהצלחה</p>
+            <p className="text-sm text-muted-foreground">לא יישלחו אליך עוד עדכונים והקישור הזה לא יפעל יותר.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -182,6 +213,32 @@ const ParentView = () => {
             )}
           </CardContent>
         </Card>
+
+        {contact && (
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmOpen(true)}
+              className="w-full rounded-full font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              הסרה שלי מהמעקב
+            </Button>
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>להסיר אותך?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  לא תקבל/י יותר עדכונים על {childName || "הילד/ה"} והקישור הזה יפסיק לעבוד.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>ביטול</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void removeSelf()}>הסרה</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          </>
+        )}
 
         <p className="text-center text-xs text-muted-foreground pb-4">
           🐝 BusyBee — מטלות לנוער

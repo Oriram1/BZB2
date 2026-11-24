@@ -108,6 +108,9 @@ const TaskDetail = () => {
   const [applyOpen, setApplyOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [acceptedAsWorker, setAcceptedAsWorker] = useState(false);
+  // Landed from an "the task was edited" notification and has not answered yet.
+  const [editPromptOpen, setEditPromptOpen] = useState(() => new URLSearchParams(location.search).has("review_edit"));
+  const [answeringEdit, setAnsweringEdit] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", shortDesc: "", fullDesc: "", payment: "", location: "", notes: "", date: "", time: "", durationDays: "" });
   const [saving, setSaving] = useState(false);
@@ -249,23 +252,40 @@ const TaskDetail = () => {
     }
   };
 
+  const answerEdit = async (stay: boolean) => {
+    if (!task) return;
+    if (stay) {
+      setEditPromptOpen(false);
+      return;
+    }
+    setAnsweringEdit(true);
+    const { error } = await supabase.rpc("withdraw_application", { _task_id: task.id });
+    setAnsweringEdit(false);
+    if (error) {
+      toast.error("לא הצלחנו לבטל את ההרשמה. כדאי לנסות שוב.");
+      return;
+    }
+    setAlreadyApplied(false);
+    setAcceptedAsWorker(false);
+    setEditPromptOpen(false);
+    toast.success("ההרשמה בוטלה");
+  };
+
   const handleSaveEdit = async () => {
     if (!task) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("tasks")
-      .update({
-        name: editForm.name,
-        short_desc: editForm.shortDesc,
-        full_desc: editForm.fullDesc || null,
-        payment: parseFloat(editForm.payment) || 0,
-        location: editForm.location || null,
-        notes: editForm.notes || null,
-        scheduled_date: editForm.date || null,
-        scheduled_time: editForm.time || null,
-        duration_hours: editForm.durationDays ? parseFloat(editForm.durationDays) * 24 : null,
-      })
-      .eq("id", task.id);
+    const { error } = await supabase.rpc("update_task_details", {
+      _task_id: task.id,
+      _name: editForm.name,
+      _short_desc: editForm.shortDesc,
+      _full_desc: editForm.fullDesc || null,
+      _payment: parseFloat(editForm.payment) || 0,
+      _location: editForm.location || null,
+      _notes: editForm.notes || null,
+      _scheduled_date: editForm.date || null,
+      _scheduled_time: editForm.time || null,
+      _duration_hours: editForm.durationDays ? parseFloat(editForm.durationDays) * 24 : null,
+    });
     setSaving(false);
     if (error) {
       toast.error("שגיאה בעדכון המטלה");
@@ -350,6 +370,28 @@ const TaskDetail = () => {
               className="w-full h-52 sm:h-64 object-cover"
               onError={(e) => { (e.currentTarget.closest(".relative") as HTMLElement | null)?.remove(); }}
             />
+          </div>
+        )}
+
+        {!isOwner && alreadyApplied && editPromptOpen && (
+          <div className="rounded-lg border-[1.2px] border-primary bg-primary-soft p-3.5 space-y-3">
+            <p className="font-bold text-foreground">המפרסם עדכן את המטלה</p>
+            <p className="text-sm text-muted-foreground">
+              כדאי לעבור על הפרטים למטה. להישאר רשומים למטלה, או לבטל את ההרשמה?
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={() => void answerEdit(true)} disabled={answeringEdit} className="rounded-full font-bold">
+                להישאר רשומים
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void answerEdit(false)}
+                disabled={answeringEdit}
+                className="rounded-full font-bold text-destructive"
+              >
+                לבטל הרשמה
+              </Button>
+            </div>
           </div>
         )}
 

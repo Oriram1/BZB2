@@ -113,6 +113,20 @@ export function notificationLine(
         body: `התקבלה בקשה מהכתובת ${str(data.email, "שהוזנה")} לקבל עדכונים על הפעילות ${say(to, RECIPIENT.yours)}`,
       };
 
+    case "task_edited":
+      return {
+        emoji: "✏️",
+        title: "המטלה עודכנה",
+        body: `"${str(data.task_name, "המטלה")}" שונתה. אפשר להישאר רשומים או לבטל`,
+      };
+
+    case "task_deleted":
+      return {
+        emoji: "🗑️",
+        title: "המטלה נמחקה",
+        body: `"${str(data.task_name, "המטלה")}" נמחקה על ידי המפרסם`,
+      };
+
     case "task_cancelled":
       return {
         emoji: "❌",
@@ -250,6 +264,18 @@ const SETTINGS_ROWS: {
     label: "דוח יומי",
     description: "סיכום יומי של פעילות הילדים שלכם",
     roles: ["parent"],
+  },
+  {
+    event: "task_edited",
+    label: "מטלה שנרשמתי אליה עודכנה",
+    description: "כשבעל המטלה משנה פרטים במטלה שנרשמתם אליה, עם מה שהשתנה",
+    roles: ["bee"],
+  },
+  {
+    event: "task_deleted",
+    label: "מטלה שנרשמתי אליה נמחקה",
+    description: "כשבעל המטלה מוחק מטלה שנרשמתם אליה",
+    roles: ["bee"],
   },
   {
     event: "task_cancelled",

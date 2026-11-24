@@ -1480,6 +1480,22 @@ export type Database = {
       }
       cancel_refund_eligibility: { Args: { _user_id: string }; Returns: Json }
       cancel_task: { Args: { _task_id: string }; Returns: undefined }
+      withdraw_application: { Args: { _task_id: string }; Returns: undefined }
+      update_task_details: {
+        Args: {
+          _task_id: string
+          _name: string
+          _short_desc: string
+          _full_desc: string | null
+          _payment: number
+          _location: string | null
+          _notes: string | null
+          _scheduled_date: string | null
+          _scheduled_time: string | null
+          _duration_hours: number | null
+        }
+        Returns: undefined
+      }
       cancel_task_plan: {
         Args: { _user_id: string }
         Returns: {
@@ -1619,6 +1635,8 @@ export type Database = {
         | "family_link_code"
         | "quiet_hours_digest"
         | "task_cancelled"
+        | "task_edited"
+        | "task_deleted"
         | "parent_contact_requested"
         | "billing_renewal_reminder"
         | "billing_payment_succeeded"
@@ -1809,6 +1827,8 @@ export const Constants = {
         "family_link_code",
         "quiet_hours_digest",
         "task_cancelled",
+        "task_edited",
+        "task_deleted",
         "parent_contact_requested",
         "billing_renewal_reminder",
         "billing_payment_succeeded",
