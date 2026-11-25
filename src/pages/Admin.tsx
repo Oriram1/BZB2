@@ -3,6 +3,8 @@ import AdminPublishedReviews from "@/components/reviews/AdminPublishedReviews";
 import AdminReviewQueues from "@/components/reviews/AdminReviewQueues";
 import AdminReviewsPanel from "@/components/reviews/AdminReviewsPanel";
 import TaskReviewPanel from "@/components/admin/TaskReviewPanel";
+import TaskScreeningPanel from "@/components/admin/TaskScreeningPanel";
+import MessageScreeningPanel from "@/components/admin/MessageScreeningPanel";
 import TrialBlocksPanel from "@/components/admin/TrialBlocksPanel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -976,6 +978,8 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-6">
+            <TaskScreeningPanel />
+            <MessageScreeningPanel />
             <TaskReviewPanel />
           </TabsContent>
 

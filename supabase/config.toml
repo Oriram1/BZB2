@@ -14,6 +14,10 @@ verify_jwt = false
 [functions.review-screen]
 verify_jwt = false
 
+# Invoked by pg_net from the tasks trigger, same shared-secret authentication.
+[functions.task-screen]
+verify_jwt = false
+
 # Invoked by pg_cron on the hour, same shared-secret authentication.
 [functions.send-parent-digest]
 verify_jwt = false

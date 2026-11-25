@@ -53,6 +53,8 @@ interface PublishedTask {
   id: string;
   name: string;
   short_desc: string;
+  screening?: "pending_ai" | "clean" | "flagged" | "blocked" | string;
+  screening_reason?: string | null;
   views_count: number;
   status: TaskStatus;
   workers_needed: number;
@@ -180,7 +182,7 @@ const MyTasks = () => {
       const [reviewsResult, publishedResult, ownApplicationsResult] = await Promise.all([
         supabase.from("reviews").select("task_id, reviewee_id").eq("reviewer_id", user.id),
         supabase.from("tasks")
-          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at, review_window_started_at, payment, scheduled_date, scheduled_time")
+          .select("id, name, short_desc, views_count, status, workers_needed, publish_state, payment_due, payment_mode, charged_at, review_window_started_at, payment, scheduled_date, scheduled_time, screening, screening_reason")
           .eq("creator_id", user.id).is("archived_at", null)
           .order("created_at", { ascending: false }),
         supabase.from("task_applications").select("id, status, task_id")
@@ -741,6 +743,13 @@ const MyTasks = () => {
                       <h2 className="text-[22px] font-semibold leading-7 truncate">{task.name}</h2>
                       <p className="mt-1 text-[15px] leading-5 text-muted-foreground line-clamp-2">{task.short_desc}</p>
                     </Link>
+                    {task.screening && task.screening !== "clean" && (
+                      <div role="status" className={`mt-6 rounded-[10px] border px-[14px] py-3 text-[15px] leading-5 ${task.screening === "blocked" ? "border-destructive/40 bg-destructive/10" : "border-primary-soft-border bg-[#FDEFEB]"}`}>
+                        {task.screening === "pending_ai" && "המטלה עוברת בדיקת בטיחות אוטומטית ותופיע לנערים בעוד רגע."}
+                        {task.screening === "flagged" && `המטלה ממתינה לבדיקת הצוות לפני שתופיע לנערים.${task.screening_reason ? ` ${task.screening_reason}` : ""}`}
+                        {task.screening === "blocked" && `המטלה נחסמה ולא מוצגת לנערים.${task.screening_reason ? ` ${task.screening_reason}` : ""} אפשר לערוך אותה והיא תיבדק שוב.`}
+                      </div>
+                    )}
                     {task.publish_state === "pending_review" && (
                       <div className="mt-6 flex min-h-[71px] items-center gap-3 rounded-[10px] border border-primary-soft-border bg-[#FDEFEB] px-[14px] py-3 text-[15px] leading-5 text-foreground">
                         <p className="flex-1">

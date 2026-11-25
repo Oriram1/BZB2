@@ -59,6 +59,7 @@ interface Message {
   attachment_type: "image" | "audio" | null;
   attachment_duration: number | null;
   attachment_thumbhash?: string | null;
+  screening?: "unchecked" | "clean" | "flagged" | "removed" | string;
 }
 
 /** A finished task whose other side this user has not rated yet. */
@@ -233,7 +234,7 @@ const Chat = () => {
     const fetchMessages = async () => {
       const { data } = await supabase
         .from("messages")
-        .select("id, sender_id, content, created_at, attachment_path, attachment_type, attachment_duration, attachment_thumbhash")
+        .select("id, sender_id, content, created_at, attachment_path, attachment_type, attachment_duration, attachment_thumbhash, screening")
         .eq("conversation_id", activeChat)
         .order("created_at", { ascending: true });
       if (cancelled) return;
@@ -268,7 +269,23 @@ const Chat = () => {
         const incoming = payload.new as Message;
         setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
       })
+      // The sender learns when the safety screen holds back their message.
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "messages",
+        filter: `conversation_id=eq.${activeChat}`,
+      }, (payload) => {
+        if (cancelled) return;
+        const changed = payload.new as Message;
+        setMessages((prev) => prev.map((m) => (m.id === changed.id ? { ...m, screening: changed.screening } : m)));
+      })
       .subscribe();
+    // The other side gets no event when a message is hidden (it can no longer
+    // read the row), so refetch now and then while the chat is open.
+    const screenTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchMessages();
+    }, 20000);
 
     // Realtime delivery isn't guaranteed once the socket drops — a locked
     // phone or backgrounded tab misses INSERT events with no replay. Refetch
@@ -281,6 +298,7 @@ const Chat = () => {
     return () => {
       cancelled = true;
       supabase.removeChannel(channel);
+      window.clearInterval(screenTimer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [activeChat, markConversationNotificationsRead, user]);
@@ -600,6 +618,11 @@ const Chat = () => {
                           <VoiceNoteBubble src={mediaUrl} duration={msg.attachment_duration} outgoing={outgoing} />
                         )}
 
+                        {(msg.screening === "flagged" || msg.screening === "removed") && (
+                          <p role="status" className="mb-1 text-xs font-bold opacity-80">
+                            {msg.screening === "flagged" ? "ההודעה הוסתרה מהצד השני ונבדקת על ידי הצוות" : "ההודעה הוסרה על ידי הצוות"}
+                          </p>
+                        )}
                         {msg.content && (
                           <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
                         )}

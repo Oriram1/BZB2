@@ -362,6 +362,8 @@ export type Database = {
       }
       messages: {
         Row: {
+          screening: string
+          screening_reason: string | null
           attachment_duration: number | null
           attachment_thumbhash: string | null
           attachment_path: string | null
@@ -374,6 +376,8 @@ export type Database = {
           sender_id: string
         }
         Insert: {
+          screening?: string
+          screening_reason?: string | null
           attachment_duration?: number | null
           attachment_thumbhash?: string | null
           attachment_path?: string | null
@@ -386,6 +390,8 @@ export type Database = {
           sender_id: string
         }
         Update: {
+          screening?: string
+          screening_reason?: string | null
           attachment_duration?: number | null
           attachment_thumbhash?: string | null
           attachment_path?: string | null
@@ -1167,6 +1173,9 @@ export type Database = {
           publish_state: Database["public"]["Enums"]["task_publish_state"]
           review_note: string | null
           review_window_started_at: string | null
+          screened_at: string | null
+          screening: string
+          screening_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           scheduled_date: string | null
@@ -1208,6 +1217,9 @@ export type Database = {
           publish_state?: Database["public"]["Enums"]["task_publish_state"]
           review_note?: string | null
           review_window_started_at?: string | null
+          screened_at?: string | null
+          screening?: string
+          screening_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           scheduled_date?: string | null
@@ -1249,6 +1261,9 @@ export type Database = {
           publish_state?: Database["public"]["Enums"]["task_publish_state"]
           review_note?: string | null
           review_window_started_at?: string | null
+          screened_at?: string | null
+          screening?: string
+          screening_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           scheduled_date?: string | null
