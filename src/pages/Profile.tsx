@@ -577,7 +577,7 @@ const Profile = () => {
               <h2 className="text-base font-bold text-foreground">דירוגים וביקורות שקיבלתי</h2>
               {receivedReviews.length === 0 && <p className="text-sm text-muted-foreground">עדיין אין ביקורות שאושרו</p>}
             </div>
-            <Button type="button" variant="outline" size="sm" aria-expanded={showAllRatings} onClick={() => setShowAllRatings((v) => !v)} className="shrink-0 rounded-full px-3 text-xs font-medium text-muted-foreground">
+            <Button type="button" variant="outline" size="sm" aria-expanded={showAllRatings} onClick={() => setShowAllRatings((v) => !v)} className="shrink-0 rounded-full border-border bg-card px-3 text-xs font-medium text-muted-foreground hover:bg-muted">
               לכל הדירוגים
             </Button>
           </div>

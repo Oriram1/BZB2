@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/PasswordStrength";
-import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,7 +43,11 @@ export function PasswordCard() {
         {!open ? (
           /* As drawn: icon, title and one line of text at the start, the outlined pill at the end. */
           <div className="flex items-center gap-3">
-            <KeyRound size={24} strokeWidth={1.5} className="shrink-0 text-primary-ink" aria-hidden="true" />
+            {/* The keypad of dots drawn in the design. */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-primary-ink" aria-hidden="true">
+              {[4, 12, 20].flatMap((x) => [3, 9, 15].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" />))}
+              <circle cx="12" cy="21" r="1.6" />
+            </svg>
             <div className="min-w-0 flex-1">
               <p className="text-base font-bold text-foreground">{googleOnly ? "סיסמה (לא חובה)" : "שינוי סיסמה"}</p>
               <p className="text-sm text-muted-foreground">
@@ -53,7 +56,7 @@ export function PasswordCard() {
                   : "אפשר לעדכן את הסיסמה לכניסה עם מייל."}
               </p>
             </div>
-            <Button variant="outline" size="sm" className="shrink-0 rounded-full px-4 font-medium text-muted-foreground" onClick={() => setOpen(true)}>
+            <Button variant="outline" size="sm" className="shrink-0 rounded-full border-border bg-card px-4 font-medium text-muted-foreground hover:bg-muted" onClick={() => setOpen(true)}>
               {googleOnly ? "הוספת סיסמה" : "שינוי"}
             </Button>
           </div>
