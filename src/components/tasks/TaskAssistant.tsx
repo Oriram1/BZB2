@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type AssistantFields } from "@/lib/taskForm";
 import { addDays, format } from "date-fns";
-import { ArrowUp, ListChecks, Mic, Square } from "lucide-react";
+import { Send, ListChecks, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,9 +62,9 @@ interface TaskAssistantProps {
   onManual: () => void;
 }
 
-function Bee({ thinking = false }: { thinking?: boolean }) {
+function Bee({ thinking = false, className = "size-14" }: { thinking?: boolean; className?: string }) {
   return (
-    <span className="relative block size-14 shrink-0" aria-hidden="true">
+    <span className={`relative block shrink-0 ${className}`} aria-hidden="true">
       <span className="task-assistant-bee absolute inset-0" data-state="idle" data-active={!thinking}
         style={{ backgroundImage: `url("${idleBee}")` }} />
       <span className="task-assistant-bee absolute inset-0" data-state="thinking" data-active={thinking}
@@ -201,15 +201,15 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
 
   return (
     <section className="flex flex-col gap-4" aria-label="עוזר פרסום מטלה">
-      <div className="flex items-center gap-2">
-        <svg className="text-primary-ink" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
-          <path d="M8 3.5 11.5 5.5v4L8 11.5 4.5 9.5v-4z" />
-          <path d="M16 12.5l3.5 2v4L16 20.5l-3.5-2v-4z" />
-          <path d="M16 3.5l3.5 2v4L16 11.5" opacity=".45" />
-          <path d="M8 12.5l3.5 2v4L8 20.5" opacity=".45" />
-        </svg>
-        <h2 className="text-xl font-extrabold text-foreground">ספרו לביזי מה צריך</h2>
-      </div>
+      {messages.length === 0 && !loading ? (
+        /* First screen, as drawn: the bee large and centred over the title and the brief. */
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Bee className="size-24" />
+          <h2 className="text-xl font-bold text-foreground">ספרו לביזי מה צריך</h2>
+          <p className="text-sm leading-6 text-muted-foreground">{GREETING}</p>
+        </div>
+      ) : (<>
+      <h2 className="text-xl font-bold text-foreground">ספרו לביזי מה צריך</h2>
 
       <div className="flex max-h-[45vh] flex-col gap-5 overflow-y-auto overscroll-contain pe-1" role="log" aria-label="השיחה עם ביזי" aria-live="polite" aria-busy={loading}>
         <BusyReply text={GREETING} />
@@ -224,6 +224,8 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         {loading && <BusyReply thinking text="ממלא את הטופס…" />}
         <div ref={endRef} />
       </div>
+
+      </>)}
 
       {result?.fields.location && !locationConfirmed && !loading && (
         <AssistantLocation key={result.fields.location} query={result.fields.location} onConfirm={setConfirmedLocation} />
@@ -266,7 +268,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
         </div>
       )}
 
-      <form className={`flex items-center gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${result?.fields.location && !locationConfirmed ? "" : "sticky bottom-0"}`}
+      <form className={`flex items-center gap-2 rounded-xl border border-border bg-secondary p-2 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${result?.fields.location && !locationConfirmed ? "" : "sticky bottom-0"}`}
         onSubmit={(event) => { event.preventDefault(); void send(input); }}>
         <Textarea
           aria-label="תיאור המטלה"
@@ -293,13 +295,14 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
           {recording ? <Square size={18} fill="currentColor" /> : <Mic size={20} />}
         </Button>
         <Button type="submit" size="icon" aria-label="שליחה" disabled={busy || !input.trim()}
-          className="h-12 w-12 shrink-0 rounded-full gradient-honey text-primary-foreground">
-          <ArrowUp size={20} />
+          className="h-12 w-12 shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-[#DAD7EE] disabled:text-[#5E5A9E] disabled:opacity-100">
+          <Send size={20} strokeWidth={1.5} />
         </Button>
       </form>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-        <Button type="button" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={onManual}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* As drawn: the manual route is the one big orange pill. */}
+        <Button type="button" className="h-12 w-full gap-1.5 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90" onClick={onManual}>
           <ListChecks size={16} /> אמלא בעצמי
         </Button>
 

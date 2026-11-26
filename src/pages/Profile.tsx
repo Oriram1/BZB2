@@ -6,7 +6,7 @@ import ReviewReportsPanel from "@/components/reviews/ReviewReportsPanel";
 import { ReviewResponseEditor, type ReviewResponse } from "@/components/reviews/ReviewResponseEditor";
 import ReviewDialog from "@/components/reviews/ReviewDialog";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,8 @@ import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import {
   Edit3, Save, X, ClipboardList, TrendingUp, DollarSign,
-  Eye, Users, CheckCircle, Clock, BarChart3, Mail, Star
+  Eye, Users, CheckCircle, Clock, Mail, Star, ChevronLeft, ArrowLeft, Plus, FileText, Briefcase,
+  Coins, MoreVertical, Handshake, Wallet, Trophy, Sparkle
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { displayName, formatCurrency, formatDate } from "@/lib/format";
@@ -36,6 +37,8 @@ import { primaryRoleLabel } from "@/lib/roles";
 import { inBatches } from "@/lib/people";
 import { PARENT_CONTACT_ERRORS, mapDbError } from "@/lib/errors";
 import { useRoles } from "@/hooks/useRoles";
+import { useRoleSwitch } from "@/hooks/useRoleSwitch";
+import { registerPath } from "@/lib/routes";
 import { functionErrorCode } from "@/lib/invokeFunction";
 
 interface ReviewHistoryRow {
@@ -94,9 +97,12 @@ interface TaskWithApps {
 }
 
 const Profile = () => {
-  const { user, profile, roles, loading: authLoading, refreshProfile } = useAuth();
+  const { user, profile, roles, activeRole, loading: authLoading, refreshProfile } = useAuth();
+  const navigate = useNavigate();
+  const { switching, switchTo } = useRoleSwitch();
   const { isTasker, isBee, isAdmin } = useRoles();
   const [editing, setEditing] = useState(false);
+  const [showAllRatings, setShowAllRatings] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [form, setForm] = useState({ first_name: "", last_name: "", age: "", address: "", phone: "", gender: "unspecified" as Gender });
@@ -383,7 +389,7 @@ const Profile = () => {
       <div className="min-h-screen bg-muted flex items-center justify-center" dir="rtl">
         <div className="text-center">
           <p className="text-xl font-bold text-foreground mb-4">יש להתחבר כדי לצפות בפרופיל</p>
-          <Button className="gradient-honey text-primary-foreground rounded-full font-bold" asChild>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-semibold" asChild>
 <Link to="/auth">כניסה 🐝</Link>
 </Button>
         </div>
@@ -395,51 +401,244 @@ const Profile = () => {
   const roleLabel = primaryRoleLabel(roles);
 
   return (
-    <div className="min-h-screen bg-muted relative" dir="rtl">
-      <div className="absolute top-40 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
-
+    <div className="figma min-h-screen bg-background relative" dir="rtl">
+      {/* "האיזור שלי" frame: back / centred title / menu, grey page, white cards. */}
       <PageHeader
+        variant="figma"
+        centerTitle
+        title="האיזור שלי"
+        titleIsPageHeading
         action={
-          <Button size="sm" className="bg-card text-foreground font-bold rounded-full hover:scale-105 transition-transform duration-300" asChild>
+          <Button size="sm" className="rounded-full bg-card text-foreground font-medium border border-border" asChild>
 <Link to="/tasks">מטלות זמינות</Link>
 </Button>
         }
       />
 
-      <div className="max-w-3xl mx-auto py-8 px-4 relative z-10 space-y-6">
+      <div className="max-w-3xl mx-auto py-5 px-4 relative z-10 space-y-5">
         <PendingRatingsCard />
-        <Card className="border-border overflow-hidden">
-          {/* Identity sits at the top, on the banner — avatar, name and role in
-              one row, so the gradient is a backdrop rather than dead space. */}
-          <div className="gradient-honey px-5 py-5">
-            <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <AvatarPicker userId={user.id} currentAvatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
-              <div className="min-w-0 text-center sm:text-right">
-                <h1 className="text-lg sm:text-2xl leading-tight font-extrabold text-foreground truncate max-w-[200px] sm:max-w-none sm:break-words sm:whitespace-normal">{name}</h1>
-                {roleLabel && (
-                  <Badge className="bg-card text-foreground border-none font-bold mt-1.5 shadow-sm">{roleLabel}</Badge>
-                )}
+        {/* Identity as drawn: avatar and greeting centred, the publish / perform
+            switch, the one orange call to action, then a thin rule. */}
+        <section className="flex flex-col items-center text-center">
+          <AvatarPicker userId={user.id} currentAvatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
+          <p className="mt-3 text-[22px] font-bold leading-tight text-foreground">שלום {form.first_name || name} 👋</p>
+          <p className="mt-1 text-sm text-muted-foreground">כאן אפשר לנהל את המטלות והפעילות שלך</p>
+          <div role="group" aria-label="מצב עבודה" className="mt-5 inline-grid grid-cols-2 rounded-full border border-border bg-[#F3F3F3] p-[3px]">
+            {([
+              { role: "tasker" as const, label: "פרסום מטלות", Icon: FileText },
+              { role: "bee" as const, label: "ביצוע מטלות", Icon: Briefcase },
+            ]).map(({ role, label, Icon }) => {
+              const on = activeRole === role;
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={switching}
+                  onClick={() => {
+                    if (on) return;
+                    if (roles.includes(role)) void switchTo(role);
+                    else navigate(registerPath(role));
+                  }}
+                  className={`flex min-h-[35px] items-center justify-center gap-2 rounded-full px-3 text-sm ${on ? "bg-card font-semibold text-foreground shadow-card" : "text-muted-foreground"}`}
+                >
+                  {label}
+                  <Icon size={16} aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+          {isTasker && (
+            <Button className="mt-5 h-12 w-full rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 gap-2" asChild>
+              <Link to="/create-task"><Plus size={18} aria-hidden="true" />פרסום מטלה חדשה</Link>
+            </Button>
+          )}
+          <hr className="mt-6 w-full border-border" />
+        </section>
+
+        {(isTasker || taskerStats.total > 0 || taskerStatsError) && (
+          <>
+            <h2 className="text-lg font-bold text-foreground">במבט מהיר</h2>
+            <div className="grid grid-cols-2 gap-3 rounded-2xl bg-card p-3 shadow-card">
+              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.total} to="/my-tasks?tab=published" />
+              <StatCard icon={Clock} label="מטלות פתוחות" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.open} to="/my-tasks?tab=published" />
+              <StatCard icon={Users} label="נרשמים" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.totalApplicants} to="/my-tasks?tab=applications" />
+              <StatCard icon={CheckCircle} label="מטלות שהושלמו" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.completed} to="/my-tasks?tab=published" />
+            </div>
+            {taskerStatsError && <p role="alert" className="text-sm text-destructive">נתוני המטלות לא נטענו. יש לרענן ולנסות שוב.</p>}
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground">המטלות שפרסמתי</h2>
+              <Link to="/my-tasks?tab=published" className="flex items-center gap-1.5 text-sm text-primary-ink">לכל המטלות<ArrowLeft size={16} aria-hidden="true" /></Link>
+            </div>
+            {loadingData ? (
+              <p className="py-4 text-center text-muted-foreground">טוען...</p>
+            ) : myTasks.length === 0 ? (
+              <div className="rounded-2xl bg-card p-6 text-center shadow-card">
+                <p className="mb-3 text-muted-foreground">עדיין לא פרסמת מטלות</p>
+                <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" asChild>
+                  <Link to="/create-task">פרסם מטלה</Link>
+                </Button>
               </div>
-              <div className="sm:mr-auto shrink-0">
-                {!editing ? (
-                  <Button size="sm" onClick={() => setEditing(true)} className="bg-card text-foreground hover:bg-card/90 rounded-full font-bold shadow-sm px-3">
-                    <Edit3 className="w-4 h-4 ml-1" /> עריכה
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-card text-foreground hover:bg-card/90 rounded-full font-bold shadow-sm">
-                      <Save className="w-4 h-4 ml-1" /> {saving ? "שומר..." : "שמור"}
-                    </Button>
-                    <Button size="sm" onClick={() => setEditing(false)} className="bg-card text-foreground hover:bg-card/90 rounded-full shadow-sm">
-                      <X className="w-4 h-4" />
-                    </Button>
+            ) : (() => {
+              /* The design shows the latest published task only; the rest are behind "לכל המטלות". */
+              const task = myTasks[0];
+              return (
+                <article className="rounded-2xl bg-card p-4 shadow-card">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">המטלה שלי</p>
+                    <Badge variant="outline" className="rounded-full border-green-600 bg-green-50 px-3 py-1 text-sm font-normal text-green-700">{taskStatusLabel(task.status)}</Badge>
+                  </div>
+                  <Link to={`/task/${task.id}`} className="mt-3 block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <h3 className="text-xl font-bold text-foreground">{task.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{task.short_desc}</p>
+                  </Link>
+                  <dl className="mt-4 grid grid-cols-3 divide-x divide-x-reverse divide-border text-center">
+                    {[
+                      { Icon: Coins, label: "תקציב", value: formatCurrency(task.payment) },
+                      { Icon: Eye, label: "צפיות", value: String(task.views_count) },
+                      { Icon: Users, label: "נרשמים", value: String(task.applications.length) },
+                    ].map(({ Icon, label, value }) => (
+                      <div key={label} className="flex flex-col items-center gap-1.5 px-1">
+                        <span className="grid h-8 w-8 place-items-center rounded-full bg-primary-soft text-primary-ink"><Icon size={16} aria-hidden="true" /></span>
+                        <div className="flex items-baseline gap-1 text-sm"><dt className="text-muted-foreground">{label}</dt><dd className="font-bold text-foreground tabular-nums">{value}</dd></div>
+                      </div>
+                    ))}
+                  </dl>
+                  <hr className="my-4 border-border" />
+                  <div className="flex items-center justify-between">
+                    <Link to={`/task/${task.id}`} className="flex items-center gap-2 text-base font-medium text-primary-ink">לפרטי המטלה<ArrowLeft size={18} aria-hidden="true" /></Link>
+                    <Link to={task.applications.some((a) => a.status === "pending") ? `/my-tasks?tab=applications&task=${task.id}` : `/my-tasks?tab=published`} aria-label="עוד אפשרויות" className="grid h-9 w-9 place-items-center rounded-full text-foreground hover:bg-muted"><MoreVertical size={18} aria-hidden="true" /></Link>
+                  </div>
+                </article>
+              );
+            })()}
+          </>
+        )}
+
+        {(isBee || isTasker || beeStats.applied > 0 || beeStatsError) && (() => {
+          const ratings = receivedReviews.map((review) => review.rating);
+          const average = ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null;
+          return (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-foreground">הביצועים שלי</h2>
+                <Link to="/my-tasks?tab=performing" className="flex items-center gap-1.5 text-sm text-primary-ink">לכל הפעילות<ArrowLeft size={16} aria-hidden="true" /></Link>
+              </div>
+              <div className="rounded-2xl bg-card p-3 shadow-card space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <StatCard icon={Handshake} label="מועמדויות" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.applied} to="/my-tasks?tab=performing" />
+                  <StatCard icon={CheckCircle} label="מטלות שהושלמו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.completed} to="/my-tasks?tab=performing" />
+                  <StatCard icon={Wallet} label="הכנסות" value={loadingData ? "…" : beeStatsError ? "-" : formatCurrency(beeStats.totalEarnings)} />
+                  <StatCard icon={Star} label="דירוג ממוצע" value={loadingData || average === null ? "-" : average.toFixed(1)} suffix={average === null ? undefined : "מתוך 5"} />
+                </div>
+                {average !== null && average >= 4.5 && (
+                  <div className="flex items-center gap-3 rounded-xl border border-primary-soft-border bg-primary-soft p-3">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary-soft-border text-primary-ink"><Trophy size={20} aria-hidden="true" /></span>
+                    <div>
+                      <p className="font-bold text-foreground">מעולה!</p>
+                      <p className="text-sm text-foreground">הדירוג שלך גבוה.</p>
+                    </div>
                   </div>
                 )}
               </div>
+              {beeStatsError && <p role="alert" className="text-sm text-destructive">נתוני הביצוע וההכנסות לא נטענו. יש לרענן ולנסות שוב.</p>}
+              {!beeStatsError && (beeStats.estimatedEarnings || beeStats.missingHours) && (
+                <p className="text-xs text-muted-foreground">
+                  הסכום כולל רק משימות שהושלמו. תשלום שעתי מחושב לפי משך המשימה המשוער.
+                  {beeStats.missingHours && " משימות שעתיות ללא משך אינן כלולות בסכום."}
+                </p>
+              )}
+
+              <div className="rounded-2xl bg-card p-4 shadow-card">
+                <h2 className="mb-3 text-lg font-bold text-foreground">המטלות שלי</h2>
+                <nav aria-label="המטלות שלי" className="space-y-2">
+                  {[
+                    { to: "/my-tasks?tab=applications", label: "מועמדויות" },
+                    { to: "/my-tasks?tab=published", label: "מטלות פתוחות" },
+                    { to: "/my-tasks?tab=performing", label: "מטלות שביצעתי" },
+                    { to: "/tasks", label: "חיפוש מטלות" },
+                  ].map((row) => (
+                    <Link key={row.label} to={row.to} className="flex min-h-[46px] items-center justify-between rounded-lg border border-border px-4 text-sm text-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <span>{row.label}</span>
+                      <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </>
+          );
+        })()}
+
+        <Card className="border-border shadow-card">
+          <div className="flex items-center gap-3 p-4">
+            <Sparkle className="h-6 w-6 shrink-0 text-primary-ink" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-bold text-foreground">דירוגים וביקורות שקיבלתי</h2>
+              {receivedReviews.length === 0 && <p className="text-sm text-muted-foreground">עדיין אין ביקורות שאושרו</p>}
             </div>
+            <Button type="button" variant="outline" size="sm" aria-expanded={showAllRatings} onClick={() => setShowAllRatings((v) => !v)} className="shrink-0 rounded-full px-3 text-xs font-medium text-muted-foreground">
+              לכל הדירוגים
+            </Button>
+          </div>
+          {(showAllRatings || receivedReviewsError) && (
+          <CardContent className="pt-0">
+            {loadingData ? <p className="text-sm text-muted-foreground">טוענים ביקורות...</p> : receivedReviewsError ? (
+              <p role="alert" className="text-sm text-destructive">לא הצלחנו לטעון את הביקורות. יש לרענן ולנסות שוב.</p>
+            ) : receivedReviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">עדיין אין ביקורות שאושרו.</p>
+            ) : (
+              <>
+              <div className="mb-4 space-y-1" aria-label="התפלגות הדירוגים שקיבלתי">
+                {[5, 4, 3, 2, 1].map((stars) => {
+                  const count = receivedReviews.filter((review) => review.rating === stars).length;
+                  return <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="w-3">{stars}</span><Star size={12} className="fill-yellow-400 text-yellow-500" aria-hidden="true" /><div className="h-2 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-yellow-400" style={{ width: `${count / receivedReviews.length * 100}%` }} /></div><span className="w-5 text-end tabular-nums">{count}</span></div>;
+                })}
+              </div>
+              <div className="mb-4 flex flex-wrap gap-3 text-sm">
+                <label>מיון <select value={receivedSort} onChange={(event) => setReceivedSort(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="newest">החדשות ביותר</option><option value="highest">הגבוהות ביותר</option><option value="lowest">הנמוכות ביותר</option></select></label>
+                <label>סינון <select value={receivedFilter} onChange={(event) => setReceivedFilter(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="all">כל הדירוגים</option>{[5, 4, 3, 2, 1].map((stars) => <option key={stars} value={stars}>{stars} כוכבים</option>)}</select></label>
+              </div>
+              <ul className="space-y-3">
+                {[...receivedReviews].filter((review) => receivedFilter === "all" || review.rating === Number(receivedFilter)).sort((a, b) => receivedSort === "highest" ? b.rating - a.rating : receivedSort === "lowest" ? a.rating - b.rating : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((review) => (
+                  <li key={review.id} className="rounded-2xl bg-muted/50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
+                      <time className="text-xs text-muted-foreground" dateTime={review.created_at}>{formatDate(review.created_at)}</time>
+                    </div>
+                    {review.body && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">{review.body}</p>}
+                    <ReviewTags tags={review.tags} />
+                    <ReviewResponseEditor key={`${review.id}:${receivedResponses.find((response) => response.review_id === review.id)?.body ?? ""}`} reviewId={review.id} response={receivedResponses.find((response) => response.review_id === review.id)} onSaved={() => void loadReceivedReviews()} />
+                  </li>
+                ))}
+              </ul>
+              </>
+            )}
+          </CardContent>
+          )}
+        </Card>
+
+        {!isAdmin && <DeleteAccountCard />}
+        {/* The design ends here; what follows is not drawn and stays below it. */}
+        <Card className="border-border overflow-hidden shadow-card">
+          <div className="flex justify-end px-4 pt-4">
+            {!editing ? (
+              <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="rounded-full font-medium px-3">
+                <Edit3 className="w-4 h-4 ml-1" /> עריכה
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSave} disabled={saving} className="rounded-full font-medium">
+                  <Save className="w-4 h-4 ml-1" /> {saving ? "שומר..." : "שמור"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setEditing(false)} className="rounded-full" aria-label="ביטול עריכה">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
-          <CardContent className="pt-5 pb-6">
+          <CardContent className="pt-3 pb-5">
 
             {editing ? (
               <div className="grid grid-cols-2 gap-3">
@@ -505,9 +704,9 @@ const Profile = () => {
         </Card>
 
         {isBee && (
-          <Card className="overflow-hidden border-border">
+          <Card className="overflow-hidden border-border shadow-card">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className="flex items-center gap-2 text-base font-bold">
                 <Mail className="h-5 w-5 text-primary-ink" />
                 עדכונים להורה
               </CardTitle>
@@ -604,179 +803,10 @@ const Profile = () => {
           </Card>
         )}
 
-        {(isTasker || taskerStats.total > 0 || taskerStatsError) && (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={ClipboardList} label="סה״כ מטלות" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.total} color="text-primary-ink" to="/my-tasks?tab=published" />
-              <StatCard icon={Clock} label="פתוחות" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.open} color="text-amber-500" to="/my-tasks?tab=published" />
-              <StatCard icon={CheckCircle} label="הושלמו" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.completed} color="text-green-600" to="/my-tasks?tab=published" />
-              <StatCard icon={Users} label="נרשמים" value={loadingData ? "…" : taskerStatsError ? "-" : taskerStats.totalApplicants} color="text-blue-500" to="/my-tasks?tab=applications" />
-            </div>
-
-            {taskerStatsError && <p role="alert" className="text-sm text-destructive">נתוני המטלות לא נטענו. יש לרענן ולנסות שוב.</p>}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-primary-ink" />
-                  המטלות שלי
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {loadingData ? (
-                  <p className="text-center text-muted-foreground py-4">טוען...</p>
-                ) : myTasks.length === 0 ? (
-                  <div className="text-center py-6">
-                    <p className="text-muted-foreground mb-3">עדיין לא פרסמת מטלות</p>
-                    <Button className="gradient-honey text-primary-foreground rounded-full font-bold" asChild>
-<Link to="/create-task">פרסם מטלה 🐝</Link>
-</Button>
-                  </div>
-                ) : (
-                  myTasks.map((task) => (
-                    <div key={task.id} className="bg-muted/50 rounded-2xl p-4 border border-border">
-                      <div className="flex items-start justify-between mb-2 gap-3">
-                        <div className="min-w-0">
-                          {/* The title is the obvious thing to click, so it is
-                              the link — the button below is for anyone who
-                              does not think to try. */}
-                          <Link to={`/task/${task.id}`} className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                            <h3 className="font-bold text-foreground hover:text-primary-ink hover:underline underline-offset-4 transition-colors">
-                              {task.name}
-                            </h3>
-                          </Link>
-                          <p className="text-sm text-muted-foreground">{task.short_desc}</p>
-                        </div>
-                        <Badge variant="outline" className="font-bold text-xs shrink-0">{taskStatusLabel(task.status)}</Badge>
-                      </div>
-                      <div className="flex gap-4 text-xs text-muted-foreground mb-2">
-                        <span>👁️ {task.views_count} צפיות</span>
-                        <span className="tabular">{formatCurrency(task.payment)} {task.payment_type === "hour" ? "/שעה" : "/מטלה"}</span>
-                        <span>📝 {task.applications.length} נרשמים</span>
-                      </div>
-
-                      <div className="border-t border-border pt-3 mt-2">
-                        <Button size="sm" variant="outline" className="w-full rounded-full font-bold" asChild>
-<Link to={`/task/${task.id}`}><Eye className="w-4 h-4" />
-                            לפרטי המטלה</Link>
-</Button>
-                      </div>
-
-                      {task.applications.filter(a => a.status === "pending").length > 0 && (
-                        <div className="pt-3 mt-1 space-y-2">
-                          <p className="text-xs font-bold text-foreground">
-                            {task.applications.filter(a => a.status === "pending").length} מועמדויות ממתינות
-                          </p>
-                          <Button size="sm" className="w-full rounded-full gradient-honey text-primary-foreground font-bold" asChild>
-<Link to={`/my-tasks?tab=applications&task=${task.id}`}>לניהול המועמדויות</Link>
-</Button>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {(isBee || isTasker || beeStats.applied > 0 || beeStatsError) && (
-          <>
-            <Card className="border-border bg-card/80">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <TrendingUp className="h-5 w-5 text-primary-ink" />
-                  הביצועים שלי כמבצע/ת מטלות
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">כאן תראו כמה מטלות השלמתם וכמה כסף הן הכניסו לכם.</p>
-              </CardHeader>
-            </Card>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={ClipboardList} label="הגשות" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.applied} color="text-primary-ink" to="/my-tasks?tab=performing" />
-              <StatCard icon={CheckCircle} label="התקבלו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.accepted} color="text-green-600" to="/my-tasks?tab=performing" />
-              <StatCard icon={TrendingUp} label="הושלמו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.completed} color="text-blue-500" to="/my-tasks?tab=performing" />
-              <StatCard icon={DollarSign} label={beeStats.estimatedEarnings ? "הכנסות משוערות" : "הכנסות"} value={loadingData ? "…" : beeStatsError ? "-" : formatCurrency(beeStats.totalEarnings)} color="text-amber-500" />
-            </div>
-
-            {beeStatsError && <p role="alert" className="text-sm text-destructive">נתוני הביצוע וההכנסות לא נטענו. יש לרענן ולנסות שוב.</p>}
-            {!beeStatsError && (beeStats.estimatedEarnings || beeStats.missingHours) && (
-              <p className="text-xs text-muted-foreground">
-                הסכום כולל רק משימות שהושלמו. תשלום שעתי מחושב לפי משך המשימה המשוער.
-                {beeStats.missingHours && " משימות שעתיות ללא משך אינן כלולות בסכום."}
-              </p>
-            )}
-
-            {/* The stats above answer "how am I doing". This answers "take me there". */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-primary-ink" />
-                  המטלות שלי
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-2 sm:grid-cols-3">
-                <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold" asChild>
-<Link to="/my-tasks?tab=performing"><ClipboardList className="w-4 h-4" />
-                    המועמדויות שלי</Link>
-</Button>
-                <Button variant="outline" className="w-full min-h-11 rounded-xl font-bold" asChild>
-<Link to="/my-tasks?tab=performing"><CheckCircle className="w-4 h-4" />
-                    מטלות שאני מבצע</Link>
-</Button>
-                <Button className="w-full min-h-11 rounded-xl font-bold gradient-honey text-primary-foreground border-none" asChild>
-<Link to="/tasks"><Eye className="w-4 h-4" />
-                    חיפוש מטלות</Link>
-</Button>
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Star className="h-5 w-5 fill-yellow-400 text-yellow-500" aria-hidden="true" />
-              דירוגים וביקורות שקיבלתי
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingData ? <p className="text-sm text-muted-foreground">טוענים ביקורות...</p> : receivedReviewsError ? (
-              <p role="alert" className="text-sm text-destructive">לא הצלחנו לטעון את הביקורות. יש לרענן ולנסות שוב.</p>
-            ) : receivedReviews.length === 0 ? (
-              <p className="text-sm text-muted-foreground">עדיין אין ביקורות שאושרו.</p>
-            ) : (
-              <>
-              <div className="mb-4 space-y-1" aria-label="התפלגות הדירוגים שקיבלתי">
-                {[5, 4, 3, 2, 1].map((stars) => {
-                  const count = receivedReviews.filter((review) => review.rating === stars).length;
-                  return <div key={stars} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="w-3">{stars}</span><Star size={12} className="fill-yellow-400 text-yellow-500" aria-hidden="true" /><div className="h-2 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-yellow-400" style={{ width: `${count / receivedReviews.length * 100}%` }} /></div><span className="w-5 text-end tabular-nums">{count}</span></div>;
-                })}
-              </div>
-              <div className="mb-4 flex flex-wrap gap-3 text-sm">
-                <label>מיון <select value={receivedSort} onChange={(event) => setReceivedSort(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="newest">החדשות ביותר</option><option value="highest">הגבוהות ביותר</option><option value="lowest">הנמוכות ביותר</option></select></label>
-                <label>סינון <select value={receivedFilter} onChange={(event) => setReceivedFilter(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1"><option value="all">כל הדירוגים</option>{[5, 4, 3, 2, 1].map((stars) => <option key={stars} value={stars}>{stars} כוכבים</option>)}</select></label>
-              </div>
-              <ul className="space-y-3">
-                {[...receivedReviews].filter((review) => receivedFilter === "all" || review.rating === Number(receivedFilter)).sort((a, b) => receivedSort === "highest" ? b.rating - a.rating : receivedSort === "lowest" ? a.rating - b.rating : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((review) => (
-                  <li key={review.id} className="rounded-2xl bg-muted/50 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-amber-500" aria-label={`${review.rating} מתוך 5 כוכבים`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
-                      <time className="text-xs text-muted-foreground" dateTime={review.created_at}>{formatDate(review.created_at)}</time>
-                    </div>
-                    {review.body && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">{review.body}</p>}
-                    <ReviewTags tags={review.tags} />
-                    <ReviewResponseEditor key={`${review.id}:${receivedResponses.find((response) => response.review_id === review.id)?.body ?? ""}`} reviewId={review.id} response={receivedResponses.find((response) => response.review_id === review.id)} onSaved={() => void loadReceivedReviews()} />
-                  </li>
-                ))}
-              </ul>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
         {reviewHistory.length > 0 && (
-          <Card className="border-border">
+          <Card className="border-border shadow-card">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className="flex items-center gap-2 text-base font-bold">
                 <Star className="h-5 w-5 fill-yellow-400 text-yellow-500" />
                 הדירוגים שנתתי
               </CardTitle>
@@ -803,27 +833,31 @@ const Profile = () => {
           initialReview={{ id: editingReview.id, rating: editingReview.rating, body: editingReview.body, tags: editingReview.tags }} />}
         <ReviewReportsPanel />
         <PasswordCard />
-        {!isAdmin && <DeleteAccountCard />}
       </div>
     </div>
   );
 };
 
-function StatCard({ icon: Icon, label, value, color, to }: { icon: LucideIcon; label: string; value: string | number; color: string; to?: string }) {
+function StatCard({ icon: Icon, label, value, suffix, to }: { icon: LucideIcon; label: string; value: string | number; suffix?: string; to?: string }) {
+  /* Tile as drawn on "האיזור שלי": soft lilac-grey tile, label at the start and a
+     thin line icon at the end, the number large underneath. */
   const card = (
-    <Card className={`border-border h-full ${to ? "transition-transform hover:scale-[1.03] hover:border-primary/40" : ""}`}>
-      <CardContent className="p-4 flex flex-col items-center text-center gap-1">
-        <Icon className={`w-6 h-6 ${color}`} />
-        <span className="text-2xl font-extrabold text-foreground">{value}</span>
-        <span className="text-xs text-muted-foreground font-semibold">{label}</span>
-      </CardContent>
-    </Card>
+    <div className={`h-full rounded-xl bg-secondary px-4 py-2.5 text-start ${to ? "transition-colors hover:bg-muted" : ""}`}>
+      <div className="flex items-center justify-between gap-2 text-sm text-foreground">
+        <span>{label}</span>
+        <Icon className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+      </div>
+      <p className="mt-2 flex items-baseline gap-2 text-2xl font-bold leading-none text-foreground tabular-nums">
+        {value}
+        {suffix && <span className="text-sm font-normal text-muted-foreground">{suffix}</span>}
+      </p>
+    </div>
   );
 
   // A number the person cannot act on is a dead end; where the figure has a
-  // page behind it, the card is the way in.
+  // page behind it, the tile is the way in.
   return to ? (
-    <Link to={to} className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <Link to={to} className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       {card}
     </Link>
   ) : (

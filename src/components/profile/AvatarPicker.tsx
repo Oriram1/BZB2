@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Pencil, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,7 +83,7 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
           aria-label="שינוי תמונת הפרופיל"
           className="relative group rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <div className="w-24 h-24 rounded-full border-4 border-primary/20 shadow-lg overflow-hidden bg-muted">
+          <div className="h-[84px] w-[84px] rounded-full border-[3px] border-primary overflow-hidden bg-muted">
             {displayAvatar ? (
               <img src={displayAvatar} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -92,9 +92,9 @@ export function AvatarPicker({ userId, currentAvatarUrl, onAvatarChange }: Avata
               </div>
             )}
           </div>
-          <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center justify-center">
-            <Camera aria-hidden="true" className="w-6 h-6 text-white" />
-          </div>
+          <span className="absolute bottom-0 start-0 grid h-7 w-7 place-items-center rounded-full border border-border bg-card text-foreground shadow-card">
+            <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
+          </span>
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-md" dir="rtl">

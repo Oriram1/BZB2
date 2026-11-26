@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2, CircleUser as UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,18 +39,19 @@ export function DeleteAccountCard() {
   };
 
   return (
-    <><Card className="border-destructive/30">
-      <CardContent className="pt-5 pb-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold text-foreground">מחיקת חשבון</p>
-            <p className="text-xs text-muted-foreground">מחיקה לצמיתות של כל המידע שלך מהמערכת</p>
+    <><Card className="border-border shadow-card">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <UserCircle className="h-6 w-6 shrink-0 text-primary-ink" strokeWidth={1.5} aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-bold text-foreground">מחיקת חשבון</p>
+            <p className="text-sm text-muted-foreground">מחיקה לצמיתות של כל המידע שלך מהמערכת</p>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowDeleteDialog(true)}
-            className="rounded-xl font-bold text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive shrink-0"
+            className="shrink-0 rounded-full px-4 font-medium text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="w-4 h-4" />
             מחיקה

@@ -431,23 +431,21 @@ const CreateTask = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden" dir="rtl">
-      <PageHeader title="פרסום מטלה חדשה" titleIsPageHeading />
-      <div className="absolute inset-0 bg-muted" />
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-blob" />
-      <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
+    <div className="figma min-h-screen relative overflow-hidden bg-background" dir="rtl">
+      {/* "יצירת מטלה חדשה" frames: back / centred title / menu on a plain grey page. */}
+      <PageHeader variant="figma" centerTitle title="יצירת מטלה חדשה" titleIsPageHeading />
 
       <div className="relative z-10 w-full max-w-2xl mx-auto py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8">
 
         {quote && !quote.billing_off && quote.free_slot && (
-          <div className="mb-6 rounded-3xl gradient-honey text-primary-foreground shadow-honey px-5 py-4 text-center" data-testid="first-task-banner">
+          <div className="mb-6 rounded-2xl bg-primary text-primary-foreground shadow-card px-5 py-4 text-center" data-testid="first-task-banner">
             <p className="text-xl font-extrabold">🎁 המטלה הראשונה עלינו!</p>
             <p className="text-sm mt-1 opacity-90">כיף שהגעתם! אפשר לפרסם אותה בלי כרטיס אשראי ובלי שום חיוב. רק מהמטלה הבאה נבקש פרטי תשלום.</p>
           </div>
         )}
 
         {assistantOpen ? (
-          <div className="rounded-3xl border border-border bg-background p-4 shadow-sm sm:p-6">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-6">
             <TaskAssistant onApply={(fields, missing, location) => void applyAssistant(fields, missing, location)} onManual={() => setAssistantOpen(false)} />
           </div>
         ) : (<>
@@ -467,8 +465,8 @@ const CreateTask = () => {
                   <div
                     aria-label={`שלב ${s.id}: ${s.label}`}
                     className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      isDone ? "gradient-honey text-primary-foreground shadow-honey" :
-                      isActive ? "bg-primary text-primary-foreground shadow-glow scale-110" :
+                      isDone ? "bg-primary text-primary-foreground" :
+                      isActive ? "bg-primary text-primary-foreground ring-4 ring-primary-soft" :
                       "bg-card border-2 border-border text-muted-foreground"
                     }`}
                   >
@@ -488,7 +486,7 @@ const CreateTask = () => {
           })}
         </div>
 
-        <div className="glass rounded-3xl shadow-glow p-6 sm:p-8 border border-border animate-pop-in space-y-8 [&>div+div]:border-t [&>div+div]:border-border [&>div+div]:pt-8" key={step}>
+        <div className="rounded-2xl bg-card shadow-card p-5 sm:p-8 border border-border animate-pop-in space-y-8 [&>div+div]:border-t [&>div+div]:border-border [&>div+div]:pt-8" key={step}>
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <h2 className="text-xl font-bold text-foreground mb-2 text-start">בחירת קטגוריה</h2>
@@ -503,10 +501,10 @@ const CreateTask = () => {
                       role="radio"
                       aria-checked={isSelected}
                       onClick={() => updateForm("category", c.value)}
-                      className={`flex flex-col items-center justify-center gap-2 p-4 min-h-24 rounded-2xl text-center font-bold transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      className={`flex flex-col items-center justify-center gap-2 p-4 min-h-24 rounded-xl text-center font-medium transition-colors duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         isSelected
-                          ? "gradient-honey text-primary-foreground border-transparent shadow-honey scale-[1.02]"
-                          : "bg-card text-foreground border-border hover:border-primary hover:bg-accent/50"
+                          ? "bg-primary-soft text-foreground border-primary"
+                          : "bg-card text-foreground border-border hover:border-primary-soft-border hover:bg-primary-soft"
                       }`}
                     >
                       <Icon size={26} aria-hidden="true" />
@@ -942,7 +940,7 @@ const CreateTask = () => {
               variant="outline"
               onClick={() => setStep((s) => s - 1)}
               disabled={step === 1}
-              className="rounded-full px-6 h-12 font-bold min-w-[110px]"
+              className="rounded-full px-6 h-12 font-medium min-w-[110px]"
             >
               <ChevronRight size={18} />
               הקודם
@@ -964,7 +962,7 @@ const CreateTask = () => {
                   setStep((s) => s + 1);
                 }}
                 disabled={!canProceed() || locationLoading}
-                className="gradient-honey text-primary-foreground rounded-full px-7 h-12 border-none font-extrabold min-w-[110px] hover:scale-105 transition-transform"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-7 h-12 border-none font-semibold min-w-[110px]"
               >
                 הבא
                 <ChevronLeft size={18} />
@@ -973,7 +971,7 @@ const CreateTask = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="gradient-honey text-primary-foreground rounded-full px-7 h-12 border-none font-extrabold min-w-[110px] hover:scale-105 transition-transform"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-7 h-12 border-none font-semibold min-w-[110px]"
               >
                 {loading ? "מפרסם..." : "פרסם מטלה 🐝"}
               </Button>

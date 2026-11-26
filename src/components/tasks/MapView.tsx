@@ -88,7 +88,7 @@ const MapView = ({ tasks, saved, onToggleSave }: MapViewProps) => {
 
   return (
     <div className="rounded-lg overflow-hidden border border-border shadow-card animate-fade-in relative">
-      <div ref={containerRef} style={{ height: "500px", width: "100%" }} />
+      <div ref={containerRef} style={{ height: "max(420px, calc(100dvh - 256px))", width: "100%" }} />
 
       {/* "Task Popup — Overlay" in the design is the list card itself. */}
       {selected && (

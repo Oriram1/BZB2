@@ -125,6 +125,8 @@ export function MobileNav() {
   const drawerItems = filteredItems.flatMap((item) => {
     if (item.to === ROUTES.tasks && user && showBeeMenu) return [item, { ...item, label: "מועדפים", to: SAVED_TASKS_PATH }];
     if (item.to === ROUTES.myTasks && showBeeMenu) return [item, { ...item, label: "מטלות שביצעתי", to: DONE_TASKS_PATH }];
+    /* The publisher's menu in the design calls this entry "מטלות שפרסמתי". */
+    if (item.to === ROUTES.myTasks && user && !showBeeMenu) return [{ ...item, label: "מטלות שפרסמתי" }];
     return [item];
   }).concat([{ label: "עזרה ותמיכה", to: ROUTES.help, icon: Question as unknown as (typeof filteredItems)[number]["icon"] }]);
   /** The design separates settings and help from the task entries with a rule. */

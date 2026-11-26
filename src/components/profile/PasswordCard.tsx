@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/PasswordStrength";
@@ -39,22 +39,21 @@ export function PasswordCard() {
   };
 
   return (
-    <Card className="border-border">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <KeyRound size={18} className="text-primary-ink" aria-hidden="true" />
-          {googleOnly ? "סיסמה (לא חובה)" : "שינוי סיסמה"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card className="border-border shadow-card">
+      <CardContent className="p-4">
         {!open ? (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              {googleOnly
-                ? "כרגע נכנסים רק עם גוגל. אפשר להוסיף סיסמה כדי להתחבר גם עם מייל."
-                : "אפשר לעדכן את הסיסמה לכניסה עם מייל."}
-            </p>
-            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          /* As drawn: icon, title and one line of text at the start, the outlined pill at the end. */
+          <div className="flex items-center gap-3">
+            <KeyRound size={24} strokeWidth={1.5} className="shrink-0 text-primary-ink" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-bold text-foreground">{googleOnly ? "סיסמה (לא חובה)" : "שינוי סיסמה"}</p>
+              <p className="text-sm text-muted-foreground">
+                {googleOnly
+                  ? "כרגע נכנסים רק עם גוגל. אפשר להוסיף סיסמה כדי להתחבר גם עם מייל."
+                  : "אפשר לעדכן את הסיסמה לכניסה עם מייל."}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="shrink-0 rounded-full px-4 font-medium text-muted-foreground" onClick={() => setOpen(true)}>
               {googleOnly ? "הוספת סיסמה" : "שינוי"}
             </Button>
           </div>
