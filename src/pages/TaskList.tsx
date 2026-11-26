@@ -291,7 +291,7 @@ const TaskList = () => {
 
         <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <div
-            className="flex gap-2 overflow-x-auto pb-1 [mask-image:linear-gradient(to_left,#000_calc(100%-1.5rem),transparent)]"
+            className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_left,#000_calc(100%-1.5rem),transparent)]"
             role="group"
             aria-label="קטגוריה"
           >
@@ -472,7 +472,7 @@ const TaskList = () => {
       </div>
 
       {sortOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div aria-hidden="true" className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setSortOpen(false)} />
           <div
             role="dialog"
@@ -509,8 +509,8 @@ const TaskList = () => {
               })}
             </div>
             <Button className="mt-5 h-14 w-full gap-2 rounded-full bg-primary text-sm font-medium text-primary-foreground" onClick={() => { setSortKey(pendingSort); setSortOpen(false); }}>
-              אישור
               <Check size={18} aria-hidden="true" />
+              אישור
             </Button>
           </div>
         </div>
