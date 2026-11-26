@@ -381,12 +381,12 @@ const Profile = () => {
   };
 
   if (authLoading) {
-    return <div className="min-h-screen bg-muted flex items-center justify-center"><p className="text-muted-foreground">טוען...</p></div>;
+    return <div className="figma min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">טוען...</p></div>;
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-muted flex items-center justify-center" dir="rtl">
+      <div className="figma min-h-screen bg-background flex items-center justify-center" dir="rtl">
         <div className="text-center">
           <p className="text-xl font-bold text-foreground mb-4">יש להתחבר כדי לצפות בפרופיל</p>
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-semibold" asChild>

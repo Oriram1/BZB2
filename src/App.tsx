@@ -117,7 +117,7 @@ const App = () => (
           <MobileNav />
           <PresenceTracker />
           <RouteViewport>
-            <Suspense fallback={<DelayedFallback><div role="status" aria-label="העמוד נטען" className="mx-auto max-w-5xl space-y-4 p-6 motion-reduce:[&>*]:animate-none"><div className="h-10 w-1/2 animate-pulse rounded bg-muted" /><div className="h-48 animate-pulse rounded bg-muted" /><div className="h-32 animate-pulse rounded bg-muted" /></div></DelayedFallback>} >
+            <Suspense fallback={<div className="figma min-h-screen bg-background"><div className="h-[61px] border-b border-border bg-card" aria-hidden="true" /><DelayedFallback><div role="status" aria-label="העמוד נטען" className="mx-auto max-w-5xl space-y-4 p-6 motion-reduce:[&>*]:animate-none"><div className="h-10 w-1/2 animate-pulse rounded bg-secondary" /><div className="h-48 animate-pulse rounded bg-secondary" /><div className="h-32 animate-pulse rounded bg-secondary" /></div></DelayedFallback></div>} >
             <Routes>
               <Route path={ROUTES.home} element={<Landing />} />
               <Route path={ROUTES.auth} element={<Auth />} />
