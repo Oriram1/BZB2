@@ -562,7 +562,8 @@ const MyTasks = () => {
                 )}
               </TabsTrigger>
             )}
-            {performsTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
+            {/* The design has two tabs in one row. A person who both publishes and performs reaches "performing" from the drawer or the profile switch. */}
+            {performsTasks && !managesTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
           </TabsList>
           </div>
 
