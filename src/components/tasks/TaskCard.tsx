@@ -1,6 +1,6 @@
 import { taskTagClass, taskTagLabels } from "@/lib/taskTags";
 import { Button } from "@/components/ui/button";
-import { MapPin, PencilSimple as Pencil, Star, Heart, ArrowLeft, ArrowUpLeft, CalendarBlank as Calendar, Timer } from "@phosphor-icons/react";
+import { MapPin, PencilSimple as Pencil, Heart, ArrowLeft, ArrowUpLeft, CalendarBlank as Calendar, Timer } from "@phosphor-icons/react";
 import CategoryIcon from "./CategoryIcon";
 import { formatCurrency, formatTaskWhen, formatDuration, formatDistance } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +30,6 @@ interface Task {
   /** Undefined when the user's location is unknown — never a placeholder value. */
   distance?: number;
   creatorId?: string;
-  creatorRating?: { average: number; count: number } | null;
   publishState?: TaskPublishState;
 }
 
@@ -54,6 +53,7 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
   const { user } = useAuth();
   const navigate = useNavigate();
   const isOwner = Boolean(user && task.creatorId === user.id);
+  const tags = taskTagLabels(task.tags);
 
   const handleCardClick = () => {
     if (task.dbId) {
@@ -120,14 +120,14 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      {(!isPopup || task.distance !== undefined || tags.length > 0) && <div className="flex flex-wrap gap-2">
         {task.distance !== undefined && (
           <span className="rounded-[4px] bg-honey-light/85 px-2.5 py-[3px] text-xs leading-6 text-foreground tabular">
             <span className="sr-only">מרחק: </span>
             {formatDistance(task.distance)}
           </span>
         )}
-        {taskTagLabels(task.tags).map((tag) => (
+        {tags.map((tag) => (
           <span
             key={tag.value}
             className={`rounded-[4px] px-2.5 py-[3px] text-xs leading-6 text-foreground ${taskTagClass(tag.value)}`}
@@ -135,24 +135,11 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
             {tag.label}
           </span>
         ))}
-        <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
+        {!isPopup && <span className="rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground">
           {task.workers === 1 ? "עובד אחד" : `${task.workers} עובדים`}
-        </span>
-        {task.creatorRating !== undefined && (
-          <span
-            className="inline-flex items-center gap-1 rounded-[4px] bg-secondary px-2.5 py-[3px] text-xs leading-6 text-foreground"
-            aria-label={task.creatorRating ? `דירוג המפרסם ${task.creatorRating.average.toFixed(1)} מתוך 5, ${task.creatorRating.count} דירוגים` : "למפרסם עדיין אין דירוגים"}
-          >
-            {task.creatorRating ? (
-              <>
-                <Star size={12} weight="fill" className="text-primary" aria-hidden="true" />
-                <bdi className="tabular-nums">{task.creatorRating.average.toFixed(1)}</bdi>
-                <span className="text-muted-foreground">({task.creatorRating.count})</span>
-              </>
-            ) : "מפרסם חדש"}
-          </span>
-        )}
-      </div>
+        </span>}
+
+      </div>}
 
       {isOwner && task.publishState === "pending_review" && (
         <p className="rounded-lg border border-primary-soft-border bg-primary-soft px-3 py-2 text-sm text-foreground">
@@ -180,7 +167,7 @@ const TaskCard = ({ task, index, saved = false, onToggleSave, variant = "list" }
         ) : (
           <Button
             onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
-            className={cn("h-12 flex-1 gap-2.5 rounded-full font-medium", task.category === "other" && "bg-[#F3B826] hover:bg-[#F3B826]/90")}
+            className="h-12 flex-1 gap-2.5 rounded-full font-medium"
           >
             לפרטי המשימה
             {isPopup ? <ArrowUpLeft size={16} aria-hidden="true" /> : <ArrowLeft size={16} aria-hidden="true" />}

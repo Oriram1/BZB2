@@ -1495,6 +1495,8 @@ export type Database = {
       }
       cancel_refund_eligibility: { Args: { _user_id: string }; Returns: Json }
       cancel_task: { Args: { _task_id: string }; Returns: undefined }
+      set_task_paused: { Args: { _task_id: string; _paused: boolean }; Returns: undefined }
+      visible_paused_task_ids: { Args: { _task_ids: string[] }; Returns: string[] }
       withdraw_application: { Args: { _task_id: string }; Returns: undefined }
       update_task_details: {
         Args: {

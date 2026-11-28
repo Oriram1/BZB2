@@ -1,3 +1,4 @@
+import { loadPausedTaskIds } from "@/lib/taskPause";
 import { shareOrCopy } from "@/lib/share";
 import { getPublicProfile } from "@/lib/publicProfile";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -40,7 +41,7 @@ import { taskTagClass, taskTagLabels } from "@/lib/taskTags";
 import { categoryLabel } from "@/lib/categories";
 import { logUserActivity } from "@/lib/activityLog";
 import type { TaskPublishState } from "@/lib/taskBilling";
-import { taskStatusLabel } from "@/lib/taskStatus";
+import { taskVisibilityLabel } from "@/lib/taskStatus";
 import { archiveTask } from "@/lib/tasks";
 import { fetchRatings } from "@/lib/people";
 import { isUniqueViolation } from "@/lib/errors";
@@ -79,6 +80,7 @@ interface TaskData {
   tags: string[];
   status: string;
   publish_state: TaskPublishState;
+  screening: string;
   notes: string | null;
   image_url: string | null;
   creator_id: string;
@@ -103,6 +105,7 @@ const TaskDetail = () => {
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [creatorRating, setCreatorRating] = useState<{ average: number; count: number } | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [pauseState, setPauseState] = useState<"checking" | "paused" | "active" | "error">("checking");
   const [applying, setApplying] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -123,7 +126,7 @@ const TaskDetail = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, name, short_desc, full_desc, category, payment, payment_type, location, latitude, longitude, scheduled_date, scheduled_time, duration_hours, review_window_started_at, workers_needed, tags, status, publish_state, notes, image_url, creator_id, views_count")
+        .select("id, name, short_desc, full_desc, category, payment, payment_type, location, latitude, longitude, scheduled_date, scheduled_time, duration_hours, review_window_started_at, workers_needed, tags, status, publish_state, screening, notes, image_url, creator_id, views_count")
         .eq("id", id)
         .is("archived_at", null)
         .single();
@@ -134,6 +137,18 @@ const TaskDetail = () => {
         return;
       }
       setTask(data);
+      setPauseState("checking");
+      if (user) {
+        try {
+          const paused = await loadPausedTaskIds([data.id]);
+          setPauseState(paused.ids.includes(data.id) ? "paused" : "active");
+        } catch {
+          setPauseState("error");
+          toast.error("לא הצלחנו לבדוק את מצב הפרסום של המטלה");
+        }
+      } else {
+        setPauseState("active");
+      }
       setCreatorRating(undefined);
       // Independent lookups can run together once the task identifies its creator.
       const [ratings, viewResult, creatorProfile, applicationResult] = await Promise.all([
@@ -198,8 +213,18 @@ const TaskDetail = () => {
     }
   }, [task, openEdit]);
 
+  // Actions from the profile still require the normal owner-only confirmation.
+  const deleteRequested = useRef(Boolean(location.state?.openDelete));
+  useEffect(() => {
+    if (!task || !deleteRequested.current) return;
+    deleteRequested.current = false;
+    if (user?.id === task.creator_id) setDeleteOpen(true);
+    window.history.replaceState({}, "");
+  }, [task, user]);
+
   /** Opens the confirmation; the insert itself happens in `submitApplication`. */
   const handleApply = () => {
+    if (pauseState !== "active") return;
     if (!user || !isBee) {
       if (!user) {
         toast.error("יש להתחבר כדי להגיש מועמדות");
@@ -328,7 +353,7 @@ const TaskDetail = () => {
 
   const isOwner = user?.id === task.creator_id;
   const isOwnPendingReview = isOwner && task.publish_state === "pending_review";
-  const statusLabel = isOwnPendingReview ? "ממתינה לאישור" : taskStatusLabel(task.status);
+  const statusLabel = taskVisibilityLabel(task.status, task.publish_state, task.screening, pauseState === "error" ? null : pauseState === "paused");
   const creatorAvatar = creator?.avatar_url || defaultAvatarUrl(task.creator_id);
 
   return (
@@ -396,7 +421,7 @@ const TaskDetail = () => {
         )}
 
         <div className="bg-card rounded-lg p-3.5 border-[1.2px] border-border shadow-card space-y-6">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-row-reverse items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="rounded-full border border-primary bg-primary-soft px-2.5 py-1 text-xs leading-4 text-primary">
                 {statusLabel}
@@ -577,9 +602,9 @@ const TaskDetail = () => {
           <Button
             className="h-12 flex-1 gap-2.5 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground"
             onClick={handleApply}
-            disabled={applying || alreadyApplied}
+            disabled={applying || alreadyApplied || pauseState !== "active"}
           >
-            {alreadyApplied ? "כבר הגשת מועמדות" : "אני רוצה את המשימה"}
+            {pauseState === "paused" ? "הפרסום מושהה" : pauseState === "error" ? "מצב הפרסום לא זמין" : alreadyApplied ? "כבר הגשת מועמדות" : "אני רוצה את המשימה"}
             <Check size={16} aria-hidden="true" />
           </Button>
           <button
@@ -619,7 +644,7 @@ const TaskDetail = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>מחיקת מטלה</AlertDialogTitle>
             <AlertDialogDescription>
-              האם אתה בטוח שברצונך למחוק את המטלה "{task.name}"? פעולה זו תמחוק את המטלה לצמיתות ולא ניתן לבטלה.
+              המטלה "{task.name}" תועבר לארכיון ותוסר מהאתר.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

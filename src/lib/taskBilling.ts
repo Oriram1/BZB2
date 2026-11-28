@@ -19,24 +19,9 @@ export type PublishQuote = {
   billing_off?: boolean;
 };
 
-export type TaskPublishState =
-  | "live"
-  | "pending_review"
-  | "awaiting_charge"
-  | "pending_payment"
-  | "draft"
-  | "rejected"
-  | "hidden";
-
-export const publishStateLabel: Record<TaskPublishState, string> = {
-  live: "פורסמה",
-  pending_review: "ממתינה לאישור",
-  awaiting_charge: "מאושרת, בתהליך חיוב",
-  pending_payment: "ממתינה לתשלום",
-  draft: "טיוטה",
-  rejected: "לא אושרה",
-  hidden: "מוסתרת",
-};
+export { publishStateLabel } from "@/lib/taskPublishState";
+export type { TaskPublishState } from "@/lib/taskPublishState";
+import type { TaskPublishState } from "@/lib/taskPublishState";
 
 // Both keys exist on both arms: the project does not compile with strict null
 // checks, so a plain union would not narrow and `result.code` would not resolve.

@@ -14,6 +14,8 @@ VALUES (current_setting('test.other_worker')::uuid, 'other-worker@testing.invali
 INSERT INTO public.user_roles(user_id,role) VALUES (current_setting('test.other_worker')::uuid,'bee');
 INSERT INTO public.tasks(id,creator_id,category,name,short_desc,payment)
 VALUES(current_setting('test.dual_task')::uuid,current_setting('test.dual_user')::uuid,'housework','fixture','fixture',10);
+-- Publish the fixture after a successful safety screen.
+UPDATE public.tasks SET screening = 'clean' WHERE id = current_setting('test.dual_task')::uuid;
 SELECT set_config('request.jwt.claims',json_build_object('role','authenticated','sub',current_setting('test.dual_user'))::text,true);
 SET LOCAL ROLE authenticated;
 DO $$ BEGIN

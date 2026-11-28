@@ -1,10 +1,12 @@
 import { ROUTES } from "@/lib/routes";
 import { completeTask as completeTaskAction } from "@/lib/taskActions";
+import { loadPausedTaskIds } from "@/lib/taskPause";
+import { completedPerformingTasks } from "@/lib/completedTasks";
 import { paymentErrorText } from "@/lib/paymentErrors";
 import { archiveTask as archiveTaskAction } from "@/lib/tasks";
 import { fetchProfiles, fetchRatings } from "@/lib/people";
 import { APPLICATION_ERRORS, CANCEL_TASK_ERRORS, mapDbError } from "@/lib/errors";
-import { isTaskDone, taskStatusLabel, type TaskStatus } from "@/lib/taskStatus";
+import { isTaskDone, taskStatusLabel, taskVisibilityLabel, type TaskStatus } from "@/lib/taskStatus";
 import { useRoles } from "@/hooks/useRoles";
 import PaymentSummaryDialog from "@/components/billing/PaymentSummaryDialog";
 import { openPaymentTab, PAYMENT_POPUP_BLOCKED, PAYMENT_TAB_OPENED } from "@/lib/paymentTab";
@@ -41,7 +43,6 @@ import ReviewDialog from "@/components/reviews/ReviewDialog";
 import {
   payTaskWithNewCard,
   payTaskOnce,
-  publishStateLabel,
   resubmitTask,
   retryTaskPayment,
   type TaskPublishState,
@@ -112,6 +113,8 @@ const MyTasks = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [publishedTasks, setPublishedTasks] = useState<PublishedTask[]>([]);
+  const [pausedTaskIds, setPausedTaskIds] = useState<Set<string> | null>(null);
+  const [resumingTask, setResumingTask] = useState<string | null>(null);
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [performingTasks, setPerformingTasks] = useState<PerformingTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,9 +156,12 @@ const MyTasks = () => {
    * the active view changes, so both remain available in their own tabs.
    */
   const managesTasks = isTasker || publishedTasks.length > 0;
-  const performsTasks = isBee || performingTasks.length > 0;
-
   const requestedTab = searchParams.get("tab");
+  // A direct link to performance history must also work for a publisher who
+  // has never applied to a task, and while application data is still loading.
+  const performsTasks = isBee || performingTasks.length > 0 || requestedTab === "performing";
+  const showCompletedOnly = requestedTab === "performing" && searchParams.get("completed") === "1";
+  const displayedPerformingTasks = showCompletedOnly ? completedPerformingTasks(performingTasks) : performingTasks;
   const activeTab = requestedTab === "applications" && managesTasks
     ? "applications"
     : requestedTab === "performing" && performsTasks
@@ -291,11 +297,22 @@ const MyTasks = () => {
         }
       }
 
+      let nextPausedIds: Set<string> | null = new Set();
+      if (nextPublishedTasks.length) {
+        try {
+          const paused = await loadPausedTaskIds(nextPublishedTasks.map((task) => task.id));
+          nextPausedIds = new Set(paused.ids);
+        } catch {
+          nextPausedIds = null;
+          toast.error("לא הצלחנו לטעון את מצב הפרסום של המטלות");
+        }
+      }
       const ratings = await fetchRatings("bee", nextApplications.map((application) => application.applicantId));
       if (ratings) {
         for (const application of nextApplications) application.rating = ratings.get(application.applicantId) ?? null;
       }
       if (!cancelled && version === loadVersion) {
+        setPausedTaskIds(nextPausedIds);
         setPublishedTasks(nextPublishedTasks);
         setApplications(nextApplications.sort((a, b) => Number(a.status !== "pending") - Number(b.status !== "pending")));
         setPerformingTasks(nextPerformingTasks);
@@ -504,39 +521,12 @@ const MyTasks = () => {
   if (!user) return null;
 
   return (
-    <div className="figma min-h-screen bg-background relative isolate" dir="rtl">
-      {/* Background exactly as in the "My Applications" frame (390×844):
-          Frame 13 linear gradient + two 6-point polygons, colour-burn #EE8F6B. */}
-      <div
-        className="fixed inset-x-0 bottom-0 top-[146px] pointer-events-none"
-        style={{ background: "linear-gradient(180deg, #FCE9E2 0%, #F4F4F5 37%, #F4F4F5 79%, #FCE9E2 100%)" }}
-        aria-hidden="true"
-      />
-      <div className="fixed bottom-0 left-[calc(50%-195px)] h-[844px] w-[390px] overflow-hidden pointer-events-none mix-blend-color-burn" aria-hidden="true">
-        {[
-          { top: 763.15, left: 241.77, rotate: -35.42 },
-          { top: 654.18, left: -89.55, rotate: 55.01 },
-        ].map((polygon) => {
-          // Figma reports Top/Left of the rotated bounding box; rotate about the centre inside it.
-          const rad = (Math.abs(polygon.rotate) * Math.PI) / 180;
-          const box = 106.88 * (Math.cos(rad) + Math.sin(rad));
-          return (
-            <div key={polygon.left} className="absolute grid place-items-center" style={{ top: polygon.top, left: polygon.left, width: box, height: box }}>
-              <div
-                className="h-[106.88px] w-[106.88px] bg-[#EE8F6B]"
-                style={{
-                  transform: `rotate(${polygon.rotate}deg)`,
-                  clipPath: "polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)",
-                }}
-              />
-            </div>
-          );
-        })}
-      </div>
+    <div className="figma min-h-screen bg-white relative isolate" dir="rtl">
+      <div className="figma-honeycomb fixed inset-x-0 bottom-0 h-[min(542px,65vh)] pointer-events-none" aria-hidden="true" />
       <PageHeader
         variant="figma"
         centerTitle
-        title="המטלות שלי"
+        title={showCompletedOnly ? "מטלות שביצעתי" : "המטלות שלי"}
         titleIsPageHeading
         action={isTasker && activeRole === "tasker" ? (
           <Button size="sm" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5" asChild>
@@ -563,7 +553,7 @@ const MyTasks = () => {
               </TabsTrigger>
             )}
             {/* The design has two tabs in one row. A person who both publishes and performs reaches "performing" from the drawer or the profile switch. */}
-            {performsTasks && !managesTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">מטלות שאני מבצע</TabsTrigger>}
+            {performsTasks && !managesTasks && <TabsTrigger value="performing" className="min-h-[35px] px-[9px] rounded-full text-[14px] font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card">{showCompletedOnly ? "מטלות שהושלמו" : "מטלות שאני מבצע"}</TabsTrigger>}
           </TabsList>
           </div>
 
@@ -573,7 +563,7 @@ const MyTasks = () => {
                 <p className="py-12 text-center text-muted-foreground">טוען מועמדויות…</p>
               ) : applications.length === 0 ? (
                 <div className="rounded-[14px] bg-card shadow-card px-[14px] pt-7 pb-6 text-center">
-                  <EmptyApplicantsIllustration className="mx-auto mb-[16px] h-[62.5px] w-[59px]" />
+                  <EmptyApplicantsIllustration className="mx-auto mb-[16px] h-[71px] w-[71px]" />
                   <p className="text-xl font-semibold">אין מועמדויות עדיין</p>
                   <p className="mx-auto mt-2 max-w-[270px] text-[13px] leading-[18px] text-muted-foreground">מועמדויות חדשות יופיעו כאן. מטלה עם תיאור ברור ותשלום הוגן מקבלת מועמדים מהר יותר.</p>
                   <Button className="mt-6 w-full h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium" asChild>
@@ -737,7 +727,7 @@ const MyTasks = () => {
                         list looks identical before and after completing one. */}
                     <div className="flex justify-end">
                       <span className={`inline-flex h-6 items-center rounded-full border px-3 text-[13px] ${closed ? "border-border bg-muted text-muted-foreground" : "border-primary bg-[#FDEEE8] text-primary"}`}>
-                        {task.publish_state === "live" ? taskStatusLabel(task.status) : publishStateLabel[task.publish_state]}
+                        {taskVisibilityLabel(task.status, task.publish_state, task.screening ?? "clean", pausedTaskIds === null ? null : pausedTaskIds.has(task.id))}
                       </span>
                     </div>
                     <Link to={`/task/${task.id}`} className="mt-3 block min-w-0">
@@ -799,7 +789,7 @@ const MyTasks = () => {
                         </Button>
                       </div>
                     )}
-                    {task.publish_state === "hidden" && (
+                    {!closed && task.publish_state === "hidden" && (
                       <p className="mt-3 rounded-2xl bg-muted/60 p-3 text-sm text-foreground">
                         המטלה מוסתרת כי המנוי הסתיים. חידוש המנוי יחזיר אותה מיד.
                       </p>
@@ -827,6 +817,24 @@ const MyTasks = () => {
                         {applications.filter((a) => a.taskId === task.id).length} מועמדויות <Users size={15} aria-hidden="true" />
                       </span>
                     </div>
+                    {pausedTaskIds?.has(task.id) && (
+                      <Button className="mt-4 w-full min-h-11 rounded-full" disabled={resumingTask === task.id}
+                        onClick={async () => {
+                          setResumingTask(task.id);
+                          try {
+                            const { error } = await supabase.rpc("set_task_paused", { _task_id: task.id, _paused: false });
+                            if (error) throw error;
+                            setPausedTaskIds((current) => { const next = new Set(current); next.delete(task.id); return next; });
+                            toast.success(task.publish_state === "live" && task.screening === "clean" ? "פרסום המטלה חודש" : "ההשהיה בוטלה. מצב הפרסום האחר של המטלה לא השתנה.");
+                          } catch {
+                            toast.error("לא הצלחנו לחדש את הפרסום. נסו שוב.");
+                          } finally {
+                            setResumingTask(null);
+                          }
+                        }}>
+                        {task.publish_state === "live" && task.screening === "clean" ? "חידוש הפרסום" : "ביטול ההשהיה"}
+                      </Button>
+                    )}
                     {canComplete && (
                       <Button
                         onClick={() => setConfirmComplete(task)}
@@ -863,9 +871,9 @@ const MyTasks = () => {
             <TabsContent value="performing" className="mt-4 space-y-3">
               {loading ? (
                 <p className="py-12 text-center text-muted-foreground">טוען מטלות…</p>
-              ) : performingTasks.length === 0 ? (
+              ) : displayedPerformingTasks.length === 0 ? (
                 <div className="rounded-[14px] bg-card shadow-card p-8 text-center">
-                  <p className="font-bold">עדיין לא הגשתם מועמדות</p>
+                  <p className="font-bold">{showCompletedOnly ? "עדיין לא השלמתם מטלות" : "עדיין לא הגשתם מועמדות"}</p>
                   <Button className="mt-4 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" asChild>
 <Link to="/tasks">למטלות הזמינות</Link>
 </Button>
@@ -890,7 +898,7 @@ const MyTasks = () => {
                       </div>
                     </div>
                   )}
-                  {performingTasks.map((task) => (
+                  {displayedPerformingTasks.map((task) => (
                 <article key={task.applicationId} className="rounded-[14px] bg-card shadow-card p-5 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <Link to={`/task/${task.id}`} className="min-w-0 flex-1">

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import TaskCard, { type Task } from "./TaskCard";
 import { useGoogleMaps } from "./GoogleMapsProvider";
 import GoogleMapsLoadState from "./GoogleMapsLoadState";
+import { LocateFixed } from "lucide-react";
 
 /** Marker as drawn in the redesign: a terracotta dot with a soft halo. */
 const MARKER_ICON = `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -12,15 +13,18 @@ type MapViewProps = {
   tasks: Task[];
   saved?: Set<string>;
   onToggleSave?: (taskId: string) => void;
+  origin: { lat: number; lng: number } | null;
+  onRequestLocation: () => void;
 };
 
-const MapView = ({ tasks, saved, onToggleSave }: MapViewProps) => {
+const MapView = ({ tasks, saved, onToggleSave, origin, onRequestLocation }: MapViewProps) => {
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
   const selected = tasks.find((t) => t.id === selectedTask);
   const { isLoaded, error, retry } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const pendingLocateRef = useRef(false);
 
   /** Only tasks that actually carry coordinates can be put on a map. */
   const located = useMemo(
@@ -49,6 +53,7 @@ const MapView = ({ tasks, saved, onToggleSave }: MapViewProps) => {
       streetViewControl: false,
       mapTypeControl: false,
       fullscreenControl: false,
+      cameraControlOptions: { position: google.maps.ControlPosition.TOP_LEFT },
     });
   }, [center, isLoaded]);
 
@@ -82,6 +87,13 @@ const MapView = ({ tasks, saved, onToggleSave }: MapViewProps) => {
     }
   }, [isLoaded, located]);
 
+  useEffect(() => {
+    if (!origin || !pendingLocateRef.current || !mapRef.current) return;
+    pendingLocateRef.current = false;
+    mapRef.current.panTo(origin);
+    mapRef.current.setZoom(14);
+  }, [origin]);
+
   if (!isLoaded) {
     return <GoogleMapsLoadState error={error} retry={retry} className="rounded-lg overflow-hidden border border-border shadow-card h-[500px] flex items-center justify-center bg-muted px-4" />;
   }
@@ -90,9 +102,24 @@ const MapView = ({ tasks, saved, onToggleSave }: MapViewProps) => {
     <div className="rounded-lg overflow-hidden border border-border shadow-card animate-fade-in relative">
       <div ref={containerRef} style={{ height: "max(420px, calc(100dvh - 256px))", width: "100%" }} />
 
+      <button type="button" aria-label="התמקדות במיקום שלי"
+        className="absolute bottom-4 right-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-card text-foreground shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => {
+          setSelectedTask(null);
+          if (origin && mapRef.current) {
+            mapRef.current.panTo(origin);
+            mapRef.current.setZoom(14);
+          } else {
+            pendingLocateRef.current = true;
+            onRequestLocation();
+          }
+        }}>
+        <LocateFixed size={20} aria-hidden="true" />
+      </button>
+
       {/* "Task Popup — Overlay" in the design is the list card itself. */}
       {selected && (
-        <div className="absolute bottom-4 left-4 right-4 animate-slide-up z-[1000]">
+        <div className="absolute bottom-4 left-3 right-3 mx-auto max-w-[331px] animate-slide-up z-[1000]">
           <TaskCard
             task={selected}
             index={0}

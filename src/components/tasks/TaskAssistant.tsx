@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type AssistantFields } from "@/lib/taskForm";
 import { addDays, format } from "date-fns";
-import { Send, ListChecks, Mic, Square } from "lucide-react";
+import { Send, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { categories } from "@/lib/categories";
 import { formatNis } from "@/lib/format";
 import { toast } from "sonner";
 import idleBee from "@/assets/assistant/bee-idle.webp";
+import figmaBee from "@/assets/assistant/figma-bee.png";
 import thinkingBee from "@/assets/assistant/bee-thinking.webp";
 import "./TaskAssistantBee.css";
 import AssistantLocation, { type ConfirmedTaskLocation } from "./AssistantLocation";
@@ -60,6 +61,8 @@ interface TaskAssistantProps {
   /** Opens review after all required fields and the meeting point are confirmed. */
   onApply: (fields: AssistantFields, missing: MissingField[], location?: ConfirmedTaskLocation) => void;
   onManual: () => void;
+  /** Hidden assistants retain draft text but must not retain microphone access. */
+  active?: boolean;
 }
 
 function Bee({ thinking = false, className = "size-14" }: { thinking?: boolean; className?: string }) {
@@ -85,7 +88,7 @@ function BusyReply({ text, thinking = false }: { text: string; thinking?: boolea
   );
 }
 
-export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps) {
+export default function TaskAssistant({ onApply, onManual, active = true }: TaskAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -95,6 +98,8 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const chunksRef = useRef<Blob[]>([]);
   /** A recording's onstop outlives the render that started it, so it calls the latest send through this ref. */
   const sendRef = useRef<(raw: string) => Promise<void>>(async () => {});
@@ -102,6 +107,16 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
   const userTurns = messages.filter((message) => message.role === "user").length;
 
   useEffect(() => { endRef.current?.scrollIntoView?.({ block: "nearest" }); }, [messages, loading]);
+
+  useEffect(() => {
+    if (active || !recorderRef.current) return;
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    recorder.onstop = null;
+    recorder.stream.getTracks().forEach((track) => track.stop());
+    if (recorder.state !== "inactive") recorder.stop();
+    setRecording(false);
+  }, [active]);
 
   // Leaving the page must release the microphone light.
   useEffect(() => () => {
@@ -170,6 +185,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!activeRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       const mimeType = pickAudioMimeType();
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
@@ -204,7 +220,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
       {messages.length === 0 && !loading ? (
         /* First screen, as drawn: the bee large and centred over the title and the brief. */
         <div className="flex flex-col items-center gap-3 text-center">
-          <Bee className="size-24" />
+          <img src={figmaBee} alt="" aria-hidden="true" className="size-[71px] object-contain" />
           <h2 className="text-xl font-bold text-foreground">ספרו לביזי מה צריך</h2>
           <p className="text-sm leading-6 text-muted-foreground">{GREETING}</p>
         </div>
@@ -282,7 +298,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
             }
           }}
           placeholder={userTurns === 0 ? "למשל: היי, צריך שניים שינקו לי את הדירה מחר בבוקר ברמת גן, בערך 3 שעות, 300 שקל" : "התשובה שלכם…"}
-          className={`min-h-[48px] min-w-0 flex-1 py-3 resize-none placeholder:text-sm sm:placeholder:text-base ${userTurns === 0 ? "max-sm:min-h-[92px]" : ""} border-0 bg-transparent text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0`}
+          className={`min-h-[48px] min-w-0 flex-1 py-3 resize-none placeholder:text-sm sm:placeholder:text-base ${userTurns === 0 ? "max-sm:min-h-[64px]" : ""} border-0 bg-transparent text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0`}
           rows={userTurns === 0 ? 2 : 1}
           disabled={loading}
         />
@@ -303,7 +319,7 @@ export default function TaskAssistant({ onApply, onManual }: TaskAssistantProps)
       <div className="flex flex-wrap items-center justify-between gap-2">
         {/* As drawn: the manual route is the one big orange pill. */}
         <Button type="button" className="h-12 w-full gap-1.5 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90" onClick={onManual}>
-          <ListChecks size={16} /> אמלא בעצמי
+          אמלא בעצמי
         </Button>
 
       </div>

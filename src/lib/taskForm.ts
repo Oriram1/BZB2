@@ -18,7 +18,7 @@ export interface AssistantFields {
 export interface ReviewForm {
   category: string; taskName: string; shortDesc: string; fullDesc: string;
   payment: string; paymentType: string; workers: string;
-  location: string; date: string; time: string; duration: string; durationUnit: string; expiry: string;
+  location: string; date: string; time: string; duration: string; durationUnit: string; expiry: string; expiryUnit?: string;
   notes: string;
 }
 export type ReviewField = keyof ReviewForm;
@@ -36,7 +36,7 @@ export const todayIso = () => {
 };
 
 /** The same rules the wizard steps enforce; null means the value may be saved. */
-export function fieldError(field: ReviewField, value: string): string | null {
+export function fieldError(field: ReviewField, value: string, form?: Pick<ReviewForm, "durationUnit" | "expiryUnit">): string | null {
   const trimmed = value.trim();
   const required: ReviewField[] = ["category", "taskName", "shortDesc", "payment", "location", "date", "time"];
   if (required.includes(field) && !trimmed) return "שדה חובה";
@@ -45,8 +45,9 @@ export function fieldError(field: ReviewField, value: string): string | null {
   if (field === "workers" && !(Number.isInteger(Number(trimmed)) && Number(trimmed) >= 1)) return "לפחות עובד אחד";
   if (field === "date" && (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed) || trimmed < todayIso())) return "תאריך מהיום והלאה";
   if (field === "time" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(trimmed)) return "שעה בפורמט HH:MM";
-  if (field === "duration" && trimmed && !(Number(trimmed) >= 1 && Number(trimmed) <= 30)) return "בין 1 ל-30 ימים";
-  if (field === "expiry" && !(Number(trimmed) >= 1 && Number(trimmed) <= 30)) return "בין 1 ל-30 ימים";
+  const hours = field === "duration" ? form?.durationUnit === "hours" : field === "expiry" && form?.expiryUnit === "hours";
+  if (field === "duration" && trimmed && !(Number(trimmed) >= 1 && Number(trimmed) <= (hours ? 720 : 30))) return hours ? "בין 1 ל-720 שעות" : "בין 1 ל-30 ימים";
+  if (field === "expiry" && !(Number(trimmed) >= 1 && Number(trimmed) <= (hours ? 720 : 30))) return hours ? "בין 1 ל-720 שעות" : "בין 1 ל-30 ימים";
   return null;
 }
 
@@ -62,7 +63,7 @@ export function describeForm(form: ReviewForm) {
     `כתובת: ${form.location}`,
     `תאריך: ${form.date}`,
     `שעה: ${form.time}`,
-    form.duration && `משך: ${form.duration} ימים`,
+    form.duration && `משך: ${form.duration} ${form.durationUnit === "hours" ? "שעות" : "ימים"}`,
   ].filter(Boolean);
   return lines.join("\n");
 }

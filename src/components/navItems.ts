@@ -47,3 +47,22 @@ export const visibleNavItems = (signedIn: boolean, roles: string[]) =>
     }
     return true;
   });
+
+/** A task-specific action is available only when the current screen identifies it. */
+export function selectedTaskDetailsPath(pathname: string, search: string): string | null {
+  if (pathname !== ROUTES.myTasks) return null;
+  const taskId = new URLSearchParams(search).get("task");
+  return taskId ? `/task/${encodeURIComponent(taskId)}` : null;
+}
+
+/** Match the selected drawer view without treating extra URL parameters as a different page. */
+export function isDrawerItemActive(to: string, pathname: string, search: string, showBeeMenu: boolean): boolean {
+  const [itemPath, query = ""] = to.split("?");
+  if (pathname !== itemPath) return false;
+  const current = new URLSearchParams(search);
+  const expected = new URLSearchParams(query);
+  if (query) return [...expected].every(([key, value]) => current.get(key) === value);
+  if (showBeeMenu && itemPath === ROUTES.tasks && current.get("saved") === "1") return false;
+  if (showBeeMenu && itemPath === ROUTES.myTasks && current.get("tab") === "performing" && current.get("completed") === "1") return false;
+  return true;
+}

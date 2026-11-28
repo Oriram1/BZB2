@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadBeeStats, loadPublishedTaskCounts } from "./profileStats";
+import { loadBeeStats, loadPublishedTaskCounts, countVisibleOpenTasks } from "./profileStats";
 
 const { pages, calls } = vi.hoisted(() => ({ pages: [] as unknown[], calls: [] as string[] }));
 vi.mock("@/integrations/supabase/client", () => ({
@@ -63,4 +63,16 @@ it("keeps completed publisher history while hiding archived open work from activ
     { status: "cancelled", archived_at: null },
   ], error: null });
   expect(await loadPublishedTaskCounts("publisher")).toEqual({ total: 4, open: 1, inProgress: 0, completed: 1, cancelled: 1 });
+});
+
+
+it("counts only visible open listings, excluding paused or hidden ones", () => {
+  const tasks = [
+    { id: "visible", status: "open", publish_state: "live", screening: "clean" },
+    { id: "paused", status: "open", publish_state: "live", screening: "clean" },
+    { id: "hidden", status: "open", publish_state: "hidden", screening: "clean" },
+    { id: "review", status: "open", publish_state: "live", screening: "pending_ai" },
+    { id: "done", status: "completed", publish_state: "live", screening: "clean" },
+  ];
+  expect(countVisibleOpenTasks(tasks, new Set(["paused"]))).toBe(1);
 });

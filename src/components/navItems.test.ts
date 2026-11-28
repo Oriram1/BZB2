@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { visibleNavItems } from "./navItems";
+import { isDrawerItemActive, selectedTaskDetailsPath, visibleNavItems } from "./navItems";
 
 const paths = (signedIn: boolean, roles: string[]) =>
   visibleNavItems(signedIn, roles).map((item) => item.to);
@@ -33,5 +33,31 @@ describe("visibleNavItems", () => {
     expect(bee).not.toContain("/admin");
     expect(bee).not.toContain("/parent");
     expect(paths(true, ["admin"])).toContain("/admin");
+  });
+});
+
+describe("selectedTaskDetailsPath", () => {
+  it("links to the task selected in the publisher's tasks screen", () => {
+    expect(selectedTaskDetailsPath("/my-tasks", "?tab=applications&task=abc-123")).toBe("/task/abc-123");
+  });
+
+  it("does not invent a task when no task is selected", () => {
+    expect(selectedTaskDetailsPath("/my-tasks", "?tab=published")).toBeNull();
+    expect(selectedTaskDetailsPath("/profile", "?task=abc-123")).toBeNull();
+  });
+});
+
+describe("isDrawerItemActive", () => {
+  it("marks the publisher's tasks entry for its published and applications tabs", () => {
+    expect(isDrawerItemActive("/my-tasks", "/my-tasks", "?tab=published", false)).toBe(true);
+    expect(isDrawerItemActive("/my-tasks", "/my-tasks", "?tab=applications&task=abc", false)).toBe(true);
+  });
+
+  it("keeps saved and performing views distinct from their parent entries", () => {
+    expect(isDrawerItemActive("/tasks", "/tasks", "?saved=1", true)).toBe(false);
+    expect(isDrawerItemActive("/tasks?saved=1", "/tasks", "?sort=price&saved=1", true)).toBe(true);
+    expect(isDrawerItemActive("/my-tasks", "/my-tasks", "?tab=performing", true)).toBe(true);
+    expect(isDrawerItemActive("/my-tasks", "/my-tasks", "?tab=performing&completed=1", true)).toBe(false);
+    expect(isDrawerItemActive("/my-tasks?tab=performing&completed=1", "/my-tasks", "?completed=1&task=abc&tab=performing", true)).toBe(true);
   });
 });

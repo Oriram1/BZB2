@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { taskStatusLabel } from "@/lib/taskStatus";
+import { isTaskDone, taskVisibilityLabel } from "@/lib/taskStatus";
+import type { TaskPublishState } from "@/lib/taskPublishState";
+import { loadPausedTaskIds } from "@/lib/taskPause";
+import { duplicateTaskDraft } from "@/lib/duplicateTask";
+import TaskActionsDialog, { type TaskAction } from "@/components/tasks/TaskActionsDialog";
 import { ReviewAppeal } from "@/components/reviews/ReviewAppeal";
 import { ReviewTags } from "@/components/reviews/ReviewTags";
 import ReviewReportsPanel from "@/components/reviews/ReviewReportsPanel";
@@ -32,13 +36,13 @@ import { PasswordCard } from "@/components/profile/PasswordCard";
 import { DeleteAccountCard } from "@/components/profile/DeleteAccountCard";
 import { ParentShareLink } from "@/components/profile/ParentShareLink";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { loadBeeStats, loadPublishedTaskCounts, type BeeStats } from "@/lib/profileStats";
+import { loadBeeStats, loadPublishedTaskCounts, countVisibleOpenTasks, type BeeStats } from "@/lib/profileStats";
 import { primaryRoleLabel } from "@/lib/roles";
 import { inBatches } from "@/lib/people";
 import { PARENT_CONTACT_ERRORS, mapDbError } from "@/lib/errors";
 import { useRoles } from "@/hooks/useRoles";
 import { useRoleSwitch } from "@/hooks/useRoleSwitch";
-import { registerPath } from "@/lib/routes";
+import { registerPath, ROUTES } from "@/lib/routes";
 import { functionErrorCode } from "@/lib/invokeFunction";
 
 interface ReviewHistoryRow {
@@ -84,6 +88,8 @@ interface TaskWithApps {
   name: string;
   short_desc: string;
   status: string;
+  publish_state: TaskPublishState;
+  screening: string;
   views_count: number;
   payment: number;
   payment_type: string;
@@ -123,6 +129,10 @@ const Profile = () => {
   const [taskerStats, setTaskerStats] = useState<TaskStats>({ total: 0, open: 0, inProgress: 0, completed: 0, cancelled: 0, totalApplicants: 0 });
   const [taskerStatsError, setTaskerStatsError] = useState(false);
   const [myTasks, setMyTasks] = useState<TaskWithApps[]>([]);
+  const [actionsTask, setActionsTask] = useState<TaskWithApps | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [pausedTaskIds, setPausedTaskIds] = useState<Set<string>>(new Set());
+  const [pauseSupport, setPauseSupport] = useState<"loading" | "supported" | "unsupported" | "error">("loading");
 
   const [beeStats, setBeeStats] = useState<BeeStats>({ applied: 0, accepted: 0, completed: 0, totalEarnings: 0, estimatedEarnings: false, missingHours: false });
   const [beeStatsError, setBeeStatsError] = useState(false);
@@ -250,12 +260,26 @@ const Profile = () => {
     }
   }, [profile]);
 
+  const refreshPauseState = useCallback(async (ids: string[]) => {
+    setPauseSupport("loading");
+    try {
+      const result = await loadPausedTaskIds(ids);
+      setPausedTaskIds(new Set(result.ids));
+      setPauseSupport(result.supported ? "supported" : "unsupported");
+      return new Set(result.ids);
+    } catch {
+      setPauseSupport("error");
+      toast.error("לא הצלחנו לטעון את מצב הפרסום. נסו שוב.");
+      return null;
+    }
+  }, []);
+
   const loadTaskerData = useCallback(async () => {
     if (!user) return;
     setTaskerStatsError(false);
     const { data: tasks, error } = await fetchAllPages((from, to) => supabase
       .from("tasks")
-      .select("id, name, short_desc, status, views_count, payment, payment_type, category, created_at")
+      .select("id, name, short_desc, status, publish_state, screening, views_count, payment, payment_type, category, created_at")
       .eq("creator_id", user.id)
       .is("archived_at", null)
       .order("created_at", { ascending: false })
@@ -284,17 +308,59 @@ const Profile = () => {
       applications.push(...rows);
     }
 
+    const pausedIds = tasks.length ? await refreshPauseState(tasks.map((task) => task.id)) : new Set<string>();
     setMyTasks(tasks.map((task) => ({
       ...task,
       applications: applications.filter((application) => application.task_id === task.id),
     })));
     try {
-      setTaskerStats({ ...await loadPublishedTaskCounts(user.id), totalApplicants: applications.length });
+      const totals = await loadPublishedTaskCounts(user.id);
+      if (pausedIds === null) { setTaskerStatsError(true); return; }
+      setTaskerStats({ ...totals, open: countVisibleOpenTasks(tasks, pausedIds), totalApplicants: applications.length });
     } catch {
       setTaskerStatsError(true);
       toast.error("לא הצלחנו לטעון את נתוני המטלות שפרסמתם");
     }
-  }, [user]);
+  }, [user, refreshPauseState]);
+
+  const handleTaskAction = async (action: TaskAction) => {
+    if (!actionsTask || !user || actionBusy) return;
+    const selectedTask = actionsTask;
+    if (action === "edit" || action === "delete") {
+      setActionsTask(null);
+      navigate(`/task/${selectedTask.id}`, { state: action === "edit" ? { openEdit: true } : { openDelete: true } });
+      return;
+    }
+    setActionBusy(true);
+    try {
+      if (action === "pause") {
+        const shouldPause = !pausedTaskIds.has(selectedTask.id);
+        const { error } = await supabase.rpc("set_task_paused", { _task_id: selectedTask.id, _paused: shouldPause });
+        if (error) throw error;
+        setPausedTaskIds((current) => {
+          const next = new Set(current);
+          if (shouldPause) next.add(selectedTask.id); else next.delete(selectedTask.id);
+          return next;
+        });
+        if (selectedTask.publish_state === "live" && selectedTask.screening === "clean") {
+          setTaskerStats((current) => ({ ...current, open: Math.max(0, current.open + (shouldPause ? -1 : 1)) }));
+        }
+        setActionsTask(null);
+        toast.success(shouldPause ? "פרסום המטלה הושהה" : selectedTask.publish_state === "live" && selectedTask.screening === "clean" ? "פרסום המטלה חודש" : "ההשהיה בוטלה. מצב הפרסום האחר של המטלה לא השתנה.");
+        return;
+      }
+      const { data, error } = await supabase.from("tasks")
+        .select("category, name, short_desc, full_desc, payment, payment_type, workers_needed, location, latitude, longitude, duration_hours, expiry_hours, notes, tags, scheduled_date, scheduled_time, image_url, insurance")
+        .eq("id", selectedTask.id).eq("creator_id", user.id).is("archived_at", null).maybeSingle();
+      if (error || !data) throw error ?? new Error("task_not_found");
+      setActionsTask(null);
+      navigate("/create-task", { state: { duplicateDraft: duplicateTaskDraft(data) } });
+    } catch {
+      toast.error(action === "pause" ? "לא הצלחנו לשנות את מצב הפרסום. נסו שוב." : "לא הצלחנו להעתיק את פרטי המטלה. נסו שוב.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
 
   const loadBeeData = useCallback(async () => {
     if (!user) return;
@@ -403,6 +469,12 @@ const Profile = () => {
   return (
     <div className="figma min-h-screen bg-background relative" dir="rtl">
       {/* "האיזור שלי" frame: back / centred title / menu, grey page, white cards. */}
+      <TaskActionsDialog open={!!actionsTask} onOpenChange={(open) => { if (!open && !actionBusy) setActionsTask(null); }}
+        onAction={(action) => void handleTaskAction(action)} paused={!!actionsTask && pausedTaskIds.has(actionsTask.id)}
+        pauseAvailable={pauseSupport === "supported" && !!actionsTask && !isTaskDone(actionsTask.status) && (pausedTaskIds.has(actionsTask.id) || (actionsTask.status === "open" && actionsTask.publish_state === "live" && actionsTask.screening === "clean"))}
+        resumeWillPublish={!!actionsTask && actionsTask.publish_state === "live" && actionsTask.screening === "clean"}
+        pauseUnavailableMessage={pauseSupport === "loading" ? "בודקים את מצב הפרסום..." : pauseSupport === "error" ? "לא הצלחנו לבדוק את מצב הפרסום" : pauseSupport === "unsupported" ? "האפשרות עדיין לא זמינה" : "אפשר להשהות מטלה פתוחה ומפורסמת"}
+        editable={!!actionsTask && !isTaskDone(actionsTask.status)} busy={actionBusy} />
       <PageHeader
         variant="figma"
         centerTitle
@@ -487,7 +559,7 @@ const Profile = () => {
                 <article className="rounded-2xl bg-card p-4 shadow-card">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm text-muted-foreground">המטלה שלי</p>
-                    <Badge variant="outline" className="rounded-full border-green-600 bg-green-50 px-3 py-1 text-sm font-normal text-green-700">{taskStatusLabel(task.status)}</Badge>
+                    <Badge variant="outline" className={`rounded-full px-3 py-1 text-sm font-normal ${!isTaskDone(task.status) && task.publish_state === "live" && task.screening === "clean" && !pausedTaskIds.has(task.id) ? "border-green-600 bg-green-50 text-green-700" : "border-border bg-muted text-muted-foreground"}`}>{taskVisibilityLabel(task.status, task.publish_state, task.screening, pauseSupport === "error" ? null : pausedTaskIds.has(task.id))}</Badge>
                   </div>
                   <Link to={`/task/${task.id}`} className="mt-3 block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <h3 className="text-xl font-bold text-foreground">{task.name}</h3>
@@ -508,7 +580,7 @@ const Profile = () => {
                   <hr className="my-4 border-border" />
                   <div className="flex items-center justify-between">
                     <Link to={`/task/${task.id}`} className="flex items-center gap-2 text-base font-medium text-primary-ink">לפרטי המטלה<ArrowLeft size={18} aria-hidden="true" /></Link>
-                    <Link to={task.applications.some((a) => a.status === "pending") ? `/my-tasks?tab=applications&task=${task.id}` : `/my-tasks?tab=published`} aria-label="עוד אפשרויות" className="grid h-9 w-9 place-items-center rounded-full text-foreground hover:bg-muted"><MoreVertical size={18} aria-hidden="true" /></Link>
+                    <button type="button" onClick={() => { setActionsTask(task); void refreshPauseState(myTasks.map((item) => item.id)); }} aria-label="עוד אפשרויות" className="grid h-11 w-11 place-items-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><MoreVertical size={18} aria-hidden="true" /></button>
                   </div>
                 </article>
               );
@@ -527,10 +599,10 @@ const Profile = () => {
               </div>
               <div className="rounded-2xl bg-card p-3 shadow-card space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <StatCard icon={Handshake} label="מועמדויות" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.applied} to="/my-tasks?tab=performing" />
-                  <StatCard icon={CheckCircle} label="מטלות שהושלמו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.completed} to="/my-tasks?tab=performing" />
-                  <StatCard icon={Wallet} label="הכנסות" value={loadingData ? "…" : beeStatsError ? "-" : formatCurrency(beeStats.totalEarnings)} />
-                  <StatCard icon={Star} label="דירוג ממוצע" value={loadingData || average === null ? "-" : average.toFixed(1)} suffix={average === null ? undefined : "מתוך 5"} />
+                  <StatCard icon={Handshake} iconColor="text-[#8176AD]" label="מועמדויות" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.applied} to="/my-tasks?tab=performing" />
+                  <StatCard icon={CheckCircle} iconColor="text-[#6D9F8F]" label="מטלות שהושלמו" value={loadingData ? "…" : beeStatsError ? "-" : beeStats.completed} to={ROUTES.myCompletedTasks} />
+                  <StatCard icon={Wallet} iconColor="text-[#768EBC]" label="הכנסות" value={loadingData ? "…" : beeStatsError ? "-" : formatCurrency(beeStats.totalEarnings)} />
+                  <StatCard icon={Star} iconColor="text-[#B39A68]" label="דירוג ממוצע" value={loadingData || average === null ? "-" : average.toFixed(1)} suffix={average === null ? undefined : "מתוך 5"} />
                 </div>
                 {average !== null && average >= 4.5 && (
                   <div className="flex items-center gap-3 rounded-xl border border-primary-soft-border bg-primary-soft p-3">
@@ -556,10 +628,10 @@ const Profile = () => {
                   {[
                     { to: "/my-tasks?tab=applications", label: "מועמדויות" },
                     { to: "/my-tasks?tab=published", label: "מטלות פתוחות" },
-                    { to: "/my-tasks?tab=performing", label: "מטלות שביצעתי" },
+                    { to: ROUTES.myCompletedTasks, label: "מטלות שביצעתי" },
                     { to: "/tasks", label: "חיפוש מטלות" },
                   ].map((row) => (
-                    <Link key={row.label} to={row.to} className="flex min-h-[46px] items-center justify-between rounded-lg border border-border px-4 text-sm text-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Link key={row.label} to={row.to} className="flex min-h-11 items-center justify-between rounded-sm border border-border px-4 text-sm text-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                       <span>{row.label}</span>
                       <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                     </Link>
@@ -838,14 +910,14 @@ const Profile = () => {
   );
 };
 
-function StatCard({ icon: Icon, label, value, suffix, to }: { icon: LucideIcon; label: string; value: string | number; suffix?: string; to?: string }) {
+function StatCard({ icon: Icon, iconColor, label, value, suffix, to }: { icon: LucideIcon; iconColor?: string; label: string; value: string | number; suffix?: string; to?: string }) {
   /* Tile as drawn on "האיזור שלי": soft lilac-grey tile, label at the start and a
      thin line icon at the end, the number large underneath. */
   const card = (
     <div className={`h-full rounded-xl bg-secondary px-4 py-2.5 text-start ${to ? "transition-colors hover:bg-muted" : ""}`}>
       <div className="flex items-center justify-between gap-2 text-sm text-foreground">
         <span>{label}</span>
-        <Icon className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+        <Icon className={`h-5 w-5 ${iconColor ?? ""}`} strokeWidth={1.5} aria-hidden="true" />
       </div>
       <p className="mt-2 flex items-baseline gap-2 text-2xl font-bold leading-none text-foreground tabular-nums">
         {value}

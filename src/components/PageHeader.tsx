@@ -22,6 +22,8 @@ interface PageHeaderProps {
   action?: ReactNode;
   icon?: ReactNode;
   showBack?: boolean;
+  /** Override browser navigation when the screen has an internal previous step. */
+  onBack?: () => void;
   className?: string;
   /** "figma": the header as drawn in the redesign file. Only for screens that exist there. */
   variant?: "default" | "figma";
@@ -43,6 +45,7 @@ export function PageHeader({
   action,
   icon,
   showBack = true,
+  onBack,
   className,
   variant = "default",
   centerTitle = false,
@@ -54,7 +57,11 @@ export function PageHeader({
 
   // Landing directly on a deep link leaves no history to go back to, which would
   // bounce the user out of the app. Fall back to the home screen instead.
-  const goBack = () => (window.history.length > 2 ? navigate(-1) : navigate("/", { viewTransition: true }));
+  const goBack = () => {
+    if (onBack) onBack();
+    else if (window.history.length > 2) navigate(-1);
+    else navigate("/", { viewTransition: true });
+  };
 
   if (variant === "figma" && centerTitle) {
     return (

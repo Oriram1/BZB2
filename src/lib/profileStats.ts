@@ -69,3 +69,8 @@ export async function loadPublishedTaskCounts(userId: string) {
     cancelled: tasks.filter((task) => task.status === "cancelled").length,
   };
 }
+
+/** Open listings people can actually find, excluding unpublished or paused work. */
+export function countVisibleOpenTasks(tasks: { id: string; status: string; publish_state: string; screening: string }[], pausedIds: Set<string>): number {
+  return tasks.filter((task) => task.status === "open" && task.publish_state === "live" && task.screening === "clean" && !pausedIds.has(task.id)).length;
+}

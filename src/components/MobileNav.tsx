@@ -10,7 +10,7 @@ import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { visibleNavItems } from "@/components/navItems";
+import { isDrawerItemActive, selectedTaskDetailsPath, visibleNavItems } from "@/components/navItems";
 import { useNavDrawer } from "@/components/NavDrawerContext";
 import NotificationBell from "@/components/NotificationBell";
 import { useRoles } from "@/hooks/useRoles";
@@ -37,7 +37,7 @@ import { registerPath } from "@/lib/routes";
  * element from screen readers.
  */
 const SAVED_TASKS_PATH = `${ROUTES.tasks}?saved=1`;
-const DONE_TASKS_PATH = `${ROUTES.myTasks}?tab=performing`;
+const DONE_TASKS_PATH = ROUTES.myCompletedTasks;
 
 /** The drawer follows the Figma redesign, which uses the Phosphor icon set. */
 const DRAWER_ICONS: Record<string, PhosphorIcon> = {
@@ -103,6 +103,7 @@ export function MobileNav() {
   const { items, loading, markRead, markAllRead } = useNotifications();
   const { isBee } = useRoles();
   const showBeeMenu = isBee && activeRole === "bee";
+  const taskDetailsPath = selectedTaskDetailsPath(location.pathname, location.search);
 
   const handleLogout = async () => {
     await signOut();
@@ -274,8 +275,7 @@ export function MobileNav() {
           >
             <div className="w-full shrink-0 overflow-y-auto py-2">
               {drawerItems.map((item) => {
-                const [itemPath, itemQuery = ""] = item.to.split("?");
-                const isActive = location.pathname === itemPath && location.search.replace(/^\?/, "") === itemQuery;
+                const isActive = isDrawerItemActive(item.to, location.pathname, location.search, showBeeMenu);
                 const ItemIcon = DRAWER_ICONS[item.to] ?? item.icon;
                 return (
                   <Fragment key={item.to}>
@@ -299,6 +299,11 @@ export function MobileNav() {
                   </Fragment>
                 );
               })}
+              {taskDetailsPath && user && (
+                <Link to={taskDetailsPath} onClick={handleCloseDrawer} className="mx-4 mt-5 flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  לפרטי המשימה <CaretLeft size={18} aria-hidden="true" />
+                </Link>
+              )}
             </div>
 
             <div className="w-full shrink-0 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" } as React.CSSProperties}>

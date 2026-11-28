@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import TaskDetail from "./TaskDetail";
-const state = vi.hoisted(() => ({ fullDescription: "הסבר מפורט של מפרסם המשימה\nשורה נוספת", notes: "הערה חשובה של המפרסם", rating: { avg_rating: 4.8, review_count: 12 } as { avg_rating: number; review_count: number } | null, user: null as { id: string } | null, roles: [] as string[] }));
+const state = vi.hoisted(() => ({ fullDescription: "הסבר מפורט של מפרסם המשימה\nשורה נוספת", notes: "הערה חשובה של המפרסם", rating: { avg_rating: 4.8, review_count: 12 } as { avg_rating: number; review_count: number } | null, user: null as { id: string } | null, roles: [] as string[], paused: false }));
+vi.mock("@/lib/taskPause", () => ({ loadPausedTaskIds: async () => ({ supported: true, ids: state.paused ? ["task"] : [] }) }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: state.user, roles: state.roles, profile: null }) }));
 vi.mock("@/components/PageHeader", () => ({ default: () => <header>פרטי משימה</header> }));
 vi.mock("@/components/tasks/TaskLocationMap", () => ({ default: () => <div data-testid="map">מפה</div> }));
@@ -15,12 +16,12 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
       single: async () => ({data: {
         id: "task", name: "משימת בדיקה", short_desc: "התיאור הקצר המקורי", full_desc: state.fullDescription,
         notes: state.notes, creator_id: "publisher", category: "other", payment: 100,
-        payment_type: "task", status: "open", workers_needed: 1, location: "מיקום בדיקה", views_count: 0,
+        payment_type: "task", status: "open", publish_state: "live", screening: "clean", workers_needed: 1, location: "מיקום בדיקה", views_count: 0,
       }, error: null}),
     }; return query;
   },
 } }));
-afterEach(() => { cleanup(); state.user = null; state.roles = []; });
+afterEach(() => { cleanup(); state.user = null; state.roles = []; state.paused = false; });
 const task = (entry: string | { pathname: string; state: unknown } = "/task/task") => render(<MemoryRouter initialEntries={[entry]}><Routes><Route path="/task/:id" element={<TaskDetail />} /></Routes></MemoryRouter>);
 it("shows the publisher's full explanation and notes before location details", async () => {
   task();
@@ -63,4 +64,26 @@ it("does not offer an application to the task owner who also performs tasks", as
   task();
   await screen.findByText("משימת בדיקה");
   expect(screen.queryByRole("button", { name: /אני רוצה את המשימה/ })).not.toBeInTheDocument();
+});
+
+it("opens the delete confirmation for the owner following an actions link", async () => {
+  state.user = { id: "publisher" };
+  task({ pathname: "/task/task", state: { openDelete: true } });
+  expect(await screen.findByRole("alertdialog", { name: "מחיקת מטלה" })).toBeInTheDocument();
+});
+
+it("does not open the delete confirmation for another user", async () => {
+  state.user = { id: "other" };
+  task({ pathname: "/task/task", state: { openDelete: true } });
+  await screen.findByText("משימת בדיקה");
+  expect(screen.queryByRole("alertdialog", { name: "מחיקת מטלה" })).not.toBeInTheDocument();
+});
+
+
+it("keeps an existing applicant from applying again while a listing is paused", async () => {
+  state.user = { id: "applicant" };
+  state.roles = ["bee"];
+  state.paused = true;
+  task();
+  expect(await screen.findByRole("button", { name: /הפרסום מושהה/ })).toBeDisabled();
 });

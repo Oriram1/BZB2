@@ -14,6 +14,7 @@ export const ROUTES = {
   task: "/task/:id",
   myTasks: "/my-tasks",
   myPublishedTasks: "/my-tasks?tab=published",
+  myCompletedTasks: "/my-tasks?tab=performing&completed=1",
   pricing: "/pricing",
   subscription: "/subscription",
   billingReturn: "/billing/return",

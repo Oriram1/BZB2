@@ -100,3 +100,49 @@ it("requires a new location confirmation when the conversation changes the addre
   fireEvent.click(screen.getByRole("button", { name: "אישור נקודת המפגש" }));
   expect(screen.getByRole("button", { name: "בדיקת המטלה" })).toBeInTheDocument();
 });
+
+it("releases a microphone that becomes available after leaving the assistant", async () => {
+  let finishRequest!: (stream: MediaStream) => void;
+  const track = { stop: vi.fn() };
+  const getUserMedia = vi.fn(() => new Promise<MediaStream>((resolve) => { finishRequest = resolve; }));
+  vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+  vi.stubGlobal("MediaRecorder", class { static isTypeSupported() { return true; } });
+  try {
+    const view = render(<TaskAssistant onApply={vi.fn()} onManual={vi.fn()} active />);
+    fireEvent.click(screen.getByRole("button", { name: "הקלטה קולית" }));
+    view.rerender(<TaskAssistant onApply={vi.fn()} onManual={vi.fn()} active={false} />);
+    finishRequest({ getTracks: () => [track] } as unknown as MediaStream);
+    await waitFor(() => expect(track.stop).toHaveBeenCalledOnce());
+    expect(state.bodies).toHaveLength(0);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("stops recording without sending audio when switching to the manual form", async () => {
+  const track = { stop: vi.fn() };
+  const stream = { getTracks: () => [track] } as unknown as MediaStream;
+  const stopped = vi.fn();
+  class FakeRecorder {
+    static isTypeSupported() { return true; }
+    stream = stream;
+    state = "inactive";
+    onstop: (() => void) | null = null;
+    ondataavailable: ((event: { data: Blob }) => void) | null = null;
+    start() { this.state = "recording"; }
+    stop() { this.state = "inactive"; stopped(); this.onstop?.(); }
+  }
+  vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: async () => stream } });
+  vi.stubGlobal("MediaRecorder", FakeRecorder);
+  try {
+    const view = render(<TaskAssistant onApply={vi.fn()} onManual={vi.fn()} active />);
+    fireEvent.click(screen.getByRole("button", { name: "הקלטה קולית" }));
+    await screen.findByRole("button", { name: "עצירת ההקלטה ושליחה" });
+    view.rerender(<TaskAssistant onApply={vi.fn()} onManual={vi.fn()} active={false} />);
+    expect(track.stop).toHaveBeenCalledOnce();
+    expect(stopped).toHaveBeenCalledOnce();
+    expect(state.bodies).toHaveLength(0);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

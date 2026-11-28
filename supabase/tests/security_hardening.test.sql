@@ -17,6 +17,8 @@ INSERT INTO public.user_roles(user_id,role) VALUES
 SELECT set_config('test.task',gen_random_uuid()::text,true);
 INSERT INTO public.tasks(id,creator_id,category,name,short_desc,payment)
 VALUES(current_setting('test.task')::uuid,current_setting('test.owner')::uuid,'housework','security fixture','test',10);
+-- The fixture must pass the safety screen before a worker can apply.
+UPDATE public.tasks SET screening = 'clean' WHERE id = current_setting('test.task')::uuid;
 INSERT INTO public.task_applications(task_id,applicant_id,status)
 VALUES(current_setting('test.task')::uuid,current_setting('test.worker')::uuid,'pending');
 -- Trusted acceptance trigger still creates a conversation after EXECUTE revokes.

@@ -8,8 +8,8 @@ import { figmaCategoryIcon } from "@/components/tasks/figmaCategoryIcons";
 import PageHeader from "@/components/PageHeader";
 import PendingRatingsCard from "@/components/reviews/PendingRatingsCard";
 import { categoryFilters, categoryLabel } from "@/lib/categories";
+import { loadPausedTaskIds } from "@/lib/taskPause";
 import { distanceKm } from "@/lib/format";
-import { fetchRatings } from "@/lib/people";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useRoles } from "@/hooks/useRoles";
 import { toast } from "sonner";
@@ -134,7 +134,7 @@ const TaskList = () => {
   /* Revalidate on every visit (staleTime 0) but paint the last list at once, so
      a return to the board is instant and the list is at most a moment stale. */
   const { data: loadedTasks, isPending: loading, isError } = useQuery({
-    queryKey: ["open-tasks"],
+    queryKey: ["open-tasks", user?.id ?? "guest"],
     staleTime: 0,
     retry: 1,
     queryFn: async (): Promise<Task[]> => {
@@ -148,11 +148,11 @@ const TaskList = () => {
 
       if (error) throw error;
       {
-        const ratings = await fetchRatings("tasker", data.map((task) => task.creator_id));
+        const pausedIds = user ? new Set((await loadPausedTaskIds(data.map((task) => task.id))).ids) : new Set<string>();
         // accepted_count lives on the task itself: RLS hides other people's
         // applications, so counting them here returned 0 and full tasks stayed up.
         const mapped: Task[] = data
-          .filter((t) => (t.accepted_count ?? 0) < t.workers_needed)
+          .filter((t) => !pausedIds.has(t.id) && (t.accepted_count ?? 0) < t.workers_needed)
           .map((t, i) => ({
             id: i + 1,
             dbId: t.id,
@@ -172,7 +172,6 @@ const TaskList = () => {
             lat: t.latitude,
             lng: t.longitude,
             creatorId: t.creator_id,
-            creatorRating: ratings ? ratings.get(t.creator_id) ?? null : undefined,
             publishState: t.publish_state,
           }));
         return mapped;
@@ -423,7 +422,18 @@ const TaskList = () => {
           viewMode === "list" ? (
             <TaskGrid tasks={filteredTasks} saved={saved} onToggleSave={toggleSaved} />
           ) : (
-            <MapView tasks={filteredTasks} saved={saved} onToggleSave={toggleSaved} />
+            <MapView tasks={filteredTasks} saved={saved} onToggleSave={toggleSaved} origin={originPos}
+              onRequestLocation={() => {
+                if (locationState === "unavailable") {
+                  toast.error("המיקום אינו זמין במכשיר הזה");
+                  return;
+                }
+                if (!cookiesAnswered || pushPending || locationState === "checking") {
+                  toast.info("אפשר לנסות שוב לאחר סיום ההגדרות הנוכחיות");
+                  return;
+                }
+                setLocationDismissedState(false);
+              }} />
           )
         )}
 
@@ -472,21 +482,21 @@ const TaskList = () => {
       </div>
 
       {sortOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center max-sm:pt-[clamp(0px,calc(100dvh-398px),100px)]">
           <div aria-hidden="true" className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setSortOpen(false)} />
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="sort-sheet-title"
-            className="relative m-4 w-full max-w-md rounded-lg bg-card p-4 shadow-card animate-slide-up"
+            className="relative m-4 w-full max-w-[358px] rounded-[10px] border-[1.2px] border-[#E6E6E8] bg-card p-[14px] shadow-card animate-slide-up"
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex h-8 items-center justify-between">
               <h2 id="sort-sheet-title" className="text-lg font-semibold text-foreground">מיון תוצאות</h2>
               <button type="button" aria-label="סגירה" onClick={() => setSortOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
-            <div role="radiogroup" aria-labelledby="sort-sheet-title" className="space-y-2.5">
+            <div role="radiogroup" aria-labelledby="sort-sheet-title" className="space-y-2">
               {SORT_OPTIONS.map((o) => {
                 const disabled = o.value === "near" && !originPos;
                 const checked = pendingSort === o.value;
@@ -498,17 +508,17 @@ const TaskList = () => {
                     aria-checked={checked}
                     disabled={disabled}
                     onClick={() => setPendingSort(o.value)}
-                    className="flex h-[58px] w-full items-center justify-between rounded-lg bg-secondary px-3.5 text-sm text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-12 w-full items-center justify-between rounded-lg bg-secondary px-3.5 text-sm text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {o.label}
-                    <span className={cn("flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] bg-card", checked ? "border-primary" : "border-foreground")}>
-                      {checked && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                    <span className={cn("flex h-4 w-4 items-center justify-center rounded-full border bg-card", checked ? "border-primary" : "border-foreground")}>
+                      {checked && <span className="h-2 w-2 rounded-full bg-primary" />}
                     </span>
                   </button>
                 );
               })}
             </div>
-            <Button className="mt-5 h-14 w-full gap-2 rounded-full bg-primary text-sm font-medium text-primary-foreground" onClick={() => { setSortKey(pendingSort); setSortOpen(false); }}>
+            <Button className="mt-6 h-12 w-full gap-2 rounded-full bg-primary text-sm font-medium text-primary-foreground" onClick={() => { setSortKey(pendingSort); setSortOpen(false); }}>
               <Check size={18} aria-hidden="true" />
               אישור
             </Button>

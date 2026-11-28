@@ -35,14 +35,14 @@ function Row({ icon: Icon, field, display, editor, form, highlighted, onSave, co
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState(form[field]);
   const [companionDraft, setCompanionDraft] = useState(companion ? form[companion] : "");
-  const error = editing ? fieldError(field, draft) : null;
+  const error = editing ? fieldError(field, draft, form) : null;
   const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useEffect(() => { if (editing) fieldRef.current?.focus(); }, [editing]);
   const label = labels[field] ?? field;
 
   const open = () => { setDraft(form[field]); if (companion) setCompanionDraft(form[companion]); setEditing(true); };
   const save = () => {
-    if (fieldError(field, draft)) return;
+    if (fieldError(field, draft, form)) return;
     onSave(field, draft.trim());
     if (companion) onSave(companion, companionDraft);
     setEditing(false);
@@ -161,7 +161,7 @@ export default function TaskReview({ form, imagePreview, insurance, insuranceOff
       return;
     }
     const changes = assistantChanges(data.fields as AssistantFields, form);
-    const invalid = (Object.keys(changes) as ReviewField[]).filter((key) => fieldError(key, changes[key] ?? ""));
+    const invalid = (Object.keys(changes) as ReviewField[]).filter((key) => fieldError(key, changes[key] ?? "", form));
     invalid.forEach((key) => delete changes[key]);
     const changed = Object.keys(changes) as ReviewField[];
     if (!changed.length) {
@@ -240,12 +240,12 @@ export default function TaskReview({ form, imagePreview, insurance, insuranceOff
         <Row {...rowProps} icon={MapPin} field="location" editor="text" highlighted={isHighlighted("location")} display={form.location} />
         <Row {...rowProps} icon={Calendar} field="date" editor="date" highlighted={isHighlighted("date")} display={form.date ? form.date.split("-").reverse().join(".") : "—"} />
         <Row {...rowProps} icon={Clock} field="time" editor="time" highlighted={isHighlighted("time")} display={<span dir="ltr">{form.time || "—"}</span>} />
-        <Row {...rowProps} icon={Hourglass} field="expiry" editor="number" highlighted={isHighlighted("expiry")} display={`${form.expiry} ימים`} />
+        <Row {...rowProps} icon={Hourglass} field="expiry" editor="number" highlighted={isHighlighted("expiry")} display={`${form.expiry} ${form.expiryUnit === "hours" ? "שעות" : "ימים"}`} />
         {(form.fullDesc || openOptional.includes("fullDesc")) && (
           <Row {...rowProps} icon={FileText} field="fullDesc" startEditing={!form.fullDesc} editor="textarea" highlighted={isHighlighted("fullDesc")} display={form.fullDesc || "—"} />
         )}
         {(form.duration || openOptional.includes("duration")) && (
-          <Row {...rowProps} icon={Timer} field="duration" startEditing={!form.duration} editor="number" highlighted={isHighlighted("duration")} display={form.duration ? `${form.duration} ימים` : "—"} />
+          <Row {...rowProps} icon={Timer} field="duration" startEditing={!form.duration} editor="number" highlighted={isHighlighted("duration")} display={form.duration ? `${form.duration} ${form.durationUnit === "hours" ? "שעות" : "ימים"}` : "—"} />
         )}
         {(form.notes || openOptional.includes("notes")) && (
           <Row {...rowProps} icon={StickyNote} field="notes" startEditing={!form.notes} editor="textarea" highlighted={isHighlighted("notes")} display={form.notes || "—"} />

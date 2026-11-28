@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check, CreditCard, Plus, FileText, MapPin, Image, Sparkles } from "lucide-react";
@@ -31,7 +31,9 @@ import GoogleMapPicker from "@/components/tasks/GoogleMapPicker";
 import type { ConfirmedTaskLocation } from "@/components/tasks/AssistantLocation";
 import TaskAssistant, { type MissingField } from "@/components/tasks/TaskAssistant";
 import type { AssistantFields } from "@/lib/taskForm";
+import type { duplicateTaskDraft } from "@/lib/duplicateTask";
 import TaskReview from "@/components/tasks/TaskReview";
+import ManualCategoryPicker from "@/components/tasks/ManualCategoryPicker";
 import type { CategoryValue } from "@shared/taskLimits.ts";
 import { todayIso, type ReviewForm } from "@/lib/taskForm";
 import { SHORT_DESC_MAX } from "@shared/taskLimits.ts";import { logUserActivity } from "@/lib/activityLog";
@@ -77,26 +79,28 @@ const stepOfField: Record<MissingField, number> = {
 const CreateTask = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [duplicateDraft] = useState<ReturnType<typeof duplicateTaskDraft> | null>(() => location.state?.duplicateDraft ?? null);
   // One id per publish attempt, reused on retries so the server can dedupe.
   const requestIdRef = useRef<string>(crypto.randomUUID());
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(() => duplicateDraft?.tags ?? []);
   const toggleTag = (value: string) => setTags((current) => (current.includes(value) ? current.filter((t) => t !== value) : [...current, value]));
   const [step, setStep] = useState(1);
   const onSummary = step === SUMMARY_STEP;
   const [cardSetupOpen, setCardSetupOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => duplicateDraft?.form ?? ({
     category: "", taskName: "", shortDesc: "", fullDesc: "",
     payment: "", paymentType: "task", workers: "1",
     location: "", date: "", time: "", duration: "", durationUnit: "days", expiry: "3",
     notes: "",
-  });
-  const [selectedLat, setSelectedLat] = useState<number | null>(null);
-  const [selectedLng, setSelectedLng] = useState<number | null>(null);
+  }));
+  const [selectedLat, setSelectedLat] = useState<number | null>(() => duplicateDraft?.lat ?? null);
+  const [selectedLng, setSelectedLng] = useState<number | null>(() => duplicateDraft?.lng ?? null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [insurance, setInsurance] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(() => duplicateDraft?.imageUrl ?? null);
+  const [insurance, setInsurance] = useState(() => duplicateDraft?.insurance ?? false);
   const [quote, setQuote] = useState<PublishQuote | null>(null);
   const fees = useTaskFees();
   // Insurance is offered only while the admin switch is on; until the fees
@@ -107,8 +111,18 @@ const CreateTask = () => {
   const [confirmQuote, setConfirmQuote] = useState<PublishQuote | null>(null);
   const [searchParams] = useSearchParams();
   // The assistant opens first; a restored draft goes straight back to the form.
-  const [assistantOpen, setAssistantOpen] = useState(() => searchParams.get("resume") !== "1");
-  const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState(() => searchParams.get("resume") !== "1" && !duplicateDraft);
+  const [assistantMounted, setAssistantMounted] = useState(assistantOpen);
+  const [choosingManualCategory, setChoosingManualCategory] = useState(false);
+  const [restoredImageUrl, setRestoredImageUrl] = useState<string | null>(() => duplicateDraft?.imageUrl ?? null);
+  useEffect(() => {
+    if (!duplicateDraft) return;
+    const missing = duplicateDraft.omittedFields.length ? ` לא הועתקו ${duplicateDraft.omittedFields.join(" ו")}: הטופס תומך בימים מלאים בלבד.` : "";
+    toast.info(`פרטי המטלה הועתקו. בדקו את המועד לפני הפרסום.${missing}`);
+    navigate(location.pathname, { replace: true, state: null });
+  // Consume the navigation draft once; later edits must not be overwritten.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const today = new Date();
 
   const dateShortcuts = [
@@ -267,7 +281,7 @@ const CreateTask = () => {
       case 1: return !!form.category && !!form.taskName && !!form.shortDesc && form.shortDesc.length <= SHORT_DESC_MAX && !!form.payment;
       case 2: {
         const duration = Number(form.duration);
-        const validDuration = !form.duration || (duration >= 1 && duration <= 30);
+        const validDuration = !form.duration || (duration >= 1 && duration <= (form.durationUnit === "hours" ? 720 : 30));
         return !!form.location && !!form.date && !!form.time && validDuration;
       }
       default: return true;
@@ -380,8 +394,8 @@ const CreateTask = () => {
       longitude: selectedLng,
       scheduled_date: form.date || null,
       scheduled_time: form.time || null,
-      duration_hours: form.duration ? parseFloat(form.duration) * 24 : null,
-      expiry_hours: (parseInt(form.expiry) || 3) * 24,
+      duration_hours: form.duration ? parseFloat(form.duration) * (form.durationUnit === "hours" ? 1 : 24) : null,
+      expiry_hours: (parseInt(form.expiry) || 3) * (form.expiryUnit === "hours" ? 1 : 24),
       notes: form.notes || null,
       image_url: imageUrl,
       insurance: withInsurance,
@@ -431,11 +445,13 @@ const CreateTask = () => {
   };
 
   return (
-    <div className="figma min-h-screen relative overflow-hidden bg-background" dir="rtl">
+    <div className={`figma min-h-screen relative overflow-hidden ${assistantOpen || choosingManualCategory ? "bg-white" : "bg-background"}`} dir="rtl">
+      {(assistantOpen || choosingManualCategory) && <div className="figma-honeycomb pointer-events-none fixed inset-x-0 bottom-0 h-[min(542px,65vh)]" aria-hidden="true" />}
       {/* "יצירת מטלה חדשה" frames: back / centred title / menu on a plain grey page. */}
-      <PageHeader variant="figma" centerTitle title="יצירת מטלה חדשה" titleIsPageHeading />
+      <PageHeader variant="figma" centerTitle title="יצירת מטלה חדשה" titleIsPageHeading
+        onBack={choosingManualCategory ? () => { setChoosingManualCategory(false); setAssistantOpen(true); } : undefined} />
 
-      <div className="relative z-10 w-full max-w-2xl mx-auto py-8 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8">
+      <div className={`relative z-10 w-full max-w-2xl mx-auto px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-8 ${assistantOpen || choosingManualCategory ? "pt-4" : "pt-8"}`}>
 
         {quote && !quote.billing_off && quote.free_slot && (
           <div className="mb-6 rounded-2xl bg-primary text-primary-foreground shadow-card px-5 py-4 text-center" data-testid="first-task-banner">
@@ -444,13 +460,16 @@ const CreateTask = () => {
           </div>
         )}
 
-        {assistantOpen ? (
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-6">
-            <TaskAssistant onApply={(fields, missing, location) => void applyAssistant(fields, missing, location)} onManual={() => setAssistantOpen(false)} />
+        {assistantMounted && (
+          <div hidden={!assistantOpen} className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-6">
+            <TaskAssistant active={assistantOpen} onApply={(fields, missing, location) => void applyAssistant(fields, missing, location)} onManual={() => { setAssistantOpen(false); setChoosingManualCategory(true); }} />
           </div>
+        )}
+        {!assistantOpen && (choosingManualCategory ? (
+          <ManualCategoryPicker onSelect={(category) => { updateForm("category", category); setChoosingManualCategory(false); }} />
         ) : (<>
         {step === 1 && (
-          <Button type="button" variant="outline" className="mb-4 w-full gap-1.5 rounded-full" onClick={() => setAssistantOpen(true)}>
+          <Button type="button" variant="outline" className="mb-4 w-full gap-1.5 rounded-full" onClick={() => { setAssistantMounted(true); setAssistantOpen(true); }}>
             <Sparkles size={16} /> לתאר במילים ולתת לביזי למלא
           </Button>
         )}
@@ -701,7 +720,7 @@ const CreateTask = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="duration" className="text-right block mb-1 font-bold">משך זמן מוערך (ימים)</Label>
+                <Label htmlFor="duration" className="text-right block mb-1 font-bold">משך זמן מוערך ({form.durationUnit === "hours" ? "שעות" : "ימים"})</Label>
                 <Input
                   id="duration"
                   type="text"
@@ -739,7 +758,7 @@ const CreateTask = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="expiry" className="text-right block mb-1 font-bold">תוקף הפרסום (ימים)</Label>
+                <Label htmlFor="expiry" className="text-right block mb-1 font-bold">תוקף הפרסום ({form.expiryUnit === "hours" ? "שעות" : "ימים"})</Label>
                 <Input
                   id="expiry"
                   type="text"
@@ -978,7 +997,7 @@ const CreateTask = () => {
             )}
           </div>
         </div>
-        </>)}
+        </>))}
       </div>
     </div>
   );
